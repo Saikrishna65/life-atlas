@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: var(--font-display), ui-serif, serif;
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+}
+
+@layer base {
+  :root {
+    --background: #f8f7f5; /* warm off-white */
+    --foreground: #1c1b1a; /* near-black */
+    
+    --surface: #ffffff;
+    --surface-hover: #f1efeb;
+    
+    --muted: #e6e4df;
+    --muted-foreground: #6b6a68;
+    
+    --accent: #8b7d6b; /* muted earth-derived accent */
+    --accent-foreground: #ffffff;
+  }
+
+  /* Optional dark mode support */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --background: #121212;
+      --foreground: #f3f3f3;
+      
+      --surface: #1a1a1a;
+      --surface-hover: #2a2a2a;
+      
+      --muted: #333333;
+      --muted-foreground: #a0a0a0;
+      
+      --accent: #b4a592;
+      --accent-foreground: #121212;
+    }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-muted;
+  }
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-foreground;
+  }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

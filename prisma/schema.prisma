@@ -1,0 +1,230 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  trips          Trip[]
+  places         Place[]
+  memories       Memory[]
+  photos         Photo[]
+  journalEntries JournalEntry[]
+  experiences    Experience[]
+  timelineEvents TimelineEvent[]
+}
+
+model Trip {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  destination String
+  startDate   DateTime
+  endDate     DateTime?
+  duration    String?
+  description String?
+  coverImage  String?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tripPlaces     TripPlace[]
+  tripDays       TripDay[]
+  photos         Photo[]
+  journalEntries JournalEntry[]
+  experiences    Experience[]
+}
+
+model Place {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  country     String
+  region      String?
+  city        String?
+  latitude    Float?
+  longitude   Float?
+  description String?
+  coverImage  String?
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tripPlaces  TripPlace[]
+  photos      Photo[]
+  experiences Experience[]
+}
+
+model TripPlace {
+  id        String   @id @default(cuid())
+  tripId    String
+  placeId   String
+  visitDate DateTime?
+
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@unique([tripId, placeId])
+}
+
+model TripDay {
+  id          String   @id @default(cuid())
+  tripId      String
+  dayIndex    Int
+  date        DateTime
+  title       String?
+  description String?
+  
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@unique([tripId, dayIndex])
+}
+
+model Memory {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime?
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  timelineEvents TimelineEvent[]
+}
+
+model Photo {
+  id          String   @id @default(cuid())
+  url         String
+  caption     String?
+  date        DateTime?
+  isFeatured  Boolean  @default(false)
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  tripId      String?
+  trip        Trip?    @relation(fields: [tripId], references: [id])
+  
+  placeId     String?
+  place       Place?   @relation(fields: [placeId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model JournalEntry {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  content     String
+  date        DateTime
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  tripId      String?
+  trip        Trip?    @relation(fields: [tripId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum ExperienceType {
+  FOOD
+  CINEMA
+  EVENT
+  ACTIVITY
+  OTHER
+}
+
+model Experience {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  type        ExperienceType
+  date        DateTime?
+  description String?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  tripId      String?
+  trip        Trip?    @relation(fields: [tripId], references: [id])
+  
+  placeId     String?
+  place       Place?   @relation(fields: [placeId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  foodExperience FoodExperience?
+  movie          Movie?
+}
+
+model FoodExperience {
+  id           String   @id @default(cuid())
+  experienceId String   @unique
+  restaurant   String
+  dish         String?
+  rating       Int?
+
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+}
+
+model Movie {
+  id           String   @id @default(cuid())
+  experienceId String   @unique
+  director     String?
+  year         Int?
+  rating       Int?
+  review       String?
+
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+}
+
+enum EventType {
+  TRIP
+  MEMORY
+  JOURNAL
+  EXPERIENCE
+}
+
+model TimelineEvent {
+  id          String   @id @default(cuid())
+  date        DateTime
+  title       String
+  description String?
+  type        EventType
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  memoryId    String?
+  memory      Memory?  @relation(fields: [memoryId], references: [id])
+  
+  referenceId String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
