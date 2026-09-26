@@ -28,12 +28,38 @@ export async function getTripBySlug(slug: string) {
   return prisma.trip.findUnique({
     where: { slug },
     include: {
+      tripPlaces: { include: { place: true } },
       tripDays: { orderBy: { dayIndex: 'asc' } },
-      photos: true,
+      photos: { orderBy: { date: 'asc' } },
       journalEntries: true,
       experiences: {
         include: { foodExperience: true, movie: true }
       }
     }
   });
+}
+
+export async function getNextTrip(currentDate: Date, currentId: string) {
+  const nextTrip = await prisma.trip.findFirst({
+    where: {
+      startDate: { gte: currentDate },
+      id: { not: currentId }
+    },
+    orderBy: { startDate: 'asc' },
+    include: {
+      tripPlaces: { include: { place: true } }
+    }
+  });
+
+  if (!nextTrip) {
+    // Fallback to latest
+    return prisma.trip.findFirst({
+      where: { id: { not: currentId } },
+      orderBy: { startDate: 'desc' },
+      include: {
+        tripPlaces: { include: { place: true } }
+      }
+    });
+  }
+  return nextTrip;
 }

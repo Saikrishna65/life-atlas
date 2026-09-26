@@ -62,7 +62,7 @@ export default function Navigation() {
         </div>
 
         <button
-          className="md:hidden z-50 flex items-center justify-center p-2 hover:text-white/70 transition-colors"
+          className="z-50 flex items-center justify-center p-2 hover:text-white/70 transition-colors"
           onClick={() => setIsOpen(!isOpen)}
           aria-label={isOpen ? "Close menu" : "Open menu"}
         >

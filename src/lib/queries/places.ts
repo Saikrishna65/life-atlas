@@ -1,8 +1,22 @@
 import prisma from '../prisma';
 
-export async function getPlaces() {
+export type PlaceSortOption = 'latest' | 'oldest' | 'name';
+
+export async function getPlaces(sort: PlaceSortOption = 'name') {
+  let orderBy: any = { name: 'asc' };
+  
+  if (sort === 'latest') {
+    orderBy = { createdAt: 'desc' };
+  } else if (sort === 'oldest') {
+    orderBy = { createdAt: 'asc' };
+  }
+
   return prisma.place.findMany({
-    orderBy: { name: 'asc' }
+    orderBy,
+    include: {
+      tripPlaces: { include: { trip: true } },
+      _count: { select: { photos: true, experiences: true } }
+    }
   });
 }
 
@@ -11,8 +25,10 @@ export async function getPlaceBySlug(slug: string) {
     where: { slug },
     include: {
       tripPlaces: { include: { trip: true } },
-      photos: true,
-      experiences: true
+      photos: { orderBy: { date: 'asc' } },
+      experiences: {
+        include: { foodExperience: true, movie: true }
+      }
     }
   });
 }
