@@ -1,10 +1,25 @@
 import prisma from '../prisma';
 
-export async function getTrips() {
+export type TripSortOption = 'latest' | 'oldest' | 'longest' | 'most-photos';
+
+export async function getTrips(sort: TripSortOption = 'latest') {
+  let orderBy: any = { startDate: 'desc' };
+  
+  if (sort === 'oldest') {
+    orderBy = { startDate: 'asc' };
+  } else if (sort === 'most-photos') {
+    orderBy = { photos: { _count: 'desc' } };
+  } else if (sort === 'longest') {
+    // Note: since duration is a string, sorting by duration directly in SQL isn't perfect,
+    // but in a real app we might store days as an int. We'll fallback to sorting by trip days count.
+    orderBy = { tripDays: { _count: 'desc' } };
+  }
+
   return prisma.trip.findMany({
-    orderBy: { startDate: 'desc' },
+    orderBy,
     include: {
-      tripPlaces: { include: { place: true } }
+      tripPlaces: { include: { place: true } },
+      _count: { select: { photos: true } }
     }
   });
 }
