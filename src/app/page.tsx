@@ -1,26 +1,36 @@
 import Hero from "@/components/home/Hero";
 import GlobePlaceholder from "@/components/home/GlobePlaceholder";
+import FeaturedTrips from "@/components/home/FeaturedTrips";
+import LifeStatistics from "@/components/home/LifeStatistics";
+import TimelinePreview from "@/components/home/TimelinePreview";
+import PhotographyStory from "@/components/home/PhotographyStory";
+import LifeBeyondTravel from "@/components/home/LifeBeyondTravel";
+import Link from "next/link";
+import { getHomepageData } from "@/lib/queries/home";
 
-export default function Home() {
+export default async function Home() {
+  const { stats, featuredTrips, timelinePreview, photos, experiences } = await getHomepageData();
+
   return (
-    <>
+    <main className="bg-background text-foreground min-h-screen">
       <Hero />
       <GlobePlaceholder />
       
-      {/* Temporary spacing to demonstrate scrolling */}
-      <section className="py-32 px-6 max-w-7xl mx-auto">
-        <h2 className="font-display text-3xl mb-8">Selected Journeys</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="aspect-[3/4] bg-muted relative group overflow-hidden" style={{ borderRadius: '4px' }}>
-              <div className="absolute inset-0 flex flex-col justify-end p-6 bg-gradient-to-t from-black/60 to-transparent text-white opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                <span className="font-sans text-xs uppercase tracking-widest mb-2">2026</span>
-                <h3 className="font-display text-2xl">Journey {i}</h3>
-              </div>
-            </div>
-          ))}
-        </div>
+      <FeaturedTrips trips={featuredTrips} />
+      <LifeStatistics stats={stats} />
+      <TimelinePreview events={timelinePreview} />
+      <PhotographyStory photos={photos} />
+      <LifeBeyondTravel experiences={experiences} />
+
+      {/* Final CTA */}
+      <section className="py-32 px-6 text-center border-t border-white/10">
+        <h2 className="font-display text-4xl md:text-5xl text-white mb-6">
+          Keep moving.<br/>Keep remembering.
+        </h2>
+        <Link href="/explore" className="inline-block mt-4 font-sans text-sm uppercase tracking-widest text-white/50 hover:text-white transition-colors">
+          Explore the atlas &rarr;
+        </Link>
       </section>
-    </>
+    </main>
   );
 }

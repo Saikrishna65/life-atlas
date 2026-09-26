@@ -18,5 +18,20 @@ export async function getHomepageData() {
     orderBy: { date: 'desc' },
   });
 
-  return { stats, featuredTrips, timelinePreview };
+  const photos = await prisma.photo.findMany({
+    where: { isFeatured: true },
+    take: 6,
+    orderBy: { date: 'desc' },
+  });
+
+  const experiences = await prisma.experience.findMany({
+    take: 4,
+    orderBy: { date: 'desc' },
+    include: {
+      place: true,
+      trip: true
+    }
+  });
+
+  return { stats, featuredTrips, timelinePreview, photos, experiences };
 }
