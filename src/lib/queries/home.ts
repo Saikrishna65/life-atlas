@@ -33,5 +33,26 @@ export async function getHomepageData() {
     }
   });
 
-  return { stats, featuredTrips, timelinePreview, photos, experiences };
+  const globePlaces = await prisma.place.findMany({
+    where: {
+      latitude: { not: null },
+      longitude: { not: null }
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      country: true,
+      latitude: true,
+      longitude: true,
+      tripPlaces: {
+        select: {
+          trip: { select: { title: true, slug: true } }
+        },
+        take: 1
+      }
+    }
+  });
+
+  return { stats, featuredTrips, timelinePreview, photos, experiences, globePlaces };
 }

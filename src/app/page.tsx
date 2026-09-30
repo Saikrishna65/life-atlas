@@ -1,5 +1,5 @@
 import Hero from "@/components/home/Hero";
-import GlobePlaceholder from "@/components/home/GlobePlaceholder";
+import InteractiveGlobe from "@/components/home/InteractiveGlobe";
 import FeaturedTrips from "@/components/home/FeaturedTrips";
 import LifeStatistics from "@/components/home/LifeStatistics";
 import TimelinePreview from "@/components/home/TimelinePreview";
@@ -9,12 +9,12 @@ import Link from "next/link";
 import { getHomepageData } from "@/lib/queries/home";
 
 export default async function Home() {
-  const { stats, featuredTrips, timelinePreview, photos, experiences } = await getHomepageData();
+  const { stats, featuredTrips, timelinePreview, photos, experiences, globePlaces } = await getHomepageData();
 
   return (
     <main className="bg-background text-foreground min-h-screen">
       <Hero />
-      <GlobePlaceholder />
+      <InteractiveGlobe places={globePlaces} />
       
       <FeaturedTrips trips={featuredTrips} />
       <LifeStatistics stats={stats} />
