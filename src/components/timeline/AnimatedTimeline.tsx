@@ -26,7 +26,7 @@ export default function AnimatedTimeline({ timelineData }: { timelineData: Timel
   // Track scroll progress of the entire timeline container
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start center", "end bottom"]
+    offset: ["start center", "end end"]
   });
 
   return (
