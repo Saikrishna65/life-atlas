@@ -56,7 +56,11 @@ export default function Navigation() {
               {link.label}
             </Link>
           ))}
-          <button aria-label="Search" className="hover:text-white/70 transition-colors">
+          <button 
+            aria-label="Search" 
+            className="hover:text-white/70 transition-colors"
+            onClick={() => window.dispatchEvent(new Event("open-search"))}
+          >
             <Search size={18} />
           </button>
         </div>
