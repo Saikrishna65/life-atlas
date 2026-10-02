@@ -146,7 +146,7 @@ export default function SearchOverlay() {
                 {result.image ? (
                   <div className="w-12 h-12 flex-shrink-0 bg-muted rounded overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={result.image} alt={result.title} className="w-full h-full object-cover" />
+                    <img src={result.image} alt={result.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="w-12 h-12 flex-shrink-0 bg-muted/50 rounded flex items-center justify-center">

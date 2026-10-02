@@ -13,6 +13,8 @@ export default function ExploreItemCard({ item }: { item: ExploreItem }) {
             <img 
               src={item.image} 
               alt={item.title} 
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" 
             />
           </Link>
