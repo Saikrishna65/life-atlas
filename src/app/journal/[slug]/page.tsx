@@ -90,7 +90,7 @@ export default async function JournalEntryPage({ params }: { params: Params }) {
               {entry.trip.photos.map(photo => (
                 <div key={photo.id} className="aspect-square bg-muted/10 rounded-sm overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={photo.url} alt={photo.caption || ''} className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity" />
+                  <img src={photo.url} alt={photo.caption || 'Related photograph'} className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity" />
                 </div>
               ))}
             </div>

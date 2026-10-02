@@ -41,6 +41,14 @@ export default function Navigation() {
   }, [isOpen]);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) setIsOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
+  useEffect(() => {
     return () => {
       if (tlRef.current) {
         tlRef.current.kill();
@@ -67,11 +75,11 @@ export default function Navigation() {
             </Link>
           ))}
           <button 
-            aria-label="Search" 
+            aria-label="Open search" 
             className="hover:text-white/70 transition-colors"
             onClick={() => window.dispatchEvent(new Event("open-search"))}
           >
-            <Search size={18} />
+            <Search size={18} aria-hidden="true" />
           </button>
         </div>
 
@@ -79,13 +87,19 @@ export default function Navigation() {
           className="z-50 flex items-center justify-center p-2 hover:text-white/70 transition-colors"
           onClick={() => setIsOpen(!isOpen)}
           aria-label={isOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isOpen}
+          aria-controls="fullscreen-menu"
         >
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
+          {isOpen ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
         </button>
       </header>
 
       {/* Fullscreen Menu */}
       <div
+        id="fullscreen-menu"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Main Navigation"
         className={`fixed inset-0 z-30 bg-foreground text-background flex flex-col md:flex-row transition-opacity duration-700 ${
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}

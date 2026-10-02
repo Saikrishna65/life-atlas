@@ -103,11 +103,16 @@ export default function SearchOverlay() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] bg-background/80 backdrop-blur-md px-4">
+    <div 
+      className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] bg-background/80 backdrop-blur-md px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Search Overlay"
+    >
       <div className="w-full max-w-2xl bg-muted/20 border border-muted/30 rounded-xl overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
         
         <div className="flex items-center px-6 py-4 border-b border-muted/30 gap-4">
-          <Search size={20} className="text-muted-foreground" />
+          <Search size={20} className="text-muted-foreground" aria-hidden="true" />
           <input 
             ref={inputRef}
             type="text" 
@@ -116,9 +121,14 @@ export default function SearchOverlay() {
             onKeyDown={handleKeyDown}
             placeholder="Search trips, places, journal, photos..."
             className="flex-1 bg-transparent border-none outline-none font-sans text-lg text-foreground placeholder:text-muted-foreground"
+            aria-label="Search query"
           />
-          <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground">
-            <X size={20} />
+          <button 
+            onClick={() => setIsOpen(false)} 
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Close search"
+          >
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 
