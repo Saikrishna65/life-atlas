@@ -34,6 +34,7 @@ export async function getTimelineEvents() {
     
     acc[year].push({ ...event, link, linkText, image });
     return acc;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   }, {} as Record<number, any[]>);
 
   return Object.entries(grouped)

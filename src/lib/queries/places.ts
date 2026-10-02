@@ -3,6 +3,7 @@ import prisma from '../prisma';
 export type PlaceSortOption = 'latest' | 'oldest' | 'name';
 
 export async function getPlaces(sort: PlaceSortOption = 'name') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let orderBy: any = { name: 'asc' };
   
   if (sort === 'latest') {

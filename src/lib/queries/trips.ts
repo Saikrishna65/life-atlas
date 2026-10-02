@@ -3,6 +3,7 @@ import prisma from '../prisma';
 export type TripSortOption = 'latest' | 'oldest' | 'longest' | 'most-photos';
 
 export async function getTrips(sort: TripSortOption = 'latest') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let orderBy: any = { startDate: 'desc' };
   
   if (sort === 'oldest') {
