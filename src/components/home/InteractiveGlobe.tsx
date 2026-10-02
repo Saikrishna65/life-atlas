@@ -150,7 +150,8 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       .onPointHover((point: unknown) => {
         setHoveredPlace(point as GlobePlace | null);
         if (containerEl) {
-          containerEl.style.cursor = point ? "none" : "grab";
+          const isTouch = window.matchMedia("(pointer: coarse)").matches;
+          containerEl.style.cursor = point && !isTouch ? "none" : "grab";
         }
         
         // Stop auto-rotation when hovering a pin so you can read it easily

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Menu, X, Search } from "lucide-react";
 import gsap from "gsap";
@@ -24,12 +24,13 @@ const secondaryLinks = [
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
+  const tlRef = useRef<gsap.core.Tween | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
       // Simple GSAP animation for menu items
-      gsap.fromTo(
+      tlRef.current = gsap.fromTo(
         ".menu-item",
         { y: 40, opacity: 0 },
         { y: 0, opacity: 1, duration: 0.6, stagger: 0.05, ease: "power3.out" }
@@ -38,6 +39,15 @@ export default function Navigation() {
       document.body.style.overflow = "";
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (tlRef.current) {
+        tlRef.current.kill();
+      }
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   return (
     <>

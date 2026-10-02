@@ -13,26 +13,29 @@ export default function Hero() {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion) return;
 
-    const tl = gsap.timeline();
+    let ctx = gsap.context(() => {
+      const tl = gsap.timeline();
 
-    tl.fromTo(
-      bgRef.current,
-      { scale: 1.05, opacity: 0 },
-      { scale: 1, opacity: 1, duration: 2, ease: "power2.out" }
-    )
-    .fromTo(
-      titleRef.current,
-      { y: 30, opacity: 0 },
-      { y: 0, opacity: 1, duration: 1.2, ease: "power3.out" },
-      "-=1.2"
-    )
-    .fromTo(
-      subtitleRef.current,
-      { y: 20, opacity: 0 },
-      { y: 0, opacity: 1, duration: 1, ease: "power3.out" },
-      "-=0.8"
-    );
+      tl.fromTo(
+        bgRef.current,
+        { scale: 1.05, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 2, ease: "power2.out" }
+      )
+      .fromTo(
+        titleRef.current,
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1.2, ease: "power3.out" },
+        "-=1.2"
+      )
+      .fromTo(
+        subtitleRef.current,
+        { y: 20, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1, ease: "power3.out" },
+        "-=0.8"
+      );
+    }, heroRef);
 
+    return () => ctx.revert();
   }, []);
 
   return (
