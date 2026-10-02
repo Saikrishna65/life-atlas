@@ -22,6 +22,11 @@ export async function generateMetadata({
   return {
     title: `${place.name} | Life Atlas`,
     description: place.description || `Memories from ${place.name}, ${place.country}`,
+    openGraph: {
+      title: `${place.name} | Life Atlas`,
+      description: place.description || `Memories from ${place.name}, ${place.country}`,
+      images: place.coverImage ? [place.coverImage] : undefined,
+    },
   };
 }
 

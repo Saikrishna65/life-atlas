@@ -24,6 +24,11 @@ export async function generateMetadata({
   return {
     title: `${trip.title} | Life Atlas`,
     description: trip.description || `Journey to ${trip.destination}`,
+    openGraph: {
+      title: `${trip.title} | Life Atlas`,
+      description: trip.description || `Journey to ${trip.destination}`,
+      images: trip.coverImage ? [trip.coverImage] : undefined,
+    },
   };
 }
 

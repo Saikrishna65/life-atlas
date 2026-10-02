@@ -14,6 +14,11 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   return {
     title: `${entry.title} | Journal`,
     description: entry.content.substring(0, 160) + '...',
+    openGraph: {
+      title: `${entry.title} | Journal`,
+      description: entry.content.substring(0, 160) + '...',
+      images: entry.trip?.coverImage ? [entry.trip.coverImage] : undefined,
+    }
   };
 }
 
