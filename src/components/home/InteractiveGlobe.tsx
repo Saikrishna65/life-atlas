@@ -35,6 +35,13 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
   const router = useRouter();
 
   useEffect(() => {
+    if (hoveredPlace && tooltipRef.current) {
+      tooltipRef.current.style.left = `${mousePosRef.current.x}px`;
+      tooltipRef.current.style.top = `${mousePosRef.current.y}px`;
+    }
+  }, [hoveredPlace]);
+
+  useEffect(() => {
     const updateMouse = (e: MouseEvent) => {
       mousePosRef.current = { x: e.clientX, y: e.clientY };
       if (tooltipRef.current) {
@@ -342,7 +349,7 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
     initGlobe();
     return () => {
       if (globeInstanceRef.current) {
-        // @ts-ignore
+        // @ts-expect-error - globe._cleanup is a custom property attached during init
         globeInstanceRef.current._cleanup?.();
         globeInstanceRef.current = null;
       }
@@ -378,6 +385,7 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
     
     // Step 3: Scroll-Linked Rotation!
     if (globeInstanceRef.current) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const scene = (globeInstanceRef.current as any).scene();
       if (scene) {
         tl.fromTo(scene.rotation, 
@@ -438,8 +446,6 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
             ref={tooltipRef}
             className="fixed pointer-events-none z-50 transition-transform duration-75 ease-out"
             style={{ 
-              left: mousePosRef.current.x, 
-              top: mousePosRef.current.y,
               transform: 'translate(15px, 15px)' // Offset slightly from cursor
             }}
           >

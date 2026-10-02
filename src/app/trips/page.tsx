@@ -31,7 +31,7 @@ export default async function TripsPage({
           </p>
         </header>
 
-        <div className="flex justify-between items-end border-b border-white/10 pb-6 mb-12">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-white/10 pb-6 mb-12 gap-4">
           <div className="font-sans text-sm tracking-widest uppercase text-white/50">
             {trips.length} {trips.length === 1 ? 'Trip' : 'Trips'}
           </div>

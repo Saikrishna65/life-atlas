@@ -68,7 +68,7 @@ export default function PhotoViewer({ photos, currentIndex, isOpen, onClose, onN
     >
       <button 
         onClick={onClose}
-        className="absolute top-6 right-6 p-2 text-foreground/50 hover:text-foreground transition-colors z-[110]"
+        className="absolute top-4 right-4 md:top-6 md:right-6 p-2 text-foreground/50 hover:text-foreground transition-colors z-[110]"
         aria-label="Close viewer"
       >
         <X size={32} strokeWidth={1.5} />
@@ -77,20 +77,20 @@ export default function PhotoViewer({ photos, currentIndex, isOpen, onClose, onN
       {currentIndex > 0 && (
         <button 
           onClick={handlePrevious}
-          className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 p-4 text-foreground/30 hover:text-foreground transition-colors z-[110] hidden md:block"
+          className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 p-2 md:p-4 text-foreground/30 hover:text-foreground transition-colors z-[110]"
           aria-label="Previous photo"
         >
-          <ChevronLeft size={48} strokeWidth={1} />
+          <ChevronLeft className="w-8 h-8 md:w-12 md:h-12" strokeWidth={1} />
         </button>
       )}
 
       {currentIndex < photos.length - 1 && (
         <button 
           onClick={handleNext}
-          className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 p-4 text-foreground/30 hover:text-foreground transition-colors z-[110] hidden md:block"
+          className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 p-2 md:p-4 text-foreground/30 hover:text-foreground transition-colors z-[110]"
           aria-label="Next photo"
         >
-          <ChevronRight size={48} strokeWidth={1} />
+          <ChevronRight className="w-8 h-8 md:w-12 md:h-12" strokeWidth={1} />
         </button>
       )}
 
