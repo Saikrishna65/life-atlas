@@ -23,7 +23,28 @@ const secondaryLinks = [
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const prevScrollY = useRef(0);
   const tlRef = useRef<gsap.core.Tween | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isOpen) return;
+      
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY < prevScrollY.current || currentScrollY < 50) {
+        setIsVisible(true);
+      } else if (currentScrollY > 50 && currentScrollY > prevScrollY.current) {
+        setIsVisible(false);
+      }
+      
+      prevScrollY.current = currentScrollY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -58,13 +79,8 @@ export default function Navigation() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-6 md:px-12 md:py-6 text-foreground bg-background/75 backdrop-blur-xl border-b border-muted/70 transition-colors duration-300">
+      <header className={`fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-3 md:px-12 md:py-4 text-foreground bg-background/75 backdrop-blur-xl border-b border-muted/70 transition-all duration-300 ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <Link href="/" className="font-sans text-sm font-bold tracking-[0.2em] uppercase z-50 flex items-center gap-2">
-          <span className="flex gap-1" aria-hidden="true">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-green" />
-            <span className="w-1.5 h-1.5 rounded-full bg-accent-red" />
-          </span>
           LIFE ATLAS
         </Link>
 

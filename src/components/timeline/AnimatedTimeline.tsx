@@ -1,8 +1,11 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState, useMemo } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+const TimelineGlobe = dynamic(() => import("./TimelineGlobe"), { ssr: false, loading: () => <div className="w-full h-full min-h-[300px] flex items-center justify-center opacity-50">Loading Globe...</div> });
 
 interface TimelineEvent {
   id: string;
@@ -13,6 +16,8 @@ interface TimelineEvent {
   link: string | null;
   linkText: string | null;
   image: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 interface TimelineYear {
@@ -22,52 +27,65 @@ interface TimelineYear {
 
 export default function AnimatedTimeline({ timelineData }: { timelineData: TimelineYear[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Track scroll progress of the entire timeline container
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start center", "end end"]
-  });
+  const [activeIndex, setActiveIndex] = useState(0);
 
+  // Flatten events that have coordinates for the globe
+  const flatEvents = useMemo(() => {
+    return timelineData
+      .flatMap(y => y.events)
+      .filter(e => e.latitude !== null && e.longitude !== null);
+  }, [timelineData]);
+  
   return (
     <div className="relative" ref={containerRef}>
       
-      <div className="flex flex-col gap-24">
+      {/* The entire original timeline layout */}
+      <div className="flex flex-col gap-24 relative z-10 w-full">
         {timelineData.map(({ year, events }) => (
           <div key={year} className="flex flex-col md:flex-row items-start gap-8 md:gap-16 relative">
             
             {/* Massive background year */}
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none select-none z-0">
               <div className="sticky top-1/2 -translate-y-1/2 flex items-center justify-center overflow-hidden">
-                <span className="font-display text-[12rem] md:text-[25rem] leading-none text-accent/[0.04] tracking-tighter whitespace-nowrap">
+                <span className="font-display text-[40vw] md:text-[25rem] leading-none text-accent/[0.04] tracking-tighter whitespace-nowrap">
                   {year}
                 </span>
               </div>
             </div>
 
-            {/* Left Column: Sticky Year */}
-            <div className="md:w-32 lg:w-40 sticky top-24 pt-2 z-10">
-              <h2 className="font-display text-4xl md:text-5xl text-foreground">
-                {year}
-              </h2>
-            </div>
+            {/* Left Column Spacer (Maintains exact alignment as original) */}
+            <div className="hidden md:block md:w-32 lg:w-40 shrink-0 relative z-10" aria-hidden="true" />
 
-            {/* Right Column: Timeline Events */}
+            {/* Middle Column: Timeline Events */}
             <div className="flex-1 relative z-10">
-              
               {/* Year specific animated line */}
               <LineProgress />
 
               <div className="space-y-16 pb-8">
-                {events.map((event) => (
-                  <TimelineNode key={event.id} event={event} />
-                ))}
+                {events.map((event) => {
+                  const globalIndex = flatEvents.findIndex(e => e.id === event.id);
+                  return (
+                    <TimelineNode 
+                      key={event.id} 
+                      event={event} 
+                      onActivate={() => {
+                        if (globalIndex !== -1) setActiveIndex(globalIndex);
+                      }}
+                    />
+                  );
+                })}
               </div>
             </div>
 
           </div>
         ))}
       </div>
+
+      {/* Floating Globe on the far right of the screen viewport */}
+      <div className="fixed top-0 right-0 h-screen w-full md:w-[400px] lg:w-[500px] pointer-events-none z-40 hidden md:flex items-center justify-center opacity-90 pr-8 xl:pr-16">
+        <TimelineGlobe events={flatEvents} activeIndex={activeIndex} />
+      </div>
+
     </div>
   );
 }
@@ -91,7 +109,7 @@ function LineProgress() {
   );
 }
 
-function TimelineNode({ event }: { event: TimelineEvent }) {
+function TimelineNode({ event, onActivate }: { event: TimelineEvent, onActivate: () => void }) {
   const nodeRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({
     target: nodeRef,
@@ -103,7 +121,12 @@ function TimelineNode({ event }: { event: TimelineEvent }) {
   const opacity = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
 
   return (
-    <article ref={nodeRef} className="relative pl-10 md:pl-16 group">
+    <motion.article 
+      ref={nodeRef} 
+      className="relative pl-10 md:pl-16 group"
+      onViewportEnter={onActivate}
+      viewport={{ margin: "-40% 0px -40% 0px" }}
+    >
       {/* Background empty node */}
       <div className="absolute left-0 top-3 w-[8px] h-[8px] rounded-full bg-background border-[1.5px] border-muted z-10" />
       
@@ -172,6 +195,6 @@ function TimelineNode({ event }: { event: TimelineEvent }) {
 
         </div>
       </motion.div>
-    </article>
+    </motion.article>
   );
 }

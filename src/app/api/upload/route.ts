@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server';
 import { Files } from 'files-sdk';
 import { neon } from 'files-sdk/neon';
 
-// Initialize the Files SDK with the neon adapter
-// Note: This relies on AWS_* environment variables being set by Neon
-const files = new Files({ adapter: neon({ bucket: 'images' }) });
+// Lazily initialize the Files SDK so it doesn't crash during build time
+// when AWS_* environment variables might not be present.
+let filesInstance: Files | null = null;
+function getFiles() {
+  if (!filesInstance) {
+    filesInstance = new Files({ adapter: neon({ bucket: 'images' }) });
+  }
+  return filesInstance;
+}
 
 export async function POST(request: Request) {
   try {
@@ -20,13 +26,13 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
 
     // Upload to Neon Object Storage
-    await files.upload(uniqueFilename, buffer, {
+    await getFiles().upload(uniqueFilename, buffer, {
       contentType: file.type,
     });
 
     // Generate a URL for the uploaded file
     // Since we set the bucket to public_read, this URL will be accessible
-    const fileUrl = await files.url(uniqueFilename);
+    const fileUrl = await getFiles().url(uniqueFilename);
 
     return NextResponse.json({ url: fileUrl, filename: uniqueFilename }, { status: 200 });
   } catch (error) {
