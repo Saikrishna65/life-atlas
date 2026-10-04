@@ -32,7 +32,6 @@ export async function getTripBySlug(slug: string) {
       tripPlaces: { include: { place: true } },
       tripDays: { orderBy: { dayIndex: 'asc' } },
       photos: { orderBy: { date: 'asc' } },
-      journalEntries: true,
       experiences: {
         include: { foodExperience: true, movie: true }
       }

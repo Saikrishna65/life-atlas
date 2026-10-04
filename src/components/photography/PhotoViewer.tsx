@@ -4,6 +4,7 @@ import { useEffect, useCallback } from "react";
 import { Photo, Place, Trip } from "@prisma/client";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 type PhotoWithRelations = Photo & {
   trip?: Pick<Trip, "title" | "slug"> | null;
@@ -96,11 +97,12 @@ export default function PhotoViewer({ photos, currentIndex, isOpen, onClose, onN
 
       <div className="relative w-full h-full flex flex-col items-center justify-center p-4 md:p-12 md:pb-24">
         <div className="relative max-w-[90vw] max-h-[75vh] flex items-center justify-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
+          <Image 
             src={photo.url} 
             alt={photo.caption || "Photograph"} 
-            className="max-w-full max-h-[75vh] object-contain shadow-2xl select-none"
+            width={1920}
+            height={1080}
+            className="max-w-full max-h-[75vh] object-contain shadow-2xl select-none w-auto h-auto"
             draggable={false}
           />
         </div>

@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 
-const CATEGORIES = ["All", "Travel", "Food", "Cinema", "Events", "Photography", "Journal", "Memories", "Places"];
+const CATEGORIES = ["All", "Travel", "Food", "Cinema", "Events", "Photography", "Memories", "Places"];
 
 export default function ExploreFilters() {
   const router = useRouter();

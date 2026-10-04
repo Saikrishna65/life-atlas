@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Photo, Place, Trip } from "@prisma/client";
 import PhotoViewer from "./PhotoViewer";
 
@@ -28,12 +29,13 @@ export default function PhotoGallery({ photos }: { photos: PhotoWithRelations[] 
             onClick={() => openViewer(index)}
           >
             <div className="bg-muted/10 relative overflow-hidden rounded-sm">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
+              <Image 
                 src={photo.url} 
                 alt={photo.caption || "Photograph"} 
+                width={1200}
+                height={1200}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
-                loading="lazy"
               />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
                 {photo.caption && (

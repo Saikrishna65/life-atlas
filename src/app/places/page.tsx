@@ -23,16 +23,16 @@ export default async function PlacesPage({
     <main className="bg-background text-foreground min-h-screen pt-32 pb-24 px-6">
       <div className="max-w-7xl mx-auto">
         <header className="mb-24 md:mb-32">
-          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-white tracking-wide mb-6">
+          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-foreground tracking-wide mb-6">
             Places
           </h1>
-          <p className="font-body text-xl text-white/60 max-w-2xl">
+          <p className="font-body text-xl text-muted-foreground max-w-2xl">
             Coordinates, cities, and quiet corners of the world that mean something to me.
           </p>
         </header>
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-white/10 pb-6 mb-12 gap-4">
-          <div className="font-sans text-sm tracking-widest uppercase text-white/50">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end border-b border-muted pb-6 mb-12 gap-4">
+          <div className="font-sans text-sm tracking-widest uppercase text-muted-foreground">
             {places.length} {places.length === 1 ? 'Place' : 'Places'}
           </div>
           <PlaceSort />
@@ -45,9 +45,9 @@ export default async function PlacesPage({
             ))}
           </div>
         ) : (
-          <div className="py-32 text-center border-t border-white/5">
-            <h3 className="font-display text-3xl text-white/40 mb-4">No places yet.</h3>
-            <p className="font-sans text-sm text-white/30 uppercase tracking-widest">
+          <div className="py-32 text-center border-t border-muted">
+            <h3 className="font-display text-3xl text-muted-foreground/80 mb-4">No places yet.</h3>
+            <p className="font-sans text-sm text-muted-foreground/70 uppercase tracking-widest">
               The map is waiting to be filled.
             </p>
           </div>

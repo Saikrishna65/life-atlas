@@ -7,7 +7,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Get dynamic routes
   const trips = await prisma.trip.findMany({ select: { slug: true, updatedAt: true } });
   const places = await prisma.place.findMany({ select: { slug: true, updatedAt: true } });
-  const journalEntries = await prisma.journalEntry.findMany({ select: { slug: true, updatedAt: true } });
 
   const tripUrls = trips.map((trip) => ({
     url: `${baseUrl}/trips/${trip.slug}`,
@@ -23,18 +22,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  const journalUrls = journalEntries.map((entry) => ({
-    url: `${baseUrl}/journal/${entry.slug}`,
-    lastModified: entry.updatedAt,
-    changeFrequency: 'monthly' as const,
-    priority: 0.7,
-  }));
 
   const staticRoutes = [
     '',
     '/trips',
     '/places',
-    '/journal',
     '/photography',
     '/timeline',
     '/map',
@@ -48,5 +40,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route === '' ? 1.0 : 0.9,
   }));
 
-  return [...staticRoutes, ...tripUrls, ...placeUrls, ...journalUrls];
+  return [...staticRoutes, ...tripUrls, ...placeUrls];
 }

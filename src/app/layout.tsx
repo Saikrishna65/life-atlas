@@ -44,6 +44,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${body.variable}`}>
       <body>
+        <div className="grain-overlay" />
         <SmoothScroll>
           <Navigation />
           <SearchOverlay />

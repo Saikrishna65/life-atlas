@@ -10,7 +10,7 @@ if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
 
-interface GlobePlace {
+export interface GlobePlace {
   id: string;
   name: string;
   slug: string;
@@ -93,14 +93,17 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       endLng: p.longitude,
     }));
 
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    // Site is light-only now — keep the globe in sync with globals.css tokens
+    const isDark = false;
     const colors = {
-      base: isDark ? "#121212" : "#f8f7f5", // matches --background
-      land: isDark ? "#333333" : "#e6e4df", // matches --muted
-      accent: isDark ? "#b4a592" : "#8b7d6b", // matches --accent
-      point: isDark ? "#f3f3f3" : "#1c1b1a", // matches --foreground
-      glow: isDark ? "#2a2a2a" : "#e6e4df", // matches --surface-hover or muted
-      line: isDark ? "#d9a05b" : "#b87c36", // distinct warm copper/gold for lines
+      base: "#ffffff", // perfectly match bg-background
+      bg: "#ffffff", // match bg-background for the fog so the scene edges blend flawlessly
+      land: "#1e293b", // slate-800 for extremely bold, high-contrast continents
+      accent: "#1f4fd8", // cobalt blue for destination pillars
+      point: "#64748b", // darker slate so particles are actually visible against light bg
+      glow: "#94a3b8", // darker slate for a much stronger atmosphere shadow
+      line: "#94a3b8", // sleek silver/slate for the travel arcs, keeping the focus on the pillars
+      home: "#e5484d", // coral red for the home base rings
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,7 +113,9 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       .height(height)
       .backgroundColor("rgba(0,0,0,0)")
       .showGlobe(true)
-      .showAtmosphere(false) // Keep the atmosphere light hidden
+      .showAtmosphere(true)
+      .atmosphereColor(colors.glow)
+      .atmosphereAltitude(0.2) // increased for a thicker, more visible shadow/halo
       
       // Invisible points used exclusively for hover and click tracking!
       .pointsData(allPoints)
@@ -127,7 +132,7 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       .ringLat((d: any) => d.latitude)
       .ringLng((d: any) => d.longitude)
       .ringAltitude(0.085) // Sits perfectly on top of the massive new terrain!
-      .ringColor(() => `${colors.line}aa`) // Copper/gold color with slight transparency
+      .ringColor(() => `${colors.home}aa`) // Vibrant Coral color with slight transparency
       .ringMaxRadius(2) // Keeps the ripple small and localized around the home pin
       .ringPropagationSpeed(1) // Much slower, gentle expansion
       .ringRepeatPeriod(1000) // Fires like a gentle heartbeat once per second
@@ -139,7 +144,7 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       .arcEndLng((d: any) => d.endLng)
       .arcStartAltitude(0.08) // Beams launch from the top of the terrain!
       .arcEndAltitude(0.08) // Beams land on the top of the terrain!
-      .arcColor(() => colors.line) // Distinct warm copper/gold for the beams
+      .arcColor(() => colors.line) // Vibrant Blue for the beams
       .arcStroke(0.5) // Much thicker 3D tubes so they stand out boldly
       .arcDashLength(1) // Solid beam that stretches the entire length
       .arcDashGap(1) // Instantly starts the next beam
@@ -190,7 +195,7 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       .then(countries => {
         globe.hexPolygonsData(countries.features)
           .hexPolygonResolution(3) // Larger grid to increase the distance between dots
-          .hexPolygonMargin(0.6) // Lots of gap
+          .hexPolygonMargin(0.1) // Dense dots to make landmasses solid and clearly visible
           .hexPolygonColor(() => colors.land)
           .hexPolygonAltitude(0.08); // Massively extrude the dots up to create highly visible 3D terrain
       })
@@ -209,17 +214,24 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
           camera.children = camera.children.filter((c: any) => !c.isLight);
         }
         
-        // Very soft ambient light only (removed all directional lights)
-        const ambientLight = new THREE.AmbientLight(0xffffff, isDark ? 2.5 : 3.0);
+        // Lower ambient light creates darker, moodier shadows on the unlit side
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
         scene.add(ambientLight);
 
-        // Create a perfectly flat, unlit sphere (matches background exactly, no lighting/glow)
-        const flatMaterial = new THREE.MeshBasicMaterial({
+        // Brighter directional light creates a dramatic 3D highlight
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        directionalLight.position.set(1, 1, 0.5); // Top right front
+        scene.add(directionalLight);
+
+        // Use a 3D material instead of a flat basic material so the light creates a curved gradient
+        const sphereMaterial = new THREE.MeshPhongMaterial({
           color: colors.base,
-          transparent: false,
+          emissive: 0x000000,
+          specular: 0x111111,
+          shininess: 10,
         });
         
-        globe.globeMaterial(flatMaterial);
+        globe.globeMaterial(sphereMaterial);
 
         // --- ADVANCED: Starry Parallax Background ---
         const particlesGeometry = new THREE.BufferGeometry();
@@ -245,10 +257,10 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
 
         particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
         const particlesMaterial = new THREE.PointsMaterial({
-          size: 1.2, // Slightly larger to compensate for the round shape
+          size: 2.5, // Doubled size so they are visible on light background
           color: new THREE.Color(colors.point),
           transparent: true,
-          opacity: 0.3,
+          opacity: 0.7, // Increased opacity significantly
           map: circleTexture,
           alphaTest: 0.1, // Ensures the edges of the circle render cleanly
         });
@@ -256,22 +268,28 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
         const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
         scene.add(particlesMesh);
         
-        // Mouse parallax for stars
+        // Mouse parallax for stars (highly optimized)
+        const xTo = gsap.quickTo(particlesMesh.rotation, "x", { duration: 2, ease: "power2.out" });
+        const yTo = gsap.quickTo(particlesMesh.rotation, "y", { duration: 2, ease: "power2.out" });
+        
         const handleMouseMove = (e: MouseEvent) => {
            const mouseX = (e.clientX / window.innerWidth) - 0.5;
            const mouseY = (e.clientY / window.innerHeight) - 0.5;
-           gsap.to(particlesMesh.rotation, {
-              x: mouseY * 0.3,
-              y: mouseX * 0.3,
-              duration: 2,
-              ease: "power2.out"
-           });
+           xTo(mouseY * 0.3);
+           yTo(mouseX * 0.3);
         };
-        window.addEventListener('mousemove', handleMouseMove);
+        window.addEventListener('mousemove', handleMouseMove, { passive: true });
+        
+        // Ensure cleanup of the event listener
+        const originalCleanup = globe._cleanup;
+        globe._cleanup = () => {
+          window.removeEventListener('mousemove', handleMouseMove);
+          if (originalCleanup) originalCleanup();
+        };
 
         // --- ADVANCED: Volumetric Fog ---
         // Fades the stars and the edges of the rings smoothly into the background
-        scene.fog = new THREE.Fog(colors.base, 150, 400);
+        scene.fog = new THREE.Fog(colors.bg, 150, 400);
 
         // --- ADVANCED: Custom Floating Location Pillars ---
         // Reuse geometry and material for better performance
@@ -449,14 +467,14 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
               transform: 'translate(15px, 15px)' // Offset slightly from cursor
             }}
           >
-            <div className="bg-background border border-border p-2 shadow-2xl rounded-sm w-48 flex flex-col gap-2">
-              <div className="w-full aspect-[4/3] bg-muted flex items-center justify-center overflow-hidden rounded-sm relative">
+            <div className="bg-background border border-muted p-2 shadow-lift rounded-md w-48 flex flex-col gap-2">
+              <div className="w-full aspect-[4/3] bg-surface flex items-center justify-center overflow-hidden rounded-sm relative">
                 {/* Simulated Polaroid Image Placeholder */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-foreground/5 to-transparent mix-blend-overlay" />
                 <span className="font-sans text-[8px] text-muted-foreground uppercase tracking-widest absolute bottom-2 right-2">Memory</span>
                 {/* Minimalist graphic simulating a photo */}
-                <div className="w-12 h-12 rounded-full border border-foreground/10 flex items-center justify-center">
-                  <div className="w-6 h-6 rotate-45 bg-foreground/10" />
+                <div className="w-12 h-12 rounded-full border border-accent/20 flex items-center justify-center">
+                  <div className="w-6 h-6 rotate-45 bg-accent/15" />
                 </div>
               </div>
               <div className="px-1 pb-1">
@@ -476,10 +494,10 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       </div>
 
       {/* Statistics line */}
-      <div className="mt-12 md:mt-16 flex items-center gap-6 md:gap-12 font-sans text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground/50 z-10 px-6">
+      <div className="mt-12 md:mt-16 flex items-center gap-6 md:gap-12 font-sans text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground z-10 px-6">
         <span>{validPlaces.length} locations</span>
-        <span className="w-1 h-1 rounded-full bg-muted-foreground/20" />
-        <Link href="/map" className="hover:text-foreground transition-colors pointer-events-auto">
+        <span className="w-1.5 h-1.5 rounded-full bg-accent-green" />
+        <Link href="/map" className="text-accent hover:text-foreground transition-colors pointer-events-auto">
           Open full map &rarr;
         </Link>
       </div>

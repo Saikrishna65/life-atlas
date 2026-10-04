@@ -20,7 +20,7 @@ export default function PlaceCard({ place }: { place: PlaceWithRelations }) {
 
   return (
     <Link href={`/places/${place.slug}`} className="group flex flex-col gap-4">
-      <div className="aspect-[4/3] bg-white/5 relative overflow-hidden">
+      <div className="aspect-[4/3] bg-surface relative overflow-hidden">
         <div 
           className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105"
           style={{ backgroundImage: `url(${place.coverImage || '/placeholder-image.jpg'})` }}
@@ -29,17 +29,17 @@ export default function PlaceCard({ place }: { place: PlaceWithRelations }) {
       </div>
       <div>
         <div className="flex justify-between items-start mb-1">
-          <span className="font-sans text-xs uppercase tracking-widest text-white/50">{place.country}</span>
-          {lastVisited && <span className="font-sans text-xs text-white/50">{new Date(lastVisited).getFullYear()}</span>}
+          <span className="font-sans text-xs uppercase tracking-widest text-muted-foreground">{place.country}</span>
+          {lastVisited && <span className="font-sans text-xs text-muted-foreground">{new Date(lastVisited).getFullYear()}</span>}
         </div>
-        <h3 className="font-display text-2xl text-white group-hover:text-white/80 transition-colors">{place.name}</h3>
+        <h3 className="font-display text-2xl text-foreground group-hover:text-accent transition-colors">{place.name}</h3>
         
-        <p className="font-body text-sm text-white/60 mt-1 line-clamp-1">{locationText}</p>
+        <p className="font-body text-sm text-muted-foreground mt-1 line-clamp-1">{locationText}</p>
         
         <div className="flex gap-4 mt-3">
-          <span className="font-sans text-xs tracking-wide text-white/40">{tripCount} {tripCount === 1 ? 'trip' : 'trips'}</span>
+          <span className="font-sans text-xs tracking-wide text-muted-foreground/80">{tripCount} {tripCount === 1 ? 'trip' : 'trips'}</span>
           {place._count !== undefined && place._count.photos > 0 && (
-            <span className="font-sans text-xs tracking-wide text-white/40">{place._count.photos} photos</span>
+            <span className="font-sans text-xs tracking-wide text-muted-foreground/80">{place._count.photos} photos</span>
           )}
         </div>
       </div>

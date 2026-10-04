@@ -54,22 +54,7 @@ export async function searchGlobal(query: string): Promise<SearchResult[]> {
     });
   }
 
-  // Search Journal
-  const journals = await prisma.journalEntry.findMany({
-    where: {
-      OR: [
-        { title: { contains: q, mode: 'insensitive' } },
-        { content: { contains: q, mode: 'insensitive' } },
-      ]
-    },
-    take: 5
-  });
-  for (const j of journals) {
-    results.push({
-      id: j.id, title: j.title, type: 'Journal', url: `/journal/${j.slug}`,
-      excerpt: j.content.substring(0, 100) + '...', date: j.date
-    });
-  }
+
 
   // Search Experiences
   const experiences = await prisma.experience.findMany({

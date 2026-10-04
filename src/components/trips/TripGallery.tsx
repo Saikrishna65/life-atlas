@@ -4,11 +4,11 @@ export default function TripGallery({ photos }: { photos: Photo[] }) {
   if (photos.length === 0) return null;
 
   return (
-    <section className="py-24 px-6 max-w-7xl mx-auto border-t border-white/10">
-      <h2 className="font-display text-3xl mb-16 tracking-wide text-white text-center">THE ARCHIVE</h2>
+    <section className="py-24 px-6 max-w-7xl mx-auto border-t border-muted">
+      <h2 className="font-display text-3xl mb-16 tracking-wide text-foreground text-center">THE ARCHIVE</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {photos.map((photo) => (
-          <div key={photo.id} className="group relative aspect-square overflow-hidden bg-white/5">
+          <div key={photo.id} className="group relative aspect-square overflow-hidden bg-surface">
             <div 
               className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105"
               style={{ backgroundImage: `url(${photo.url})` }}

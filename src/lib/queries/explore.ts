@@ -54,25 +54,7 @@ export async function getExploreItems(params: {
     }
   }
 
-  // 2. Journal
-  if (includeAll || params.category === 'Journal') {
-    const entries = await prisma.journalEntry.findMany({ include: { trip: true } });
-    for (const entry of entries) {
-      if (!matchYear(entry.date)) continue;
-      if (filterCountry || filterCity) continue; 
 
-      items.push({
-        id: entry.id,
-        title: entry.title,
-        category: 'Journal',
-        date: entry.date,
-        location: entry.trip?.destination || null,
-        image: entry.trip?.coverImage || null,
-        url: `/journal/${entry.slug}`,
-        description: entry.content.substring(0, 150) + '...',
-      });
-    }
-  }
 
   // 3. Experiences (Food, Cinema, Events)
   if (includeAll || ['Food', 'Cinema', 'Events'].includes(params.category as string)) {
@@ -151,7 +133,7 @@ export async function getExploreItems(params: {
       if (!matchYear(event.date)) continue;
       if (filterCountry || filterCity) continue; 
       
-      if (event.type === 'TRIP' || event.type === 'JOURNAL' || event.type === 'EXPERIENCE') continue;
+      if (event.type === 'TRIP' || event.type === 'EXPERIENCE') continue;
 
       items.push({
         id: event.id,

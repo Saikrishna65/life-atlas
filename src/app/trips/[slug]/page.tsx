@@ -4,7 +4,6 @@ import TripHero from "@/components/trips/TripHero";
 import TripOverview from "@/components/trips/TripOverview";
 import TripDays from "@/components/trips/TripDays";
 import TripExperiences from "@/components/trips/TripExperiences";
-import TripJournals from "@/components/trips/TripJournals";
 import TripGallery from "@/components/trips/TripGallery";
 import NextJourney from "@/components/trips/NextJourney";
 import { Metadata } from "next";
@@ -52,9 +51,9 @@ export default async function TripDetailPage({
       <TripOverview trip={trip} photoCount={trip.photos.length} />
       
       {/* Route map placeholder */}
-      <section className="py-24 px-6 max-w-7xl mx-auto border-t border-white/10">
-        <div className="aspect-[21/9] bg-white/5 border border-white/10 flex items-center justify-center rounded-sm">
-          <span className="font-sans text-xs uppercase tracking-widest text-white/40">Route Map Visualizer (Coming Soon)</span>
+      <section className="py-24 px-6 max-w-7xl mx-auto border-t border-muted">
+        <div className="aspect-[21/9] bg-surface border border-muted flex items-center justify-center rounded-sm">
+          <span className="font-sans text-xs uppercase tracking-widest text-muted-foreground/80">Route Map Visualizer (Coming Soon)</span>
         </div>
       </section>
 
@@ -62,7 +61,6 @@ export default async function TripDetailPage({
       
       <TripExperiences experiences={trip.experiences} />
       
-      <TripJournals journals={trip.journalEntries} />
       
       <TripGallery photos={trip.photos} />
       

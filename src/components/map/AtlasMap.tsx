@@ -33,7 +33,7 @@ export default function AtlasMap({ places }: { places: MapPlace[] }) {
   const selectedPlace = places.find((p) => p.id === selectedId) ?? null;
 
   return (
-    <div className="w-full h-full relative bg-black">
+    <div className="w-full h-full relative bg-surface">
       {/* Map Layers */}
       <MapContainer
         center={[22.0, 79.0]}
@@ -41,13 +41,13 @@ export default function AtlasMap({ places }: { places: MapPlace[] }) {
         minZoom={3}
         maxZoom={17}
         zoomControl={false}
-        style={{ height: "100%", width: "100%", background: "#050505", zIndex: 1 }}
+        style={{ height: "100%", width: "100%", background: "#f5f7fb", zIndex: 1 }}
         attributionControl={false}
       >
-        {/* OSM tiles with CSS invert filter for dark aesthetic — no API key needed */}
+        {/* OSM tiles with a soft desaturation filter for a clean, editorial light look — no API key needed */}
         <TileLayer
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          className="dark-tiles"
+          className="light-tiles"
         />
 
         {places.map((place) => {
@@ -67,12 +67,12 @@ export default function AtlasMap({ places }: { places: MapPlace[] }) {
                 closeButton={false}
                 offset={[0, -6]}
               >
-                <div className="bg-[#0a0a0a] border border-white/20 p-4 min-w-[200px] flex flex-col gap-3 shadow-2xl">
+                <div className="bg-background border border-muted rounded-lg p-4 min-w-[220px] flex flex-col gap-3 shadow-lift">
                   <div className="flex flex-col">
-                    <span className="font-sans text-[10px] uppercase tracking-widest text-white/50">
+                    <span className="font-sans text-[10px] uppercase tracking-widest text-accent-green font-semibold">
                       {place.country}
                     </span>
-                    <h3 className="font-display text-xl text-white">{place.name}</h3>
+                    <h3 className="font-display text-xl text-foreground">{place.name}</h3>
                   </div>
 
                   {place.coverImage && (
@@ -85,14 +85,14 @@ export default function AtlasMap({ places }: { places: MapPlace[] }) {
                   <div className="flex flex-col gap-2 mt-2">
                     <Link
                       href={`/places/${place.slug}`}
-                      className="font-sans text-xs uppercase tracking-widest text-white/70 hover:text-white transition-colors"
+                      className="font-sans text-xs uppercase tracking-widest text-foreground/80 hover:text-accent transition-colors"
                     >
                       View place &rarr;
                     </Link>
                     {place.tripPlaces?.[0]?.trip && (
                       <Link
                         href={`/trips/${place.tripPlaces[0].trip.slug}`}
-                        className="font-sans text-xs uppercase tracking-widest text-accent hover:text-white transition-colors"
+                        className="font-sans text-xs uppercase tracking-widest text-accent hover:text-accent-red transition-colors"
                       >
                         {place.tripPlaces[0].trip.title} &rarr;
                       </Link>
@@ -107,9 +107,8 @@ export default function AtlasMap({ places }: { places: MapPlace[] }) {
 
       </MapContainer>
 
-      {/* Cinematic Overlays */}
-      <div className="absolute inset-0 z-10 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)] opacity-80" />
-      <div className="absolute inset-0 z-10 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.02) 2px, rgba(255,255,255,0.02) 4px)' }} />
+      {/* Soft edge vignette to blend the map into the page */}
+      <div className="absolute inset-0 z-10 pointer-events-none bg-[radial-gradient(circle_at_center,transparent_55%,rgba(245,247,251,0.85)_100%)]" />
 
       <style jsx global>{`
         .leaflet-popup-content-wrapper {
@@ -124,8 +123,8 @@ export default function AtlasMap({ places }: { places: MapPlace[] }) {
         .leaflet-popup-tip-container {
           display: none !important;
         }
-        .dark-tiles {
-          filter: invert(100%) hue-rotate(180deg) brightness(80%) contrast(120%) sepia(20%) grayscale(40%);
+        .light-tiles {
+          filter: saturate(55%) contrast(95%) brightness(103%);
         }
         
         /* High Visibility Glow Markers */
@@ -145,9 +144,10 @@ export default function AtlasMap({ places }: { places: MapPlace[] }) {
         .glow-core {
           width: 12px;
           height: 12px;
-          background: #f5f5f0; /* Warm off-white / bone */
+          background: #e5484d; /* Coral red pin */
+          border: 2px solid #ffffff;
           border-radius: 50%;
-          box-shadow: 0 0 20px 8px rgba(245, 245, 240, 0.5);
+          box-shadow: 0 0 0 1px rgba(229, 72, 77, 0.35), 0 4px 12px rgba(229, 72, 77, 0.45);
           transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
           z-index: 2;
         }
@@ -157,7 +157,7 @@ export default function AtlasMap({ places }: { places: MapPlace[] }) {
           width: 32px;
           height: 32px;
           border-radius: 50%;
-          background: radial-gradient(circle, rgba(245, 245, 240, 0.4) 0%, rgba(245, 245, 240, 0) 70%);
+          background: radial-gradient(circle, rgba(229, 72, 77, 0.35) 0%, rgba(229, 72, 77, 0) 70%);
           animation: glow-pulse 2s infinite ease-in-out;
           transition: all 0.4s ease;
         }
@@ -165,16 +165,16 @@ export default function AtlasMap({ places }: { places: MapPlace[] }) {
         /* Hover & Active States */
         .glow-marker:hover .glow-core, 
         .glow-marker.active .glow-core {
-          background: #ffffff;
+          background: #1f4fd8; /* Cobalt when active */
           transform: scale(1.5);
-          box-shadow: 0 0 30px 12px rgba(255, 255, 255, 0.8);
+          box-shadow: 0 0 0 1px rgba(31, 79, 216, 0.35), 0 6px 18px rgba(31, 79, 216, 0.5);
         }
 
         .glow-marker:hover .glow-ring,
         .glow-marker.active .glow-ring {
           width: 50px;
           height: 50px;
-          background: radial-gradient(circle, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 70%);
+          background: radial-gradient(circle, rgba(31, 79, 216, 0.3) 0%, rgba(31, 79, 216, 0) 70%);
           animation-duration: 1s;
         }
 
@@ -188,13 +188,13 @@ export default function AtlasMap({ places }: { places: MapPlace[] }) {
           box-shadow: none !important;
         }
         .leaflet-control-zoom a {
-          background: rgba(10, 10, 10, 0.8) !important;
-          color: rgba(255, 255, 255, 0.7) !important;
-          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          background: rgba(255, 255, 255, 0.9) !important;
+          color: #0b1220 !important;
+          border: 1px solid #e4e9f1 !important;
           backdrop-filter: blur(8px);
         }
         .leaflet-control-zoom a:hover {
-          background: rgba(10, 10, 10, 0.95) !important;
+          background: #1f4fd8 !important;
           color: #fff !important;
         }
       `}</style>

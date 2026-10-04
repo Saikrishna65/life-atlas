@@ -1,12 +1,13 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Trip } from "@prisma/client";
 
 export default function FeaturedTrips({ trips }: { trips: Trip[] }) {
   if (trips.length === 0) return null;
 
   return (
-    <section className="py-24 px-6 max-w-7xl mx-auto border-t border-white/10">
-      <h2 className="font-display text-4xl mb-12 tracking-wide text-white">SELECTED JOURNEYS</h2>
+    <section className="py-24 px-6 max-w-7xl mx-auto border-t border-muted">
+      <h2 className="font-display text-4xl mb-12 tracking-wide text-foreground">SELECTED JOURNEYS</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         {trips.map((trip, index) => {
@@ -20,9 +21,12 @@ export default function FeaturedTrips({ trips }: { trips: Trip[] }) {
               href={`/trips/${trip.slug}`}
               className={`group relative overflow-hidden flex flex-col justify-end aspect-[4/3] ${isLarge ? 'md:aspect-[16/9]' : 'md:aspect-[3/4]'} ${colSpan}`}
             >
-              <div 
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105"
-                style={{ backgroundImage: `url(${trip.coverImage || '/placeholder-image.jpg'})` }}
+              <Image
+                src={trip.coverImage || '/placeholder-image.jpg'}
+                alt={trip.title}
+                fill
+                className="object-cover transition-transform duration-1000 group-hover:scale-105"
+                sizes={isLarge ? "(max-width: 768px) 100vw, 66vw" : "(max-width: 768px) 100vw, 33vw"}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
               

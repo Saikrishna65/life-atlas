@@ -34,13 +34,7 @@ async function main() {
       type: EventType.MEMORY,
       userId: user.id,
     },
-    {
-      date: new Date('2024-12-31'),
-      title: 'New Year Eve',
-      description: 'Welcoming 2025.',
-      type: EventType.JOURNAL,
-      userId: user.id,
-    }
+
   ];
 
   await prisma.timelineEvent.createMany({ data: timelineData });

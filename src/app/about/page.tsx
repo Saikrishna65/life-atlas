@@ -35,7 +35,7 @@ export default function AboutPage() {
               Photography here serves as a tool for observation rather than exhibition. The images scattered across this atlas are fragments of atmospheres—the geometry of an unknown city, the quiet of an early morning flight, or the chaotic energy of a night market. 
             </p>
             <p className="font-body text-xl font-light leading-relaxed text-foreground/85">
-              By collecting places, stories, and photographs in one unified space, the relationships between them become clear. A cup of coffee in Tokyo is no longer just an isolated image; it is tied to a journal entry, a coordinate on a map, and a specific trip.
+              By collecting places, stories, and photographs in one unified space, the relationships between them become clear. A cup of coffee in Tokyo is no longer just an isolated image; it is tied to a coordinate on a map, and a specific trip.
             </p>
           </section>
 
@@ -45,7 +45,7 @@ export default function AboutPage() {
               Life Atlas is built on modern web primitives. It is powered by <strong>Next.js</strong> for seamless routing and server-rendered performance, allowing the archive to remain fast regardless of how many memories it holds.
             </p>
             <p className="font-body text-xl font-light leading-relaxed text-foreground/85 mb-6">
-              The data—every trip, coordinate, and journal entry—is modeled using <strong>Prisma</strong> and stored securely in a <strong>PostgreSQL</strong> database. 
+              The data—every trip, coordinate, and photograph—is modeled using <strong>Prisma</strong> and stored securely in a <strong>PostgreSQL</strong> database. 
             </p>
             <p className="font-body text-xl font-light leading-relaxed text-foreground/85">
               For interactions and fluidity, the interface uses <strong>Tailwind CSS</strong> for styling, <strong>Lenis</strong> for buttery smooth scrolling, and <strong>GSAP</strong> to craft cinematic, meaningful motion without overwhelming the senses.

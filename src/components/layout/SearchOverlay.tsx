@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, X, Command } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 interface SearchResult {
@@ -119,7 +120,7 @@ export default function SearchOverlay() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search trips, places, journal, photos..."
+            placeholder="Search trips, places, photos..."
             className="flex-1 bg-transparent border-none outline-none font-sans text-lg text-foreground placeholder:text-muted-foreground"
             aria-label="Search query"
           />
@@ -144,9 +145,14 @@ export default function SearchOverlay() {
                 className={`flex items-start gap-4 p-4 rounded-lg transition-colors ${idx === selectedIndex ? 'bg-muted/40' : 'hover:bg-muted/20'}`}
               >
                 {result.image ? (
-                  <div className="w-12 h-12 flex-shrink-0 bg-muted rounded overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={result.image} alt={result.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+                  <div className="w-12 h-12 flex-shrink-0 bg-muted rounded overflow-hidden relative">
+                    <Image 
+                      src={result.image} 
+                      alt={result.title} 
+                      fill 
+                      className="object-cover" 
+                      sizes="48px"
+                    />
                   </div>
                 ) : (
                   <div className="w-12 h-12 flex-shrink-0 bg-muted/50 rounded flex items-center justify-center">

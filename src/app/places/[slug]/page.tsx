@@ -48,9 +48,9 @@ export default async function PlaceDetailPage({
       <PlaceOverview place={place} />
       
       {/* Route map placeholder */}
-      <section className="py-24 px-6 max-w-7xl mx-auto border-t border-white/10">
-        <div className="aspect-[21/9] bg-white/5 border border-white/10 flex items-center justify-center rounded-sm">
-          <span className="font-sans text-xs uppercase tracking-widest text-white/40">Location Map (Coming Soon)</span>
+      <section className="py-24 px-6 max-w-7xl mx-auto border-t border-muted">
+        <div className="aspect-[21/9] bg-surface border border-muted flex items-center justify-center rounded-sm">
+          <span className="font-sans text-xs uppercase tracking-widest text-muted-foreground/80">Location Map (Coming Soon)</span>
         </div>
       </section>
 

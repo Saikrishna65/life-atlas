@@ -18,7 +18,6 @@ model User {
   places         Place[]
   memories       Memory[]
   photos         Photo[]
-  journalEntries JournalEntry[]
   experiences    Experience[]
   timelineEvents TimelineEvent[]
 }
@@ -43,7 +42,6 @@ model Trip {
   tripPlaces     TripPlace[]
   tripDays       TripDay[]
   photos         Photo[]
-  journalEntries JournalEntry[]
   experiences    Experience[]
 }
 
@@ -133,22 +131,7 @@ model Photo {
   updatedAt   DateTime @updatedAt
 }
 
-model JournalEntry {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  title       String
-  content     String
-  date        DateTime
-  
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  
-  tripId      String?
-  trip        Trip?    @relation(fields: [tripId], references: [id])
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
 
 enum ExperienceType {
   FOOD
@@ -206,7 +189,6 @@ model Movie {
 enum EventType {
   TRIP
   MEMORY
-  JOURNAL
   EXPERIENCE
 }
 

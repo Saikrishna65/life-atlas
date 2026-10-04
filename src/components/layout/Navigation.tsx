@@ -10,7 +10,6 @@ const navLinks = [
   { href: "/trips", label: "Trips" },
   { href: "/map", label: "Map" },
   { href: "/timeline", label: "Timeline" },
-  { href: "/journal", label: "Journal" },
   { href: "/about", label: "About" },
 ];
 
@@ -59,8 +58,13 @@ export default function Navigation() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-6 md:px-12 md:py-8 mix-blend-difference text-white">
-        <Link href="/" className="font-sans text-sm font-medium tracking-widest uppercase z-50">
+      <header className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-6 md:px-12 md:py-6 text-foreground bg-background/75 backdrop-blur-xl border-b border-muted/70 transition-colors duration-300">
+        <Link href="/" className="font-sans text-sm font-bold tracking-[0.2em] uppercase z-50 flex items-center gap-2">
+          <span className="flex gap-1" aria-hidden="true">
+            <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-green" />
+            <span className="w-1.5 h-1.5 rounded-full bg-accent-red" />
+          </span>
           LIFE ATLAS
         </Link>
 
@@ -69,14 +73,14 @@ export default function Navigation() {
             <Link
               key={link.href}
               href={link.href}
-              className="font-sans text-sm font-medium hover:text-white/70 transition-colors"
+              className="font-sans text-sm font-medium hover:text-accent transition-colors"
             >
               {link.label}
             </Link>
           ))}
           <button 
             aria-label="Open search" 
-            className="hover:text-white/70 transition-colors"
+            className="hover:text-accent transition-colors"
             onClick={() => window.dispatchEvent(new Event("open-search"))}
           >
             <Search size={18} aria-hidden="true" />
@@ -84,13 +88,13 @@ export default function Navigation() {
         </div>
 
         <button
-          className="z-50 flex items-center justify-center p-2 hover:text-white/70 transition-colors"
+          className="z-50 flex items-center justify-center p-2 hover:text-accent transition-colors"
           onClick={() => setIsOpen(!isOpen)}
           aria-label={isOpen ? "Close menu" : "Open menu"}
           aria-expanded={isOpen}
           aria-controls="fullscreen-menu"
         >
-          {isOpen ? <X size={24} aria-hidden="true" /> : <Menu size={24} aria-hidden="true" />}
+          {isOpen ? <X size={24} aria-hidden="true" className={isOpen ? "text-accent-red" : ""} /> : <Menu size={24} aria-hidden="true" />}
         </button>
       </header>
 
@@ -100,7 +104,7 @@ export default function Navigation() {
         role="dialog"
         aria-modal="true"
         aria-label="Main Navigation"
-        className={`fixed inset-0 z-30 bg-foreground text-background flex flex-col md:flex-row transition-opacity duration-700 ${
+        className={`fixed inset-0 z-30 bg-background text-foreground flex flex-col md:flex-row transition-opacity duration-700 ${
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
@@ -126,7 +130,7 @@ export default function Navigation() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsOpen(false)}
-                className="menu-item font-sans text-lg md:text-xl hover:text-accent transition-colors w-fit"
+                className="menu-item font-sans text-lg md:text-xl text-muted-foreground hover:text-accent-green transition-colors w-fit"
               >
                 {link.label}
               </Link>

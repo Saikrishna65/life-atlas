@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ExploreItem } from "@/lib/queries/explore";
 
 export default function ExploreItemCard({ item }: { item: ExploreItem }) {
@@ -7,15 +8,14 @@ export default function ExploreItemCard({ item }: { item: ExploreItem }) {
   return (
     <article className="group flex flex-col md:flex-row gap-6 items-start border-b border-muted/20 pb-8 last:border-0 last:pb-0">
       {item.image && (
-        <div className="w-full md:w-48 aspect-video md:aspect-square bg-muted/10 overflow-hidden flex-shrink-0 rounded-sm">
+        <div className="w-full md:w-48 aspect-video md:aspect-square bg-muted/10 overflow-hidden flex-shrink-0 rounded-sm relative">
           <Link href={item.url}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
+            <Image
               src={item.image} 
               alt={item.title} 
-              loading="lazy"
-              decoding="async"
-              className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" 
+              fill
+              className="object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" 
+              sizes="(max-width: 768px) 100vw, 12rem"
             />
           </Link>
         </div>

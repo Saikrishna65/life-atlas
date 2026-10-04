@@ -15,45 +15,43 @@
   --color-muted-foreground: var(--muted-foreground);
   
   --color-accent: var(--accent);
+  --color-accent-red: var(--accent-red);
+  --color-accent-green: var(--accent-green);
   --color-accent-foreground: var(--accent-foreground);
+
+  --shadow-soft: 0 1px 2px rgb(11 18 32 / 0.04), 0 8px 24px -8px rgb(11 18 32 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(11 18 32 / 0.04), 0 24px 48px -16px rgb(31 79 216 / 0.18);
 }
 
 @layer base {
+  /* "Editorial Atlas" — premium light theme.
+     White canvas, deep ink-navy type, and three cartographic accents:
+     cobalt blue (routes), emerald green (home/land), coral red (pins/highlights). */
   :root {
-    --background: #f8f7f5; /* warm off-white */
-    --foreground: #1c1b1a; /* near-black */
-    
-    --surface: #ffffff;
-    --surface-hover: #f1efeb;
-    
-    --muted: #e6e4df;
-    --muted-foreground: #6b6a68;
-    
-    --accent: #8b7d6b; /* muted earth-derived accent */
-    --accent-foreground: #ffffff;
-  }
+    color-scheme: light;
 
-  /* Optional dark mode support */
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: #121212;
-      --foreground: #f3f3f3;
-      
-      --surface: #1a1a1a;
-      --surface-hover: #2a2a2a;
-      
-      --muted: #333333;
-      --muted-foreground: #a0a0a0;
-      
-      --accent: #b4a592;
-      --accent-foreground: #121212;
-    }
+    --background: #ffffff;
+    --foreground: #0b1220; /* Ink navy — softer & richer than pure black */
+    
+    --surface: #f5f7fb;       /* Cool paper */
+    --surface-hover: #eaeff7;
+    
+    --muted: #e4e9f1;            /* Hairline borders */
+    --muted-foreground: #5a6478; /* Secondary text (AA on white) */
+    
+    --accent: #1f4fd8;       /* Cobalt blue */
+    --accent-red: #e5484d;   /* Coral red */
+    --accent-green: #0f9d6b; /* Emerald green */
+    --accent-foreground: #ffffff;
   }
 }
 
 @layer base {
   * {
     @apply border-muted;
+  }
+  html {
+    background: var(--background);
   }
   body {
     @apply bg-background text-foreground font-body antialiased;
@@ -62,6 +60,53 @@
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-display tracking-tight text-foreground;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+}
+
+@layer utilities {
+  .grain-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  }
+
+  .hero-fade-in {
+    animation: heroFadeIn 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .hero-fade-in-up {
+    animation: heroFadeInUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .hero-delay-1 {
+    animation-delay: 200ms;
+  }
+  .hero-delay-2 {
+    animation-delay: 500ms;
+  }
+  
+  @keyframes heroFadeIn {
+    0% { opacity: 0; transform: scale(1.05); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  
+  @keyframes heroFadeInUp {
+    0% { opacity: 0; transform: translateY(30px); }
+    100% { opacity: 1; transform: translateY(0); }
   }
 }
 

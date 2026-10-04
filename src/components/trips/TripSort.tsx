@@ -16,19 +16,19 @@ export default function TripSort() {
 
   return (
     <div className="flex items-center gap-3">
-      <label htmlFor="sort" className="font-sans text-xs uppercase tracking-widest text-white/50">
+      <label htmlFor="sort" className="font-sans text-xs uppercase tracking-widest text-muted-foreground">
         Sort by
       </label>
       <select
         id="sort"
         value={currentSort}
         onChange={handleSortChange}
-        className="bg-transparent border-b border-white/20 text-white font-sans text-sm pb-1 focus:outline-none focus:border-white transition-colors cursor-pointer"
+        className="bg-transparent border-b border-foreground/15 text-foreground font-sans text-sm pb-1 focus:outline-none focus:border-accent transition-colors cursor-pointer"
       >
-        <option value="latest" className="bg-background text-white">Latest</option>
-        <option value="oldest" className="bg-background text-white">Oldest</option>
-        <option value="longest" className="bg-background text-white">Longest</option>
-        <option value="most-photos" className="bg-background text-white">Most Photographs</option>
+        <option value="latest" className="bg-background text-foreground">Latest</option>
+        <option value="oldest" className="bg-background text-foreground">Oldest</option>
+        <option value="longest" className="bg-background text-foreground">Longest</option>
+        <option value="most-photos" className="bg-background text-foreground">Most Photographs</option>
       </select>
     </div>
   );

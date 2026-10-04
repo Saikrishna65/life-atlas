@@ -39,7 +39,7 @@ export default function AnimatedTimeline({ timelineData }: { timelineData: Timel
             {/* Massive background year */}
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none select-none z-0">
               <div className="sticky top-1/2 -translate-y-1/2 flex items-center justify-center overflow-hidden">
-                <span className="font-display text-[12rem] md:text-[25rem] leading-none text-muted/5 tracking-tighter whitespace-nowrap opacity-50">
+                <span className="font-display text-[12rem] md:text-[25rem] leading-none text-accent/[0.04] tracking-tighter whitespace-nowrap">
                   {year}
                 </span>
               </div>
@@ -81,7 +81,7 @@ function LineProgress() {
 
   return (
     <>
-      <div className="absolute left-[3.5px] top-4 bottom-0 w-[1px] bg-muted/30" />
+      <div className="absolute left-[3.5px] top-4 bottom-0 w-[1px] bg-muted" />
       <motion.div 
         ref={ref}
         className="absolute left-[3.5px] top-4 bottom-0 w-[2px] bg-accent origin-top"
@@ -109,7 +109,7 @@ function TimelineNode({ event }: { event: TimelineEvent }) {
       
       {/* Animated filled node */}
       <motion.div 
-        className="absolute left-0 top-3 w-[8px] h-[8px] rounded-full bg-accent border-[1.5px] border-accent z-20 shadow-[0_0_15px_rgba(var(--accent),0.5)]"
+        className="absolute left-0 top-3 w-[8px] h-[8px] rounded-full bg-accent border-[1.5px] border-accent z-20 shadow-[0_0_0_4px_rgb(31_79_216/0.15)]"
         style={{ opacity, scale }}
       />
 

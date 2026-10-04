@@ -1,73 +1,34 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
+// Hero component
 
 export default function Hero() {
-  const heroRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  const subtitleRef = useRef<HTMLParagraphElement>(null);
-  const bgRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion) return;
-
-    let ctx = gsap.context(() => {
-      const tl = gsap.timeline();
-
-      tl.fromTo(
-        bgRef.current,
-        { scale: 1.05, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 2, ease: "power2.out" }
-      )
-      .fromTo(
-        titleRef.current,
-        { y: 30, opacity: 0 },
-        { y: 0, opacity: 1, duration: 1.2, ease: "power3.out" },
-        "-=1.2"
-      )
-      .fromTo(
-        subtitleRef.current,
-        { y: 20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 1, ease: "power3.out" },
-        "-=0.8"
-      );
-    }, heroRef);
-
-    return () => ctx.revert();
-  }, []);
-
   return (
     <section 
-      ref={heroRef} 
-      className="relative h-screen w-full flex items-center justify-center overflow-hidden bg-foreground text-background"
+      className="relative h-screen w-full flex items-center justify-center overflow-hidden bg-background text-foreground"
     >
       <div 
-        ref={bgRef}
-        className="absolute inset-0 z-0 bg-[#1a1a1a] opacity-0"
+        className="absolute inset-0 z-0 bg-background opacity-0 hero-fade-in"
       >
-        <div className="absolute inset-0 bg-black/40 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-surface-hover/30 z-10" />
       </div>
       
-      <div className="relative z-10 text-center px-6 max-w-4xl mx-auto flex flex-col items-center gap-6 mt-16">
+      <div className="relative z-10 text-center px-6 max-w-5xl mx-auto flex flex-col items-center gap-8 mt-16">
         <h1 
-          ref={titleRef}
-          className="font-display text-4xl md:text-6xl lg:text-7xl xl:text-8xl leading-tight opacity-0"
+          className="font-display text-5xl md:text-7xl lg:text-8xl xl:text-9xl leading-[0.9] opacity-0 hero-fade-in-up hero-delay-1 tracking-[-0.03em] font-bold"
         >
-          A place for the moments I want to remember.
+          A place for the <span className="text-accent italic">moments</span> I want to <span className="text-accent-red italic">remember</span>.
         </h1>
         <p 
-          ref={subtitleRef}
-          className="font-body text-lg md:text-xl max-w-2xl text-white/80 opacity-0"
+          className="font-body text-lg md:text-2xl max-w-2xl text-muted-foreground opacity-0 hero-fade-in-up hero-delay-2 leading-relaxed"
         >
           Travels, places, people, food, films and everything in between.
         </p>
       </div>
       
-      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
-        <span className="font-sans text-xs uppercase tracking-widest text-white/50">Scroll to explore</span>
-        <div className="w-[1px] h-12 bg-white/30" />
+      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4 opacity-0 hero-fade-in-up hero-delay-2">
+        <span className="font-sans text-[10px] uppercase tracking-[0.3em] text-muted-foreground font-semibold">Scroll to explore</span>
+        <div className="w-[1px] h-16 bg-muted-foreground/40" />
       </div>
     </section>
   );

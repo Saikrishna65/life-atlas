@@ -155,21 +155,6 @@ async function main() {
     }
   }
 
-  // 8. Journal Entries (5)
-  for (let i = 0; i < 5; i++) {
-    await prisma.journalEntry.upsert({
-      where: { slug: `journal-${i}` },
-      update: {},
-      create: {
-        slug: `journal-${i}`,
-        title: `Journal Entry ${i}`,
-        content: 'This is a journal entry about the moments I want to remember.',
-        date: new Date(),
-        userId: user.id,
-        tripId: trips[0].id,
-      }
-    });
-  }
 
   // 9. Timeline Events (20)
   const timelineData = [];
