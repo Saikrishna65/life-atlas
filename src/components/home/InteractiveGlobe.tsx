@@ -382,38 +382,32 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
     const tl = gsap.timeline({
       scrollTrigger: {
         trigger: containerRef.current,
-        start: "top 90%",
-        end: "bottom 10%",
-        scrub: true,
+        start: "top 85%",
+        end: "bottom 15%",
+        scrub: 1,
       },
     });
 
-    // Step 1: Scale up and fade in as it enters viewport
+    // Step 1: Smoothly fade & scale in as it enters the viewport
     tl.fromTo(
       globeContainerRef.current,
-      { scale: 0.5, opacity: 0 },
-      { scale: 1, opacity: 1, duration: 1, ease: "power1.inOut" }
-    );
-
-    // Step 2: Rotate scene slightly on scroll for interactivity, and fade out
-    tl.to(
-      globeContainerRef.current,
-      { scale: 0.5, opacity: 0, duration: 1, ease: "power1.inOut" }
+      { scale: 0.94, opacity: 0.25 },
+      { scale: 1, opacity: 1, duration: 1, ease: "power2.out" }
     );
     
-    // Step 3: Scroll-Linked Rotation!
+    // Step 2: Scroll-Linked Rotation!
     if (globeInstanceRef.current) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const scene = (globeInstanceRef.current as any).scene();
       if (scene) {
         tl.fromTo(scene.rotation, 
-          { y: -Math.PI / 6 }, // Start slightly backwards (30 degrees)
+          { y: -Math.PI / 8 }, // Start slightly counter-rotated
           {
-            y: Math.PI / 6, // End slightly forwards (30 degrees)
+            y: Math.PI / 8, // Smoothly rotate as user scrolls
             ease: "none",
-            duration: 2 // Match the total duration of Step 1 (1s) + Step 2 (1s)
+            duration: 1
           }, 
-          0 // The '0' makes it start exactly at the beginning of the scroll
+          0 // sync with entrance
         );
       }
     }
@@ -425,17 +419,32 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
 
   return (
     <section
+      id="globe-section"
       ref={containerRef}
-      className="relative py-24 md:py-32 flex flex-col items-center justify-center bg-background min-h-screen overflow-hidden"
+      className="relative py-28 md:py-36 flex flex-col items-center justify-center bg-background min-h-screen overflow-hidden border-t border-muted/60"
     >
-      {/* Title block */}
-      <div className="text-center mb-12 md:mb-16 z-10 px-6">
-        <h2 className="font-sans text-[10px] md:text-xs tracking-[0.2em] uppercase text-muted-foreground mb-4">
-          Atmosphere
+      {/* Editorial Narrative Bridge */}
+      <div className="text-center mb-12 md:mb-16 z-10 px-6 max-w-4xl mx-auto flex flex-col items-center">
+        {/* Cartographic hairline connecting from Hero */}
+        <div className="w-[1px] h-12 bg-gradient-to-b from-muted to-accent mx-auto mb-6" aria-hidden="true" />
+
+        <span className="font-sans text-[10px] md:text-xs tracking-[0.3em] uppercase text-accent font-semibold mb-4 px-3 py-1 rounded-full bg-accent/5 border border-accent/15">
+          Chapter I · Planetary Cartography
+        </span>
+
+        <h2 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-foreground font-light tracking-tight leading-[1.1] mb-5">
+          The world, mapped through <span className="font-serif italic font-normal text-foreground">personal journeys</span>.
         </h2>
-        <p className="font-display text-3xl md:text-4xl lg:text-5xl max-w-3xl text-foreground">
-          The world, mapped through personal journeys.
+
+        <p className="font-body text-sm sm:text-base md:text-lg text-muted-foreground font-normal max-w-2xl leading-relaxed">
+          Every coordinate is an indexed chapter. Visited cities, mountain roads, and quiet shores gathered across time into one continuous geography.
         </p>
+
+        {/* Interaction Guide Pill */}
+        <div className="mt-8 flex items-center gap-3 text-[10px] uppercase tracking-[0.25em] text-muted-foreground/80 font-sans border border-muted/80 px-4 py-2 rounded-full bg-surface/50">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
+          <span>Drag sphere to explore · Click a pin to inspect the place</span>
+        </div>
       </div>
 
       {/* Cinematic wide globe container */}
@@ -493,12 +502,25 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
         )}
       </div>
 
-      {/* Statistics line */}
-      <div className="mt-12 md:mt-16 flex items-center gap-6 md:gap-12 font-sans text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground z-10 px-6">
-        <span>{validPlaces.length} locations</span>
-        <span className="w-1.5 h-1.5 rounded-full bg-accent-green" />
-        <Link href="/map" className="text-accent hover:text-foreground transition-colors pointer-events-auto">
-          Open full map &rarr;
+      {/* Refined Cartographic Metadata Bar */}
+      <div className="mt-12 md:mt-16 w-full max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-[10px] md:text-xs uppercase tracking-[0.25em] text-muted-foreground z-10 px-6 border-t border-muted/60 pt-6">
+        <div className="flex items-center gap-3">
+          <span className="w-2 h-2 rounded-full bg-accent-green" />
+          <span className="font-medium text-foreground">{validPlaces.length} Visited Coordinates</span>
+        </div>
+
+        <div className="hidden md:flex items-center gap-4 text-[9px] tracking-[0.3em] text-muted-foreground/70">
+          <span>Projection: Orthographic</span>
+          <span>·</span>
+          <span>Datum: WGS84</span>
+        </div>
+
+        <Link 
+          href="/map" 
+          className="inline-flex items-center gap-2 text-accent hover:text-foreground font-medium transition-colors border-b border-accent/30 hover:border-foreground pb-0.5"
+        >
+          <span>Open Full Interactive Map</span>
+          <span className="text-sm">&rarr;</span>
         </Link>
       </div>
     </section>

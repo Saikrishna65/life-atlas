@@ -42,8 +42,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${display.variable} ${sans.variable} ${body.variable}`}>
-      <body>
+    <html lang="en" suppressHydrationWarning className={`${display.variable} ${sans.variable} ${body.variable}`}>
+      <body suppressHydrationWarning>
         <div className="grain-overlay" />
         <SmoothScroll>
           <Navigation />
