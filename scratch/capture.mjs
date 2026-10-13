@@ -2,7 +2,12 @@ import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 
-const chromePath = `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`;
+const chromeCandidates = [
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`,
+  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+];
+const chromePath = chromeCandidates.find(p => fs.existsSync(p)) || chromeCandidates[0];
 const tempDir = `${process.env.TEMP}\\chrome-cdp-profile-${Date.now()}`;
 const port = 9333;
 
@@ -74,8 +79,8 @@ async function run() {
 
   await sendSession("Runtime.enable");
   await sendSession("Page.enable");
-  console.log("Navigating to http://localhost:3000...");
-  await sendSession("Page.navigate", { url: "http://localhost:3000" });
+  console.log("Navigating to http://localhost:3001...");
+  await sendSession("Page.navigate", { url: "http://localhost:3001" });
 
   console.log("Waiting 5 seconds for WebGL scene and textures to settle...");
   await new Promise(r => setTimeout(r, 5500));

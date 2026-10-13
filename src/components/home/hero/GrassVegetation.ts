@@ -1,44 +1,63 @@
 import * as THREE from "three";
-import { createDaisyTexture } from "./textureGenerator";
+import { loadFoliageTextures } from "./textureLoader";
 
 export interface GrassAssembly {
   clumpMeshA: THREE.InstancedMesh;
   clumpMeshB: THREE.InstancedMesh;
   clumpMeshC: THREE.InstancedMesh;
   flowerMesh: THREE.InstancedMesh;
+  updateWind: (time: number) => void;
 }
 
 /**
  * Creates photorealistic wild meadow vegetation using 3 distinct multi-blade clump archetypes:
- * - Clump A: Gracefully arching meadow grass tufts (9 fine, curving, drooping blades)
+ * - Clump A: Gracefully arching meadow grass tufts
  * - Clump B: Low wild clover / broadleaf ground cover rosettes
  * - Clump C: Tall wild pasture grass with delicate wispy plumes
- * Uses calibrated sRGB palette + root-to-tip AO multipliers and natural 0.80 roughness.
+ * - Wild chamomile daisies scattered organically
+ * Features wind vertex shader sway, root-to-tip ambient occlusion, and sunlit translucency.
  */
 export function createGrassVegetation(
   getElevation: (x: number, z: number) => number
 ): GrassAssembly {
-  // ----------------------------------------------------
-  // 1. BOTANICAL CLUMP GEOMETRIES
-  // ----------------------------------------------------
+  const windUniform = { value: 0 };
+
+  // Botanical clump geometries
   const clumpAGeo = createArchingTuftGeometry();
   const clumpBGeo = createCloverRosetteGeometry();
   const clumpCGeo = createTallPastureTuftGeometry();
 
-  // Natural non-specular vegetation material
+  // Natural translucent vegetation material with sunlit subsurface glow
   const vegetationMaterial = new THREE.MeshStandardMaterial({
-    roughness: 0.82,
+    roughness: 0.62,
     metalness: 0.0,
     side: THREE.DoubleSide,
     vertexColors: true,
+    emissive: new THREE.Color(0x152808), // Translucent sun-warmed glow
   });
 
-  // ----------------------------------------------------
-  // 2. INSTANCED DISTRIBUTION
-  // ----------------------------------------------------
+  vegetationMaterial.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = windUniform;
+    shader.vertexShader = `
+      uniform float uTime;
+      ${shader.vertexShader}
+    `;
+    shader.vertexShader = shader.vertexShader.replace(
+      "#include <begin_vertex>",
+      `
+      #include <begin_vertex>
+      float hFactor = clamp(position.y * 3.8, 0.0, 1.2);
+      float sway = sin(uTime * 1.6 + transformed.x * 2.5 + transformed.z * 1.8) * 0.028 * hFactor;
+      float swayGust = sin(uTime * 0.8 + transformed.z * 0.9) * 0.018 * hFactor;
+      transformed.x += sway + swayGust;
+      transformed.z += sway * 0.7;
+      `
+    );
+  };
+
   const countA = 14000; // Arching meadow tufts (~126,000 fine blades)
-  const countB = 7000;  // Low broadleaf clovers & ground cover
-  const countC = 6500;  // Tall pasture stalks (~39,000 blades)
+  const countB = 7000;  // Low broadleaf clovers
+  const countC = 6500;  // Tall pasture stalks
 
   const clumpMeshA = new THREE.InstancedMesh(clumpAGeo, vegetationMaterial, countA);
   clumpMeshA.name = "MeadowTuftsA";
@@ -57,56 +76,52 @@ export function createGrassVegetation(
 
   const dummy = new THREE.Object3D();
 
-  // Rich, vibrant, saturated alpine meadow palette matching reference
+  // Rich, vibrant, alpine meadow palette matching reference
   const tintPalette = [
-    new THREE.Color(0x386814), // Rich deep meadow green
-    new THREE.Color(0x447a18), // Vibrant summer grass
-    new THREE.Color(0x2d5210), // Deep shadow clover
-    new THREE.Color(0x4e881c), // Sun-warmed golden shoot
-    new THREE.Color(0x325c12), // Lush alpine turf
+    new THREE.Color(0x487c1b), // Vibrant summer grass
+    new THREE.Color(0x5ca223), // Sunlit golden-green shoot
+    new THREE.Color(0x386814), // Deep lush meadow green
+    new THREE.Color(0x6eb828), // Sun-drenched translucent blade tip
+    new THREE.Color(0x3e6d16), // Alpine turf
   ];
 
-  // Populate Clump A (Arching meadow grass)
   populateInstancedMesh(clumpMeshA, countA, getElevation, dummy, tintPalette, 0.85, 1.25);
-
-  // Populate Clump B (Low clovers & ground cover)
   populateInstancedMesh(clumpMeshB, countB, getElevation, dummy, tintPalette, 0.65, 1.05, true);
-
-  // Populate Clump C (Tall pasture grass)
   populateInstancedMesh(clumpMeshC, countC, getElevation, dummy, tintPalette, 0.80, 1.30);
 
   // ----------------------------------------------------
-  // 3. WILDFLOWERS (WHITE DAISIES WITH GOLDEN CENTERS)
+  // 3. WILDFLOWERS (BOTANICAL DAISIES WITH GOLDEN CENTERS)
   // ----------------------------------------------------
-  const daisyTex = createDaisyTexture();
-  const flowerGeo = new THREE.PlaneGeometry(0.052, 0.052);
+  const { daisyMap } = loadFoliageTextures();
+  const flowerGeo = new THREE.PlaneGeometry(0.068, 0.068);
   flowerGeo.rotateX(-Math.PI / 2);
 
   const flowerMat = new THREE.MeshStandardMaterial({
-    map: daisyTex,
+    map: daisyMap,
     transparent: true,
-    alphaTest: 0.45,
-    roughness: 0.65,
+    alphaTest: 0.35,
+    roughness: 0.45,
     metalness: 0.0,
     side: THREE.DoubleSide,
+    emissive: new THREE.Color(0x181810),
   });
 
-  const flowerCount = 650;
+  const flowerCount = 850;
   const flowerMesh = new THREE.InstancedMesh(flowerGeo, flowerMat, flowerCount);
   flowerMesh.name = "WildflowersInstanced";
   flowerMesh.castShadow = false;
 
   let fPlaced = 0;
   for (let f = 0; f < flowerCount; f++) {
-    const z = Math.pow(Math.random(), 0.70) * 4.0 + 0.30;
+    const z = Math.pow(Math.random(), 0.70) * 4.2 + 0.25;
     const x = (Math.random() - 0.5) * (9.5 + z * 1.4);
 
     if (Math.abs(x) < 0.45 && Math.abs(z) < 0.30) continue;
 
-    const groundY = getElevation(x, z) + 0.10 + Math.random() * 0.08;
+    const groundY = getElevation(x, z) + 0.09 + Math.random() * 0.07;
 
     dummy.position.set(x, groundY, z);
-    const scale = 0.7 + Math.random() * 0.55;
+    const scale = 0.75 + Math.random() * 0.55;
     dummy.scale.set(scale, scale, scale);
 
     dummy.rotation.set(
@@ -122,7 +137,11 @@ export function createGrassVegetation(
   flowerMesh.count = fPlaced;
   flowerMesh.instanceMatrix.needsUpdate = true;
 
-  return { clumpMeshA, clumpMeshB, clumpMeshC, flowerMesh };
+  const updateWind = (time: number) => {
+    windUniform.value = time;
+  };
+
+  return { clumpMeshA, clumpMeshB, clumpMeshC, flowerMesh, updateWind };
 }
 
 function populateInstancedMesh(
@@ -143,21 +162,35 @@ function populateInstancedMesh(
     attempts++;
 
     let z: number;
-    if (Math.random() < 0.72) {
-      z = Math.pow(Math.random(), 0.75) * 4.1 + 0.1;
+    let scaleMult = 1.0;
+    const r = Math.random();
+
+    if (r < 0.45) {
+      // Foreground: z from 0.05 to +4.5
+      z = Math.pow(Math.random(), 0.75) * 4.4 + 0.05;
+    } else if (r < 0.75) {
+      // Midground: z from -0.1 to -7.0
+      z = -Math.pow(Math.random(), 0.85) * 7.0;
     } else {
-      z = -Math.pow(Math.random(), 0.85) * 7.5;
+      // Distant rolling meadow reaching the backdrop: z from -7.0 to -18.5
+      z = -7.0 - Math.random() * 11.5;
+      scaleMult = 1.25 + Math.random() * 0.45; // Slightly larger for great distant coverage
     }
 
-    const x = (Math.random() - 0.5) * (20.0 + (z > 0 ? z * 2.0 : -z * 1.4));
+    const x = (Math.random() - 0.5) * (20.0 + (z > 0 ? z * 2.2 : -z * 1.6));
 
     if (Math.abs(x) < 0.42 && Math.abs(z) < 0.22) continue;
 
-    const onBricks = x > -0.76 && x < -0.42 && z > 0.02 && z < 0.38;
+    const onBricks = x > -0.88 && x < -0.46 && z > 0.01 && z < 0.38;
     if (onBricks && !isGroundCover) continue;
 
     const groundY = getElevation(x, z);
-    const scale = minScale + Math.random() * (maxScale - minScale);
+    let scale = (minScale + Math.random() * (maxScale - minScale)) * scaleMult;
+
+    // In front of the door, gently taper grass height so the door threshold and lower rail are visible
+    if (Math.abs(x) < 0.85 && z > 0.05 && z < 1.1) {
+      scale *= Math.min(1.0, 0.35 + z * 0.55);
+    }
 
     dummy.position.set(x, groundY, z);
     dummy.scale.set(scale, scale * (0.90 + Math.random() * 0.25), scale);

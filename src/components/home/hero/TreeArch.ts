@@ -43,24 +43,27 @@ export function createTreeArch(): TreeArchAssembly {
   // 1. PRIMARY ARCH SPLINE CURVE
   // Matching reference: rises low from left, arches over door with ample headroom, stays high on right
   // ----------------------------------------------------
+  // 1. PRIMARY ARCH SPLINE CURVE
+  // Matching reference: rises from left, arches over door with ample headroom, extends to right
+  // ----------------------------------------------------
   const archPoints = [
-    new THREE.Vector3(-5.8, 0.40, 0.85),
-    new THREE.Vector3(-4.8, 1.50, 0.45),
-    new THREE.Vector3(-3.6, 2.65, 0.05),
-    new THREE.Vector3(-2.2, 3.55, -0.25),
-    new THREE.Vector3(-1.0, 4.10, -0.42),
-    new THREE.Vector3(0.0, 4.22, -0.48), // Apex high above door
-    new THREE.Vector3(1.10, 4.02, -0.38),
-    new THREE.Vector3(2.25, 3.48, -0.16),
-    new THREE.Vector3(3.50, 2.75, 0.15),
-    new THREE.Vector3(4.70, 1.95, 0.50),
-    new THREE.Vector3(5.75, 1.15, 0.85),
+    new THREE.Vector3(-5.8, 0.35, 0.65),
+    new THREE.Vector3(-4.6, 1.45, 0.35),
+    new THREE.Vector3(-3.4, 2.55, 0.05),
+    new THREE.Vector3(-2.0, 3.40, -0.25),
+    new THREE.Vector3(-0.9, 3.75, -0.40),
+    new THREE.Vector3(0.0, 3.82, -0.45), // Apex gracefully framing door
+    new THREE.Vector3(1.15, 3.68, -0.35),
+    new THREE.Vector3(2.35, 3.25, -0.15),
+    new THREE.Vector3(3.60, 2.65, 0.15),
+    new THREE.Vector3(4.80, 2.05, 0.45),
+    new THREE.Vector3(5.85, 1.45, 0.75),
   ];
 
   const mainArchCurve = new THREE.CatmullRomCurve3(archPoints, false, "centripetal");
 
   // Build the main craggy trunk mesh with moss vertex coloring
-  const mainArchGeo = createGnarledTrunkGeometry(mainArchCurve, 180, 26, 0.32, 0.19);
+  const mainArchGeo = createGnarledTrunkGeometry(mainArchCurve, 220, 36, 0.36, 0.22);
   applyMossVertexColors(mainArchGeo);
   const mainArchMesh = new THREE.Mesh(mainArchGeo, barkMaterial);
   mainArchMesh.name = "MainTreeArch";
@@ -69,79 +72,40 @@ export function createTreeArch(): TreeArchAssembly {
   root.add(mainArchMesh);
 
   // ----------------------------------------------------
-  // 2. TWISTED SINEW STRANDS (Ancient wood anatomy)
-  // Two muscular chords wrapping and fusing along the trunk
+  // 2. SECONDARY BRANCHES (Graceful forks matching reference)
   // ----------------------------------------------------
-  const sinewCurve1 = createSinewSpline(mainArchCurve, 0.0, 1.0, 0.22, 5.0, 0);
-  const sinewGeo1 = createScaledTubeGeometry(sinewCurve1, 130, 0.095, 12, 1, 6);
-  applyMossVertexColors(sinewGeo1);
-  const sinewMesh1 = new THREE.Mesh(sinewGeo1, barkMaterial);
-  sinewMesh1.castShadow = true;
-  sinewMesh1.receiveShadow = true;
-  root.add(sinewMesh1);
-
-  const sinewCurve2 = createSinewSpline(mainArchCurve, 0.06, 0.94, 0.20, 4.4, Math.PI * 0.9);
-  const sinewGeo2 = createScaledTubeGeometry(sinewCurve2, 110, 0.085, 12, 1, 5);
-  applyMossVertexColors(sinewGeo2);
-  const sinewMesh2 = new THREE.Mesh(sinewGeo2, barkMaterial);
-  sinewMesh2.castShadow = true;
-  sinewMesh2.receiveShadow = true;
-  root.add(sinewMesh2);
-
-  // ----------------------------------------------------
-  // 3. SECONDARY BRANCHES (Dramatic forks matching reference)
-  // ----------------------------------------------------
-  // Major right fork plunging steeply down into the meadow with distinct negative space
+  // Major right fork branching towards the lower-right margin
   const forkPointsRight = [
-    new THREE.Vector3(2.25, 3.45, -0.15),
-    new THREE.Vector3(2.70, 2.65, 0.05),
-    new THREE.Vector3(3.10, 1.85, 0.28),
-    new THREE.Vector3(3.45, 1.10, 0.52),
-    new THREE.Vector3(3.75, 0.35, 0.72),
+    new THREE.Vector3(2.35, 3.20, -0.15),
+    new THREE.Vector3(2.95, 2.50, 0.05),
+    new THREE.Vector3(3.60, 1.85, 0.25),
+    new THREE.Vector3(4.35, 1.25, 0.45),
+    new THREE.Vector3(5.15, 0.65, 0.65),
   ];
   const forkCurveRight = new THREE.CatmullRomCurve3(forkPointsRight);
-  const forkGeoRight = createScaledTubeGeometry(forkCurveRight, 60, 0.145, 14, 1, 4);
+  const forkGeoRight = createScaledTubeGeometry(forkCurveRight, 60, 0.12, 14, 1, 4);
   applyMossVertexColors(forkGeoRight);
   const forkMeshRight = new THREE.Mesh(forkGeoRight, barkMaterial);
-  forkMeshRight.name = "RightForkBranch_Plunging";
+  forkMeshRight.name = "RightForkBranch";
   forkMeshRight.castShadow = true;
   forkMeshRight.receiveShadow = true;
   root.add(forkMeshRight);
 
   // Left lower split
   const forkPointsLeft = [
-    new THREE.Vector3(-3.6, 2.60, 0.05),
-    new THREE.Vector3(-4.2, 1.80, 0.35),
-    new THREE.Vector3(-4.8, 1.05, 0.65),
-    new THREE.Vector3(-5.3, 0.35, 0.88),
+    new THREE.Vector3(-3.4, 2.50, 0.05),
+    new THREE.Vector3(-4.0, 1.75, 0.30),
+    new THREE.Vector3(-4.6, 1.05, 0.55),
+    new THREE.Vector3(-5.2, 0.40, 0.75),
   ];
   const forkCurveLeft = new THREE.CatmullRomCurve3(forkPointsLeft);
-  const forkGeoLeft = createScaledTubeGeometry(forkCurveLeft, 50, 0.150, 14, 1, 4);
+  const forkGeoLeft = createScaledTubeGeometry(forkCurveLeft, 50, 0.13, 14, 1, 4);
   applyMossVertexColors(forkGeoLeft);
   const forkMeshLeft = new THREE.Mesh(forkGeoLeft, barkMaterial);
   forkMeshLeft.name = "LeftForkBranch";
   forkMeshLeft.castShadow = true;
   forkMeshLeft.receiveShadow = true;
   root.add(forkMeshLeft);
-
-  // Gnarly protruding broken branch stubs
-  const stubs = [
-    { pos: new THREE.Vector3(-1.9, 3.70, -0.32), dir: new THREE.Vector3(-0.35, 0.65, 0.28), len: 0.42, r: 0.065 },
-    { pos: new THREE.Vector3(1.85, 3.80, -0.32), dir: new THREE.Vector3(0.48, 0.52, -0.18), len: 0.36, r: 0.055 },
-    { pos: new THREE.Vector3(3.5, 2.70, 0.18), dir: new THREE.Vector3(0.55, 0.35, 0.35), len: 0.44, r: 0.070 },
-    { pos: new THREE.Vector3(-4.3, 1.95, 0.28), dir: new THREE.Vector3(-0.62, 0.38, 0.22), len: 0.38, r: 0.065 },
-  ];
-
-  stubs.forEach((st, idx) => {
-    const end = st.pos.clone().add(st.dir.clone().multiplyScalar(st.len));
-    const stubCurve = new THREE.LineCurve3(st.pos, end);
-    const stubGeo = createScaledTubeGeometry(stubCurve, 12, st.r, 10, 1, 1);
-    applyMossVertexColors(stubGeo);
-    const stubMesh = new THREE.Mesh(stubGeo, barkMaterial);
-    stubMesh.name = `BranchStub_${idx}`;
-    stubMesh.castShadow = true;
-    root.add(stubMesh);
-  });
 
   return { root, mainArchCurve, forkCurveRight, forkCurveLeft };
 }

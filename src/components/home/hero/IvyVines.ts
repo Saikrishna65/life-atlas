@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { createIvyLeafTexture } from "./textureGenerator";
+import { loadFoliageTextures } from "./textureLoader";
 
 export interface IvyVinesAssembly {
   root: THREE.Group;
@@ -8,8 +8,8 @@ export interface IvyVinesAssembly {
 
 /**
  * Creates realistic 3D ivy vines, climbing tendrils, and instanced leaves
- * that cling in dense organic clusters on the outer surface of the tree arch, branch forks, and door frame.
- * Calibrated so vines and leaves sit proud on the bark surface (r = 0.30 - 0.38m).
+ * that cling in dense organic clusters on the outer surface of the tree arch, branch forks, and door frame,
+ * with delicate hanging tendrils draping down into the open air.
  */
 export function createIvyVines(
   mainArchCurve: THREE.CatmullRomCurve3,
@@ -30,7 +30,7 @@ export function createIvyVines(
   // ----------------------------------------------------
   const vineSplines: THREE.CatmullRomCurve3[] = [];
 
-  // A. Creeping vines along the main tree arch (outer radius: 0.30 - 0.36m)
+  // A. Creeping vines along the main tree arch
   const coilSteps = 80;
   const coilPoints1: THREE.Vector3[] = [];
   const coilPoints2: THREE.Vector3[] = [];
@@ -45,18 +45,17 @@ export function createIvyVines(
     const normal = new THREE.Vector3().crossVectors(tangent, up).normalize();
     const binormal = new THREE.Vector3().crossVectors(tangent, normal).normalize();
 
-    // Trunk radius varies from 0.34m at flanks to 0.22m at apex
     const taper = Math.sin(t * Math.PI);
     const rTrunk = 0.35 - taper * 0.11;
 
-    // Vine 1: Wrapping loosely around the outer surface
+    // Vine 1: Wrapping along surface
     const angle1 = t * Math.PI * 12;
     const offset1 = new THREE.Vector3()
       .addScaledVector(normal, Math.cos(angle1) * (rTrunk + 0.02))
       .addScaledVector(binormal, Math.sin(angle1) * (rTrunk + 0.02));
     coilPoints1.push(center.clone().add(offset1));
 
-    // Vine 2: Second runner offset by phase
+    // Vine 2: Second runner
     const angle2 = t * Math.PI * 12 + Math.PI * 0.7;
     const offset2 = new THREE.Vector3()
       .addScaledVector(normal, Math.cos(angle2) * (rTrunk + 0.025))
@@ -74,13 +73,27 @@ export function createIvyVines(
   vineSplines.push(new THREE.CatmullRomCurve3(coilPoints2));
   vineSplines.push(new THREE.CatmullRomCurve3(coilPoints3));
 
+  // Hanging tendrils dangling down from the arch (matching reference)
+  const hangPositions = [0.22, 0.35, 0.48, 0.62, 0.74, 0.85];
+  hangPositions.forEach((ht) => {
+    const start = mainArchCurve.getPointAt(ht);
+    start.y -= 0.15;
+    const hangLen = 0.45 + Math.sin(ht * 12) * 0.25;
+    const hangPts = [
+      start.clone(),
+      start.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.1, -hangLen * 0.45, 0.05)),
+      start.clone().add(new THREE.Vector3((Math.random() - 0.5) * 0.15, -hangLen, 0.08)),
+    ];
+    vineSplines.push(new THREE.CatmullRomCurve3(hangPts));
+  });
+
   // B. Vines creeping along the right plunging fork
   if (forkCurveRight) {
     const forkPts: THREE.Vector3[] = [];
     for (let i = 0; i <= 30; i++) {
       const t = i / 30;
       const pt = forkCurveRight.getPointAt(t);
-      pt.y += 0.16; // Outer surface
+      pt.y += 0.16;
       pt.z += 0.04 * Math.sin(t * Math.PI * 3);
       forkPts.push(pt);
     }
@@ -100,38 +113,6 @@ export function createIvyVines(
     vineSplines.push(new THREE.CatmullRomCurve3(forkPtsL));
   }
 
-  // D. Vines crawling up the door frame from the brick pile
-  const doorVinePointsLeft1 = [
-    new THREE.Vector3(-0.62, 0.05, 0.20),
-    new THREE.Vector3(-0.59, 0.35, 0.16),
-    new THREE.Vector3(-0.58, 0.75, 0.14),
-    new THREE.Vector3(-0.59, 1.25, 0.13),
-    new THREE.Vector3(-0.57, 1.75, 0.12),
-    new THREE.Vector3(-0.58, 2.24, 0.12),
-    // Crawling along top header
-    new THREE.Vector3(-0.35, 2.28, 0.12),
-    new THREE.Vector3(-0.02, 2.27, 0.11),
-    new THREE.Vector3(0.32, 2.29, 0.11),
-    new THREE.Vector3(0.57, 2.26, 0.12),
-    // Cascading down right jamb
-    new THREE.Vector3(0.58, 1.95, 0.12),
-    new THREE.Vector3(0.57, 1.50, 0.11),
-    new THREE.Vector3(0.59, 1.05, 0.11),
-  ];
-  vineSplines.push(new THREE.CatmullRomCurve3(doorVinePointsLeft1));
-
-  // Dense secondary climber on left door jamb and bricks
-  const doorVinePointsLeft2 = [
-    new THREE.Vector3(-0.54, 0.02, 0.18),
-    new THREE.Vector3(-0.57, 0.28, 0.18),
-    new THREE.Vector3(-0.58, 0.65, 0.15),
-    new THREE.Vector3(-0.57, 1.05, 0.14),
-    new THREE.Vector3(-0.58, 1.55, 0.13),
-    new THREE.Vector3(-0.56, 2.05, 0.13),
-    new THREE.Vector3(-0.52, 2.27, 0.13),
-  ];
-  vineSplines.push(new THREE.CatmullRomCurve3(doorVinePointsLeft2));
-
   // Render all vine stems as 3D tubes
   vineSplines.forEach((curve, idx) => {
     const geo = new THREE.TubeGeometry(curve, 60, 0.013, 8, false);
@@ -142,25 +123,25 @@ export function createIvyVines(
   });
 
   // ----------------------------------------------------
-  // 2. INSTANCED IVY LEAVES (6,000 LEAVES IN DENSE SURFACE CLUSTERS)
+  // 2. INSTANCED BOTANICAL IVY LEAVES (7,500 LEAVES)
   // ----------------------------------------------------
-  const { map: leafMap, normalMap: leafNormal } = createIvyLeafTexture();
+  const { ivyMap } = loadFoliageTextures();
 
-  // Natural 8.5cm ivy leaf geometry
-  const leafGeo = new THREE.PlaneGeometry(0.085, 0.085);
-  leafGeo.translate(0, -0.042, 0);
+  // Natural ivy leaf cluster geometry
+  const leafGeo = new THREE.PlaneGeometry(0.11, 0.11);
+  leafGeo.translate(0, -0.05, 0);
 
   const leafMaterial = new THREE.MeshStandardMaterial({
-    map: leafMap,
-    normalMap: leafNormal,
+    map: ivyMap,
     transparent: true,
-    alphaTest: 0.40,
-    roughness: 0.42,
+    alphaTest: 0.35,
+    roughness: 0.35,
     metalness: 0.02,
     side: THREE.DoubleSide,
+    color: 0xffffff,
   });
 
-  const totalLeaves = 6000;
+  const totalLeaves = 7500;
   const leafMesh = new THREE.InstancedMesh(leafGeo, leafMaterial, totalLeaves);
   leafMesh.name = "IvyLeavesInstanced";
   leafMesh.castShadow = false;

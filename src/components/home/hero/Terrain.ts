@@ -12,11 +12,11 @@ export interface TerrainAssembly {
  */
 export function createTerrain(): TerrainAssembly {
   const width = 48;
-  const depth = 46;
+  const depth = 34;
   const segX = 160;
-  const segZ = 150;
+  const segZ = 120;
 
-  // Elevation function: natural gentle knolls and distant rolling ridges
+  // Elevation function: natural gentle knolls that slope gently to meet the backdrop
   const getElevation = (x: number, z: number): number => {
     // Gentle natural undulating meadow contours
     const m1 = Math.sin(x * 0.22) * Math.cos(z * 0.20) * 0.05;
@@ -24,6 +24,11 @@ export function createTerrain(): TerrainAssembly {
     const m3 = Math.sin(x * 0.9 + z * 0.7) * 0.015;
 
     let height = m1 + m2 + m3;
+
+    // Gentle upward slope towards distant horizon to meet the backdrop meadow
+    if (z < -3) {
+      height += Math.pow(Math.max(0, -z - 3) * 0.055, 1.25) * 0.65;
+    }
 
     // Natural smooth resting bed directly under the door footing
     const doorDist = Math.sqrt(Math.pow(x * 0.9, 2) + Math.pow(z * 1.5, 2));
@@ -38,8 +43,8 @@ export function createTerrain(): TerrainAssembly {
   const geometry = new THREE.PlaneGeometry(width, depth, segX, segZ);
   geometry.rotateX(-Math.PI / 2);
 
-  // Position center so z extends from +8 (in front of camera) to -38 (distant horizon)
-  geometry.translate(0, 0, -15);
+  // Position center so z extends from +8 (in front of camera) to -26 (at the backdrop)
+  geometry.translate(0, 0, -9);
 
   const posAttr = geometry.attributes.position;
   for (let i = 0; i < posAttr.count; i++) {
@@ -62,9 +67,10 @@ export function createTerrain(): TerrainAssembly {
     normalMap,
     normalScale: new THREE.Vector2(1.8, 1.8),
     roughnessMap,
-    roughness: 0.90,
+    roughness: 0.85,
     metalness: 0.01,
-    color: 0x4d7526, // Sun-warmed vibrant meadow turf
+    color: 0x487622, // Sun-warmed vibrant meadow turf
+    emissive: new THREE.Color(0x0e1c07), // Ambient soil bounce
   });
 
   const mesh = new THREE.Mesh(geometry, material);
