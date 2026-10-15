@@ -1,0 +1,48 @@
+{
+  "id": 6,
+  "result": {
+    "result": {
+      "type": "object",
+      "value": {
+        "hero": {
+          "width": 1904,
+          "height": 985,
+          "top": 0,
+          "left": 0,
+          "position": "relative",
+          "overflow": "visible",
+          "display": "block",
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "transform": "none"
+        },
+        "door": {
+          "width": 1904,
+          "height": 985,
+          "top": 0,
+          "left": 0,
+          "position": "static",
+          "overflow": "visible",
+          "display": "block",
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "transform": "none"
+        },
+        "canvas": {
+          "width": 1904,
+          "height": 985,
+          "top": 0,
+          "left": 0,
+          "position": "static",
+          "overflow": "clip",
+          "display": "inline-block",
+          "justifyContent": "normal",
+          "alignItems": "normal",
+          "transform": "none"
+        },
+        "heroHTML": "<section class=\"hero_b\"><div class=\"wrapper_hero\"><div class=\"txt_side\"><div class=\"box_in _01\"><div class=\"headline box_01 invert\"><h1 id=\"invert\" class=\"h1_interaction color-inversion-target\">Entdecken Sie einzigartige Reiseziele weltweit</h1></div></div><div class=\"bottom_side\"><div class=\"description\"><p class=\"b_txt white color-inversion-target\">Hinter jeder Tür eröffnet sich eine Welt voller neuer Möglichkeiten. Travel Next Level inspiriert Sie, versteckte reiseziele, exotische urlaubsziele und die beste reiseziele zu entdecken – Orte, die das Gewöhnliche übertreffen und Ihre Reiselust neu entfachen. Speichern Sie Ihre Favoriten und starten Sie die Planung für Ihre nächste unvergessliche Reise.</p></div><a href=\"/destinations\" class=\"button_base invert color-inversion-target w-inline-block\"><div>Jetzt entdecken</div></a></div></div></div></section>"
+      }
+    }
+  },
+  "sessionId": "E30A066BECC71923888083A1D9399EF4"
+}

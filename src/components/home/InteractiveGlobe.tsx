@@ -189,17 +189,25 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
         }
       });
 
-    // Fetch GeoJSON for the dotted landmasses from remote
-    fetch('https://raw.githubusercontent.com/vasturiano/globe.gl/master/example/datasets/ne_110m_admin_0_countries.geojson')
-      .then(res => res.json())
-      .then(countries => {
-        globe.hexPolygonsData(countries.features)
-          .hexPolygonResolution(3) // Larger grid to increase the distance between dots
-          .hexPolygonMargin(0.1) // Dense dots to make landmasses solid and clearly visible
-          .hexPolygonColor(() => colors.land)
-          .hexPolygonAltitude(0.08); // Massively extrude the dots up to create highly visible 3D terrain
+    // Fetch GeoJSON for the dotted landmasses (uses local /data/countries.geojson)
+    fetch('/data/countries.geojson')
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
       })
-      .catch(err => console.error("Error loading geojson", err));
+      .then(countries => {
+        if (countries?.features) {
+          globe.hexPolygonsData(countries.features)
+            .hexPolygonResolution(3) // Larger grid to increase the distance between dots
+            .hexPolygonMargin(0.1) // Dense dots to make landmasses solid and clearly visible
+            .hexPolygonColor(() => colors.land)
+            .hexPolygonAltitude(0.08); // Massively extrude the dots up to create highly visible 3D terrain
+        }
+      })
+      .catch((err) => {
+        // Silent graceful fallback if geojson is unavailable
+        console.warn("Could not load local country geojson for globe terrain", err?.message || err);
+      });
 
     // Setup material and lighting
     const scene = globe.scene();

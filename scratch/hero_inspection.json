@@ -1,0 +1,223 @@
+{
+  "id": 6,
+  "result": {
+    "result": {
+      "type": "object",
+      "value": {
+        "heroInfo": [
+          {
+            "tag": "SECTION",
+            "id": "",
+            "className": "hero_b",
+            "bgImage": "none",
+            "bgColor": "rgba(0, 0, 0, 0)",
+            "position": "relative",
+            "zIndex": "auto",
+            "src": null,
+            "hasChildren": 1
+          },
+          {
+            "tag": "DIV",
+            "id": "",
+            "className": "wrapper_hero",
+            "bgImage": "none",
+            "bgColor": "rgba(0, 0, 0, 0)",
+            "position": "relative",
+            "zIndex": "5",
+            "src": null,
+            "hasChildren": 1
+          },
+          {
+            "tag": "SECTION",
+            "id": "",
+            "className": "hero_b _02",
+            "bgImage": "none",
+            "bgColor": "rgba(0, 0, 0, 0)",
+            "position": "relative",
+            "zIndex": "auto",
+            "src": null,
+            "hasChildren": 1
+          },
+          {
+            "tag": "DIV",
+            "id": "",
+            "className": "wrapper_hero",
+            "bgImage": "none",
+            "bgColor": "rgba(0, 0, 0, 0)",
+            "position": "relative",
+            "zIndex": "5",
+            "src": null,
+            "hasChildren": 1
+          },
+          {
+            "tag": "IMG",
+            "id": "",
+            "className": "image color-inversion-target",
+            "bgImage": "none",
+            "bgColor": "rgba(0, 0, 0, 0)",
+            "position": "static",
+            "zIndex": "auto",
+            "src": "https://cdn.prod.website-files.com/6713971095c4a7cab5d924ee/672b9a1566cd01e4423a0643_latest-blog.avif",
+            "hasChildren": 0
+          },
+          {
+            "tag": "CANVAS",
+            "id": "",
+            "className": "",
+            "bgImage": "none",
+            "bgColor": "rgb(0, 0, 0)",
+            "position": "static",
+            "zIndex": "auto",
+            "src": null,
+            "hasChildren": 0
+          }
+        ],
+        "allImages": [
+          {
+            "src": "https://cdn.prod.website-files.com/6713971095c4a7cab5d924ee/671aa53e3d420b8eb1880fc1_search_icon.svg",
+            "className": "image",
+            "width": 30,
+            "height": 30
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/6713971095c4a7cab5d924ee/671fbe10f5e489688ed86ebb_close_icon.svg",
+            "className": "image",
+            "width": 0,
+            "height": 0
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/6713971095c4a7cab5d924ee/688c70f31bec8c8a29bb9f92_05a3e1dcc27633f30e1a8b45970efc06_airplane_icon_white.svg",
+            "className": "image",
+            "width": 34,
+            "height": 34
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/6713971095c4a7cab5d924ee/688882abf4a771a7d1276ef9_9d95287c717e769d4dce56d31827ee7f_hotel-icon.avif",
+            "className": "image",
+            "width": 38,
+            "height": 38
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/6713971095c4a7cab5d924ee/671aa53e3d420b8eb1880fc1_search_icon.svg",
+            "className": "image",
+            "width": 19,
+            "height": 19
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/6713971095c4a7cab5d924ee/672b9a1566cd01e4423a0643_latest-blog.avif",
+            "className": "image color-inversion-target",
+            "width": 228,
+            "height": 152
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/6713971095c4a7cab5d924ee/672b9a1566cd01e4423a0643_latest-blog.avif",
+            "className": "image",
+            "width": 1002,
+            "height": 744
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/690a1bdc2aac6aec6d645ee0_hollywood-los-angeles-travel-destination.webp",
+            "className": "image",
+            "width": 561,
+            "height": 457
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/690a1bc85e9f59a95014a2d3_beverly-hills-luxury-travel-destination.webp",
+            "className": "image",
+            "width": 561,
+            "height": 457
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/690a1b7d3cda9c22e4630a78_banff-national-park-nature-travel-destination.webp",
+            "className": "image",
+            "width": 561,
+            "height": 457
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/690a1b6e40236656ebf38c4c_cancun-best-travel-destination.webp",
+            "className": "image",
+            "width": 561,
+            "height": 457
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/690a1af7a7ad9cfeef7296ad_tayrona-national-park-tropical-destination.webp",
+            "className": "image",
+            "width": 561,
+            "height": 457
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/690a168d4c678c51751c387a_koh-samui-top-travel-destination.webp",
+            "className": "image",
+            "width": 561,
+            "height": 457
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/6909f067a498e8f2d1048929_cappadocia-unique-travel-destination.webp",
+            "className": "image",
+            "width": 561,
+            "height": 457
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/671e9aa60115a7ce81a3bbd7_6.avif",
+            "className": "image-2",
+            "width": 299,
+            "height": 381
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/671eec978d428784e17fefad_22.avif",
+            "className": "image-2",
+            "width": 299,
+            "height": 381
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/671eec8b420cf850294aa828_21.avif",
+            "className": "image-2",
+            "width": 299,
+            "height": 381
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/671eec74a29ea1a5d1cf26c7_20.jpg",
+            "className": "image-2",
+            "width": 299,
+            "height": 381
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/671eec5da4a087d96ce807b2_19.avif",
+            "className": "image-2",
+            "width": 299,
+            "height": 381
+          },
+          {
+            "src": "https://cdn.prod.website-files.com/67192adf47c16a59cea7d889/671eebd44fe74399614ea1e7_18.avif",
+            "className": "image-2",
+            "width": 299,
+            "height": 381
+          }
+        ],
+        "scripts": [
+          "https://www.googletagmanager.com/gtag/js?id=G-2KYFYBFP7Z&gtg_health=1",
+          "https://travelnextlvl.de/haqt6iy0yx2eNjcxMzk3MTA5NWM0YTdjYWI1ZDkyNGVl/51PSHUuHMLgs2C8NSOvFC30yKYg",
+          "https://cdn.jsdelivr.net/npm/@finsweet/attributes-copyclip@1/copyclip.js",
+          "https://cdn.jsdelivr.net/npm/@finsweet/attributes-cmsload@1/cmsload.js",
+          "https://static.memberstack.com/scripts/v1/memberstack.js",
+          "https://emrldtp.com/MzkxNDc2.js?t=391476",
+          "https://trpwdg.com/wl_web/main.js?wl_id=279",
+          "https://emrldtp.com/chunk.Bl6jhe12.js",
+          "https://trpwdg.com/content?currency=usd&trs=391476&shmarker=608661&show_hotels=false&powered_by=true&locale=en&searchUrl=www.aviasales.com%2Fsearch&primary_override=%2332a8dd&color_button=%2332a8dd&color_icons=%2332a8dd&dark=%23262626&light=%23FFFFFF&secondary=%23FFFFFF00&special=%23F1F1F1&color_focused=%2332a8dd&border_radius=10&no_labels=&plain=false&promo_id=7879&campaign_id=100",
+          "https://trpwdg.com/content?currency=usd&trs=391476&shmarker=608661&searchUrl=www.aviasales.com%2Fsearch&locale=en&powered_by=true&one_way=false&only_direct=false&period=year&range=7%2C14&primary=%23000000ff&color_background=%23FFFFFF00&dark=%23000000&light=%23FFFFFF&achieve=%2345AD35&promo_id=4041&campaign_id=100",
+          "https://trpwdg.com/content?currency=usd&trs=432884&shmarker=608661&lat=&lng=&powered_by=true&search_host=www.aviasales.com%2Fsearch&locale=en&origin=BER&value_min=0&value_max=1000000&round_trip=true&only_direct=false&radius=1&draggable=true&disable_zoom=false&show_logo=false&scrollwheel=true&primary=%230D0D0Dff&secondary=%23FFFFFF&light=%23FFFFFF&width=920&height=920&zoom=4&promo_id=4054&campaign_id=100",
+          "https://d3e54v103j8qbb.cloudfront.net/js/jquery-3.5.1.min.dc5e7f18c8.js?site=6713971095c4a7cab5d924ee",
+          "https://cdn.prod.website-files.com/6713971095c4a7cab5d924ee/js/webflow.2d351cd2.666f2464299af986.js",
+          "https://cdn.jsdelivr.net/gh/studio-freight/lenis@0.2.28/bundled/lenis.js",
+          "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.8.0/gsap.min.js",
+          "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.8.0/ScrollTrigger.min.js",
+          "https://unpkg.com/split-type",
+          "https://cdn.jsdelivr.net/npm/@splidejs/splide@3.2.2/dist/js/splide.min.js",
+          "https://cdn.jsdelivr.net/npm/lazy-load-video@latest/dist/custom-video.js"
+        ],
+        "first1000CharsOfBody": "<div class=\"code-embed-3 w-embed\"><div id=\"cursor-dot\" style=\"left: 0px; top: 0px;\"></div>\n<div id=\"cursor-outline\" style=\"left: 0px; top: 0px;\"></div></div><div class=\"code-embed w-embed w-iframe\"><!-- Google Tag Manager (noscript) --> \n<noscript><iframe src=\"https://www.googletagmanager.com/ns.html?id=GTM-TNMJVZ7N\" height=\"0\" width=\"0\" style=\"display:none;visibility:hidden\"></iframe></noscript> \n<!-- End Google Tag Manager (noscript) --></div><div class=\"mobile_menu\"><div class=\"menu_wrapper\"><div class=\"mobile_links\"><a href=\"/\" aria-current=\"page\" class=\"mobile_link w-inline-block w--current\"><div>home</div></a><a href=\"/destinations\" class=\"mobile_link w-inline-block\"><div>destinations</div></a><a href=\"/hotels\" class=\"mobile_link w-inline-block\"><div>hotels</div></a><a href=\"/partnership\" class=\"mobile_link w-inline-block\"><div>Partnership</div></a><a href=\"/blog\" class=\"mobile_link w-inline-block\"><div>blog</div></a><a href=\"/contact\" class=\"mobile_link w-inline-block\"><div>contact</div></a></div><div class=\"socials_mobile\"><div class=\"socials_title\">socials</div><div class=\"list_links\"><a href=\"https://de.pinterest.com/travelnextlvl/\" target=\"_blank\" class=\"social_link w-inline-block\"><div>Pinterest</div></a><a href=\"https://www.instagram.com/travelnextlvl/\" target=\"_blank\" class=\"social_link w-inline-block\"><div>Instagram</div></a><a href=\"https://www.youtube.com/@TravelNextLvl\" target=\"_blank\" class=\"social_link w-inline-block\"><div>Youtube</div></a><a href=\"https://www.facebook.com/profile.php?id=61564747740389\" target=\"_blank\" class=\"social_link w-inline-block\"><div>Facebook</div></a><a href=\"https://www.tiktok.com/@travelnextlvl?lang=de-DE\" target=\"_blank\" class=\"social_link w-inline-block\"><div>TikTok</div></a></div></div><div class=\"search_link\"><a href=\"/search-all\" class=\"search_box w-inline-block\"><div class=\"flexbox_link\"><div class=\"search_icon\"><img src=\"https://cdn.prod.website-files.com/6713971095c4a7cab5d924ee/671aa53e3d420b8eb1880fc1_search_"
+      }
+    }
+  },
+  "sessionId": "5877CA6DF9AD9316B3856BE53F56C553"
+}
