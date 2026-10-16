@@ -4,7 +4,11 @@ export default function TripHero({ trip }: { trip: Trip }) {
   const year = new Date(trip.startDate).getFullYear();
 
   return (
-    <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
+    <section
+      data-hero
+      data-theme="dark"
+      className="relative h-screen w-full flex items-center justify-center overflow-hidden"
+    >
       <div 
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${trip.coverImage || '/placeholder-image.jpg'})` }}

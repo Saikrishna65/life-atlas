@@ -2,7 +2,11 @@ import { Place } from "@prisma/client";
 
 export default function PlaceHero({ place }: { place: Place }) {
   return (
-    <section className="relative h-[70vh] w-full flex items-center justify-center overflow-hidden">
+    <section
+      data-hero
+      data-theme="dark"
+      className="relative h-[70vh] w-full flex items-center justify-center overflow-hidden"
+    >
       <div 
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${place.coverImage || '/placeholder-image.jpg'})` }}

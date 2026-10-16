@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X, Search } from "lucide-react";
 import gsap from "gsap";
 
@@ -22,29 +23,89 @@ const secondaryLinks = [
 ];
 
 export default function Navigation() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isInHero, setIsInHero] = useState(true);
+  const isDarkPageInitially = pathname === "/" || pathname?.startsWith('/trips/') || pathname?.startsWith('/places/');
+  const [heroTheme, setHeroTheme] = useState<"light" | "dark">(isDarkPageInitially ? "dark" : "light");
   const prevScrollY = useRef(0);
   const tlRef = useRef<gsap.core.Tween | null>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (isOpen) return;
-      
+    const checkHeroState = () => {
+      const heroEl = document.querySelector<HTMLElement>('[data-hero], [aria-label*="Hero"], .hero-section');
+      if (!heroEl) {
+        setIsInHero(false);
+        return false;
+      }
+
+      const theme = (heroEl.getAttribute('data-theme') as "light" | "dark") || (pathname === "/" || pathname?.startsWith('/trips/') || pathname?.startsWith('/places/') ? "dark" : "light");
+      setHeroTheme(theme);
+
+      const rect = heroEl.getBoundingClientRect();
       const currentScrollY = window.scrollY;
       
+      // Hero section is active while any part of it spans the top/viewport
+      const inHero = rect.height === 0 
+        ? (currentScrollY < 500 || pathname === "/")
+        : (rect.top <= 100 && rect.bottom > 0);
+
+      setIsInHero(inHero);
+      return inHero;
+    };
+
+    const handleScroll = () => {
+      if (isOpen) return;
+
+      const currentScrollY = window.scrollY;
+      setIsScrolled(currentScrollY > 20);
+      checkHeroState();
+
+      // Navbar is scrollable everywhere (both in hero and outside):
+      // - Scroll down hides navbar
+      // - Scroll up reveals navbar
+      // - Near top (< 50px) always reveals navbar
       if (currentScrollY < prevScrollY.current || currentScrollY < 50) {
         setIsVisible(true);
       } else if (currentScrollY > 50 && currentScrollY > prevScrollY.current) {
         setIsVisible(false);
       }
-      
+
       prevScrollY.current = currentScrollY;
     };
 
+    // Initial check on mount and pathname change
+    const initialScrollY = typeof window !== "undefined" ? window.scrollY : 0;
+    prevScrollY.current = initialScrollY;
+    setIsScrolled(initialScrollY > 20);
+    setIsVisible(true);
+    checkHeroState();
+
+    // Re-check after hydration or dynamic elements mount
+    const rafId = requestAnimationFrame(() => {
+      checkHeroState();
+    });
+    const timerId = setTimeout(() => {
+      checkHeroState();
+    }, 200);
+
+    const observer = new MutationObserver(() => {
+      checkHeroState();
+    });
+    if (document.body) {
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
+
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isOpen]);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timerId);
+      observer.disconnect();
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [isOpen, pathname]);
 
   useEffect(() => {
     if (isOpen) {
@@ -77,10 +138,36 @@ export default function Navigation() {
     };
   }, []);
 
+  // Determine header styling: In hero, always transparent (never white)
+  const headerBackgroundClass = isOpen || isInHero || !isScrolled
+    ? "bg-transparent border-transparent backdrop-blur-none shadow-none"
+    : "bg-background/80 backdrop-blur-xl border-b border-muted/70 shadow-xs";
+
+  const textColorClass = isOpen
+    ? "text-foreground"
+    : isInHero
+    ? heroTheme === "dark"
+      ? "text-white"
+      : "text-slate-900"
+    : "text-foreground";
+
+  const linkHoverClass = isOpen
+    ? "hover:text-accent"
+    : isInHero && heroTheme === "dark"
+    ? "hover:text-white/80"
+    : "hover:text-accent";
+
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-3 md:px-12 md:py-4 text-foreground bg-background/75 backdrop-blur-xl border-b border-muted/70 transition-all duration-300 ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}>
-        <Link href="/" className="font-sans text-sm font-bold tracking-[0.2em] uppercase z-50 flex items-center gap-2">
+      <header
+        className={`fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-3 md:px-12 md:py-4 transition-all duration-300 ease-out ${headerBackgroundClass} ${textColorClass} ${
+          isVisible ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
+        <Link
+          href="/"
+          className="font-sans text-sm font-bold tracking-[0.2em] uppercase z-50 flex items-center gap-2 transition-colors"
+        >
           LIFE ATLAS
         </Link>
 
@@ -89,14 +176,14 @@ export default function Navigation() {
             <Link
               key={link.href}
               href={link.href}
-              className="font-sans text-sm font-medium hover:text-accent transition-colors"
+              className={`font-sans text-sm font-medium transition-colors ${linkHoverClass}`}
             >
               {link.label}
             </Link>
           ))}
-          <button 
-            aria-label="Open search" 
-            className="hover:text-accent transition-colors"
+          <button
+            aria-label="Open search"
+            className={`transition-colors ${linkHoverClass}`}
             onClick={() => window.dispatchEvent(new Event("open-search"))}
           >
             <Search size={18} aria-hidden="true" />
@@ -104,13 +191,17 @@ export default function Navigation() {
         </div>
 
         <button
-          className="z-50 flex items-center justify-center p-2 hover:text-accent transition-colors"
+          className={`z-50 flex items-center justify-center p-2 transition-colors ${linkHoverClass}`}
           onClick={() => setIsOpen(!isOpen)}
           aria-label={isOpen ? "Close menu" : "Open menu"}
           aria-expanded={isOpen}
           aria-controls="fullscreen-menu"
         >
-          {isOpen ? <X size={24} aria-hidden="true" className={isOpen ? "text-accent-red" : ""} /> : <Menu size={24} aria-hidden="true" />}
+          {isOpen ? (
+            <X size={24} aria-hidden="true" className={isOpen ? "text-accent-red" : ""} />
+          ) : (
+            <Menu size={24} aria-hidden="true" />
+          )}
         </button>
       </header>
 
