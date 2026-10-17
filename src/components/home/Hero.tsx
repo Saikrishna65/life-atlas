@@ -202,24 +202,23 @@ export default function Hero() {
             <div className="flex items-center gap-2 mb-3">
               <span className="w-1.5 h-1.5 rounded-full bg-white" />
               <span className="font-sans text-[10px] md:text-[11px] uppercase tracking-[0.3em] text-white/80 font-semibold">
-                Life Atlas &bull; Archive &amp; Memories
+                Personal Travel Log &bull; Stories &amp; Places
               </span>
             </div>
 
             <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl text-white tracking-[-0.025em] font-light leading-[1.06] mb-5">
-              A place for the <span className="italic font-normal">moments</span> I want to remember.
+              All my travels and <span className="italic font-normal">memories</span>, in one place.
             </h1>
 
             <p className="font-body text-xs sm:text-sm text-white/85 leading-relaxed mb-6 max-w-sm">
-              Behind every door lies a quiet world waiting to be remembered. An intimate atlas of journeys,
-              hidden places, and the landscapes that stay with us long after coming home.
+              Welcome to my travel journal. Here you will find the trips I've taken, photos from the road, and the favorite places I never want to forget.
             </p>
 
             <Link
               href="/explore"
               className="inline-flex items-center gap-2 px-6 py-3 bg-white text-slate-950 font-sans font-semibold text-[11px] uppercase tracking-widest rounded-lg hover:bg-white/90 backdrop-blur-md transition-all duration-300 hover:scale-[1.02]"
             >
-              Explore the atlas &rarr;
+              Explore my trips &rarr;
             </Link>
           </div>
 
@@ -233,16 +232,16 @@ export default function Hero() {
             <div className="flex items-center gap-2 mb-3">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span className="font-sans text-[10px] md:text-[11px] uppercase tracking-[0.3em] text-white/80 font-semibold">
-                Chapter 01 &bull; The Opening
+                Featured Trip &bull; The Mountains
               </span>
             </div>
 
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl text-white tracking-[-0.025em] font-light leading-[1.1] mb-4">
-              A window to <span className="italic font-normal">untouched</span> silence.
+              Fresh air and <span className="italic font-normal">quiet trails</span>.
             </h2>
 
             <p className="font-body text-xs sm:text-sm text-white/85 leading-relaxed mb-6 max-w-sm">
-              The path to discovery is limitless, carrying us past the everyday into ridgelines, quiet trails, and mornings where the world feels brand new.
+              There is nothing quite like taking a break from the daily routine to hike through the hills, see new places, and enjoy nature.
             </p>
 
             <Link
@@ -250,7 +249,7 @@ export default function Hero() {
               className="inline-flex items-center gap-2 text-[11px] font-sans font-semibold uppercase tracking-widest text-white hover:text-white/80 transition-colors group"
             >
               <span className="border-b border-white group-hover:border-white/60 pb-0.5 transition-colors">
-                Discover the Himalayan Route
+                View the Himalayan trip
               </span>
               <span className="transition-transform group-hover:translate-x-1">&rarr;</span>
             </Link>
@@ -266,23 +265,23 @@ export default function Hero() {
             <div className="flex items-center gap-2 mb-3">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span className="font-sans text-[10px] md:text-[11px] uppercase tracking-[0.3em] text-white/80 font-semibold">
-                Chapter 02 &bull; The Horizon
+                Travel Stories &bull; Looking Back
               </span>
             </div>
 
             <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl text-white tracking-[-0.025em] font-light leading-[1.08] mb-5 max-w-xl">
-              Where the sky <span className="italic font-normal">meets</span> the earth.
+              Every trip has a <span className="italic font-normal">story</span> to tell.
             </h2>
 
             <p className="font-body text-xs sm:text-sm md:text-base text-white/85 leading-relaxed mb-6 max-w-md">
-              To travel is to collect moments that outlive the journey. The quiet of 3,600 meters, wind through ancient stone, and the road that stays with you forever.
+              Whether it is a weekend road trip or an adventure far from home, the best part of traveling is the good memories and photos you bring back.
             </p>
 
             <Link
               href="/trips"
               className="inline-flex items-center gap-2 px-6 py-3 bg-white text-slate-950 font-sans font-semibold text-[11px] uppercase tracking-widest rounded-lg hover:bg-white/90 backdrop-blur-md transition-all duration-300 hover:scale-[1.02]"
             >
-              Explore all journeys &rarr;
+              See all trips &rarr;
             </Link>
           </div>
 
@@ -294,7 +293,7 @@ export default function Hero() {
               className="flex flex-col items-start gap-2 pointer-events-none will-change-transform"
             >
               <span className="font-sans text-[10px] uppercase tracking-[0.3em] text-white/80 font-semibold">
-                Scroll to explore
+                Scroll down to explore
               </span>
               <div className="w-8 h-[1px] bg-white/60" />
             </div>
@@ -316,7 +315,7 @@ export default function Hero() {
               </div>
               <div className="flex flex-col text-left">
                 <span className="font-sans text-[9px] uppercase tracking-widest text-white/60 font-semibold">
-                  Featured Journey
+                  Featured Trip
                 </span>
                 <span className="font-display text-sm font-medium text-white line-clamp-1 group-hover:text-white/80 transition-colors">
                   The Himalayan Journey
