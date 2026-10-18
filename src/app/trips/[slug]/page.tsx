@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getTripBySlug, getNextTrip } from "@/lib/queries/trips";
+import { getTripBySlug, getNextTrip, getAllTripSlugs } from "@/lib/queries/trips";
 import TripHero from "@/components/trips/TripHero";
 import TripOverview from "@/components/trips/TripOverview";
 import TripDays from "@/components/trips/TripDays";
@@ -7,6 +7,10 @@ import TripExperiences from "@/components/trips/TripExperiences";
 import TripGallery from "@/components/trips/TripGallery";
 import NextJourney from "@/components/trips/NextJourney";
 import { Metadata } from "next";
+
+export async function generateStaticParams() {
+  return await getAllTripSlugs();
+}
 
 export async function generateMetadata({
   params,

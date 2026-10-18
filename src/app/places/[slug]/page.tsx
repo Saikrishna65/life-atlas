@@ -1,11 +1,15 @@
 import { notFound } from "next/navigation";
-import { getPlaceBySlug } from "@/lib/queries/places";
+import { getPlaceBySlug, getAllPlaceSlugs } from "@/lib/queries/places";
 import PlaceHero from "@/components/places/PlaceHero";
 import PlaceOverview from "@/components/places/PlaceOverview";
 import PlaceTrips from "@/components/places/PlaceTrips";
 import TripExperiences from "@/components/trips/TripExperiences";
 import TripGallery from "@/components/trips/TripGallery";
 import { Metadata } from "next";
+
+export async function generateStaticParams() {
+  return await getAllPlaceSlugs();
+}
 
 export async function generateMetadata({
   params,

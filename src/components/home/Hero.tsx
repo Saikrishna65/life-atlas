@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -23,7 +24,11 @@ const HeroScene = dynamic(() => import("./hero/HeroScene"), {
   ),
 });
 
-export default function Hero() {
+interface HeroProps {
+  onReady?: () => void;
+}
+
+export default function Hero({ onReady }: HeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const headlineBoxRef = useRef<HTMLDivElement>(null);
   const secondBoxRef = useRef<HTMLDivElement>(null);
@@ -31,142 +36,328 @@ export default function Hero() {
   const scrollPromptRef = useRef<HTMLDivElement>(null);
   const featuredCardRef = useRef<HTMLAnchorElement>(null);
   const progressRef = useRef<number>(0);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => {
+    if (typeof window !== "undefined") {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+    return false;
+  });
 
   useEffect(() => {
-    // Check reduced motion preference
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handleMotionChange = (e: MediaQueryListEvent) => {
+      setPrefersReducedMotion(e.matches);
+    };
+    mediaQuery.addEventListener("change", handleMotionChange);
+
     if (mediaQuery.matches) {
-      setPrefersReducedMotion(true);
-      return;
+      return () => {
+        mediaQuery.removeEventListener("change", handleMotionChange);
+      };
     }
 
     const container = containerRef.current;
     if (!container) return;
 
-    // Create deterministic GSAP ScrollTrigger timeline:
-    // Text comes from out of the bottom of the hero and exits out of the top on scroll
+    // Detect mobile browser or Capacitor native mobile app
+    const isMobile =
+      (typeof window !== "undefined" && Capacitor.isNativePlatform()) ||
+      (typeof navigator !== "undefined" &&
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) ||
+      (typeof window !== "undefined" && window.innerWidth < 768);
+
+    let tickerCallback: (() => void) | null = null;
+    let st: ScrollTrigger | null = null;
+
+    const targetProgressRef = { current: 0 };
+    const currentProgressRef = { current: 0 };
+
+    // Create deterministic GSAP timeline:
+    // Driven frame-by-frame by our rate-limited controller so that the animation
+    // never exceeds a smooth, cinematic maximum speed regardless of how fast the user scrolls.
     const ctx = gsap.context(() => {
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: container,
-          start: "top top",
-          end: "bottom bottom",
-          scrub: 0.1,
-          onUpdate: (self) => {
-            progressRef.current = self.progress;
-          },
+      const tl = gsap.timeline({ paused: true });
+
+      // ScrollTrigger strictly tracks container scroll to update targetProgress
+      st = ScrollTrigger.create({
+        trigger: container,
+        start: "top top",
+        end: "bottom bottom",
+        onUpdate: (self) => {
+          targetProgressRef.current = self.progress;
         },
       });
 
-      // 1. STAGE 1 (Left): Starts in view, scrolls straight UP and completely exits out of the hero top (0% -> 26%)
+      // Synchronize immediately if page loaded with an existing scroll offset
+      if (st.progress) {
+        targetProgressRef.current = st.progress;
+        currentProgressRef.current = st.progress;
+        tl.progress(st.progress);
+        progressRef.current = st.progress;
+      }
+
+      // Maximum animation speed: progress units per second.
+      // 0.60 on mobile/app ensures that no matter how fast the user scrolls or flings,
+      // traversing the entire hero takes at least ~1.66s, preventing jarring skips or rapid whipping.
+      // 0.70 on desktop provides a smooth, controlled cinematic glide.
+      const MAX_SPEED = isMobile ? 0.60 : 0.70;
+      let lastTime = performance.now();
+
+      tickerCallback = () => {
+        const now = performance.now();
+        const dt = Math.min((now - lastTime) / 1000, 0.05);
+        lastTime = now;
+
+        const target = targetProgressRef.current;
+        const current = currentProgressRef.current;
+        const delta = target - current;
+        const dist = Math.abs(delta);
+
+        if (dist < 0.00005) {
+          if (current !== target) {
+            currentProgressRef.current = target;
+            tl.progress(target);
+            progressRef.current = target;
+          }
+          return;
+        }
+
+        // Smooth exponential approach capped strictly at MAX_SPEED
+        // Guarantees continuous silky movement without sudden velocity-zero stops or jerks
+        const maxStep = MAX_SPEED * dt;
+        const rawStep = delta * (1 - Math.exp(-14 * dt));
+        const step = Math.sign(rawStep) * Math.min(Math.abs(rawStep), maxStep);
+
+        let nextProgress = current + step;
+
+        // Clean snap to 1.0 when target is 1.0 and within completion threshold
+        if (target === 1.0 && Math.abs(1.0 - nextProgress) < 0.004) {
+          nextProgress = 1.0;
+        }
+
+        nextProgress = Math.min(1, Math.max(0, nextProgress));
+        currentProgressRef.current = nextProgress;
+
+        // Synchronize both DOM text stages and 3D canvas sequence in exact frame-lock
+        tl.progress(nextProgress);
+        progressRef.current = nextProgress;
+      };
+
+      gsap.ticker.add(tickerCallback);
+
+      // 1. STAGE 1 (Left): Starts in view, scrolls straight UP and completely exits out of the hero top
       if (headlineBoxRef.current) {
         tl.to(
           headlineBoxRef.current,
           {
-            y: "-110vh",
+            y: "-90vh",
             opacity: 0,
-            ease: "power1.in",
-            duration: 0.26,
+            ease: "none",
+            duration: 0.22,
           },
           0
         );
+        tl.set(headlineBoxRef.current, { pointerEvents: "auto" }, 0);
+        tl.set(headlineBoxRef.current, { pointerEvents: "none" }, 0.20);
       }
 
-      // Scroll Prompt: Scrolls off to top (0% -> 10%)
+      // Scroll Prompt: Scrolls off to top (0% -> 12%)
       if (scrollPromptRef.current) {
         tl.to(
           scrollPromptRef.current,
           {
             y: "-40vh",
             opacity: 0,
-            ease: "power1.in",
-            duration: 0.10,
+            ease: "none",
+            duration: 0.12,
           },
           0
         );
       }
 
-      // Featured Destination Card: Scrolls off (15% -> 32%)
+      // Featured Destination Card: Scrolls off (0% -> 18%)
       if (featuredCardRef.current) {
         tl.to(
           featuredCardRef.current,
           {
             y: "-40vh",
             opacity: 0,
-            ease: "power1.in",
-            duration: 0.17,
+            ease: "none",
+            duration: 0.18,
           },
-          0.15
+          0
         );
       }
 
-      // 2. STAGE 2 (Mid-Left: between left and center):
-      // Comes from OUT of the bottom of the hero (+110vh), passes through center, exits out of the top (-110vh)
+      // 2. STAGE 2 (Mid-Left text):
+      // Continuous uninterrupted upward glide from bottom to top according to the scroll — never freezes in the center
       if (secondBoxRef.current) {
-        // Enters from bottom: +110vh -> 0 (16% -> 38%)
+        // Continuous upward travel matching scroll 1:1
         tl.fromTo(
           secondBoxRef.current,
-          { y: "110vh", yPercent: -50, opacity: 0 },
+          { y: "90vh", yPercent: -50 },
           {
-            y: "0vh",
+            y: "-90vh",
             yPercent: -50,
-            opacity: 1,
-            ease: "power1.out",
-            duration: 0.22,
+            ease: "none",
+            duration: 0.44,
           },
-          0.16
+          0.14
         );
 
-        // Exits out of top: 0 -> -110vh (42% -> 62%)
+        // Opacity: fade in as it enters, remain crisp through center, fade out as it exits top
+        tl.fromTo(
+          secondBoxRef.current,
+          { opacity: 0 },
+          {
+            opacity: 1,
+            ease: "power1.out",
+            duration: 0.12,
+          },
+          0.14
+        );
+
         tl.to(
           secondBoxRef.current,
           {
-            y: "-110vh",
-            yPercent: -50,
             opacity: 0,
             ease: "power1.in",
-            duration: 0.20,
+            duration: 0.12,
           },
-          0.42
+          0.46
         );
+
+        tl.set(secondBoxRef.current, { pointerEvents: "none" }, 0);
+        tl.set(secondBoxRef.current, { pointerEvents: "auto" }, 0.20);
+        tl.set(secondBoxRef.current, { pointerEvents: "none" }, 0.54);
       }
 
-      // 3. STAGE 3 (Center):
-      // Comes from OUT of the bottom of the hero (+110vh), passes through center, exits out of the top (-110vh)
+      // 3. STAGE 3 (Center text):
+      // Continuous uninterrupted upward glide from bottom to top according to the scroll — never freezes in the center
       if (thirdBoxRef.current) {
-        // Enters from bottom: +110vh -> 0 (50% -> 72%)
+        // Continuous upward travel matching scroll 1:1
         tl.fromTo(
           thirdBoxRef.current,
-          { y: "110vh", yPercent: -50, xPercent: -50, opacity: 0 },
+          { y: "90vh", yPercent: -50, xPercent: -50 },
           {
-            y: "0vh",
+            y: "-90vh",
             yPercent: -50,
             xPercent: -50,
-            opacity: 1,
-            ease: "power1.out",
-            duration: 0.22,
+            ease: "none",
+            duration: 0.44,
           },
-          0.50
+          0.48
         );
 
-        // Exits out of top: 0 -> -110vh (76% -> 96%)
+        // Opacity: fade in as it enters, remain crisp through center, fade out as it exits top
+        tl.fromTo(
+          thirdBoxRef.current,
+          { opacity: 0 },
+          {
+            opacity: 1,
+            ease: "power1.out",
+            duration: 0.12,
+          },
+          0.48
+        );
+
         tl.to(
           thirdBoxRef.current,
           {
-            y: "-110vh",
-            yPercent: -50,
-            xPercent: -50,
             opacity: 0,
             ease: "power1.in",
-            duration: 0.20,
+            duration: 0.12,
           },
-          0.76
+          0.80
         );
+
+        tl.set(thirdBoxRef.current, { pointerEvents: "none" }, 0);
+        tl.set(thirdBoxRef.current, { pointerEvents: "auto" }, 0.54);
+        tl.set(thirdBoxRef.current, { pointerEvents: "none" }, 0.88);
       }
     }, containerRef);
 
+    // Compute maximum scroll position before hero unpins
+    const getMaxHeroScroll = () => {
+      const el = containerRef.current;
+      if (!el) return 0;
+      return Math.max(0, el.offsetTop + el.offsetHeight - window.innerHeight);
+    };
+
+    // Hold hero pinned / prevent scroll past hero until hero scene animation has fully completed
+    const clampToHeroIfIncomplete = () => {
+      const maxScroll = getMaxHeroScroll();
+      if (maxScroll <= 0) return false;
+
+      // If user has scrolled to or past the hero bottom while animation is still catching up
+      if (window.scrollY > maxScroll && currentProgressRef.current < 0.99) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const lenis = (window as any).__lenis;
+        if (lenis && typeof lenis.scrollTo === "function") {
+          lenis.scrollTo(maxScroll, { immediate: true });
+        } else {
+          window.scrollTo(0, maxScroll);
+        }
+        return true;
+      }
+      return false;
+    };
+
+    const handleScrollLock = () => {
+      clampToHeroIfIncomplete();
+    };
+
+    const handleWheelLock = (e: WheelEvent) => {
+      const maxScroll = getMaxHeroScroll();
+      if (maxScroll <= 0) return;
+
+      // If at or past hero bottom, scrolling downward, and animation not yet completed: hold at hero
+      if (window.scrollY >= maxScroll - 2 && e.deltaY > 0 && currentProgressRef.current < 0.99) {
+        e.preventDefault();
+        clampToHeroIfIncomplete();
+      }
+    };
+
+    let touchStartY = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        touchStartY = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 0) return;
+      const maxScroll = getMaxHeroScroll();
+      if (maxScroll <= 0) return;
+
+      const touchY = e.touches[0].clientY;
+      // Moving finger UP means scrolling the page DOWN
+      const isSwipingDown = touchY < touchStartY - 2;
+
+      if (window.scrollY >= maxScroll - 2 && isSwipingDown && currentProgressRef.current < 0.99) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        clampToHeroIfIncomplete();
+      }
+    };
+
+    window.addEventListener("scroll", handleScrollLock, { passive: false });
+    window.addEventListener("wheel", handleWheelLock, { passive: false });
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchmove", handleTouchMove, { passive: false });
+
     return () => {
+      if (tickerCallback) {
+        gsap.ticker.remove(tickerCallback);
+      }
+      if (st) {
+        st.kill();
+      }
+      window.removeEventListener("scroll", handleScrollLock);
+      window.removeEventListener("wheel", handleWheelLock);
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchmove", handleTouchMove);
       ctx.revert();
     };
   }, []);
@@ -178,19 +369,29 @@ export default function Hero() {
       data-theme="dark"
       className="relative w-full text-foreground"
       style={{
-        height: prefersReducedMotion ? "100vh" : "340vh",
+        height: prefersReducedMotion ? "100dvh" : "340vh",
       }}
       aria-label="Life Atlas Hero"
     >
       {/* Pinned Sticky Viewport */}
-      <div className="sticky top-0 h-screen w-full overflow-hidden flex flex-col justify-between">
+      <div className="sticky top-0 h-[100dvh] w-full overflow-hidden flex flex-col justify-between">
         {/* Background Cinematic Canvas Scene */}
         <div className="absolute inset-0 z-0">
-          <HeroScene progressRef={progressRef} />
+          <HeroScene
+            progressRef={progressRef}
+            onSceneReady={() => {
+              if (typeof window !== "undefined") {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (window as any).__heroReady = true;
+                window.dispatchEvent(new CustomEvent("hero-ready"));
+              }
+              onReady?.();
+            }}
+          />
         </div>
 
         {/* Main Content Layout — Modeled after Travel Next Level Composition */}
-        <div className="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none px-6 md:px-12 lg:px-16 pt-24 md:pt-28 pb-8">
+        <div className="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none px-6 md:px-12 lg:px-16 pt-[calc(env(safe-area-inset-top,0px)+5.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)]">
 
           {/* ========================================================= */}
           {/* STAGE 1: Left Editorial Text (Initial Screen: 0% -> 26%) */}
@@ -211,7 +412,7 @@ export default function Hero() {
             </h1>
 
             <p className="font-body text-xs sm:text-sm text-white/85 leading-relaxed mb-6 max-w-sm">
-              Welcome to my travel journal. Here you will find the trips I've taken, photos from the road, and the favorite places I never want to forget.
+              Welcome to my travel journal. Here you will find the trips I&apos;ve taken, photos from the road, and the favorite places I never want to forget.
             </p>
 
             <Link

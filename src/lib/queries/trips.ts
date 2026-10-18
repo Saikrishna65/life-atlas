@@ -63,3 +63,14 @@ export async function getNextTrip(currentDate: Date, currentId: string) {
   }
   return nextTrip;
 }
+
+export async function getAllTripSlugs() {
+  try {
+    const trips = await prisma.trip.findMany({ select: { slug: true } });
+    return trips.map((t) => ({ slug: t.slug }));
+  } catch (error) {
+    console.error('Error fetching all trip slugs:', error);
+    return [];
+  }
+}
+

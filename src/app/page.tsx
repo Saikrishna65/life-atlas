@@ -8,12 +8,15 @@ import Link from "next/link";
 import { getHomepageData } from "@/lib/queries/home";
 
 import LazyGlobe from "@/components/home/LazyGlobe";
+import HomePreloader from "@/components/home/HomePreloader";
 
 export default async function Home() {
   const { stats, featuredTrips, timelinePreview, photos, experiences, globePlaces } = await getHomepageData();
 
   return (
-    <main className="bg-background text-foreground min-h-screen">
+    <>
+      <HomePreloader />
+      <main className="bg-background text-foreground min-h-screen">
       <Hero />
       <LazyGlobe places={globePlaces} />
       
@@ -33,5 +36,6 @@ export default async function Home() {
         </Link>
       </section>
     </main>
+  </>
   );
 }

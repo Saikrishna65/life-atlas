@@ -1,10 +1,19 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { display, sans, body } from "@/lib/fonts";
 import "./globals.css";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import Navigation from "@/components/layout/Navigation";
 import Footer from "@/components/layout/Footer";
 import SearchOverlay from "@/components/layout/SearchOverlay";
+import MobileAppBridge from "@/components/layout/MobileAppBridge";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#05070a",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lifeatlas.example.com'),
@@ -44,6 +53,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={`${display.variable} ${sans.variable} ${body.variable}`}>
       <body suppressHydrationWarning>
+        <MobileAppBridge />
         <div className="grain-overlay" />
         <SmoothScroll>
           <Navigation />

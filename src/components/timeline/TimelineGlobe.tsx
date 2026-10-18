@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import createGlobe from "cobe";
+import createGlobe, { type Globe } from "cobe";
 import { useSpring } from "framer-motion";
 
 interface TimelineEvent {
@@ -15,9 +15,13 @@ interface TimelineGlobeProps {
   activeIndex: number;
 }
 
+type ExtendedCOBEOptions = Parameters<typeof createGlobe>[1] & {
+  onRender?: (state: Record<string, number>) => void;
+};
+
 export default function TimelineGlobe({ events, activeIndex }: TimelineGlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const globeInstance = useRef<any>(null);
+  const globeInstance = useRef<Globe | null>(null);
 
   // Smooth rotation springs
   const phiSpring = useSpring(0, { stiffness: 100, damping: 40, mass: 1 });
@@ -41,7 +45,7 @@ export default function TimelineGlobe({ events, activeIndex }: TimelineGlobeProp
     let phi = 0;
     const validEvents = events.filter(e => e.latitude !== null && e.longitude !== null);
     
-    const globe = createGlobe(canvasRef.current, {
+    const options: ExtendedCOBEOptions = {
       devicePixelRatio: 2,
       width: 1000,
       height: 1000,
@@ -58,7 +62,7 @@ export default function TimelineGlobe({ events, activeIndex }: TimelineGlobeProp
         location: [e.latitude!, e.longitude!],
         size: 0.05
       })),
-      onRender: (state: Record<string, any>) => {
+      onRender: (state: Record<string, number>) => {
         if (events.length === 0) {
           phi += 0.005;
           state.phi = phi;
@@ -67,7 +71,9 @@ export default function TimelineGlobe({ events, activeIndex }: TimelineGlobeProp
           state.theta = thetaSpring.get() * -0.5; 
         }
       }
-    } as any);
+    };
+
+    const globe = createGlobe(canvasRef.current, options as Parameters<typeof createGlobe>[1]);
 
     globeInstance.current = globe;
 

@@ -22,88 +22,90 @@ const secondaryLinks = [
   { href: "/cinema", label: "Cinema" },
 ];
 
+const isHeroRoute = (path: string | null) => {
+  if (!path) return false;
+  if (path === "/") return true;
+  if (path.startsWith("/trips/") && path !== "/trips") return true;
+  if (path.startsWith("/places/") && path !== "/places") return true;
+  return false;
+};
+
 export default function Navigation() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isInHero, setIsInHero] = useState(true);
-  const isDarkPageInitially = pathname === "/" || pathname?.startsWith('/trips/') || pathname?.startsWith('/places/');
-  const [heroTheme, setHeroTheme] = useState<"light" | "dark">(isDarkPageInitially ? "dark" : "light");
+  const [isInHero, setIsInHero] = useState(() => isHeroRoute(pathname));
   const prevScrollY = useRef(0);
   const tlRef = useRef<gsap.core.Tween | null>(null);
 
   useEffect(() => {
-    const checkHeroState = () => {
-      const heroEl = document.querySelector<HTMLElement>('[data-hero], [aria-label*="Hero"], .hero-section');
-      if (!heroEl) {
-        setIsInHero(false);
-        return false;
+    const checkIsInHero = () => {
+      const heroEl = document.querySelector<HTMLElement>(
+        '[data-hero], [aria-label*="Hero"], .hero-section'
+      );
+      if (heroEl) {
+        const rect = heroEl.getBoundingClientRect();
+        // The navbar is fixed at the top of the viewport (height ~60px).
+        // It is considered inside the hero while the hero's bottom edge is below 60px.
+        return rect.bottom > 60 && rect.top <= 60;
       }
-
-      const theme = (heroEl.getAttribute('data-theme') as "light" | "dark") || (pathname === "/" || pathname?.startsWith('/trips/') || pathname?.startsWith('/places/') ? "dark" : "light");
-      setHeroTheme(theme);
-
-      const rect = heroEl.getBoundingClientRect();
-      const currentScrollY = window.scrollY;
-      
-      // Hero section is active while any part of it spans the top/viewport
-      const inHero = rect.height === 0 
-        ? (currentScrollY < 500 || pathname === "/")
-        : (rect.top <= 100 && rect.bottom > 0);
-
-      setIsInHero(inHero);
-      return inHero;
+      return false;
     };
+
+    const updateHeroState = () => {
+      setIsInHero(checkIsInHero());
+    };
+
+    // Check after paint/microtask in case hero DOM mounted asynchronously
+    const rafId = requestAnimationFrame(updateHeroState);
+    const timeoutId = setTimeout(updateHeroState, 100);
 
     const handleScroll = () => {
       if (isOpen) return;
 
       const currentScrollY = window.scrollY;
-      setIsScrolled(currentScrollY > 20);
-      checkHeroState();
 
-      // Navbar is scrollable everywhere (both in hero and outside):
+      // Update hero intersection state on every scroll tick
+      updateHeroState();
+
+      // Navbar scroll direction detection:
       // - Scroll down hides navbar
       // - Scroll up reveals navbar
       // - Near top (< 50px) always reveals navbar
       if (currentScrollY < prevScrollY.current || currentScrollY < 50) {
         setIsVisible(true);
-      } else if (currentScrollY > 50 && currentScrollY > prevScrollY.current) {
+      } else if (currentScrollY > 50 && currentScrollY > prevScrollY.current + 4) {
         setIsVisible(false);
       }
 
       prevScrollY.current = currentScrollY;
     };
 
-    // Initial check on mount and pathname change
     const initialScrollY = typeof window !== "undefined" ? window.scrollY : 0;
     prevScrollY.current = initialScrollY;
-    setIsScrolled(initialScrollY > 20);
-    setIsVisible(true);
-    checkHeroState();
-
-    // Re-check after hydration or dynamic elements mount
-    const rafId = requestAnimationFrame(() => {
-      checkHeroState();
-    });
-    const timerId = setTimeout(() => {
-      checkHeroState();
-    }, 200);
-
-    const observer = new MutationObserver(() => {
-      checkHeroState();
-    });
-    if (document.body) {
-      observer.observe(document.body, { childList: true, subtree: true });
-    }
 
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", updateHeroState, { passive: true });
+    window.addEventListener("hero-ready", updateHeroState);
+
+    let heroObserver: IntersectionObserver | null = null;
+    const heroEl = document.querySelector<HTMLElement>(
+      '[data-hero], [aria-label*="Hero"], .hero-section'
+    );
+    if (heroEl) {
+      heroObserver = new IntersectionObserver(() => {
+        updateHeroState();
+      });
+      heroObserver.observe(heroEl);
+    }
+
     return () => {
       cancelAnimationFrame(rafId);
-      clearTimeout(timerId);
-      observer.disconnect();
+      clearTimeout(timeoutId);
+      if (heroObserver) heroObserver.disconnect();
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", updateHeroState);
+      window.removeEventListener("hero-ready", updateHeroState);
     };
   }, [isOpen, pathname]);
 
@@ -138,35 +140,26 @@ export default function Navigation() {
     };
   }, []);
 
-  // Determine header styling: In hero, always transparent (never white)
-  const headerBackgroundClass = isOpen || isInHero || !isScrolled
-    ? "bg-transparent border-transparent backdrop-blur-none shadow-none"
-    : "bg-background/80 backdrop-blur-xl border-b border-muted/70 shadow-xs";
-
   const textColorClass = isOpen
-    ? "text-foreground"
+    ? "text-black"
     : isInHero
-    ? heroTheme === "dark"
-      ? "text-white"
-      : "text-slate-900"
-    : "text-foreground";
+    ? "text-white"
+    : "text-black";
 
-  const linkHoverClass = isOpen
-    ? "hover:text-accent"
-    : isInHero && heroTheme === "dark"
-    ? "hover:text-white/80"
-    : "hover:text-accent";
+  const linkHoverClass = isInHero && !isOpen
+    ? "hover:text-white/70"
+    : "hover:text-black/60";
 
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-3 md:px-12 md:py-4 transition-all duration-300 ease-out ${headerBackgroundClass} ${textColorClass} ${
+        className={`fixed top-0 left-0 right-0 z-40 flex items-center justify-between px-6 py-3 md:px-12 md:py-4 bg-transparent transition-all duration-300 ease-out ${textColorClass} ${
           isVisible ? "translate-y-0" : "-translate-y-full"
         }`}
       >
         <Link
           href="/"
-          className="font-sans text-sm font-bold tracking-[0.2em] uppercase z-50 flex items-center gap-2 transition-colors"
+          className={`font-sans text-sm font-bold tracking-[0.2em] uppercase z-50 flex items-center gap-2 transition-colors ${linkHoverClass}`}
         >
           LIFE ATLAS
         </Link>

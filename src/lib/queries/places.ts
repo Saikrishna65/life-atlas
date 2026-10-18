@@ -33,3 +33,14 @@ export async function getPlaceBySlug(slug: string) {
     }
   });
 }
+
+export async function getAllPlaceSlugs() {
+  try {
+    const places = await prisma.place.findMany({ select: { slug: true } });
+    return places.map((p) => ({ slug: p.slug }));
+  } catch (error) {
+    console.error('Error fetching all place slugs:', error);
+    return [];
+  }
+}
+

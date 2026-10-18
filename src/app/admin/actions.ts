@@ -1,6 +1,6 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, EventType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 const prisma = new PrismaClient();
@@ -104,8 +104,7 @@ export async function createTimelineEvent(formData: FormData) {
       title: formData.get("title") as string,
       description: formData.get("description") as string || null,
       date: new Date(formData.get("date") as string),
-      // @ts-ignore
-      type: formData.get("type") as any,
+      type: (formData.get("type") as EventType) || EventType.TRIP,
       userId,
       referenceId: formData.get("referenceId") as string || null,
     }

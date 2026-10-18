@@ -43,8 +43,9 @@ export default function Studio() {
       if (activeTab === "places") setPlaceCoverUrl("");
       if (activeTab === "photos") setPhotoUrl("");
       
-    } catch (err: any) {
-      setStatus({ type: 'error', message: err.message || 'An error occurred.' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An error occurred.';
+      setStatus({ type: 'error', message });
     }
   }
 

@@ -52,10 +52,15 @@
   }
   html {
     background: var(--background);
+    min-height: 100dvh;
+    -webkit-text-size-adjust: 100%;
   }
   body {
     @apply bg-background text-foreground font-body antialiased;
     overflow-x: hidden;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 0;
   }
 
   h1, h2, h3, h4, h5, h6 {

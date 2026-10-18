@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -28,30 +27,7 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const globeContainerRef = useRef<HTMLDivElement>(null);
   const globeInstanceRef = useRef<unknown>(null);
-  const [hoveredPlace, setHoveredPlace] = useState<GlobePlace | null>(null);
   const [isGlobeReady, setIsGlobeReady] = useState(false);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const mousePosRef = useRef({ x: 0, y: 0 });
-  const router = useRouter();
-
-  useEffect(() => {
-    if (hoveredPlace && tooltipRef.current) {
-      tooltipRef.current.style.left = `${mousePosRef.current.x}px`;
-      tooltipRef.current.style.top = `${mousePosRef.current.y}px`;
-    }
-  }, [hoveredPlace]);
-
-  useEffect(() => {
-    const updateMouse = (e: MouseEvent) => {
-      mousePosRef.current = { x: e.clientX, y: e.clientY };
-      if (tooltipRef.current) {
-        tooltipRef.current.style.left = `${e.clientX}px`;
-        tooltipRef.current.style.top = `${e.clientY}px`;
-      }
-    };
-    window.addEventListener("mousemove", updateMouse, { passive: true });
-    return () => window.removeEventListener("mousemove", updateMouse);
-  }, []);
 
   const validPlaces = useMemo(
     () => places.filter(p => p.latitude !== null && p.longitude !== null),
@@ -70,8 +46,8 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
 
     const containerEl = globeContainerRef.current;
     if (!containerEl) return;
-    const width = containerEl.clientWidth;
-    const height = containerEl.clientHeight;
+    const width = containerEl.clientWidth || window.innerWidth;
+    const height = containerEl.clientHeight || (window.innerWidth < 768 ? 420 : 650);
 
     const homeLocation = {
       id: "home",
@@ -82,9 +58,8 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       longitude: 81.9,
       isHome: true,
       tripPlaces: []
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
-
-    const allPoints = [...validPlaces, homeLocation];
 
     const arcsData = validPlaces.map((p) => ({
       startLat: homeLocation.latitude,
@@ -93,17 +68,16 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       endLng: p.longitude,
     }));
 
-    // Site is light-only now — keep the globe in sync with globals.css tokens
-    const isDark = false;
+    // Light theme palette matching globals.css tokens
     const colors = {
-      base: "#ffffff", // perfectly match bg-background
-      bg: "#ffffff", // match bg-background for the fog so the scene edges blend flawlessly
-      land: "#1e293b", // slate-800 for extremely bold, high-contrast continents
+      base: "#ffffff", // matches bg-background
+      bg: "#ffffff", // matches bg-background for fog
+      land: "#1e293b", // slate-800 for high-contrast continents
       accent: "#1f4fd8", // cobalt blue for destination pillars
-      point: "#64748b", // darker slate so particles are actually visible against light bg
-      glow: "#94a3b8", // darker slate for a much stronger atmosphere shadow
-      line: "#94a3b8", // sleek silver/slate for the travel arcs, keeping the focus on the pillars
-      home: "#e5484d", // coral red for the home base rings
+      point: "#64748b", // darker slate for background particles
+      glow: "#94a3b8", // atmosphere halo shadow
+      line: "#94a3b8", // silver/slate for flight arcs
+      home: "#e5484d", // coral red for home ripple
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,81 +89,48 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       .showGlobe(true)
       .showAtmosphere(true)
       .atmosphereColor(colors.glow)
-      .atmosphereAltitude(0.2) // increased for a thicker, more visible shadow/halo
+      .atmosphereAltitude(0.2)
       
-      // Invisible points used exclusively for hover and click tracking!
-      .pointsData(allPoints)
-      .pointLat((d: any) => d.latitude)
-      .pointLng((d: any) => d.longitude)
-      .pointColor(() => "rgba(0,0,0,0)") // Make all pillars entirely invisible natively!
-      .pointAltitude((d: any) => d.isHome ? 0.08 : 0.18) // Ensure hitboxes are tall enough
-      .pointRadius((d: any) => d.isHome ? 0.3 : 0.15)
-      .pointResolution(4) // Creative square architectural pillars
-      .pointsMerge(false)
-      
-      // Radar Ping Ripple for the Home Base!
+      // Radar Ping Ripple for the Home Base
       .ringsData([homeLocation])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .ringLat((d: any) => d.latitude)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .ringLng((d: any) => d.longitude)
-      .ringAltitude(0.085) // Sits perfectly on top of the massive new terrain!
-      .ringColor(() => `${colors.home}aa`) // Vibrant Coral color with slight transparency
-      .ringMaxRadius(2) // Keeps the ripple small and localized around the home pin
-      .ringPropagationSpeed(1) // Much slower, gentle expansion
-      .ringRepeatPeriod(1000) // Fires like a gentle heartbeat once per second
+      .ringAltitude(0.085)
+      .ringColor(() => `${colors.home}aa`)
+      .ringMaxRadius(2)
+      .ringPropagationSpeed(1)
+      .ringRepeatPeriod(1000)
 
+      // Flight Travel Arcs
       .arcsData(arcsData)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .arcStartLat((d: any) => d.startLat)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .arcStartLng((d: any) => d.startLng)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .arcEndLat((d: any) => d.endLat)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .arcEndLng((d: any) => d.endLng)
-      .arcStartAltitude(0.08) // Beams launch from the top of the terrain!
-      .arcEndAltitude(0.08) // Beams land on the top of the terrain!
-      .arcColor(() => colors.line) // Vibrant Blue for the beams
-      .arcStroke(0.5) // Much thicker 3D tubes so they stand out boldly
-      .arcDashLength(1) // Solid beam that stretches the entire length
-      .arcDashGap(1) // Instantly starts the next beam
-      .arcDashInitialGap(() => Math.random() * 0.5) // Small stagger so they fire organically
+      .arcStartAltitude(0.08)
+      .arcEndAltitude(0.08)
+      .arcColor(() => colors.line)
+      .arcStroke(0.5)
+      .arcDashLength(1)
+      .arcDashGap(1)
+      .arcDashInitialGap(() => Math.random() * 0.5)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .arcDashAnimateTime((d: any) => {
-        // Calculate approximate physical distance between Home and Destination
         const dx = (d.endLng || 0) - (d.startLng || 0);
         const dy = (d.endLat || 0) - (d.startLat || 0);
         const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        // Solid beams look best moving slightly faster, so back to 80 multiplier!
-        return Math.max(2000, distance * 80); 
+        return Math.max(2000, distance * 80);
       })
-      .arcAltitudeAutoScale(0.8) // Makes the arcs stand up much higher into the sky
-      .onPointHover((point: unknown) => {
-        setHoveredPlace(point as GlobePlace | null);
-        if (containerEl) {
-          const isTouch = window.matchMedia("(pointer: coarse)").matches;
-          containerEl.style.cursor = point && !isTouch ? "none" : "grab";
-        }
-        
-        // Stop auto-rotation when hovering a pin so you can read it easily
-        const controls = globe.controls();
-        if (controls) {
-          controls.autoRotate = point ? false : !prefersReducedMotion;
-        }
-      })
-      .onPointClick((point: unknown) => {
-        const p = point as GlobePlace;
-        if (p?.slug) {
-          // Disable rotation during flight
-          const controls = globe.controls();
-          if (controls) controls.autoRotate = false;
-          
-          // Fly to the location!
-          globe.pointOfView({ lat: p.latitude, lng: p.longitude, altitude: 0.1 }, 1500);
-          
-          // Fade container out and navigate
-          setTimeout(() => {
-            gsap.to(containerEl, { opacity: 0, duration: 0.4, onComplete: () => router.push(`/places/${p.slug}`) });
-          }, 1400);
-        }
-      });
+      .arcAltitudeAutoScale(0.8);
+      // NOTE: Hover and click feature completely removed on both mobile and web.
 
-    // Fetch GeoJSON for the dotted landmasses (uses local /data/countries.geojson)
+    // Fetch GeoJSON for the dotted landmasses
     fetch('/data/countries.geojson')
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -198,40 +139,37 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       .then(countries => {
         if (countries?.features) {
           globe.hexPolygonsData(countries.features)
-            .hexPolygonResolution(3) // Larger grid to increase the distance between dots
-            .hexPolygonMargin(0.1) // Dense dots to make landmasses solid and clearly visible
+            .hexPolygonResolution(3)
+            .hexPolygonMargin(0.1)
             .hexPolygonColor(() => colors.land)
-            .hexPolygonAltitude(0.08); // Massively extrude the dots up to create highly visible 3D terrain
+            .hexPolygonAltitude(0.08);
         }
       })
       .catch((err) => {
-        // Silent graceful fallback if geojson is unavailable
         console.warn("Could not load local country geojson for globe terrain", err?.message || err);
       });
 
-    // Setup material and lighting
+    // Setup 3D materials, lights, and pillars
     const scene = globe.scene();
     if (scene) {
-      // @ts-ignore
       import('three').then((THREE) => {
-        // Clear existing lights from scene and camera to remove ALL stubborn glare spots
+        // Clear default lights for custom lighting
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         scene.children = scene.children.filter((c: any) => !c.isLight);
         
         const camera = globe.camera();
         if (camera) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           camera.children = camera.children.filter((c: any) => !c.isLight);
         }
         
-        // Lower ambient light creates darker, moodier shadows on the unlit side
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
         scene.add(ambientLight);
 
-        // Brighter directional light creates a dramatic 3D highlight
         const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
-        directionalLight.position.set(1, 1, 0.5); // Top right front
+        directionalLight.position.set(1, 1, 0.5);
         scene.add(directionalLight);
 
-        // Use a 3D material instead of a flat basic material so the light creates a curved gradient
         const sphereMaterial = new THREE.MeshPhongMaterial({
           color: colors.base,
           emissive: 0x000000,
@@ -241,16 +179,15 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
         
         globe.globeMaterial(sphereMaterial);
 
-        // --- ADVANCED: Starry Parallax Background ---
+        // Starry Parallax Background
         const particlesGeometry = new THREE.BufferGeometry();
         const particlesCount = 800;
         const posArray = new Float32Array(particlesCount * 3);
         
-        for(let i = 0; i < particlesCount * 3; i++) {
-          posArray[i] = (Math.random() - 0.5) * 600; // Wide spread
+        for (let i = 0; i < particlesCount * 3; i++) {
+          posArray[i] = (Math.random() - 0.5) * 600;
         }
         
-        // Create a perfect circle texture for the stars
         const canvas = document.createElement('canvas');
         canvas.width = 32;
         canvas.height = 32;
@@ -265,74 +202,79 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
 
         particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
         const particlesMaterial = new THREE.PointsMaterial({
-          size: 2.5, // Doubled size so they are visible on light background
+          size: 2.5,
           color: new THREE.Color(colors.point),
           transparent: true,
-          opacity: 0.7, // Increased opacity significantly
+          opacity: 0.7,
           map: circleTexture,
-          alphaTest: 0.1, // Ensures the edges of the circle render cleanly
+          alphaTest: 0.1,
         });
         
         const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
         scene.add(particlesMesh);
         
-        // Mouse parallax for stars (highly optimized)
-        const xTo = gsap.quickTo(particlesMesh.rotation, "x", { duration: 2, ease: "power2.out" });
-        const yTo = gsap.quickTo(particlesMesh.rotation, "y", { duration: 2, ease: "power2.out" });
+        // Mouse parallax for background stars
+        const isTouch = window.matchMedia("(pointer: coarse)").matches;
+        let handleMouseMove: ((e: MouseEvent) => void) | null = null;
+        if (!isTouch) {
+          const xTo = gsap.quickTo(particlesMesh.rotation, "x", { duration: 2, ease: "power2.out" });
+          const yTo = gsap.quickTo(particlesMesh.rotation, "y", { duration: 2, ease: "power2.out" });
+          
+          handleMouseMove = (e: MouseEvent) => {
+            const mouseX = (e.clientX / window.innerWidth) - 0.5;
+            const mouseY = (e.clientY / window.innerHeight) - 0.5;
+            xTo(mouseY * 0.3);
+            yTo(mouseX * 0.3);
+          };
+          window.addEventListener('mousemove', handleMouseMove, { passive: true });
+        }
         
-        const handleMouseMove = (e: MouseEvent) => {
-           const mouseX = (e.clientX / window.innerWidth) - 0.5;
-           const mouseY = (e.clientY / window.innerHeight) - 0.5;
-           xTo(mouseY * 0.3);
-           yTo(mouseX * 0.3);
-        };
-        window.addEventListener('mousemove', handleMouseMove, { passive: true });
-        
-        // Ensure cleanup of the event listener
         const originalCleanup = globe._cleanup;
         globe._cleanup = () => {
-          window.removeEventListener('mousemove', handleMouseMove);
+          if (handleMouseMove) {
+            window.removeEventListener('mousemove', handleMouseMove);
+          }
           if (originalCleanup) originalCleanup();
         };
 
-        // --- ADVANCED: Volumetric Fog ---
-        // Fades the stars and the edges of the rings smoothly into the background
+        // Volumetric Fog
         scene.fog = new THREE.Fog(colors.bg, 150, 400);
 
-        // --- ADVANCED: Custom Floating Location Pillars ---
-        // Reuse geometry and material for better performance
+        // Custom Floating 3D Destination Location Pillars (Visual Only — no click/hover listeners)
         const pillarMaterial = new THREE.MeshBasicMaterial({ color: colors.accent });
-        const baseGeometry = new THREE.CylinderGeometry(0.6, 0.6, 1, 4); // unit height
+        const baseGeometry = new THREE.CylinderGeometry(0.6, 0.6, 1, 4);
 
-        globe.customLayerData(validPlaces) // Use only destination places (Home has no pillar)
+        globe.customLayerData(validPlaces)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .customThreeObject((d: any) => {
-            const hRatio = 0.05 + Math.random() * 0.05; // 5% to 10% of globe radius
-            const physicalHeight = hRatio * 100; // globe.gl default radius is 100
+            const hRatio = 0.05 + Math.random() * 0.05;
+            const physicalHeight = hRatio * 100;
             
             const mesh = new THREE.Mesh(baseGeometry, pillarMaterial);
             mesh.scale.set(1, physicalHeight, 1);
             
-            // Place it exactly on top of the terrain (0.08) + half its height
             const coords = globe.getCoords(d.latitude, d.longitude, 0.08 + (hRatio / 2));
             mesh.position.set(coords.x, coords.y, coords.z);
             
-            // Orient the cylinder so it points outward from the globe center
             mesh.lookAt(new THREE.Vector3(0, 0, 0));
             mesh.rotateX(Math.PI / 2);
             
             return mesh;
           });
-
       });
     }
 
     const controls = globe.controls?.();
+    const isTouch = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
     if (controls) {
       controls.autoRotate = !prefersReducedMotion;
-      controls.autoRotateSpeed = 0.5;
-      controls.enableZoom = false; // Disabled manual zoom
-      controls.minDistance = 150;
-      controls.maxDistance = 600;
+      controls.autoRotateSpeed = 0.6;
+      controls.enableZoom = false; // Zoom disabled
+      // On mobile touch devices, disable touch rotation capture so vertical page scroll is completely unhindered
+      if (isTouch) {
+        controls.enableRotate = false;
+      }
     }
 
     if (!prefersReducedMotion) {
@@ -340,7 +282,6 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       let centerLng = homeLocation.longitude;
       
       if (validPlaces.length > 0) {
-        // Average all locations INCLUDING home to find the absolute center of their life
         const pointsToAverage = [...validPlaces, homeLocation];
         centerLat = pointsToAverage.reduce((sum, p) => sum + (p.latitude || 0), 0) / pointsToAverage.length;
         centerLng = pointsToAverage.reduce((sum, p) => sum + (p.longitude || 0), 0) / pointsToAverage.length;
@@ -354,22 +295,27 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
 
     globeInstanceRef.current = globe;
     setIsGlobeReady(true);
+    if (typeof window !== "undefined") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).__globeReady = true;
+      window.dispatchEvent(new CustomEvent("globe-ready"));
+    }
 
-    // Handle resize
+    // Responsive resize handler
     const handleResize = () => {
       if (containerEl && globe) {
         globe.width(containerEl.clientWidth);
         globe.height(containerEl.clientHeight);
       }
+      ScrollTrigger.refresh();
     };
     window.addEventListener("resize", handleResize);
 
-    // Attach cleanup method to instance for use in useEffect
     globe._cleanup = () => {
       window.removeEventListener("resize", handleResize);
       globe._destructor?.();
     };
-  }, [validPlaces, router]);
+  }, [validPlaces]);
 
   useEffect(() => {
     initGlobe();
@@ -382,46 +328,100 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
     };
   }, [initGlobe]);
 
-  // Scroll-triggered scale animation
+  // Initial small state set immediately upon mount
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion || !globeContainerRef.current) return;
+    gsap.set(globeContainerRef.current, {
+      scale: 0.25,
+      opacity: 0.25,
+      transformOrigin: "center center",
+      willChange: "transform, opacity",
+    });
+  }, []);
+
+  // Scroll-Triggered Symmetrical IN and OUT Scale Animation
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion || !containerRef.current || !globeContainerRef.current) return;
 
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: containerRef.current,
-        start: "top 85%",
-        end: "bottom 15%",
-        scrub: 1,
-      },
-    });
+    const container = containerRef.current;
+    const globeEl = globeContainerRef.current;
 
-    // Step 1: Smoothly fade & scale in as it enters the viewport
-    tl.fromTo(
-      globeContainerRef.current,
-      { scale: 0.94, opacity: 0.25 },
-      { scale: 1, opacity: 1, duration: 1, ease: "power2.out" }
-    );
-    
-    // Step 2: Scroll-Linked Rotation!
-    if (globeInstanceRef.current) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const scene = (globeInstanceRef.current as any).scene();
-      if (scene) {
-        tl.fromTo(scene.rotation, 
-          { y: -Math.PI / 8 }, // Start slightly counter-rotated
-          {
-            y: Math.PI / 8, // Smoothly rotate as user scrolls
-            ease: "none",
-            duration: 1
-          }, 
-          0 // sync with entrance
-        );
+    const ctx = gsap.context(() => {
+      // Timeline scrubbed directly across scroll position
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: container,
+          start: "top 80%",   // Starts when top of globe section enters 80% of viewport
+          end: "bottom 20%",  // Ends when bottom of globe section is 20% from top
+          scrub: 1,           // Silky smooth interpolation synchronized with scroll
+          invalidateOnRefresh: true,
+        },
+      });
+
+      // 1. IN ANIMATION: Starts small (scale: 0.25) and visibly grows to full size (1.0)
+      tl.fromTo(
+        globeEl,
+        { scale: 0.25, opacity: 0.25 },
+        {
+          scale: 1.0,
+          opacity: 1.0,
+          duration: 0.35,
+          ease: "power2.out",
+        }
+      );
+
+      // 2. CENTER PLATEAU: Holds at full size while viewed in center
+      tl.to(
+        globeEl,
+        {
+          scale: 1.0,
+          opacity: 1.0,
+          duration: 0.30,
+        }
+      );
+
+      // 3. OUT ANIMATION: Smoothly shrinks back down to small (scale: 0.25) as user leaves
+      tl.to(
+        globeEl,
+        {
+          scale: 0.25,
+          opacity: 0.25,
+          duration: 0.35,
+          ease: "power2.in",
+        }
+      );
+
+      // Scroll-Linked 3D Rotation spanning the entire section
+      if (globeInstanceRef.current) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const scene = (globeInstanceRef.current as any).scene();
+        if (scene) {
+          tl.fromTo(
+            scene.rotation,
+            { y: -Math.PI / 4 },
+            {
+              y: Math.PI / 4,
+              ease: "none",
+              duration: 1.0,
+            },
+            0
+          );
+        }
       }
-    }
+
+      // Refresh ScrollTrigger to recalculate exact pixel offsets
+      ScrollTrigger.refresh();
+      const t = setTimeout(() => {
+        ScrollTrigger.refresh();
+      }, 200);
+
+      return () => clearTimeout(t);
+    }, container);
 
     return () => {
-      tl.kill();
+      ctx.revert();
     };
   }, [isGlobeReady]);
 
@@ -448,69 +448,37 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
           Every coordinate is an indexed chapter. Visited cities, mountain roads, and quiet shores gathered across time into one continuous geography.
         </p>
 
-        {/* Interaction Guide Pill */}
+        {/* Cartographic Status Pill */}
         <div className="mt-8 flex items-center gap-3 text-[10px] uppercase tracking-[0.25em] text-muted-foreground/80 font-sans border border-muted/80 px-4 py-2 rounded-full bg-surface/50">
           <span className="w-1.5 h-1.5 rounded-full bg-accent animate-ping" />
-          <span>Drag sphere to explore · Click a pin to inspect the place</span>
+          <span>Planetary Geography · Real-Time Journeys</span>
         </div>
       </div>
 
-      {/* Cinematic wide globe container */}
-      <div className="relative w-full max-w-none aspect-[4/3] md:aspect-[21/9] px-0 overflow-hidden">
+      {/* Cinematic wide globe container with In & Out scroll transform */}
+      <div className="relative w-full max-w-none aspect-[4/3] md:aspect-[21/9] min-h-[420px] md:min-h-[600px] px-0 overflow-hidden flex items-center justify-center">
         <div
           ref={globeContainerRef}
-          className="w-full h-full"
-          style={{ cursor: "grab" }}
+          className="w-full h-full pointer-events-auto"
+          style={{
+            transformOrigin: "center center",
+          }}
         />
 
-        {/* Loading state */}
+        {/* Loading atmosphere placeholder */}
         {!isGlobeReady && (
           <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border border-muted/30 rounded-full animate-pulse" />
               <p className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground">
-                Loading globe...
+                Loading atmosphere...
               </p>
-            </div>
-          </div>
-        )}
-
-        {/* ADVANCED: Magnetic Polaroid Tooltip */}
-        {hoveredPlace && (
-          <div 
-            ref={tooltipRef}
-            className="fixed pointer-events-none z-50 transition-transform duration-75 ease-out"
-            style={{ 
-              transform: 'translate(15px, 15px)' // Offset slightly from cursor
-            }}
-          >
-            <div className="bg-background border border-muted p-2 shadow-lift rounded-md w-48 flex flex-col gap-2">
-              <div className="w-full aspect-[4/3] bg-surface flex items-center justify-center overflow-hidden rounded-sm relative">
-                {/* Simulated Polaroid Image Placeholder */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-foreground/5 to-transparent mix-blend-overlay" />
-                <span className="font-sans text-[8px] text-muted-foreground uppercase tracking-widest absolute bottom-2 right-2">Memory</span>
-                {/* Minimalist graphic simulating a photo */}
-                <div className="w-12 h-12 rounded-full border border-accent/20 flex items-center justify-center">
-                  <div className="w-6 h-6 rotate-45 bg-accent/15" />
-                </div>
-              </div>
-              <div className="px-1 pb-1">
-                <p className="font-sans text-xs uppercase tracking-widest font-semibold text-foreground truncate">
-                  {hoveredPlace.name}
-                </p>
-                <p className="font-sans text-[9px] text-muted-foreground uppercase tracking-wider truncate">
-                  {hoveredPlace.country}
-                  {hoveredPlace.tripPlaces?.[0]?.trip?.title && (
-                    <> — {hoveredPlace.tripPlaces[0].trip.title}</>
-                  )}
-                </p>
-              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Refined Cartographic Metadata Bar */}
+      {/* Cartographic Metadata Bar */}
       <div className="mt-12 md:mt-16 w-full max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-[10px] md:text-xs uppercase tracking-[0.25em] text-muted-foreground z-10 px-6 border-t border-muted/60 pt-6">
         <div className="flex items-center gap-3">
           <span className="w-2 h-2 rounded-full bg-accent-green" />
