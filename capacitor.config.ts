@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
     allowMixedContent: true,
   },
   server: {
-    url: 'https://life-atlas-eight.vercel.app',
+    url: 'https://life-atlas-eight-five.vercel.app',
     cleartext: true,
     androidScheme: 'https',
   },
