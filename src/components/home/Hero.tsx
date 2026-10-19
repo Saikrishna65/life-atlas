@@ -24,6 +24,10 @@ const HeroScene = dynamic(() => import("./hero/HeroScene"), {
   ),
 });
 
+const SecretDoorHotspot = dynamic(() => import("./hero/SecretDoorHotspot"), {
+  ssr: false,
+});
+
 interface HeroProps {
   onReady?: () => void;
 }
@@ -316,6 +320,9 @@ export default function Hero({ onReady }: HeroProps) {
             }}
           />
         </div>
+
+        {/* Secret Door Double-Tap Hotspot */}
+        <SecretDoorHotspot progressRef={progressRef} />
 
         {/* Main Content Layout — Modeled after Travel Next Level Composition */}
         <div className="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none px-6 md:px-12 lg:px-16 pt-[calc(env(safe-area-inset-top,0px)+5.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+2rem)]">

@@ -16,7 +16,10 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
 
   const isAuthorized =
     isClient &&
-    (Capacitor.isNativePlatform() || process.env.NODE_ENV === "development");
+    (Capacitor.isNativePlatform() ||
+      process.env.NODE_ENV === "development" ||
+      (typeof window !== "undefined" &&
+        sessionStorage.getItem("life_atlas_secret_unlocked") === "true"));
 
   useEffect(() => {
     if (isClient && !isAuthorized) {

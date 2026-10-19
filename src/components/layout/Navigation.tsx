@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Search } from "lucide-react";
 import gsap from "gsap";
-import SecretLogoGesture from "./SecretLogoGesture";
 
 const navLinks = [
   { href: "/explore", label: "Explore" },
@@ -151,6 +150,11 @@ export default function Navigation() {
     ? "hover:text-white/70"
     : "hover:text-black/60";
 
+  // Hide the navigation entirely on secret private sections
+  if (pathname?.startsWith("/secret")) {
+    return null;
+  }
+
   return (
     <>
       <header
@@ -158,7 +162,13 @@ export default function Navigation() {
           isVisible ? "translate-y-0" : "-translate-y-full"
         }`}
       >
-        <SecretLogoGesture linkHoverClass={linkHoverClass} />
+        <Link
+          href="/"
+          className={`font-sans text-sm font-bold tracking-[0.2em] uppercase z-50 flex items-center gap-2 transition-all duration-200 select-none ${linkHoverClass}`}
+          aria-label="Life Atlas"
+        >
+          LIFE ATLAS
+        </Link>
 
         <div className="hidden md:flex items-center gap-8 z-50">
           {navLinks.map((link) => (
