@@ -25,6 +25,7 @@ interface InteractiveGlobeProps {
 
 export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const globeWrapperRef = useRef<HTMLDivElement>(null);
   const globeContainerRef = useRef<HTMLDivElement>(null);
   const globeInstanceRef = useRef<unknown>(null);
   const [isGlobeReady, setIsGlobeReady] = useState(false);
@@ -328,13 +329,13 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
     };
   }, [initGlobe]);
 
-  // Initial small state set immediately upon mount
+  // Initial resting state set immediately upon mount
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion || !globeContainerRef.current) return;
     gsap.set(globeContainerRef.current, {
-      scale: 0.25,
-      opacity: 0.25,
+      scale: 0.55,
+      opacity: 0.4,
       transformOrigin: "center center",
       willChange: "transform, opacity",
     });
@@ -343,54 +344,61 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
   // Scroll-Triggered Symmetrical IN and OUT Scale Animation
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion || !containerRef.current || !globeContainerRef.current) return;
-
-    const container = containerRef.current;
+    const triggerEl = globeWrapperRef.current || containerRef.current;
     const globeEl = globeContainerRef.current;
+    if (prefersReducedMotion || !triggerEl || !globeEl) return;
 
     const ctx = gsap.context(() => {
-      // Timeline scrubbed directly across scroll position
+      // Timeline scrubbed directly across the globe's viewport transit
+      // Starts as the globe enters the bottom of the viewport ("top bottom")
+      // Ends as the globe exits the top of the viewport ("bottom top")
       const tl = gsap.timeline({
         scrollTrigger: {
-          trigger: container,
-          start: "top 80%",   // Starts when top of globe section enters 80% of viewport
-          end: "bottom 20%",  // Ends when bottom of globe section is 20% from top
-          scrub: 1,           // Silky smooth interpolation synchronized with scroll
+          trigger: triggerEl,
+          start: "top bottom",   // Starts as globe enters bottom of screen
+          end: "bottom top",     // Ends as globe exits top of screen
+          scrub: 0.5,            // Silky smooth interpolation synchronized with scroll
           invalidateOnRefresh: true,
         },
       });
 
-      // 1. IN ANIMATION: Starts small (scale: 0.25) and visibly grows to full size (1.0)
+      // 1. IN ANIMATION: Starts small (scale: 0.55, opacity: 0.4) and steadily grows
+      // all the way across the scroll until it is centered in the viewport (0% -> 42% of transit)
       tl.fromTo(
         globeEl,
-        { scale: 0.25, opacity: 0.25 },
+        { scale: 0.55, opacity: 0.4 },
         {
           scale: 1.0,
           opacity: 1.0,
-          duration: 0.35,
-          ease: "power2.out",
-        }
+          duration: 0.42,
+          ease: "none",
+        },
+        0
       );
 
-      // 2. CENTER PLATEAU: Holds at full size while viewed in center
+      // 2. CENTER PLATEAU: Holds comfortably at full size while viewed in center (42% -> 58% of transit)
       tl.to(
         globeEl,
         {
           scale: 1.0,
           opacity: 1.0,
-          duration: 0.30,
-        }
+          duration: 0.16,
+          ease: "none",
+        },
+        0.42
       );
 
-      // 3. OUT ANIMATION: Smoothly shrinks back down to small (scale: 0.25) as user leaves
+      // 3. OUT ANIMATION: Actively and visibly shrinks while STILL ON SCREEN in the upper viewport (58% -> 90% of transit)
+      // Finishes shrinking to 0.55 while the globe is still visible before completely leaving the viewport
       tl.to(
         globeEl,
         {
-          scale: 0.25,
-          opacity: 0.25,
-          duration: 0.35,
-          ease: "power2.in",
-        }
+          scale: 0.55,
+          opacity: 0.4,
+          duration: 0.32,
+          ease: "none",
+        },
+        0.58
       );
 
       // Scroll-Linked 3D Rotation spanning the entire section
@@ -413,12 +421,18 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
 
       // Refresh ScrollTrigger to recalculate exact pixel offsets
       ScrollTrigger.refresh();
-      const t = setTimeout(() => {
-        ScrollTrigger.refresh();
-      }, 200);
+      const t1 = setTimeout(() => ScrollTrigger.refresh(), 200);
+      const t2 = setTimeout(() => ScrollTrigger.refresh(), 800);
 
-      return () => clearTimeout(t);
-    }, container);
+      const handleHeroReady = () => ScrollTrigger.refresh();
+      window.addEventListener("hero-ready", handleHeroReady);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        window.removeEventListener("hero-ready", handleHeroReady);
+      };
+    }, triggerEl);
 
     return () => {
       ctx.revert();
@@ -456,7 +470,10 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       </div>
 
       {/* Cinematic wide globe container with In & Out scroll transform */}
-      <div className="relative w-full max-w-none aspect-[4/3] md:aspect-[21/9] min-h-[420px] md:min-h-[600px] px-0 overflow-hidden flex items-center justify-center">
+      <div
+        ref={globeWrapperRef}
+        className="relative w-full max-w-none aspect-[4/3] md:aspect-[21/9] min-h-[420px] md:min-h-[600px] px-0 overflow-hidden flex items-center justify-center"
+      >
         <div
           ref={globeContainerRef}
           className="w-full h-full pointer-events-auto"

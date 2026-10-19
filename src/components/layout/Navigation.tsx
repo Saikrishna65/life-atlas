@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Search } from "lucide-react";
 import gsap from "gsap";
+import SecretLogoGesture from "./SecretLogoGesture";
 
 const navLinks = [
   { href: "/explore", label: "Explore" },
@@ -157,12 +158,7 @@ export default function Navigation() {
           isVisible ? "translate-y-0" : "-translate-y-full"
         }`}
       >
-        <Link
-          href="/"
-          className={`font-sans text-sm font-bold tracking-[0.2em] uppercase z-50 flex items-center gap-2 transition-colors ${linkHoverClass}`}
-        >
-          LIFE ATLAS
-        </Link>
+        <SecretLogoGesture linkHoverClass={linkHoverClass} />
 
         <div className="hidden md:flex items-center gap-8 z-50">
           {navLinks.map((link) => (

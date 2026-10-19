@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Upload, X, Loader2, Image as ImageIcon } from 'lucide-react';
+import { X, Loader2, Image as ImageIcon } from 'lucide-react';
 import Image from 'next/image';
 
 interface ImageUploadProps {
@@ -53,6 +53,7 @@ export function ImageUpload({
       <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden group">
         <Image
           fill
+          unoptimized
           src={value}
           alt="Upload"
           className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -71,9 +72,9 @@ export function ImageUpload({
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-3">
       <label 
-        className={`flex flex-col items-center justify-center w-full h-48 md:h-64 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 
+        className={`flex flex-col items-center justify-center w-full h-40 md:h-48 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 
           ${disabled || isUploading ? 'opacity-50 cursor-not-allowed bg-muted' : 'hover:bg-muted/50 border-muted-foreground/25 hover:border-accent'}`}
       >
         <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -82,13 +83,13 @@ export function ImageUpload({
           ) : (
             <ImageIcon className="w-10 h-10 mb-3 text-muted-foreground" />
           )}
-          <p className="mb-2 text-sm text-muted-foreground font-medium">
-            {isUploading ? 'Uploading...' : (
-              <span className="font-semibold text-foreground">Click to upload</span>
+          <p className="mb-1 text-sm text-muted-foreground font-medium">
+            {isUploading ? 'Uploading to Neon Object Storage...' : (
+              <span className="font-semibold text-foreground">Click to upload photo</span>
             )}
           </p>
           <p className="text-xs text-muted-foreground/75">
-            SVG, PNG, JPG or GIF (MAX. 800x400px)
+            PNG, JPG, WEBP, GIF
           </p>
         </div>
         <input 
@@ -99,6 +100,28 @@ export function ImageUpload({
           disabled={disabled || isUploading}
         />
       </label>
+
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] uppercase tracking-wider text-muted-foreground whitespace-nowrap">or URL:</span>
+        <input
+          type="url"
+          placeholder="https://example.com/image.jpg"
+          className="flex-1 p-2 text-xs bg-surface border border-muted focus:border-foreground outline-none transition-colors rounded-sm"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              const val = (e.currentTarget.value || '').trim();
+              if (val) onChange(val);
+            }
+          }}
+          onBlur={(e) => {
+            const val = (e.currentTarget.value || '').trim();
+            if (val) onChange(val);
+          }}
+          disabled={disabled || isUploading}
+        />
+      </div>
+
       {error && (
         <p className="mt-2 text-sm text-red-500 font-medium">
           {error}

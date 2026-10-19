@@ -96,11 +96,10 @@ export default function Hero({ onReady }: HeroProps) {
         progressRef.current = st.progress;
       }
 
-      // Maximum animation speed: progress units per second.
-      // 0.60 on mobile/app ensures that no matter how fast the user scrolls or flings,
-      // traversing the entire hero takes at least ~1.66s, preventing jarring skips or rapid whipping.
-      // 0.70 on desktop provides a smooth, controlled cinematic glide.
-      const MAX_SPEED = isMobile ? 0.60 : 0.70;
+      // Silky exponential smoothing that naturally follows Lenis scroll momentum.
+      // Automatically converges as progress reaches the edges so the animation
+      // finishes cleanly at the unpin point without any scroll freeze or hitch.
+      const baseSpeed = isMobile ? 22 : 18;
       let lastTime = performance.now();
 
       tickerCallback = () => {
@@ -122,17 +121,19 @@ export default function Hero({ onReady }: HeroProps) {
           return;
         }
 
-        // Smooth exponential approach capped strictly at MAX_SPEED
-        // Guarantees continuous silky movement without sudden velocity-zero stops or jerks
-        const maxStep = MAX_SPEED * dt;
-        const rawStep = delta * (1 - Math.exp(-14 * dt));
-        const step = Math.sign(rawStep) * Math.min(Math.abs(rawStep), maxStep);
+        // Tighter tracking near unpin boundary to ensure seamless transition into subsequent sections
+        const speedMultiplier = target >= 0.85 || target <= 0.15 ? baseSpeed + 6 : baseSpeed;
+        const rawStep = delta * (1 - Math.exp(-speedMultiplier * dt));
 
-        let nextProgress = current + step;
+        let nextProgress = current + rawStep;
 
-        // Clean snap to 1.0 when target is 1.0 and within completion threshold
-        if (target === 1.0 && Math.abs(1.0 - nextProgress) < 0.004) {
-          nextProgress = 1.0;
+        // Clean snap to boundaries when within threshold
+        if (
+          (target === 1.0 && Math.abs(1.0 - nextProgress) < 0.003) ||
+          (target === 0.0 && Math.abs(nextProgress) < 0.003) ||
+          dist < 0.001
+        ) {
+          nextProgress = target;
         }
 
         nextProgress = Math.min(1, Math.max(0, nextProgress));
@@ -277,76 +278,6 @@ export default function Hero({ onReady }: HeroProps) {
       }
     }, containerRef);
 
-    // Compute maximum scroll position before hero unpins
-    const getMaxHeroScroll = () => {
-      const el = containerRef.current;
-      if (!el) return 0;
-      return Math.max(0, el.offsetTop + el.offsetHeight - window.innerHeight);
-    };
-
-    // Hold hero pinned / prevent scroll past hero until hero scene animation has fully completed
-    const clampToHeroIfIncomplete = () => {
-      const maxScroll = getMaxHeroScroll();
-      if (maxScroll <= 0) return false;
-
-      // If user has scrolled to or past the hero bottom while animation is still catching up
-      if (window.scrollY > maxScroll && currentProgressRef.current < 0.99) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const lenis = (window as any).__lenis;
-        if (lenis && typeof lenis.scrollTo === "function") {
-          lenis.scrollTo(maxScroll, { immediate: true });
-        } else {
-          window.scrollTo(0, maxScroll);
-        }
-        return true;
-      }
-      return false;
-    };
-
-    const handleScrollLock = () => {
-      clampToHeroIfIncomplete();
-    };
-
-    const handleWheelLock = (e: WheelEvent) => {
-      const maxScroll = getMaxHeroScroll();
-      if (maxScroll <= 0) return;
-
-      // If at or past hero bottom, scrolling downward, and animation not yet completed: hold at hero
-      if (window.scrollY >= maxScroll - 2 && e.deltaY > 0 && currentProgressRef.current < 0.99) {
-        e.preventDefault();
-        clampToHeroIfIncomplete();
-      }
-    };
-
-    let touchStartY = 0;
-    const handleTouchStart = (e: TouchEvent) => {
-      if (e.touches.length > 0) {
-        touchStartY = e.touches[0].clientY;
-      }
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 0) return;
-      const maxScroll = getMaxHeroScroll();
-      if (maxScroll <= 0) return;
-
-      const touchY = e.touches[0].clientY;
-      // Moving finger UP means scrolling the page DOWN
-      const isSwipingDown = touchY < touchStartY - 2;
-
-      if (window.scrollY >= maxScroll - 2 && isSwipingDown && currentProgressRef.current < 0.99) {
-        if (e.cancelable) {
-          e.preventDefault();
-        }
-        clampToHeroIfIncomplete();
-      }
-    };
-
-    window.addEventListener("scroll", handleScrollLock, { passive: false });
-    window.addEventListener("wheel", handleWheelLock, { passive: false });
-    window.addEventListener("touchstart", handleTouchStart, { passive: true });
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-
     return () => {
       if (tickerCallback) {
         gsap.ticker.remove(tickerCallback);
@@ -354,10 +285,6 @@ export default function Hero({ onReady }: HeroProps) {
       if (st) {
         st.kill();
       }
-      window.removeEventListener("scroll", handleScrollLock);
-      window.removeEventListener("wheel", handleWheelLock);
-      window.removeEventListener("touchstart", handleTouchStart);
-      window.removeEventListener("touchmove", handleTouchMove);
       ctx.revert();
     };
   }, []);

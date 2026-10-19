@@ -51,17 +51,17 @@ export default function Studio() {
 
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-8rem)] rounded-md overflow-hidden shadow-2xl border border-muted bg-surface/50 backdrop-blur-xl">
-      {/* Sidebar */}
-      <div className="lg:w-64 bg-surface/80 border-b lg:border-b-0 lg:border-r border-muted p-6 flex flex-col gap-2">
-        <h2 className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground mb-4">Studio Control</h2>
+      {/* Sidebar / Mobile Tabs */}
+      <div className="lg:w-64 bg-surface/80 border-b lg:border-b-0 lg:border-r border-muted p-4 sm:p-6 flex flex-row lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible">
+        <h2 className="hidden lg:block font-sans text-[10px] uppercase tracking-widest text-muted-foreground mb-4">Studio Control</h2>
         {tabs.map(tab => (
           <button 
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`text-left p-4 rounded-sm transition-all duration-300 ${activeTab === tab.id ? 'bg-background border-l-2 border-foreground shadow-sm' : 'hover:bg-muted/30 border-l-2 border-transparent'}`}
+            className={`text-left p-3 sm:p-4 rounded-sm transition-all duration-300 shrink-0 lg:shrink min-w-[110px] lg:min-w-0 ${activeTab === tab.id ? 'bg-background border-b-2 lg:border-b-0 lg:border-l-2 border-foreground shadow-sm' : 'hover:bg-muted/30 border-b-2 lg:border-b-0 lg:border-l-2 border-transparent'}`}
           >
-            <h3 className={`font-display text-lg ${activeTab === tab.id ? 'text-foreground' : 'text-foreground/70'}`}>{tab.label}</h3>
-            <p className="font-sans text-[9px] uppercase tracking-wider text-muted-foreground mt-1">{tab.subtitle}</p>
+            <h3 className={`font-display text-base sm:text-lg ${activeTab === tab.id ? 'text-foreground' : 'text-foreground/70'}`}>{tab.label}</h3>
+            <p className="font-sans text-[9px] uppercase tracking-wider text-muted-foreground mt-0.5 sm:mt-1">{tab.subtitle}</p>
           </button>
         ))}
       </div>
