@@ -9,10 +9,15 @@ import {
   createTimelineEvent 
 } from "./actions";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 
 type Tab = "trips" | "places" | "photos" | "memories" | "timeline";
 
-export default function Studio() {
+interface StudioProps {
+  variant?: "default" | "journal";
+}
+
+export default function Studio({ variant = "default" }: StudioProps) {
   const [activeTab, setActiveTab] = useState<Tab>("trips");
   const [status, setStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' });
 
@@ -20,13 +25,14 @@ export default function Studio() {
   const [placeCoverUrl, setPlaceCoverUrl] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
 
-  const tabs: { id: Tab, label: string, subtitle: string }[] = [
-    { id: "trips", label: "Trips", subtitle: "Log a new journey" },
-    { id: "places", label: "Places", subtitle: "Add a destination" },
-    { id: "photos", label: "Photos", subtitle: "Upload a memory" },
+  const isJournal = variant === "journal";
 
-    { id: "memories", label: "Memories", subtitle: "Capture a moment" },
-    { id: "timeline", label: "Timeline", subtitle: "Log a major event" },
+  const tabs: { id: Tab, label: string, subtitle: string }[] = [
+    { id: "trips", label: "Trips", subtitle: "Log a journey" },
+    { id: "places", label: "Places", subtitle: "Add destination" },
+    { id: "photos", label: "Photos", subtitle: "Upload visual" },
+    { id: "memories", label: "Memories", subtitle: "Capture moment" },
+    { id: "timeline", label: "Timeline", subtitle: "Record milestone" },
   ];
 
   async function handleSubmit(action: (formData: FormData) => Promise<void>, e: React.FormEvent<HTMLFormElement>) {
@@ -35,7 +41,7 @@ export default function Studio() {
     const formData = new FormData(e.currentTarget);
     try {
       await action(formData);
-      setStatus({ type: 'success', message: 'Successfully added to Atlas.' });
+      setStatus({ type: 'success', message: 'Successfully inscribed in Atlas.' });
       (e.target as HTMLFormElement).reset();
       
       // Reset image states
@@ -44,11 +50,273 @@ export default function Studio() {
       if (activeTab === "photos") setPhotoUrl("");
       
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An error occurred.';
+      const message = err instanceof Error ? err.message : 'An error occurred while saving entry.';
       setStatus({ type: 'error', message });
     }
   }
 
+  // -------------------------------------------------------------
+  // EDITORIAL TRAVEL JOURNAL VARIANT (Mobile-first, deep charcoal)
+  // -------------------------------------------------------------
+  if (isJournal) {
+    const inputClasses = "w-full bg-[#121620] border border-white/10 text-[#f5f2eb] placeholder:text-neutral-500 rounded-xl px-3.5 py-3 text-sm focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/20 outline-none transition-all duration-200 [color-scheme:dark]";
+    const labelClasses = "text-xs font-sans font-medium text-neutral-300 tracking-wide";
+
+    return (
+      <div className="rounded-2xl border border-white/[0.08] bg-[#0c0f15] shadow-2xl overflow-hidden">
+        {/* Mobile-Friendly Editorial Tab Strip */}
+        <div className="p-2 sm:p-2.5 bg-[#080a0e] border-b border-white/[0.08] flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none]">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setStatus({ type: null, message: '' });
+                }}
+                className={`px-4 py-2.5 rounded-xl text-xs font-sans tracking-wider uppercase transition-all duration-200 shrink-0 select-none ${
+                  isActive
+                    ? "bg-white/[0.08] text-[#f5f2eb] border border-white/15 shadow-sm font-semibold"
+                    : "text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.03] border border-transparent font-medium"
+                }`}
+              >
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Form Body */}
+        <div className="p-5 sm:p-8 md:p-10 max-w-3xl">
+          <header className="mb-8">
+            <h2 className="font-display text-2xl sm:text-3xl text-[#f5f2eb] tracking-tight font-normal">
+              {tabs.find((t) => t.id === activeTab)?.label}
+            </h2>
+            <p className="font-sans text-xs text-neutral-400 mt-1">
+              {tabs.find((t) => t.id === activeTab)?.subtitle}
+            </p>
+          </header>
+
+          {/* Feedback Banner */}
+          {status.type && (
+            <div
+              className={`p-3.5 mb-6 rounded-xl text-xs font-sans flex items-center gap-2.5 ${
+                status.type === 'success'
+                  ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-rose-950/40 text-rose-300 border border-rose-500/30'
+              }`}
+            >
+              {status.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+              )}
+              <span>{status.message}</span>
+            </div>
+          )}
+
+          {/* TRIPS FORM */}
+          {activeTab === "trips" && (
+            <form onSubmit={(e) => handleSubmit(createTrip, e)} className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className={labelClasses}>Trip Title *</label>
+                  <input required type="text" name="title" placeholder="e.g. Autumn in Kyoto" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className={labelClasses}>Destination *</label>
+                  <input required type="text" name="destination" placeholder="e.g. Kyoto, Japan" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Start Date *</label>
+                  <input required type="date" name="startDate" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>End Date</label>
+                  <input type="date" name="endDate" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className={labelClasses}>Duration</label>
+                  <input type="text" name="duration" placeholder="e.g. 12 Days" className={inputClasses} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Description & Reflections</label>
+                <textarea name="description" rows={3} placeholder="Notes from this expedition..." className={inputClasses} />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Cover Photograph</label>
+                <ImageUpload value={tripCoverUrl} onChange={setTripCoverUrl} theme="dark" />
+                <input type="hidden" name="coverImage" value={tripCoverUrl} />
+              </div>
+              <button
+                type="submit"
+                className="mt-2 bg-[#d4a373] hover:bg-[#dfb285] text-[#0a0d14] font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-[0.98]"
+              >
+                Save Trip Entry
+              </button>
+            </form>
+          )}
+
+          {/* PLACES FORM */}
+          {activeTab === "places" && (
+            <form onSubmit={(e) => handleSubmit(createPlace, e)} className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className={labelClasses}>Place Name *</label>
+                  <input required type="text" name="name" placeholder="e.g. Lake Como" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Country *</label>
+                  <input required type="text" name="country" placeholder="e.g. Italy" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Region / State</label>
+                  <input type="text" name="region" placeholder="e.g. Lombardy" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className={labelClasses}>City / Village</label>
+                  <input type="text" name="city" placeholder="e.g. Bellagio" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Latitude</label>
+                  <input type="number" step="any" name="latitude" placeholder="e.g. 45.9871" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Longitude</label>
+                  <input type="number" step="any" name="longitude" placeholder="e.g. 9.2625" className={inputClasses} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Description</label>
+                <textarea name="description" rows={3} placeholder="Geographic and sensory impressions..." className={inputClasses} />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Place Visual</label>
+                <ImageUpload value={placeCoverUrl} onChange={setPlaceCoverUrl} theme="dark" />
+                <input type="hidden" name="coverImage" value={placeCoverUrl} />
+              </div>
+              <button
+                type="submit"
+                className="mt-2 bg-[#d4a373] hover:bg-[#dfb285] text-[#0a0d14] font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-[0.98]"
+              >
+                Record Place
+              </button>
+            </form>
+          )}
+
+          {/* PHOTOS FORM */}
+          {activeTab === "photos" && (
+            <form onSubmit={(e) => handleSubmit(createPhoto, e)} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Photograph *</label>
+                <ImageUpload value={photoUrl} onChange={setPhotoUrl} theme="dark" />
+                <input type="hidden" name="url" value={photoUrl} required />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Caption</label>
+                <input type="text" name="caption" placeholder="Visual memory title or note" className={inputClasses} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Date Captured</label>
+                  <input type="date" name="date" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Feature in Highlights?</label>
+                  <select name="isFeatured" className={inputClasses}>
+                    <option value="false">Standard Gallery</option>
+                    <option value="true">Featured Highlight</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Associated Trip ID (Optional)</label>
+                  <input type="text" name="tripId" placeholder="Optional" className={inputClasses} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Associated Place ID (Optional)</label>
+                  <input type="text" name="placeId" placeholder="Optional" className={inputClasses} />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="mt-2 bg-[#d4a373] hover:bg-[#dfb285] text-[#0a0d14] font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-[0.98]"
+              >
+                Archive Photo
+              </button>
+            </form>
+          )}
+
+          {/* MEMORIES FORM */}
+          {activeTab === "memories" && (
+            <form onSubmit={(e) => handleSubmit(createMemory, e)} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Memory Title *</label>
+                <input required type="text" name="title" placeholder="e.g. Dawn at the ridge" className={inputClasses} />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Date</label>
+                <input type="date" name="date" className={inputClasses} />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Reflection & Journal Entry</label>
+                <textarea name="description" rows={4} placeholder="Write your memory here..." className={inputClasses} />
+              </div>
+              <button
+                type="submit"
+                className="mt-2 bg-[#d4a373] hover:bg-[#dfb285] text-[#0a0d14] font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-[0.98]"
+              >
+                Inscribe Memory
+              </button>
+            </form>
+          )}
+
+          {/* TIMELINE EVENT FORM */}
+          {activeTab === "timeline" && (
+            <form onSubmit={(e) => handleSubmit(createTimelineEvent, e)} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Event Title *</label>
+                <input required type="text" name="title" placeholder="e.g. Crossed the Swiss Alps" className={inputClasses} />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Event Category *</label>
+                  <select required name="type" className={inputClasses}>
+                    <option value="TRIP">Trip Milestone</option>
+                    <option value="MEMORY">Personal Reflection</option>
+                    <option value="EXPERIENCE">Unique Experience</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClasses}>Date *</label>
+                  <input required type="date" name="date" className={inputClasses} />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Chronicle Description</label>
+                <textarea name="description" rows={3} placeholder="Details about this timeline marker..." className={inputClasses} />
+              </div>
+              <div className="space-y-1.5">
+                <label className={labelClasses}>Reference ID (Optional)</label>
+                <input type="text" name="referenceId" placeholder="Optional link to trip or memory" className={inputClasses} />
+              </div>
+              <button
+                type="submit"
+                className="mt-2 bg-[#d4a373] hover:bg-[#dfb285] text-[#0a0d14] font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-[0.98]"
+              >
+                Add to Timeline
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // DEFAULT VARIANT (Used on public /admin page to preserve website)
+  // -------------------------------------------------------------
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-8rem)] rounded-md overflow-hidden shadow-2xl border border-muted bg-surface/50 backdrop-blur-xl">
       {/* Sidebar / Mobile Tabs */}
@@ -197,8 +465,6 @@ export default function Studio() {
             </form>
           )}
 
-
-
           {/* MEMORIES FORM */}
           {activeTab === "memories" && (
             <form onSubmit={(e) => handleSubmit(createMemory, e)} className="space-y-6 flex flex-col font-body animate-fade-in-up">
@@ -231,7 +497,6 @@ export default function Studio() {
                   <select required name="type" className="p-3 bg-surface border border-muted focus:border-foreground outline-none transition-colors rounded-sm">
                     <option value="TRIP">Trip</option>
                     <option value="MEMORY">Memory</option>
-
                     <option value="EXPERIENCE">Experience</option>
                   </select>
                 </div>

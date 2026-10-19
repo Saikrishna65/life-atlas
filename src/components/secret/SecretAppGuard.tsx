@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, ReactNode } from "react";
+import { useEffect, useSyncExternalStore, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
 
@@ -8,31 +8,29 @@ interface SecretAppGuardProps {
   children: ReactNode;
 }
 
+const emptySubscribe = () => () => {};
+
 export default function SecretAppGuard({ children }: SecretAppGuardProps) {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
+
+  const isAuthorized =
+    isClient &&
+    (Capacitor.isNativePlatform() || process.env.NODE_ENV === "development");
 
   useEffect(() => {
-    const isNative = typeof window !== "undefined" && Capacitor.isNativePlatform();
-    const isDev = process.env.NODE_ENV === "development";
-
-    if (!isNative && !isDev) {
+    if (isClient && !isAuthorized) {
       router.replace("/");
     }
-    setMounted(true);
-  }, [router]);
+  }, [isClient, isAuthorized, router]);
 
-  if (!mounted) {
+  if (!isClient) {
     return (
-      <div className="min-h-screen bg-[#05070a] flex items-center justify-center">
+      <div className="min-h-screen bg-[#07090d] flex items-center justify-center">
         <div className="w-5 h-5 rounded-full border border-amber-400/40 border-t-amber-300 animate-spin" />
       </div>
     );
   }
-
-  const isAuthorized =
-    (typeof window !== "undefined" && Capacitor.isNativePlatform()) ||
-    process.env.NODE_ENV === "development";
 
   if (!isAuthorized) {
     return null;
