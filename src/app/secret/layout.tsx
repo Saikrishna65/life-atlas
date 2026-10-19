@@ -14,10 +14,10 @@ export const metadata: Metadata = {
 export default function SecretLayout({ children }: { children: ReactNode }) {
   return (
     <SecretAppGuard>
-      <div className="min-h-screen bg-[#07090d] text-[#f5f2eb] selection:bg-amber-400/20 selection:text-amber-200 font-body">
-        {/* Subtle cinematic radial vignette */}
+      <div className="min-h-screen bg-background text-foreground font-body selection:bg-accent/15 selection:text-foreground">
+        {/* Subtle editorial atlas ambient wash */}
         <div
-          className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_75%_50%_at_50%_0%,rgba(212,163,115,0.06),transparent_70%)] z-0"
+          className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_75%_50%_at_50%_0%,rgba(31,79,216,0.03),transparent_70%)] z-0"
           aria-hidden="true"
         />
 

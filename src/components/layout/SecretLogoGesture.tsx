@@ -179,11 +179,11 @@ export default function SecretLogoGesture({
       {/* Subtle Luminous Progress Hairline (Restrained Feedback) */}
       {(isHolding || holdProgress > 0) && (
         <div
-          className="absolute -bottom-1 left-0 right-0 h-[2px] bg-white/10 overflow-hidden pointer-events-none rounded-full"
+          className="absolute -bottom-1 left-0 right-0 h-[2px] bg-foreground/15 overflow-hidden pointer-events-none rounded-full"
           aria-hidden="true"
         >
           <div
-            className="h-full bg-gradient-to-r from-amber-400/80 via-white to-amber-300 transition-all ease-linear shadow-[0_0_8px_rgba(255,255,255,0.7)]"
+            className="h-full bg-gradient-to-r from-accent/80 via-accent to-accent transition-all ease-linear shadow-[0_0_8px_rgba(31,79,216,0.35)]"
             style={{
               width: `${holdProgress}%`,
               transitionDuration: isHolding ? "50ms" : "200ms",

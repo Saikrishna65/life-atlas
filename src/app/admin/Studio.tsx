@@ -56,16 +56,16 @@ export default function Studio({ variant = "default" }: StudioProps) {
   }
 
   // -------------------------------------------------------------
-  // EDITORIAL TRAVEL JOURNAL VARIANT (Mobile-first, deep charcoal)
+  // EDITORIAL TRAVEL JOURNAL VARIANT (Mobile-first, Life Atlas Light Theme)
   // -------------------------------------------------------------
   if (isJournal) {
-    const inputClasses = "w-full bg-[#121620] border border-white/10 text-[#f5f2eb] placeholder:text-neutral-500 rounded-xl px-3.5 py-3 text-sm focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/20 outline-none transition-all duration-200 [color-scheme:dark]";
-    const labelClasses = "text-xs font-sans font-medium text-neutral-300 tracking-wide";
+    const inputClasses = "w-full bg-surface border border-muted text-foreground placeholder:text-muted-foreground/60 rounded-xl px-3.5 py-3 text-sm focus:border-accent focus:bg-background focus:ring-1 focus:ring-accent/20 outline-none transition-all duration-200 [color-scheme:light]";
+    const labelClasses = "text-xs font-sans font-medium text-foreground/80 tracking-wide";
 
     return (
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0c0f15] shadow-2xl overflow-hidden">
+      <div className="rounded-2xl border border-muted bg-background shadow-soft overflow-hidden">
         {/* Mobile-Friendly Editorial Tab Strip */}
-        <div className="p-2 sm:p-2.5 bg-[#080a0e] border-b border-white/[0.08] flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none]">
+        <div className="p-2 sm:p-2.5 bg-surface border-b border-muted flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none]">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -77,8 +77,8 @@ export default function Studio({ variant = "default" }: StudioProps) {
                 }}
                 className={`px-4 py-2.5 rounded-xl text-xs font-sans tracking-wider uppercase transition-all duration-200 shrink-0 select-none ${
                   isActive
-                    ? "bg-white/[0.08] text-[#f5f2eb] border border-white/15 shadow-sm font-semibold"
-                    : "text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.03] border border-transparent font-medium"
+                    ? "bg-background text-foreground border border-muted shadow-xs font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface-hover border border-transparent font-medium"
                 }`}
               >
                 <span>{tab.label}</span>
@@ -90,10 +90,10 @@ export default function Studio({ variant = "default" }: StudioProps) {
         {/* Form Body */}
         <div className="p-5 sm:p-8 md:p-10 max-w-3xl">
           <header className="mb-8">
-            <h2 className="font-display text-2xl sm:text-3xl text-[#f5f2eb] tracking-tight font-normal">
+            <h2 className="font-display text-2xl sm:text-3xl text-foreground tracking-tight font-normal">
               {tabs.find((t) => t.id === activeTab)?.label}
             </h2>
-            <p className="font-sans text-xs text-neutral-400 mt-1">
+            <p className="font-sans text-xs text-muted-foreground mt-1">
               {tabs.find((t) => t.id === activeTab)?.subtitle}
             </p>
           </header>
@@ -103,14 +103,14 @@ export default function Studio({ variant = "default" }: StudioProps) {
             <div
               className={`p-3.5 mb-6 rounded-xl text-xs font-sans flex items-center gap-2.5 ${
                 status.type === 'success'
-                  ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-rose-950/40 text-rose-300 border border-rose-500/30'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-rose-50 text-rose-800 border border-rose-200'
               }`}
             >
               {status.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               ) : (
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               )}
               <span>{status.message}</span>
             </div>
@@ -147,12 +147,12 @@ export default function Studio({ variant = "default" }: StudioProps) {
               </div>
               <div className="space-y-1.5">
                 <label className={labelClasses}>Cover Photograph</label>
-                <ImageUpload value={tripCoverUrl} onChange={setTripCoverUrl} theme="dark" />
+                <ImageUpload value={tripCoverUrl} onChange={setTripCoverUrl} />
                 <input type="hidden" name="coverImage" value={tripCoverUrl} />
               </div>
               <button
                 type="submit"
-                className="mt-2 bg-[#d4a373] hover:bg-[#dfb285] text-[#0a0d14] font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-[0.98]"
+                className="mt-2 bg-foreground hover:bg-accent text-background font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-sm active:scale-[0.98]"
               >
                 Save Trip Entry
               </button>
@@ -194,12 +194,12 @@ export default function Studio({ variant = "default" }: StudioProps) {
               </div>
               <div className="space-y-1.5">
                 <label className={labelClasses}>Place Visual</label>
-                <ImageUpload value={placeCoverUrl} onChange={setPlaceCoverUrl} theme="dark" />
+                <ImageUpload value={placeCoverUrl} onChange={setPlaceCoverUrl} />
                 <input type="hidden" name="coverImage" value={placeCoverUrl} />
               </div>
               <button
                 type="submit"
-                className="mt-2 bg-[#d4a373] hover:bg-[#dfb285] text-[#0a0d14] font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-[0.98]"
+                className="mt-2 bg-foreground hover:bg-accent text-background font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-sm active:scale-[0.98]"
               >
                 Record Place
               </button>
@@ -211,7 +211,7 @@ export default function Studio({ variant = "default" }: StudioProps) {
             <form onSubmit={(e) => handleSubmit(createPhoto, e)} className="space-y-5">
               <div className="space-y-1.5">
                 <label className={labelClasses}>Photograph *</label>
-                <ImageUpload value={photoUrl} onChange={setPhotoUrl} theme="dark" />
+                <ImageUpload value={photoUrl} onChange={setPhotoUrl} />
                 <input type="hidden" name="url" value={photoUrl} required />
               </div>
               <div className="space-y-1.5">
@@ -241,7 +241,7 @@ export default function Studio({ variant = "default" }: StudioProps) {
               </div>
               <button
                 type="submit"
-                className="mt-2 bg-[#d4a373] hover:bg-[#dfb285] text-[#0a0d14] font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-[0.98]"
+                className="mt-2 bg-foreground hover:bg-accent text-background font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-sm active:scale-[0.98]"
               >
                 Archive Photo
               </button>
@@ -265,7 +265,7 @@ export default function Studio({ variant = "default" }: StudioProps) {
               </div>
               <button
                 type="submit"
-                className="mt-2 bg-[#d4a373] hover:bg-[#dfb285] text-[#0a0d14] font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-[0.98]"
+                className="mt-2 bg-foreground hover:bg-accent text-background font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-sm active:scale-[0.98]"
               >
                 Inscribe Memory
               </button>
@@ -303,7 +303,7 @@ export default function Studio({ variant = "default" }: StudioProps) {
               </div>
               <button
                 type="submit"
-                className="mt-2 bg-[#d4a373] hover:bg-[#dfb285] text-[#0a0d14] font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-md active:scale-[0.98]"
+                className="mt-2 bg-foreground hover:bg-accent text-background font-sans font-semibold text-xs tracking-wider uppercase py-3.5 px-6 rounded-xl transition-all duration-200 shadow-sm active:scale-[0.98]"
               >
                 Add to Timeline
               </button>

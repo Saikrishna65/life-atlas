@@ -26,8 +26,8 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
 
   if (!isClient) {
     return (
-      <div className="min-h-screen bg-[#07090d] flex items-center justify-center">
-        <div className="w-5 h-5 rounded-full border border-amber-400/40 border-t-amber-300 animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border border-muted border-t-accent animate-spin" />
       </div>
     );
   }
