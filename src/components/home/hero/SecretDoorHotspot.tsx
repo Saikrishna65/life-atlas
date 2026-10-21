@@ -3,6 +3,14 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
+import { Fingerprint, Sparkles } from "lucide-react";
+import DeviceAuthModal from "@/components/auth/DeviceAuthModal";
+import {
+  authenticateWithDevice,
+  triggerHaptic,
+  playBiometricAudio,
+  grantSecretAccess,
+} from "@/lib/deviceAuth";
 
 interface SecretDoorHotspotProps {
   progressRef?: React.RefObject<number>;
@@ -13,6 +21,8 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
   const hotspotRef = useRef<HTMLDivElement>(null);
   const [doorStyle, setDoorStyle] = useState<React.CSSProperties>({ display: "none" });
   const [isOpening, setIsOpening] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const isTriggeringRef = useRef(false);
   const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
   const [parallax, setParallax] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -113,8 +123,26 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
     };
   }, [progressRef]);
 
-  const triggerOpenSecret = useCallback(() => {
-    if (isTriggeringRef.current) return;
+  // Successfully verified door sequence transition
+  const executeUnlockNavigation = useCallback(() => {
+    grantSecretAccess();
+    setIsOpening(true);
+    setIsAuthenticating(false);
+    setIsAuthModalOpen(false);
+
+    // Magical golden portal glow before entering private sanctuary
+    setTimeout(() => {
+      router.push("/secret");
+      setTimeout(() => {
+        setIsOpening(false);
+        isTriggeringRef.current = false;
+      }, 800);
+    }, 380);
+  }, [router]);
+
+  // Triggered when door is double-tapped or double-clicked
+  const triggerDoorAuthentication = useCallback(async () => {
+    if (isTriggeringRef.current || isOpening || isAuthenticating) return;
 
     // Verify user is at the initial hero stage where the door is visible in front
     if (progressRef?.current && progressRef.current > 0.18) {
@@ -122,34 +150,36 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
     }
 
     isTriggeringRef.current = true;
-    setIsOpening(true);
+    setIsAuthenticating(true);
+    triggerHaptic("tap");
+    playBiometricAudio("scan");
 
-    // Subtle tactile haptic impulse on supported mobile devices
-    if (typeof window !== "undefined" && "vibrate" in navigator) {
-      try {
-        navigator.vibrate([45, 50, 45]);
-      } catch {
-        // Ignore haptics on unsupported platforms
-      }
-    }
-
-    // Set session authorization flag so production web visitors can access through the door
     try {
-      sessionStorage.setItem("life_atlas_secret_unlocked", "true");
-    } catch {
-      // Ignore sessionStorage errors
-    }
+      // 1. Attempt direct device biometric authentication (Fingerprint / Face / Screen Lock)
+      const authResult = await authenticateWithDevice();
 
-    // Brief, magical golden threshold glow before entering the secret sanctuary
-    setTimeout(() => {
-      router.push("/secret");
-      // Reset opening state after navigation completes
-      setTimeout(() => {
-        setIsOpening(false);
-        isTriggeringRef.current = false;
-      }, 800);
-    }, 240);
-  }, [router, progressRef]);
+      if (authResult.success) {
+        // Biometric matched! Open door
+        executeUnlockNavigation();
+        return;
+      }
+
+      // 2. If prompt was cancelled or hardware not available, open Guardian Modal with PIN fallback
+      setIsAuthenticating(false);
+      setIsAuthModalOpen(true);
+    } catch (err) {
+      console.warn("Authentication error:", err);
+      setIsAuthenticating(false);
+      setIsAuthModalOpen(true);
+    }
+  }, [progressRef, isOpening, isAuthenticating, executeUnlockNavigation]);
+
+  // Modal close handler
+  const handleModalClose = useCallback(() => {
+    setIsAuthModalOpen(false);
+    setIsAuthenticating(false);
+    isTriggeringRef.current = false;
+  }, []);
 
   // Pointer event handler for instant double-tap detection on touch devices & mice
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -180,7 +210,7 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
       e.preventDefault();
       e.stopPropagation();
       lastTapRef.current = { time: 0, x: 0, y: 0 };
-      triggerOpenSecret();
+      triggerDoorAuthentication();
       return;
     }
 
@@ -200,36 +230,64 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    triggerOpenSecret();
+    triggerDoorAuthentication();
   };
 
   return (
-    <div
-      ref={hotspotRef}
-      role="button"
-      tabIndex={0}
-      aria-label="Private Atlas Entrance"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onDoubleClick={handleDoubleClick}
-      style={{
-        ...doorStyle,
-        transform: `translate3d(${parallax.x}px, ${parallax.y}px, 0)`,
-        transition: "transform 0.08s ease-out, box-shadow 0.25s ease-out, opacity 0.25s ease-out",
-      }}
-      className={`rounded-sm select-none ${
-        isOpening
-          ? "ring-2 ring-amber-300/80 shadow-[0_0_40px_rgba(255,230,150,0.6)] bg-white/10"
-          : "bg-transparent active:bg-white/[0.04]"
-      }`}
-    >
-      {/* Subtle door edge shimmer when opening */}
-      {isOpening && (
-        <div
-          className="absolute inset-0 pointer-events-none rounded-sm border border-amber-300/60 animate-pulse bg-gradient-to-b from-amber-200/20 via-transparent to-amber-300/30"
-          aria-hidden="true"
-        />
-      )}
-    </div>
+    <>
+      <div
+        ref={hotspotRef}
+        role="button"
+        tabIndex={0}
+        aria-label="Private Atlas Entrance - Double Tap to Authenticate"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onDoubleClick={handleDoubleClick}
+        style={{
+          ...doorStyle,
+          transform: `translate3d(${parallax.x}px, ${parallax.y}px, 0)`,
+          transition: "transform 0.08s ease-out, box-shadow 0.25s ease-out, opacity 0.25s ease-out",
+        }}
+        className={`rounded-sm select-none ${
+          isOpening
+            ? "ring-2 ring-amber-300 shadow-[0_0_60px_rgba(255,230,150,0.8)] bg-amber-100/20"
+            : isAuthenticating
+            ? "ring-2 ring-cyan-400/80 shadow-[0_0_40px_rgba(34,211,238,0.5)] bg-cyan-950/20"
+            : "bg-transparent active:bg-white/[0.04]"
+        }`}
+      >
+        {/* Subtle Biometric Lock Indicator on the door surface during scan */}
+        {isAuthenticating && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <div className="p-3.5 rounded-full bg-neutral-950/80 backdrop-blur-md border border-cyan-400/60 shadow-[0_0_30px_rgba(34,211,238,0.6)] animate-pulse">
+              <Fingerprint className="w-8 h-8 text-cyan-300" />
+            </div>
+            <span className="mt-2 text-[10px] font-mono tracking-widest uppercase text-cyan-300 font-semibold bg-black/60 px-2 py-0.5 rounded-full border border-cyan-400/30">
+              Scanning...
+            </span>
+          </div>
+        )}
+
+        {/* Subtle door edge shimmer when opening */}
+        {isOpening && (
+          <div
+            className="absolute inset-0 pointer-events-none rounded-sm border-2 border-amber-300 animate-pulse bg-gradient-to-b from-amber-200/40 via-amber-100/20 to-amber-300/50 flex flex-col items-center justify-center"
+            aria-hidden="true"
+          >
+            <div className="p-3 rounded-full bg-amber-400/30 backdrop-blur-md border border-amber-300 shadow-[0_0_35px_rgba(251,191,36,0.9)] animate-bounce">
+              <Sparkles className="w-7 h-7 text-amber-200" />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Guardian Biometric / PIN Authentication Modal */}
+      <DeviceAuthModal
+        isOpen={isAuthModalOpen}
+        onSuccess={executeUnlockNavigation}
+        onClose={handleModalClose}
+      />
+    </>
   );
 }
+

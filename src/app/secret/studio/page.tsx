@@ -1,14 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import Studio from "@/app/admin/Studio";
+import { revokeSecretAccess } from "@/lib/deviceAuth";
 
 export default function SecretStudioPage() {
   const router = useRouter();
 
   const handleBackToSecretHome = () => {
     router.push("/secret");
+  };
+
+  const handleLockVault = () => {
+    revokeSecretAccess();
+    router.push("/");
   };
 
   return (
@@ -24,9 +30,19 @@ export default function SecretStudioPage() {
           <span>Private Atlas</span>
         </button>
 
-        <span className="text-[10px] font-sans tracking-[0.2em] uppercase text-muted-foreground/80 select-none">
-          Chronicle Studio
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-[10px] font-sans tracking-[0.2em] uppercase text-muted-foreground/80 select-none">
+            Chronicle Studio
+          </span>
+          <button
+            onClick={handleLockVault}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors"
+            title="Lock Private Atlas and revoke session"
+          >
+            <Lock className="w-3 h-3 text-amber-500" />
+            <span>Lock</span>
+          </button>
+        </div>
       </nav>
 
       {/* Editorial Header */}
