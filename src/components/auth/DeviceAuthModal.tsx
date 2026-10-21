@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { Capacitor } from "@capacitor/core";
 import {
   Fingerprint,
   Lock,
@@ -11,6 +12,7 @@ import {
   X,
   RefreshCw,
   Sparkles,
+  Delete,
 } from "lucide-react";
 import {
   authenticateWithDevice,
@@ -32,7 +34,7 @@ export default function DeviceAuthModal({
   onSuccess,
   onClose,
 }: DeviceAuthModalProps) {
-  const [authMode, setAuthMode] = useState<"fingerprint" | "pin">("fingerprint");
+  const [authMode, setAuthMode] = useState<"fingerprint" | "pin">("pin");
   const [status, setStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [pinInput, setPinInput] = useState<string>("");
@@ -41,10 +43,15 @@ export default function DeviceAuthModal({
   // Check biometric capability on mount
   useEffect(() => {
     if (isOpen) {
+      setStatus("idle");
+      setErrorMessage("");
+      setPinInput("");
       checkBiometricSupport().then((res) => {
         setBioSupport(res);
-        // If device has no biometric hardware, default directly to PIN mode
-        if (!res.hasHardware && !res.available) {
+        // On native Android with biometrics, default to fingerprint; on web/desktop, default to PIN
+        if (Capacitor.isNativePlatform() && res.available && res.hasHardware) {
+          setAuthMode("fingerprint");
+        } else {
           setAuthMode("pin");
         }
       });
@@ -63,21 +70,20 @@ export default function DeviceAuthModal({
         setStatus("success");
         setTimeout(() => {
           onSuccess();
-        }, 600);
+        }, 500);
       } else if (result.cancelled) {
         setStatus("idle");
         setErrorMessage("Biometric prompt dismissed. Tap to try again or use PIN.");
       } else {
         setStatus("error");
-        setErrorMessage(result.error || "Biometric sensor unavailable. Please use PIN.");
+        setErrorMessage(result.error || "Biometric sensor error. Use PIN instead.");
       }
     } catch {
       setStatus("error");
-      setErrorMessage("Authentication failed. Please try again.");
+      setErrorMessage("Biometric verification failed. Use PIN instead.");
     }
   }, [onSuccess]);
 
-  // Handle PIN input
   const handlePinDigit = useCallback((digit: string) => {
     setPinInput((prev) => {
       if (prev.length >= 6) return prev;
@@ -91,7 +97,7 @@ export default function DeviceAuthModal({
           setStatus("success");
           setTimeout(() => {
             onSuccess();
-          }, 500);
+          }, 450);
         } else {
           setStatus("error");
           setErrorMessage("Incorrect guardian PIN. Default is 1984.");
@@ -185,21 +191,6 @@ export default function DeviceAuthModal({
         <div className="flex items-center gap-1 p-1 bg-neutral-950/70 border border-white/10 rounded-xl mb-6 text-xs">
           <button
             onClick={() => {
-              setAuthMode("fingerprint");
-              setStatus("idle");
-              setErrorMessage("");
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-              authMode === "fingerprint"
-                ? "bg-amber-400/15 text-amber-300 border border-amber-400/30 font-medium"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            <Fingerprint className="w-3.5 h-3.5" />
-            <span>Fingerprint</span>
-          </button>
-          <button
-            onClick={() => {
               setAuthMode("pin");
               setStatus("idle");
               setErrorMessage("");
@@ -212,6 +203,21 @@ export default function DeviceAuthModal({
           >
             <KeyRound className="w-3.5 h-3.5" />
             <span>Passcode</span>
+          </button>
+          <button
+            onClick={() => {
+              setAuthMode("fingerprint");
+              setStatus("idle");
+              setErrorMessage("");
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+              authMode === "fingerprint"
+                ? "bg-amber-400/15 text-amber-300 border border-amber-400/30 font-medium"
+                : "text-neutral-400 hover:text-white"
+            }`}
+          >
+            <Fingerprint className="w-3.5 h-3.5" />
+            <span>Fingerprint</span>
           </button>
         </div>
 
@@ -266,7 +272,7 @@ export default function DeviceAuthModal({
               {status === "scanning" ? (
                 <span className="inline-flex items-center gap-2 text-xs font-mono text-cyan-300 animate-pulse">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  Awaiting fingerprint verification...
+                  Awaiting biometric verification...
                 </span>
               ) : status === "success" ? (
                 <span className="inline-flex items-center gap-1.5 text-xs font-mono text-emerald-400 font-medium">
@@ -291,7 +297,7 @@ export default function DeviceAuthModal({
               className="w-full py-3 px-4 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 shadow-[0_0_20px_rgba(245,158,11,0.3)] active:scale-[0.98] disabled:opacity-50"
             >
               <Fingerprint className="w-4 h-4" />
-              <span>{status === "scanning" ? "Verifying..." : "Verify Fingerprint"}</span>
+              <span>{status === "scanning" ? "Verifying..." : "Verify Biometric"}</span>
             </button>
           </div>
         )}
@@ -325,8 +331,8 @@ export default function DeviceAuthModal({
               {errorMessage ? (
                 <span className="text-xs text-rose-400">{errorMessage}</span>
               ) : (
-                <span className="text-[11px] font-mono text-neutral-500">
-                  Hint: Default sanctuary code is {DEFAULT_GUARDIAN_PIN}
+                <span className="text-[11px] font-mono text-neutral-400">
+                  Hint: Default guardian code is {DEFAULT_GUARDIAN_PIN}
                 </span>
               )}
             </div>
@@ -360,9 +366,10 @@ export default function DeviceAuthModal({
               <button
                 type="button"
                 onClick={handleBackspace}
-                className="h-12 rounded-xl bg-neutral-900/60 hover:bg-neutral-800/60 border border-white/10 text-neutral-400 text-sm font-mono transition-colors"
+                className="h-12 rounded-xl bg-neutral-900/60 hover:bg-neutral-800/60 border border-white/10 text-neutral-400 text-sm font-mono flex items-center justify-center transition-colors"
+                aria-label="Backspace"
               >
-                ⌫
+                <Delete className="w-5 h-5 text-neutral-400" />
               </button>
             </div>
           </div>

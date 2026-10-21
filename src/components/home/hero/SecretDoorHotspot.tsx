@@ -10,6 +10,7 @@ import {
   triggerHaptic,
   playBiometricAudio,
   grantSecretAccess,
+  isSecretAccessGranted,
 } from "@/lib/deviceAuth";
 
 interface SecretDoorHotspotProps {
@@ -27,7 +28,7 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
   const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
   const [parallax, setParallax] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Prefetch /secret route immediately so double-tap feels instantaneous
+  // Prefetch /secret route immediately so entrance feels instantaneous
   useEffect(() => {
     router.prefetch("/secret");
   }, [router]);
@@ -140,12 +141,30 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
     }, 380);
   }, [router]);
 
+  // Auto safety timeout: ensures isAuthenticating never hangs indefinitely
+  useEffect(() => {
+    if (isAuthenticating) {
+      const timer = setTimeout(() => {
+        setIsAuthenticating(false);
+        setIsAuthModalOpen(true);
+        isTriggeringRef.current = false;
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticating]);
+
   // Triggered when door is double-tapped or double-clicked
   const triggerDoorAuthentication = useCallback(async () => {
-    if (isTriggeringRef.current || isOpening || isAuthenticating) return;
+    if (isTriggeringRef.current || isOpening) return;
 
     // Verify user is at the initial hero stage where the door is visible in front
     if (progressRef?.current && progressRef.current > 0.18) {
+      return;
+    }
+
+    // 0. If user already authenticated this session, unlock immediately!
+    if (isSecretAccessGranted()) {
+      executeUnlockNavigation();
       return;
     }
 
@@ -155,24 +174,26 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
     playBiometricAudio("scan");
 
     try {
-      // 1. Attempt direct device biometric authentication (Fingerprint / Face / Screen Lock)
+      // 1. Direct biometric verification (native Capacitor Android prompt or responsive web scan)
       const authResult = await authenticateWithDevice();
 
       if (authResult.success) {
-        // Biometric matched! Open door
+        // Biometric matched! Open the secret door and transition to Private Atlas
         executeUnlockNavigation();
         return;
       }
 
-      // 2. If prompt was cancelled or hardware not available, open Guardian Modal with PIN fallback
+      // 2. If prompt was cancelled or unavailable, open Guardian Modal with PIN fallback
       setIsAuthenticating(false);
       setIsAuthModalOpen(true);
+      isTriggeringRef.current = false;
     } catch (err) {
       console.warn("Authentication error:", err);
       setIsAuthenticating(false);
       setIsAuthModalOpen(true);
+      isTriggeringRef.current = false;
     }
-  }, [progressRef, isOpening, isAuthenticating, executeUnlockNavigation]);
+  }, [progressRef, isOpening, executeUnlockNavigation]);
 
   // Modal close handler
   const handleModalClose = useCallback(() => {
@@ -252,18 +273,27 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
           isOpening
             ? "ring-2 ring-amber-300 shadow-[0_0_60px_rgba(255,230,150,0.8)] bg-amber-100/20"
             : isAuthenticating
-            ? "ring-2 ring-cyan-400/80 shadow-[0_0_40px_rgba(34,211,238,0.5)] bg-cyan-950/20"
+            ? "ring-2 ring-cyan-400/80 shadow-[0_0_40px_rgba(34,211,238,0.5)] bg-cyan-950/20 cursor-pointer"
             : "bg-transparent active:bg-white/[0.04]"
         }`}
       >
         {/* Subtle Biometric Lock Indicator on the door surface during scan */}
         {isAuthenticating && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsAuthenticating(false);
+              setIsAuthModalOpen(true);
+              isTriggeringRef.current = false;
+            }}
+            className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer pointer-events-auto"
+            title="Tap to enter PIN"
+          >
             <div className="p-3.5 rounded-full bg-neutral-950/80 backdrop-blur-md border border-cyan-400/60 shadow-[0_0_30px_rgba(34,211,238,0.6)] animate-pulse">
               <Fingerprint className="w-8 h-8 text-cyan-300" />
             </div>
-            <span className="mt-2 text-[10px] font-mono tracking-widest uppercase text-cyan-300 font-semibold bg-black/60 px-2 py-0.5 rounded-full border border-cyan-400/30">
-              Scanning...
+            <span className="mt-2 text-[10px] font-mono tracking-widest uppercase text-cyan-300 font-semibold bg-black/70 px-2.5 py-0.5 rounded-full border border-cyan-400/30">
+              Scanning... Tap for PIN
             </span>
           </div>
         )}
@@ -290,4 +320,3 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
     </>
   );
 }
-
