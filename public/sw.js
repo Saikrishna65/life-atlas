@@ -87,28 +87,47 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first with offline fallback for navigation pages
+  // Fast Stale-While-Revalidate for navigation pages with strict 2.5s network race
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((networkResponse) => {
+      (async () => {
+        // 1. Fast path: If cached page or root shell exists, serve instantly (<50ms)
+        const cached = (await caches.match(request)) || (await caches.match('/'));
+        if (cached) {
+          // Revalidate quietly in the background so slow network never delays the user
+          fetch(request)
+            .then((networkResponse) => {
+              if (networkResponse && networkResponse.status === 200) {
+                caches.open(CACHE_NAME).then((cache) => cache.put(request, networkResponse));
+              }
+            })
+            .catch(() => {});
+          return cached;
+        }
+
+        // 2. Cold start (no cache yet): Race network against a 2.5-second timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+        try {
+          const networkResponse = await fetch(request, { signal: controller.signal });
+          clearTimeout(timeoutId);
           if (networkResponse && networkResponse.status === 200) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));
           }
           return networkResponse;
-        })
-        .catch(() => {
-          return caches.match(request).then((cachedResponse) => {
-            if (cachedResponse) {
-              return cachedResponse;
-            }
-            // Fallback to cached root or offline page
-            return caches.match('/').then((rootCached) => {
-              return rootCached || caches.match('/offline.html');
-            });
-          });
-        })
+        } catch (err) {
+          clearTimeout(timeoutId);
+          // Timed out on crawling network or disconnected: serve local offline sanctuary
+          const offlinePage = await caches.match('/offline.html');
+          if (offlinePage) {
+            return offlinePage;
+          }
+          return fetch('/offline.html');
+        }
+      })()
     );
+    return;
   }
 });

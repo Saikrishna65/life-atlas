@@ -3,12 +3,30 @@ package com.lifeatlas.app;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.webkit.WebView;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.WebViewListener;
 
 public class MainActivity extends BridgeActivity {
+    private final Handler timeoutHandler = new Handler(Looper.getMainLooper());
+    private boolean pageLoaded = false;
+    private final Runnable slowNetworkWatchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (!pageLoaded && getBridge() != null && getBridge().getWebView() != null) {
+                String errorUrl = getBridge().getErrorUrl();
+                if (errorUrl != null) {
+                    getBridge().getWebView().loadUrl(errorUrl);
+                }
+            }
+        }
+    };
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -36,5 +54,35 @@ public class MainActivity extends BridgeActivity {
             windowInsetsController.setAppearanceLightStatusBars(false);
             windowInsetsController.setAppearanceLightNavigationBars(false);
         }
+
+        // Fast-fail watchdog for crawling / ultra-slow 2G networks
+        if (getBridge() != null) {
+            getBridge().addWebViewListener(new WebViewListener() {
+                @Override
+                public void onPageStarted(WebView webView) {
+                    pageLoaded = false;
+                    timeoutHandler.removeCallbacks(slowNetworkWatchdog);
+                    // If network is crawling and hasn't loaded in 4.5 seconds, auto-load offline sanctuary
+                    timeoutHandler.postDelayed(slowNetworkWatchdog, 4500);
+                }
+
+                @Override
+                public void onPageLoaded(WebView webView) {
+                    pageLoaded = true;
+                    timeoutHandler.removeCallbacks(slowNetworkWatchdog);
+                }
+
+                @Override
+                public void onReceivedError(WebView webView) {
+                    timeoutHandler.removeCallbacks(slowNetworkWatchdog);
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        timeoutHandler.removeCallbacks(slowNetworkWatchdog);
     }
 }
