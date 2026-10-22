@@ -44,8 +44,9 @@ import {
 } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
-import { computeTripDuration } from "@/lib/vault/tripDuration";
+import { computeTripDuration, getTripDayCount } from "@/lib/vault/tripDuration";
 import { Select } from "@/components/ui/Select";
+import { DateRangePicker } from "@/components/ui/DateRangePicker";
 
 export default function TripCommandCenterPage() {
   const params = useParams();
@@ -224,17 +225,16 @@ export default function TripCommandCenterPage() {
   };
 
   // Countdown & duration computations
-  const { daysTotal, countdownLabel, countdownSub } = useMemo(() => {
-    if (!trip) return { daysTotal: 1, countdownLabel: "", countdownSub: "" };
+  const { daysTotal, nightsTotal, countdownLabel, countdownSub } = useMemo(() => {
+    if (!trip) return { daysTotal: 1, nightsTotal: 0, countdownLabel: "", countdownSub: "" };
 
+    const { calendarDays, calendarNights } = getTripDayCount(trip.startDate, trip.endDate);
     const start = new Date(trip.startDate).getTime();
-    const end = trip.endDate ? new Date(trip.endDate).getTime() : start;
-
-    const diffDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1);
 
     if (trip.status === "COMPLETED") {
       return {
-        daysTotal: diffDays,
+        daysTotal: calendarDays,
+        nightsTotal: calendarNights,
         countdownLabel: "Expedition Completed",
         countdownSub: "Archived in your personal chronicle",
       };
@@ -245,21 +245,24 @@ export default function TripCommandCenterPage() {
 
     if (daysUntilStart > 0) {
       return {
-        daysTotal: diffDays,
+        daysTotal: calendarDays,
+        nightsTotal: calendarNights,
         countdownLabel: `T-${daysUntilStart} Days`,
         countdownSub: `Countdown to departure`,
       };
     } else if (daysUntilStart === 0) {
       return {
-        daysTotal: diffDays,
+        daysTotal: calendarDays,
+        nightsTotal: calendarNights,
         countdownLabel: "Departure Day",
         countdownSub: "Expedition launches today",
       };
     } else {
       const dayOnRoad = Math.abs(daysUntilStart) + 1;
       return {
-        daysTotal: diffDays,
-        countdownLabel: `Day ${Math.min(dayOnRoad, diffDays)} of ${diffDays}`,
+        daysTotal: calendarDays,
+        nightsTotal: calendarNights,
+        countdownLabel: `Day ${Math.min(dayOnRoad, calendarDays)} of ${calendarDays}`,
         countdownSub: "Expedition actively in progress",
       };
     }
@@ -312,106 +315,106 @@ export default function TripCommandCenterPage() {
     );
   }
 
-  // Trip Vault Feature Hubs
+  // Trip Vault Feature Hubs - Curated, Colorful & Unified
   const FEATURE_HUBS = [
     {
       id: "itinerary",
       title: "Itinerary & Schedule",
       subtitle: "Day-by-day timeline, themes & hourly activity blocks",
       href: `/secret/vault/${trip.id}/itinerary`,
-      icon: <CalendarDays className="w-5 h-5 text-accent" />,
+      icon: <CalendarDays className="w-5 h-5 text-indigo-400" />,
       badge: "Schedule",
-      accent: "border-muted hover:border-accent/40 bg-surface",
+      accent: "border-muted/80 hover:border-indigo-500/50 bg-surface/90 hover:bg-surface",
+      iconBg: "bg-indigo-500/10 border-indigo-500/25 text-indigo-400",
+      badgeStyle: "bg-indigo-500/15 text-indigo-300 border-indigo-500/30",
     },
     {
       id: "bookings",
-      title: "Bookings & PNRs",
-      subtitle: "Train berths, flights, stay vouchers & 1-tap copy PNR",
+      title: "Bookings & Document Vault",
+      subtitle: "Tickets, PNRs, train berths, stay vouchers & offline PDF documents",
       href: `/secret/vault/${trip.id}/bookings`,
-      icon: <Ticket className="w-5 h-5 text-accent" />,
-      badge: "Bookings",
-      accent: "border-muted hover:border-accent/40 bg-surface",
-    },
-    {
-      id: "documents",
-      title: "Offline Document Vault",
-      subtitle: "IRCTC PDFs, boarding passes, ID cards cached offline",
-      href: `/secret/vault/${trip.id}/documents`,
-      icon: <FileText className="w-5 h-5 text-accent" />,
-      badge: "Document Vault",
-      accent: "border-muted hover:border-accent/40 bg-surface",
-    },
-    {
-      id: "rentals",
-      title: "Bike & Scooter Rentals",
-      subtitle: "Vehicle models, security deposits & fuel policies",
-      href: `/secret/vault/${trip.id}/rentals`,
-      icon: <Bike className="w-5 h-5 text-emerald-600" />,
-      badge: "Rentals",
-      accent: "border-muted hover:border-emerald-500/40 bg-surface",
+      icon: <Ticket className="w-5 h-5 text-sky-400" />,
+      badge: "Bookings & Vault",
+      accent: "border-muted/80 hover:border-sky-500/50 bg-surface/90 hover:bg-surface",
+      iconBg: "bg-sky-500/10 border-sky-500/25 text-sky-400",
+      badgeStyle: "bg-sky-500/15 text-sky-300 border-sky-500/30",
     },
     {
       id: "routes",
-      title: "Maps & Offline Waypoints",
-      subtitle: "GPS waypoints, mountain passes, road advisories & maps intent",
+      title: "Route Legs & Offline Maps",
+      subtitle: "Driving distance, road condition advisories, travel time & GPS navigation",
       href: `/secret/vault/${trip.id}/routes`,
-      icon: <MapPin className="w-5 h-5 text-teal-600" />,
-      badge: "Waypoints",
-      accent: "border-muted hover:border-teal-500/40 bg-surface",
+      icon: <MapPin className="w-5 h-5 text-emerald-400" />,
+      badge: "Routes",
+      accent: "border-muted/80 hover:border-emerald-500/50 bg-surface/90 hover:bg-surface",
+      iconBg: "bg-emerald-500/10 border-emerald-500/25 text-emerald-400",
+      badgeStyle: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
     },
     {
       id: "food",
       title: "Culinary Roadmap",
       subtitle: "Regional delicacies, street eats & restaurant wishlist",
       href: `/secret/vault/${trip.id}/food`,
-      icon: <Utensils className="w-5 h-5 text-amber-600" />,
+      icon: <Utensils className="w-5 h-5 text-amber-400" />,
       badge: "Culinary",
-      accent: "border-muted hover:border-amber-500/40 bg-surface",
+      accent: "border-muted/80 hover:border-amber-500/50 bg-surface/90 hover:bg-surface",
+      iconBg: "bg-amber-500/10 border-amber-500/25 text-amber-400",
+      badgeStyle: "bg-amber-500/15 text-amber-300 border-amber-500/30",
     },
     {
       id: "budget",
       title: "Budget & Expenses",
-      subtitle: "Multi-currency expense log, payment modes & totals",
+      subtitle: "Multi-currency expense log, payment modes & spending quotas",
       href: `/secret/vault/${trip.id}/budget`,
-      icon: <CreditCard className="w-5 h-5 text-rose-600" />,
+      icon: <CreditCard className="w-5 h-5 text-rose-400" />,
       badge: "Expenses",
-      accent: "border-muted hover:border-rose-500/40 bg-surface",
+      accent: "border-muted/80 hover:border-rose-500/50 bg-surface/90 hover:bg-surface",
+      iconBg: "bg-rose-500/10 border-rose-500/25 text-rose-400",
+      badgeStyle: "bg-rose-500/15 text-rose-300 border-rose-500/30",
     },
     {
       id: "packing",
       title: "Gear & Packing Checklist",
       subtitle: "Categorized audit: riding gear, first aid & electronics",
       href: `/secret/vault/${trip.id}/packing`,
-      icon: <CheckSquare className="w-5 h-5 text-teal-600" />,
+      icon: <CheckSquare className="w-5 h-5 text-purple-400" />,
       badge: "Checklist",
-      accent: "border-muted hover:border-teal-500/40 bg-surface",
+      accent: "border-muted/80 hover:border-purple-500/50 bg-surface/90 hover:bg-surface",
+      iconBg: "bg-purple-500/10 border-purple-500/25 text-purple-400",
+      badgeStyle: "bg-purple-500/15 text-purple-300 border-purple-500/30",
     },
     {
       id: "reminders",
       title: "Alarms & Departure Reminders",
-      subtitle: "100% offline local notifications for departures, stays & rental returns",
+      subtitle: "100% offline local notifications for departures & stays",
       href: `/secret/vault/${trip.id}/reminders`,
-      icon: <Bell className="w-5 h-5 text-amber-600" />,
+      icon: <Bell className="w-5 h-5 text-yellow-400" />,
       badge: "Local Alarms",
-      accent: "border-muted hover:border-amber-500/40 bg-surface",
+      accent: "border-muted/80 hover:border-yellow-500/50 bg-surface/90 hover:bg-surface",
+      iconBg: "bg-yellow-500/10 border-yellow-500/25 text-yellow-400",
+      badgeStyle: "bg-yellow-500/15 text-yellow-300 border-yellow-500/30",
     },
     {
       id: "memories",
-      title: "Memories & Completed Archives",
+      title: "Memories & Photo Wall",
       subtitle: "Milestone celebration dossier, photo wall & public journal export",
       href: `/secret/vault/${trip.id}/memories`,
-      icon: <Camera className="w-5 h-5 text-accent" />,
-      badge: "Archives",
-      accent: "border-muted hover:border-accent/40 bg-surface",
+      icon: <Camera className="w-5 h-5 text-orange-400" />,
+      badge: "Memories",
+      accent: "border-muted/80 hover:border-orange-500/50 bg-surface/90 hover:bg-surface",
+      iconBg: "bg-orange-500/10 border-orange-500/25 text-orange-400",
+      badgeStyle: "bg-orange-500/15 text-orange-300 border-orange-500/30",
     },
     {
       id: "assistant",
       title: "AI Assistant & Smart Parser",
       subtitle: "Neon AI Gateway itinerary generator & offline PNR ticket extractor",
       href: `/secret/vault/${trip.id}/assistant`,
-      icon: <Bot className="w-5 h-5 text-indigo-600" />,
+      icon: <Bot className="w-5 h-5 text-violet-400" />,
       badge: "AI Copilot",
-      accent: "border-muted hover:border-indigo-500/40 bg-surface",
+      accent: "border-muted/80 hover:border-violet-500/50 bg-surface/90 hover:bg-surface",
+      iconBg: "bg-violet-500/10 border-violet-500/25 text-violet-400",
+      badgeStyle: "bg-violet-500/15 text-violet-300 border-violet-500/30",
     },
   ];
 
@@ -465,25 +468,19 @@ export default function TripCommandCenterPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 {/* Status Dropdown Selector */}
-                <select
-                  value={trip.status}
-                  onChange={(e) => handleStatusChange(e.target.value as TripStatus)}
-                  className={`text-xs font-mono uppercase tracking-wider px-3 py-1.5 rounded-full font-semibold border cursor-pointer focus:outline-hidden transition-all shadow-xs ${
-                    trip.status === "ACTIVE"
-                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                      : trip.status === "PLANNING"
-                      ? "bg-amber-50 border-amber-200 text-amber-800"
-                      : trip.status === "COMPLETED"
-                      ? "bg-indigo-50 border-indigo-200 text-indigo-800"
-                      : "bg-surface border-muted text-muted-foreground"
-                  }`}
-                >
-                  <option value="PLANNING">Planning</option>
-                  <option value="ACTIVE">Active (On Road)</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="DRAFT">Draft</option>
-                  <option value="ARCHIVED">Archived</option>
-                </select>
+                <div className="w-36">
+                  <Select
+                    value={trip.status}
+                    onChange={(e) => handleStatusChange(e.target.value as TripStatus)}
+                    className="!py-1.5 !px-3 font-mono text-xs uppercase tracking-wider font-semibold"
+                  >
+                    <option value="PLANNING">Planning</option>
+                    <option value="ACTIVE">Active (On Road)</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="DRAFT">Draft</option>
+                    <option value="ARCHIVED">Archived</option>
+                  </Select>
+                </div>
 
                 {/* Travel Style Badge */}
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-background/80 border border-muted text-xs font-sans text-muted-foreground backdrop-blur-xs">
@@ -589,7 +586,7 @@ export default function TripCommandCenterPage() {
                   Expedition Duration
                 </span>
                 <span className="text-sm sm:text-base font-semibold font-mono text-foreground mt-0.5 block">
-                  {daysTotal} Days
+                  {daysTotal} Days {nightsTotal > 0 && <span className="text-xs font-normal text-muted-foreground">• {nightsTotal}N</span>}
                 </span>
                 <span className="text-[10px] text-muted-foreground block mt-0.5">
                   {trip.destinations?.length || 1} Scheduled Stops
@@ -659,15 +656,12 @@ export default function TripCommandCenterPage() {
         </div>
       </section>
 
-      {/* EXPEDITION COMMAND HUBS (The 8 Pillars Grid) */}
+      {/* EXPEDITION COMMAND HUBS */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-2xl text-foreground font-normal tracking-tight">
             Expedition Modules
           </h2>
-          <span className="text-xs font-mono text-muted-foreground">
-            Expedition Vault Modules • 100% Offline
-          </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -677,16 +671,16 @@ export default function TripCommandCenterPage() {
               href={hub.href}
               className={`group relative rounded-2xl border p-5 transition-all duration-300 shadow-soft flex items-start gap-4 active:scale-[0.99] ${hub.accent}`}
             >
-              <div className="p-3 rounded-xl bg-background border border-muted group-hover:scale-105 transition-transform shrink-0 shadow-xs">
+              <div className={`p-3 rounded-xl border group-hover:scale-110 transition-transform shrink-0 shadow-xs ${hub.iconBg}`}>
                 {hub.icon}
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-display text-lg text-foreground font-normal tracking-tight group-hover:text-amber-500 transition-colors">
+                  <h3 className="font-display text-lg text-foreground font-normal tracking-tight group-hover:text-accent transition-colors">
                     {hub.title}
                   </h3>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/80 px-2 py-0.5 rounded-md bg-background/60 border border-muted shrink-0">
+                  <span className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 ${hub.badgeStyle}`}>
                     {hub.badge}
                   </span>
                 </div>
@@ -695,7 +689,7 @@ export default function TripCommandCenterPage() {
                 </p>
               </div>
 
-              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0 self-center" />
+              <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-accent group-hover:translate-x-0.5 transition-all shrink-0 self-center" />
             </Link>
           ))}
         </div>
@@ -786,17 +780,18 @@ export default function TripCommandCenterPage() {
                 />
               </div>
 
+              {/* Single Custom DateRangePicker for Edit Modal */}
+              <DateRangePicker
+                startDate={editStartDate}
+                endDate={editEndDate}
+                onChange={(start, end) => {
+                  setEditStartDate(start);
+                  setEditEndDate(end);
+                }}
+              />
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-2 p-3 rounded-xl bg-surface border border-muted">
-                  <div className="space-y-1">
-                    <label className="text-xs font-sans font-medium text-foreground">Departure Date</label>
-                    <input
-                      type="date"
-                      value={editStartDate}
-                      onChange={(e) => setEditStartDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
-                    />
-                  </div>
+                <div className="p-3.5 rounded-xl bg-surface border border-muted space-y-1">
                   <Select
                     label="Departure Travel Slot"
                     value={editDepartureSlot}
@@ -809,16 +804,7 @@ export default function TripCommandCenterPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2 p-3 rounded-xl bg-surface border border-muted">
-                  <div className="space-y-1">
-                    <label className="text-xs font-sans font-medium text-foreground">Return Date</label>
-                    <input
-                      type="date"
-                      value={editEndDate}
-                      onChange={(e) => setEditEndDate(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
-                    />
-                  </div>
+                <div className="p-3.5 rounded-xl bg-surface border border-muted space-y-1">
                   <Select
                     label="Return Travel Slot"
                     value={editReturnSlot}

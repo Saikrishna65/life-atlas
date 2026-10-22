@@ -27,7 +27,7 @@ import { useTripVault } from "@/lib/vault/useTripVault";
 import { TripRecord, TravelStyle } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
-import { computeTripDuration } from "@/lib/vault/tripDuration";
+import { computeTripDuration, getTripDayCount } from "@/lib/vault/tripDuration";
 
 type FilterTab = "ALL" | "ACTIVE" | "COMPLETED" | "DRAFT";
 
@@ -90,19 +90,9 @@ export default function TripVaultDashboard() {
     return `${startStr} – ${endStr}`;
   };
 
-  const calculateDays = (start: string, end?: string) => {
-    if (!end) return 1;
-    const diff = Math.ceil((new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(1, diff + 1);
-  };
-
   const getTripDurationBadge = (trip: TripRecord) => {
-    if (trip.effectiveDays) {
-      const calDays = calculateDays(trip.startDate, trip.endDate);
-      return `${trip.effectiveDays} Dest. Days (${calDays}d span)`;
-    }
-    const b = computeTripDuration(trip.startDate, trip.endDate, trip.departureSlot, trip.returnSlot);
-    return `${b.effectiveDays} Dest. Days (${b.calendarDays}d span)`;
+    const { formatted } = getTripDayCount(trip.startDate, trip.endDate);
+    return formatted;
   };
 
   // Lock body scroll when delete confirmation dialog is open

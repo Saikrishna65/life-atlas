@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     const startObj = new Date(startDate);
     const endObj = endDate ? new Date(endDate) : null;
     if (endObj) {
-      const days = Math.max(1, Math.ceil((endObj.getTime() - startObj.getTime()) / (1000 * 60 * 60 * 24)));
+      const days = Math.max(1, Math.round((endObj.getTime() - startObj.getTime()) / (1000 * 60 * 60 * 24)) + 1);
       durationStr = `${days} Days`;
     }
 

@@ -9,6 +9,7 @@ import {
   createTimelineEvent 
 } from "./actions";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { Select } from "@/components/ui/Select";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 
 type Tab = "trips" | "places" | "photos" | "memories" | "timeline";
@@ -225,10 +226,10 @@ export default function Studio({ variant = "default" }: StudioProps) {
                 </div>
                 <div className="space-y-1.5">
                   <label className={labelClasses}>Feature in Highlights?</label>
-                  <select name="isFeatured" className={inputClasses}>
+                  <Select name="isFeatured" className={inputClasses}>
                     <option value="false">Standard Gallery</option>
                     <option value="true">Featured Highlight</option>
-                  </select>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <label className={labelClasses}>Associated Trip ID (Optional)</label>
@@ -282,11 +283,11 @@ export default function Studio({ variant = "default" }: StudioProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className={labelClasses}>Event Category *</label>
-                  <select required name="type" className={inputClasses}>
+                  <Select required name="type" className={inputClasses}>
                     <option value="TRIP">Trip Milestone</option>
                     <option value="MEMORY">Personal Reflection</option>
                     <option value="EXPERIENCE">Unique Experience</option>
-                  </select>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <label className={labelClasses}>Date *</label>
@@ -447,10 +448,10 @@ export default function Studio({ variant = "default" }: StudioProps) {
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Feature on Homepage?</label>
-                  <select name="isFeatured" className="p-3 bg-surface border border-muted focus:border-foreground outline-none transition-colors rounded-sm">
+                  <Select name="isFeatured" className="p-3 bg-surface border border-muted focus:border-foreground outline-none transition-colors rounded-sm">
                     <option value="false">No</option>
                     <option value="true">Yes</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
               <div className="flex flex-col gap-2">
@@ -494,11 +495,11 @@ export default function Studio({ variant = "default" }: StudioProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Event Type *</label>
-                  <select required name="type" className="p-3 bg-surface border border-muted focus:border-foreground outline-none transition-colors rounded-sm">
+                  <Select required name="type" className="p-3 bg-surface border border-muted focus:border-foreground outline-none transition-colors rounded-sm">
                     <option value="TRIP">Trip</option>
                     <option value="MEMORY">Memory</option>
                     <option value="EXPERIENCE">Experience</option>
-                  </select>
+                  </Select>
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Date *</label>

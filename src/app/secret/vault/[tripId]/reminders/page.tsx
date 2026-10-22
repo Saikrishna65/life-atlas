@@ -15,13 +15,12 @@ import {
   X,
   Ticket,
   Home,
-  Bike,
   Sparkles,
   Clock,
   Check,
 } from "lucide-react";
 import { useReminders } from "@/lib/vault/useReminders";
-import { ReminderRecord, BookingRecord, VehicleRentalRecord } from "@/lib/vault/types";
+import { ReminderRecord, BookingRecord } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 
@@ -35,7 +34,6 @@ export default function RemindersPage() {
     activeReminders,
     pastReminders,
     bookings,
-    rentals,
     permissionGranted,
     isLoading,
     error,
@@ -43,7 +41,6 @@ export default function RemindersPage() {
     addCustomReminder,
     scheduleDeparture,
     scheduleCheckIn,
-    scheduleRentalWarning,
     removeReminder,
     triggerTest,
   } = useReminders(tripId);
@@ -140,16 +137,6 @@ export default function RemindersPage() {
     }
   };
 
-  // Schedule Rental Return Warning
-  const handleScheduleRental = async (rental: VehicleRentalRecord) => {
-    try {
-      await scheduleRentalWarning(rental, 3);
-      showSuccess(`3-hour return deadline alert scheduled for ${rental.vehicleModel}!`);
-    } catch (err) {
-      console.error("Failed scheduling rental return alarm:", err);
-    }
-  };
-
   // Check if an alarm already exists for an entity
   const findReminderForEntity = (entityId: string) => {
     return activeReminders.find((r) => r.relatedEntityId === entityId);
@@ -193,7 +180,7 @@ export default function RemindersPage() {
             Alarms & Departure Reminders
           </h1>
           <p className="font-body text-xs text-muted-foreground mt-0.5">
-            Local hardware alarms for departures, hotel check-ins, and bike return deadlines.
+            Local hardware alarms for transport departures, station arrivals, and hotel check-in times.
           </p>
         </div>
 
@@ -243,7 +230,7 @@ export default function RemindersPage() {
         </div>
       )}
 
-      {/* 2. 100% OFFLINE ASSURANCE BANNER (Directly answers user issue 5) */}
+      {/* 2. 100% OFFLINE ASSURANCE BANNER */}
       <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-muted shadow-soft">
         <div className="flex items-start gap-3.5">
           <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0 mt-0.5">
@@ -265,7 +252,7 @@ export default function RemindersPage() {
         </div>
       </div>
 
-      {/* 3. ANDROID NOTIFICATION PERMISSION STATUS (REQ-NOT-01) */}
+      {/* 3. ANDROID NOTIFICATION PERMISSION STATUS */}
       <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
         permissionGranted
           ? "bg-emerald-50/60 border-emerald-200 text-emerald-900"
@@ -289,7 +276,7 @@ export default function RemindersPage() {
               <p className="text-[11px] opacity-80 mt-0.5 max-w-xl">
                 {permissionGranted
                   ? "Time-critical alerts will ring and vibrate even when your screen is locked or the app is closed."
-                  : "Grant permission so Android can trigger alarm banners before your train departs or rental return expires."}
+                  : "Grant permission so Android can trigger alarm banners before your train departs or stay check-in arrives."}
               </p>
             </div>
           </div>
@@ -306,13 +293,13 @@ export default function RemindersPage() {
         </div>
       </div>
 
-      {/* 4. AUTOMATED EXPEDITION ALARM SCHEDULERS (REQ-NOT-02, REQ-NOT-03) */}
+      {/* 4. AUTOMATED EXPEDITION ALARM SCHEDULERS */}
       <div className="space-y-4">
         <h2 className="font-display text-lg text-foreground font-normal">
           1-Tap Automated Expedition Alarms
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Section A: Transport Departures */}
           <div className="p-4 rounded-2xl bg-surface border border-muted space-y-3 shadow-xs">
             <div className="flex items-center gap-2 text-cyan-400">
@@ -417,66 +404,6 @@ export default function RemindersPage() {
                       >
                         <Bell className="w-3 h-3" />
                         <span>{existing ? "Update Check-in Alarm" : "Set Check-in Alarm"}</span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Section C: Rental Returns (REQ-NOT-03) */}
-          <div className="p-4 rounded-2xl bg-surface border border-muted space-y-3 shadow-xs">
-            <div className="flex items-center gap-2 text-emerald-400">
-              <Bike className="w-4 h-4" />
-              <h3 className="font-sans font-semibold text-xs uppercase tracking-wider text-foreground">
-                Vehicle Drop-off Deadlines
-              </h3>
-            </div>
-
-            {rentals.length === 0 ? (
-              <p className="text-xs text-muted-foreground font-body">
-                No bike or scooter rentals currently active in your vault.
-              </p>
-            ) : (
-              <div className="space-y-2.5">
-                {rentals.map((r) => {
-                  const existing = findReminderForEntity(r.id);
-                  return (
-                    <div
-                      key={r.id}
-                      className="p-3 rounded-xl bg-background border border-muted text-xs space-y-1.5"
-                    >
-                      <div className="flex items-start justify-between gap-1">
-                        <span className="font-medium text-foreground truncate">{r.vehicleModel}</span>
-                        {existing ? (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0 flex items-center gap-1">
-                            <Check className="w-2.5 h-2.5" />
-                            <span>Armed</span>
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <p className="text-[11px] font-mono text-muted-foreground">
-                        Drop-off: {new Date(r.dropoffTime).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                      </p>
-
-                      {r.securityDeposit ? (
-                        <p className="text-[10px] text-amber-400 font-mono">
-                          Deposit at risk: ₹{r.securityDeposit.toLocaleString()}
-                        </p>
-                      ) : null}
-
-                      <button
-                        onClick={() => handleScheduleRental(r)}
-                        className={`w-full py-1.5 rounded-lg text-[11px] font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                          existing
-                            ? "bg-surface text-muted-foreground hover:text-foreground border border-muted"
-                            : "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                        }`}
-                      >
-                        <Bell className="w-3 h-3" />
-                        <span>{existing ? "Update 3h Return Alert" : "Set 3h Return Alert"}</span>
                       </button>
                     </div>
                   );

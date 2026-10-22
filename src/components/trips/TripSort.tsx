@@ -1,35 +1,36 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { TripSortOption } from "@/lib/queries/trips";
+import { Select } from "@/components/ui/Select";
 
 export default function TripSort() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentSort = searchParams.get("sort") || "latest";
 
-  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleSortChange = (e: { target: { value: string } }) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("sort", e.target.value);
     router.push(`?${params.toString()}`);
   };
 
   return (
-    <div className="flex items-center gap-3">
-      <label htmlFor="sort" className="font-sans text-xs uppercase tracking-widest text-muted-foreground">
+    <div className="flex items-center gap-2.5">
+      <span className="font-sans text-xs uppercase tracking-widest text-muted-foreground shrink-0">
         Sort by
-      </label>
-      <select
+      </span>
+      <Select
         id="sort"
         value={currentSort}
         onChange={handleSortChange}
-        className="bg-transparent border-b border-foreground/15 text-foreground font-sans text-sm pb-1 focus:outline-none focus:border-accent transition-colors cursor-pointer"
+        className="text-xs font-sans py-1.5 px-3 min-w-[140px]"
+        containerClassName="inline-block"
       >
-        <option value="latest" className="bg-background text-foreground">Latest</option>
-        <option value="oldest" className="bg-background text-foreground">Oldest</option>
-        <option value="longest" className="bg-background text-foreground">Longest</option>
-        <option value="most-photos" className="bg-background text-foreground">Most Photographs</option>
-      </select>
+        <option value="latest">Latest</option>
+        <option value="oldest">Oldest</option>
+        <option value="longest">Longest</option>
+        <option value="most-photos">Most Photographs</option>
+      </Select>
     </div>
   );
 }

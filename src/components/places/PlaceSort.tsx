@@ -1,34 +1,35 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { PlaceSortOption } from "@/lib/queries/places";
+import { Select } from "@/components/ui/Select";
 
 export default function PlaceSort() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentSort = searchParams.get("sort") || "name";
 
-  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleSortChange = (e: { target: { value: string } }) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("sort", e.target.value);
     router.push(`?${params.toString()}`);
   };
 
   return (
-    <div className="flex items-center gap-3">
-      <label htmlFor="sort" className="font-sans text-xs uppercase tracking-widest text-muted-foreground">
+    <div className="flex items-center gap-2.5">
+      <span className="font-sans text-xs uppercase tracking-widest text-muted-foreground shrink-0">
         Sort by
-      </label>
-      <select
+      </span>
+      <Select
         id="sort"
         value={currentSort}
         onChange={handleSortChange}
-        className="bg-transparent border-b border-foreground/15 text-foreground font-sans text-sm pb-1 focus:outline-none focus:border-accent transition-colors cursor-pointer"
+        className="text-xs font-sans py-1.5 px-3 min-w-[130px]"
+        containerClassName="inline-block"
       >
-        <option value="name" className="bg-background text-foreground">Name</option>
-        <option value="latest" className="bg-background text-foreground">Recently Added</option>
-        <option value="oldest" className="bg-background text-foreground">Oldest Added</option>
-      </select>
+        <option value="name">Name</option>
+        <option value="latest">Recently Added</option>
+        <option value="oldest">Oldest Added</option>
+      </Select>
     </div>
   );
 }

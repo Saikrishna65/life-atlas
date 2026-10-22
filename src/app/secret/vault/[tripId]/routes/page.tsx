@@ -9,42 +9,23 @@ import {
   Plus,
   Trash2,
   Edit3,
-  MapPin,
-  Mountain,
-  Fuel,
-  Wrench,
-  Camera,
-  HeartPulse,
-  ShieldAlert,
-  AlertTriangle,
   ExternalLink,
   Navigation,
   Lock,
-  Sparkles,
   Search,
   X,
-  Copy,
-  Check,
-  TrendingUp,
-  Clock,
   Car,
-  Home,
-  Utensils,
+  AlertTriangle,
+  Clock,
+  TrendingUp,
+  Mountain,
 } from "lucide-react";
 import { getTrip } from "@/lib/vault/storage";
 import { useRoutesAndWaypoints } from "@/lib/vault/useRoutesAndWaypoints";
-import {
-  TripRecord,
-  WaypointRecord,
-  WaypointCategory,
-  RouteSegment,
-} from "@/lib/vault/types";
+import { TripRecord, RouteSegment } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 import { Select } from "@/components/ui/Select";
-
-type ViewTab = "ALL" | "WAYPOINTS" | "SEGMENTS";
-type WaypointCategoryFilter = "ALL" | WaypointCategory;
 
 export default function TripRoutesPage() {
   const params = useParams();
@@ -55,45 +36,27 @@ export default function TripRoutesPage() {
   const [isTripLoading, setIsTripLoading] = useState(true);
 
   const {
-    waypoints,
     routeSegments,
     stats,
     isLoading: isRoutesLoading,
-    addWaypoint,
-    updateWaypoint,
-    removeWaypoint,
     addRouteSegment,
     updateRouteSegment,
     removeRouteSegment,
-    seedMountainPresets,
-    getNavigationUrl,
   } = useRoutesAndWaypoints(tripId);
 
-  // Tabs & Filters
-  const [activeTab, setActiveTab] = useState<ViewTab>("ALL");
-  const [categoryFilter, setCategoryFilter] = useState<WaypointCategoryFilter>("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [copiedCoordsId, setCopiedCoordsId] = useState<string | null>(null);
-  const [seedingNotice, setSeedingNotice] = useState<string | null>(null);
+  const getRouteNavigationUrl = (from: string, to: string) => {
+    return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}`;
+  };
 
-  // Modals
-  const [showWaypointModal, setShowWaypointModal] = useState(false);
-  const [editingWaypoint, setEditingWaypoint] = useState<WaypointRecord | null>(null);
+  // Search filter
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Route Leg Modal State
   const [showSegmentModal, setShowSegmentModal] = useState(false);
   const [editingSegment, setEditingSegment] = useState<RouteSegment | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<RouteSegment | null>(null);
 
-  // Lock body scroll when waypoint or segment modal is open
-  useLockBodyScroll(showWaypointModal || showSegmentModal);
-
-  // Waypoint Form State
-  const [wpTitle, setWpTitle] = useState("");
-  const [wpCategory, setWpCategory] = useState<WaypointCategory>("PASS");
-  const [wpLat, setWpLat] = useState<string>("");
-  const [wpLng, setWpLng] = useState<string>("");
-  const [wpElevation, setWpElevation] = useState<string>("");
-  const [wpNotes, setWpNotes] = useState("");
-
-  // Route Segment Form State
+  // Form State
   const [segFrom, setSegFrom] = useState("");
   const [segTo, setSegTo] = useState("");
   const [segDistance, setSegDistance] = useState<number>(100);
@@ -103,8 +66,10 @@ export default function TripRoutesPage() {
   const [segElevation, setSegElevation] = useState<string>("");
   const [segPasses, setSegPasses] = useState("");
   const [segAdvisory, setSegAdvisory] = useState("");
-
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Lock body scroll when modal is active
+  useLockBodyScroll(showSegmentModal || !!deleteCandidate);
 
   // Load trip record
   useEffect(() => {
@@ -133,36 +98,13 @@ export default function TripRoutesPage() {
     router.push("/");
   };
 
-  // Open Waypoint Modal
-  const handleOpenAddWaypoint = () => {
-    setEditingWaypoint(null);
-    setWpTitle("");
-    setWpCategory("PASS");
-    setWpLat(trip?.destination.toLowerCase().includes("ladakh") ? "34.2787" : "32.2432");
-    setWpLng(trip?.destination.toLowerCase().includes("ladakh") ? "77.6047" : "77.1892");
-    setWpElevation("3500");
-    setWpNotes("");
-    setShowWaypointModal(true);
-  };
-
-  const handleOpenEditWaypoint = (wp: WaypointRecord) => {
-    setEditingWaypoint(wp);
-    setWpTitle(wp.title);
-    setWpCategory(wp.category);
-    setWpLat(String(wp.latitude));
-    setWpLng(String(wp.longitude));
-    setWpElevation(wp.elevationMeters !== undefined ? String(wp.elevationMeters) : "");
-    setWpNotes(wp.notes || "");
-    setShowWaypointModal(true);
-  };
-
   // Open Segment Modal
   const handleOpenAddSegment = () => {
     setEditingSegment(null);
     setSegFrom("");
     setSegTo("");
     setSegDistance(120);
-    setSegHours(4);
+    setSegHours(3.5);
     setSegTerrain("MOUNTAIN_TWISTIES");
     setSegCondition("PAVED_GOOD");
     setSegElevation("3200");
@@ -179,53 +121,13 @@ export default function TripRoutesPage() {
     setSegHours(seg.estimatedHours);
     setSegTerrain(seg.terrainType);
     setSegCondition(seg.roadCondition);
-    setSegElevation(seg.highestElevationMeters !== undefined ? String(seg.highestElevationMeters) : "");
+    setSegElevation(seg.highestElevationMeters ? String(seg.highestElevationMeters) : "");
     setSegPasses(seg.passNames ? seg.passNames.join(", ") : "");
     setSegAdvisory(seg.advisoryNotes || "");
     setShowSegmentModal(true);
   };
 
-  // Handle Save Waypoint
-  const handleSubmitWaypoint = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!wpTitle.trim() || !wpLat.trim() || !wpLng.trim()) return;
-
-    setIsSubmitting(true);
-    try {
-      const lat = parseFloat(wpLat);
-      const lng = parseFloat(wpLng);
-      const elev = wpElevation.trim() ? parseFloat(wpElevation) : undefined;
-
-      if (editingWaypoint) {
-        await updateWaypoint({
-          ...editingWaypoint,
-          title: wpTitle.trim(),
-          category: wpCategory,
-          latitude: lat,
-          longitude: lng,
-          elevationMeters: elev,
-          notes: wpNotes.trim() || undefined,
-        });
-      } else {
-        await addWaypoint({
-          title: wpTitle.trim(),
-          category: wpCategory,
-          latitude: lat,
-          longitude: lng,
-          elevationMeters: elev,
-          notes: wpNotes.trim() || undefined,
-        });
-      }
-      setShowWaypointModal(false);
-      setEditingWaypoint(null);
-    } catch (err) {
-      console.error("Failed saving waypoint:", err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Handle Save Route Segment
+  // Submit Segment Form
   const handleSubmitSegment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!segFrom.trim() || !segTo.trim()) return;
@@ -274,87 +176,69 @@ export default function TripRoutesPage() {
     }
   };
 
-  // Copy GPS Coordinates
-  const handleCopyCoords = (wp: WaypointRecord) => {
-    const text = `${wp.latitude.toFixed(5)}, ${wp.longitude.toFixed(5)}`;
-    navigator.clipboard.writeText(text);
-    setCopiedCoordsId(wp.id);
-    setTimeout(() => setCopiedCoordsId(null), 2000);
-  };
-
-  // Handle Seed Presets
-  const handleSeedPresets = async () => {
+  const handleDeleteSegment = async () => {
+    if (!deleteCandidate) return;
     try {
-      const result = await seedMountainPresets();
-      if (result.waypointsCount > 0 || result.segmentsCount > 0) {
-        setSeedingNotice(
-          `Added ${result.waypointsCount} mountain passes & ${result.segmentsCount} route legs to your navigation deck!`
-        );
-      } else {
-        setSeedingNotice("All curated mountain passes and route segments are already in your dossier.");
-      }
-      setTimeout(() => setSeedingNotice(null), 3500);
+      await removeRouteSegment(deleteCandidate.id);
+      setDeleteCandidate(null);
     } catch (err) {
-      console.error("Failed seeding mountain presets:", err);
+      console.error("Failed deleting route segment:", err);
     }
   };
 
-  // Filtered waypoints
-  const filteredWaypoints = useMemo(() => {
-    return waypoints.filter((wp) => {
-      if (categoryFilter !== "ALL" && wp.category !== categoryFilter) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesTitle = wp.title.toLowerCase().includes(q);
-        const matchesNotes = wp.notes?.toLowerCase().includes(q);
-        const matchesCategory = wp.category.toLowerCase().includes(q);
-        if (!matchesTitle && !matchesNotes && !matchesCategory) return false;
-      }
-      return true;
+  // Filtered segments
+  const filteredSegments = useMemo(() => {
+    if (!searchQuery.trim()) return routeSegments;
+    const q = searchQuery.toLowerCase();
+    return routeSegments.filter((seg) => {
+      return (
+        seg.fromStop.toLowerCase().includes(q) ||
+        seg.toStop.toLowerCase().includes(q) ||
+        seg.advisoryNotes?.toLowerCase().includes(q) ||
+        seg.passNames?.some((p) => p.toLowerCase().includes(q))
+      );
     });
-  }, [waypoints, categoryFilter, searchQuery]);
+  }, [routeSegments, searchQuery]);
 
-  // Category Icon & Styling Helper
-  const getCategoryDetails = (cat: WaypointCategory) => {
-    switch (cat) {
-      case "PASS":
-        return { label: "Mountain Pass", icon: <Mountain className="w-3.5 h-3.5 text-cyan-400" />, badge: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" };
-      case "FUEL_PUMP":
-        return { label: "Fuel Station", icon: <Fuel className="w-3.5 h-3.5 text-amber-400" />, badge: "bg-amber-500/10 text-amber-400 border-amber-500/30" };
-      case "MECHANIC":
-        return { label: "Mechanic / Workshop", icon: <Wrench className="w-3.5 h-3.5 text-orange-400" />, badge: "bg-orange-500/10 text-orange-400 border-orange-500/30" };
-      case "VIEWPOINT":
-        return { label: "Scenic Viewpoint", icon: <Camera className="w-3.5 h-3.5 text-emerald-400" />, badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" };
-      case "MEDICAL":
-        return { label: "Medical Aid / SOS", icon: <HeartPulse className="w-3.5 h-3.5 text-rose-400" />, badge: "bg-rose-500/10 text-rose-400 border-rose-500/30" };
-      case "CHECKPOST":
-        return { label: "Permit Checkpost", icon: <ShieldAlert className="w-3.5 h-3.5 text-indigo-400" />, badge: "bg-indigo-500/10 text-indigo-400 border-indigo-500/30" };
-      case "HAZARD":
-        return { label: "Hazard / Water Crossing", icon: <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />, badge: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" };
-      case "STAY":
-        return { label: "Stay / Camp", icon: <Home className="w-3.5 h-3.5 text-teal-400" />, badge: "bg-teal-500/10 text-teal-400 border-teal-500/30" };
-      case "FOOD":
-        return { label: "Dhaba / Food", icon: <Utensils className="w-3.5 h-3.5 text-orange-400" />, badge: "bg-orange-500/10 text-orange-400 border-orange-500/30" };
-      default:
-        return { label: "Waypoint", icon: <MapPin className="w-3.5 h-3.5 text-teal-400" />, badge: "bg-teal-500/10 text-teal-400 border-teal-500/30" };
-    }
-  };
-
-  // Road condition badge
+  // Road condition styling badge
   const getRoadConditionBadge = (cond: RouteSegment["roadCondition"]) => {
     switch (cond) {
       case "EXCELLENT":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">Excellent Tarmac</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+            Excellent Tarmac
+          </span>
+        );
       case "PAVED_GOOD":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold bg-teal-500/15 border border-teal-500/30 text-teal-400">Paved Good</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-semibold bg-teal-500/15 border border-teal-500/30 text-teal-400">
+            Paved Good
+          </span>
+        );
       case "POTHOLES":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-400">Potholes & Broken</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-400">
+            Potholes & Broken
+          </span>
+        );
       case "GRAVEL_UNPAVED":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold bg-orange-500/15 border border-orange-500/30 text-orange-400">Loose Gravel / Dirt</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-semibold bg-orange-500/15 border border-orange-500/30 text-orange-400">
+            Loose Gravel / Dirt
+          </span>
+        );
       case "WATER_CROSSING":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold bg-blue-500/15 border border-blue-500/30 text-blue-400">Water Crossings</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-semibold bg-blue-500/15 border border-blue-500/30 text-blue-400">
+            Water Crossings
+          </span>
+        );
       case "EXTREME":
-        return <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-400">Extreme Off-Road</span>;
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-semibold bg-rose-500/15 border border-rose-500/30 text-rose-400">
+            Extreme Off-Road
+          </span>
+        );
     }
   };
 
@@ -362,7 +246,7 @@ export default function TripRoutesPage() {
     return (
       <div className="max-w-4xl mx-auto py-24 text-center text-xs font-mono text-muted-foreground flex items-center justify-center gap-2">
         <div className="w-4 h-4 rounded-full border border-muted border-t-teal-500 animate-spin" />
-        <span>Loading offline maps & route waypoints...</span>
+        <span>Loading offline route legs & navigation...</span>
       </div>
     );
   }
@@ -402,12 +286,12 @@ export default function TripRoutesPage() {
         <div className="flex items-center gap-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-[11px] font-mono tracking-wider text-teal-400 font-semibold uppercase">
             <Compass className="w-3.5 h-3.5 text-teal-400" />
-            <span>Pillar 07 • Maps</span>
+            <span>Pillar 07 • Routes</span>
           </div>
 
           <button
             onClick={handleLockVault}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title="Lock Private Atlas"
           >
             <Lock className="w-3 h-3 text-amber-500" />
@@ -422,643 +306,250 @@ export default function TripRoutesPage() {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-[10px] font-mono text-teal-400 uppercase tracking-widest">
               <Navigation className="w-3 h-3 text-teal-400" />
-              <span>Offline Navigation & Waypoint Directory</span>
+              <span>Offline Route Legs & Navigation Deck</span>
             </div>
             <h1 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
-              Maps, Routes & Offline Waypoints
+              Route Legs & Offline Maps
             </h1>
             <p className="font-body text-xs text-muted-foreground max-w-xl leading-relaxed">
-              GPS coordinates, high-altitude mountain passes, critical fuel stations, road condition warnings, and 1-tap native Android navigation in{" "}
+              Curated road legs, driving durations, mountain pass crossings, and 1-tap offline navigation for{" "}
               <span className="text-foreground font-medium">{trip.destination}</span>.
             </p>
           </div>
 
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
-            <button
-              onClick={handleOpenAddWaypoint}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-teal-500 hover:bg-teal-600 text-black font-semibold text-xs font-sans transition-all shadow-md active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Waypoint</span>
-            </button>
-
-            <button
-              onClick={handleOpenAddSegment}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface border border-muted hover:border-teal-500/40 text-xs font-sans text-foreground transition-colors shadow-xs"
-            >
-              <Plus className="w-3.5 h-3.5 text-teal-400" />
-              <span>Add Route Leg</span>
-            </button>
-
-            <button
-              onClick={handleSeedPresets}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-surface border border-muted hover:border-teal-500/40 text-xs font-sans text-foreground transition-colors shadow-xs"
-              title="Load legendary Himalayan passes & fuel stations"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-              <span>Seed Passes</span>
-            </button>
-          </div>
+          <button
+            onClick={handleOpenAddSegment}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs font-sans transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Route Leg</span>
+          </button>
         </div>
 
-        {/* Seeding Toast Notice */}
-        {seedingNotice && (
-          <div className="mt-4 p-3 rounded-xl bg-teal-500/10 border border-teal-500/30 text-xs font-sans text-teal-300 flex items-center gap-2 animate-fade-in">
-            <Sparkles className="w-4 h-4 text-teal-400 shrink-0" />
-            <span>{seedingNotice}</span>
-          </div>
-        )}
-
-        {/* NAVIGATION STATS METRICS RIBBON */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-muted/60">
-          {/* Metric 1: Saved Waypoints */}
+        {/* METRICS GRID */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-muted/50">
           <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
             <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
-              Saved Waypoints
+              Total Route Distance
             </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
+            <div className="flex items-baseline gap-1 mt-0.5">
               <span className="text-xl font-bold font-mono text-teal-400">
-                {stats.totalWaypoints}
-              </span>
-              <span className="text-xs font-mono text-muted-foreground">
-                POIs
-              </span>
-            </div>
-            <span className="text-[10px] text-muted-foreground block mt-0.5">
-              {stats.fuelPumpsCount} fuel stops • {stats.hazardsCount} hazards
-            </span>
-          </div>
-
-          {/* Metric 2: Mountain Passes */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
-            <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
-              High Passes
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl font-bold font-mono text-cyan-400">
-                {stats.passesCount}
-              </span>
-              <span className="text-xs font-mono text-muted-foreground">
-                mountain passes
-              </span>
-            </div>
-            <span className="text-[10px] text-muted-foreground block mt-0.5">
-              Altitude summits
-            </span>
-          </div>
-
-          {/* Metric 3: Highest Elevation */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
-            <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
-              Max Altitude Peak
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl font-bold font-mono text-emerald-400">
-                {stats.maxElevation > 0 ? `${stats.maxElevation.toLocaleString()} m` : "—"}
-              </span>
-              {stats.maxElevation > 0 && (
-                <span className="text-[10px] font-mono text-muted-foreground">
-                  ({Math.round(stats.maxElevation * 3.28084).toLocaleString()} ft)
-                </span>
-              )}
-            </div>
-            <span className="text-[10px] text-muted-foreground block mt-0.5">
-              Peak altitude reached
-            </span>
-          </div>
-
-          {/* Metric 4: Total Route Distance */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
-            <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
-              Route Distance
-            </span>
-            <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-xl font-bold font-mono text-foreground">
                 {stats.totalRouteKm > 0 ? `${stats.totalRouteKm} km` : "—"}
               </span>
-              {stats.totalEstHours > 0 && (
-                <span className="text-[10px] font-mono text-muted-foreground">
-                  (~{stats.totalEstHours} hrs)
-                </span>
-              )}
             </div>
             <span className="text-[10px] text-muted-foreground block mt-0.5">
-              {stats.segmentsCount} road legs sequenced
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* VIEW TABS & FILTERS */}
-      <section className="space-y-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Segmented View Tabs */}
-          <div className="flex items-center p-1 rounded-2xl bg-surface border border-muted text-xs font-sans">
-            <button
-              onClick={() => setActiveTab("ALL")}
-              className={`px-3 py-1.5 rounded-xl transition-all ${
-                activeTab === "ALL"
-                  ? "bg-teal-500 text-black font-semibold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              All Navigation ({waypoints.length + routeSegments.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("WAYPOINTS")}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
-                activeTab === "WAYPOINTS"
-                  ? "bg-teal-500 text-black font-semibold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <MapPin className="w-3.5 h-3.5" />
-              <span>Waypoints & POIs ({waypoints.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("SEGMENTS")}
-              className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
-                activeTab === "SEGMENTS"
-                  ? "bg-teal-500 text-black font-semibold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Car className="w-3.5 h-3.5" />
-              <span>Route Legs ({routeSegments.length})</span>
-            </button>
-          </div>
-
-          {/* Search Input */}
-          <div className="relative min-w-[200px]">
-            <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search passes, fuel, coordinates..."
-              className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-surface border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/60"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Waypoint Category Filter Pills (Visible when ALL or WAYPOINTS active) */}
-        {activeTab !== "SEGMENTS" && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] font-sans">
-            {(
-              [
-                "ALL",
-                "PASS",
-                "FUEL_PUMP",
-                "MECHANIC",
-                "VIEWPOINT",
-                "MEDICAL",
-                "CHECKPOST",
-                "HAZARD",
-              ] as WaypointCategoryFilter[]
-            ).map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategoryFilter(cat)}
-                className={`px-2.5 py-1 rounded-xl border transition-colors ${
-                  categoryFilter === cat
-                    ? "bg-teal-500/20 border-teal-500/40 text-teal-300 font-semibold"
-                    : "bg-surface/60 border-muted text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {cat === "ALL"
-                  ? "All POIs"
-                  : cat === "PASS"
-                  ? "Mountain Passes"
-                  : cat === "FUEL_PUMP"
-                  ? "Fuel Pumps"
-                  : cat === "MECHANIC"
-                  ? "Mechanics"
-                  : cat === "VIEWPOINT"
-                  ? "Viewpoints"
-                  : cat === "MEDICAL"
-                  ? "Medical SOS"
-                  : cat === "CHECKPOST"
-                  ? "Checkposts"
-                  : "Hazards"}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ROUTE SEGMENTS SECTION (REQ-MAP-02) */}
-      {(activeTab === "ALL" || activeTab === "SEGMENTS") && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg text-foreground font-normal tracking-tight flex items-center gap-2">
-              <Car className="w-4 h-4 text-teal-400" />
-              <span>Route Segments & Terrain Advisories</span>
-            </h3>
-            <span className="text-xs font-mono text-muted-foreground">
-              {routeSegments.length} legs sequenced
+              {stats.segmentsCount} road legs
             </span>
           </div>
 
-          {routeSegments.length === 0 ? (
-            <div className="p-8 text-center rounded-2xl border border-muted bg-surface/30 space-y-2">
-              <p className="text-xs font-sans text-muted-foreground">
-                No route legs defined. Tap &ldquo;Add Route Leg&rdquo; or &ldquo;Seed Passes&rdquo; to structure road legs with driving hours and terrain warnings.
-              </p>
+          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+            <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
+              Est. Driving Time
+            </span>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-xl font-bold font-mono text-cyan-400">
+                {stats.totalEstHours > 0 ? `~${stats.totalEstHours} hrs` : "—"}
+              </span>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {routeSegments.map((seg, idx) => (
+            <span className="text-[10px] text-muted-foreground block mt-0.5">
+              Cumulative travel time
+            </span>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+            <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
+              Mountain Passes
+            </span>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-xl font-bold font-mono text-purple-400">
+                {routeSegments.filter((s) => s.passNames && s.passNames.length > 0).length}
+              </span>
+              <span className="text-xs font-mono text-muted-foreground">legs</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground block mt-0.5">
+              High altitude summits
+            </span>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+            <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
+              Challenging Terrain
+            </span>
+            <div className="flex items-baseline gap-1 mt-0.5">
+              <span className="text-xl font-bold font-mono text-amber-400">
+                {routeSegments.filter((s) => s.roadCondition === "WATER_CROSSING" || s.roadCondition === "EXTREME" || s.roadCondition === "GRAVEL_UNPAVED").length}
+              </span>
+              <span className="text-xs font-mono text-muted-foreground">legs</span>
+            </div>
+            <span className="text-[10px] text-muted-foreground block mt-0.5">
+              Gravel / River crossings
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* SEARCH BAR */}
+      <section className="flex items-center justify-between gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-muted-foreground absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search route legs, destinations, pass names, or advisories..."
+            className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-surface border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/60 shadow-xs"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* ROUTE SEGMENTS LIST */}
+      <section className="space-y-3">
+        {filteredSegments.length === 0 ? (
+          <div className="p-12 text-center rounded-3xl border border-muted bg-surface/50 space-y-3">
+            <Car className="w-8 h-8 text-muted-foreground mx-auto opacity-50" />
+            <h4 className="font-display text-base text-foreground font-normal">
+              No Route Legs Recorded
+            </h4>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              Define your travel legs between cities and checkpoints with distance, road conditions, and GPS directions.
+            </p>
+            <button
+              onClick={handleOpenAddSegment}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-medium text-xs font-sans transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add First Route Leg</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3.5">
+            {filteredSegments.map((seg, idx) => {
+              const navUrl = getRouteNavigationUrl(seg.fromStop, seg.toStop);
+
+              return (
                 <div
                   key={seg.id}
-                  className="rounded-2xl border border-muted hover:border-teal-500/40 bg-surface shadow-soft p-5 space-y-3.5 transition-all"
+                  className="rounded-3xl border border-muted hover:border-teal-500/40 bg-surface shadow-soft p-5 sm:p-6 space-y-4 transition-all"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="w-6 h-6 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-400 font-mono text-xs font-bold flex items-center justify-center">
+                        <span className="w-6 h-6 rounded-full bg-teal-500/15 border border-teal-500/30 text-teal-400 font-mono text-xs font-bold flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
 
                         <h4 className="font-display text-base sm:text-lg font-normal text-foreground">
-                          {seg.fromStop} <span className="text-teal-400 mx-1">→</span> {seg.toStop}
+                          {seg.fromStop} <span className="text-teal-400 mx-1.5">→</span> {seg.toStop}
                         </h4>
 
                         {getRoadConditionBadge(seg.roadCondition)}
 
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono text-muted-foreground bg-background border border-muted">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono text-muted-foreground bg-background border border-muted">
                           {seg.terrainType.replace(/_/g, " ")}
                         </span>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-muted-foreground pl-8">
+                      {/* Distance & Time Row */}
+                      <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-muted-foreground">
                         <span className="flex items-center gap-1 text-foreground font-semibold">
                           <TrendingUp className="w-3.5 h-3.5 text-teal-400" />
                           <span>{seg.distanceKm} km</span>
                         </span>
+
                         <span>•</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-amber-400" />
-                          <span>~{seg.estimatedHours} hrs drive</span>
+
+                        <span className="flex items-center gap-1 text-foreground font-semibold">
+                          <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                          <span>~{seg.estimatedHours} hrs</span>
                         </span>
-                        {seg.highestElevationMeters && (
+
+                        {seg.highestElevationMeters ? (
                           <>
                             <span>•</span>
-                            <span className="flex items-center gap-1 text-cyan-400 font-semibold">
+                            <span className="flex items-center gap-1 text-purple-400 font-semibold">
                               <Mountain className="w-3.5 h-3.5" />
                               <span>{seg.highestElevationMeters.toLocaleString()} m</span>
                             </span>
                           </>
-                        )}
+                        ) : null}
                       </div>
                     </div>
 
-                    {/* 1-Tap Navigation for Route Segment */}
-                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
                       <a
-                        href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(
-                          seg.fromStop
-                        )}&destination=${encodeURIComponent(seg.toStop)}`}
+                        href={navUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-black text-xs font-semibold font-sans transition-all shadow-xs"
-                        title="Start Google Maps Route Navigation"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-teal-300 text-xs font-sans font-medium transition-colors"
+                        title="Open navigation in Google Maps"
                       >
-                        <Navigation className="w-3.5 h-3.5" />
-                        <span>Navigate Leg</span>
-                        <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                        <Navigation className="w-3.5 h-3.5 text-teal-400" />
+                        <span>Navigate</span>
+                        <ExternalLink className="w-3 h-3 opacity-60" />
                       </a>
 
                       <button
                         onClick={() => handleOpenEditSegment(seg)}
-                        className="p-1.5 rounded-lg border border-muted hover:border-foreground/30 text-muted-foreground hover:text-foreground transition-colors"
-                        title="Edit Leg"
+                        className="p-1.5 rounded-xl bg-background border border-muted hover:border-foreground/30 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        title="Edit Route Leg"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
 
                       <button
-                        onClick={() => removeRouteSegment(seg.id)}
-                        className="p-1.5 rounded-lg border border-muted hover:border-rose-500/40 text-muted-foreground hover:text-rose-400 transition-colors"
-                        title="Delete Leg"
+                        onClick={() => setDeleteCandidate(seg)}
+                        className="p-1.5 rounded-xl bg-background border border-muted hover:border-rose-400 text-muted-foreground hover:text-rose-400 transition-colors cursor-pointer"
+                        title="Delete Route Leg"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Mountain Passes Crossed on this leg */}
-                  {seg.passNames && seg.passNames.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 pl-8">
-                      <span className="text-[10px] font-mono uppercase text-muted-foreground">
-                        Passes on this leg:
-                      </span>
-                      {seg.passNames.map((pass, pIdx) => (
-                        <span
-                          key={pIdx}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[11px] font-sans"
-                        >
-                          <Mountain className="w-2.5 h-2.5 text-cyan-400" />
-                          <span>{pass}</span>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Advisory note */}
-                  {seg.advisoryNotes && (
-                    <div className="p-3 rounded-xl bg-background/70 border border-muted text-xs font-sans text-muted-foreground flex items-start gap-2 ml-8">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                      <p className="leading-relaxed text-foreground/90">{seg.advisoryNotes}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* WAYPOINTS DIRECTORY SECTION (REQ-MAP-01 & REQ-MAP-03) */}
-      {(activeTab === "ALL" || activeTab === "WAYPOINTS") && (
-        <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display text-lg text-foreground font-normal tracking-tight flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-teal-400" />
-              <span>Waypoints & High-Altitude Directory</span>
-            </h3>
-            <span className="text-xs font-mono text-muted-foreground">
-              {filteredWaypoints.length} waypoints matching
-            </span>
-          </div>
-
-          {filteredWaypoints.length === 0 ? (
-            <div className="p-10 text-center rounded-2xl border border-muted bg-surface/40 space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center mx-auto">
-                <MapPin className="w-5 h-5" />
-              </div>
-              <h4 className="font-display text-base text-foreground font-normal">
-                No Waypoints Match Filter
-              </h4>
-              <p className="font-body text-xs text-muted-foreground max-w-sm mx-auto">
-                Add mountain passes, mechanics, fuel pumps, and emergency medical stations, or seed Himalayan waypoints.
-              </p>
-              <button
-                onClick={handleOpenAddWaypoint}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-teal-500 text-black text-xs font-semibold"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Waypoint</span>
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {filteredWaypoints.map((wp) => {
-                const cat = getCategoryDetails(wp.category);
-                const isCopied = copiedCoordsId === wp.id;
-
-                return (
-                  <div
-                    key={wp.id}
-                    className="rounded-2xl border border-muted hover:border-teal-500/40 bg-surface shadow-soft p-4 space-y-3 transition-all flex flex-col justify-between"
-                  >
-                    <div className="space-y-2">
-                      {/* Top row: Category Badge & Elevation */}
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-sans border ${cat.badge}`}>
-                          {cat.icon}
-                          <span>{cat.label}</span>
-                        </span>
-
-                        {wp.elevationMeters && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-cyan-400 bg-background px-2 py-0.5 rounded-md border border-muted">
-                            <Mountain className="w-3 h-3" />
-                            <span>{wp.elevationMeters.toLocaleString()} m</span>
+                  {/* Passes & Advisories */}
+                  {(seg.passNames && seg.passNames.length > 0 || seg.advisoryNotes) && (
+                    <div className="pt-3 border-t border-muted/50 space-y-2">
+                      {seg.passNames && seg.passNames.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mr-1">
+                            Passes Crossed:
                           </span>
-                        )}
-                      </div>
-
-                      {/* Title */}
-                      <h4 className="font-display text-base font-normal text-foreground tracking-tight">
-                        {wp.title}
-                      </h4>
-
-                      {/* Notes / Advisory */}
-                      {wp.notes && (
-                        <p className="font-body text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                          {wp.notes}
-                        </p>
+                          {seg.passNames.map((p, pIdx) => (
+                            <span
+                              key={pIdx}
+                              className="px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/25 text-[11px] font-mono text-purple-300"
+                            >
+                              {p}
+                            </span>
+                          ))}
+                        </div>
                       )}
 
-                      {/* GPS Coordinates & Copy */}
-                      <div className="flex items-center justify-between pt-1 text-[11px] font-mono text-muted-foreground bg-background/60 p-2 rounded-xl border border-muted/60">
-                        <span className="truncate">
-                          {wp.latitude.toFixed(5)}°, {wp.longitude.toFixed(5)}°
-                        </span>
-
-                        <button
-                          onClick={() => handleCopyCoords(wp)}
-                          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors ml-2 shrink-0"
-                          title="Copy GPS Coordinates"
-                        >
-                          {isCopied ? (
-                            <Check className="w-3 h-3 text-emerald-400" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                          <span>{isCopied ? "Copied" : "Copy"}</span>
-                        </button>
-                      </div>
+                      {seg.advisoryNotes && (
+                        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                          <p className="leading-relaxed">{seg.advisoryNotes}</p>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Bottom Actions: 1-Tap Navigation Intent (REQ-MAP-03) */}
-                    <div className="flex items-center justify-between gap-2 pt-3 border-t border-muted/50 mt-2">
-                      <div className="flex items-center gap-2">
-                        {/* Native Android geo: or Google Maps link */}
-                        <a
-                          href={getNavigationUrl(wp.latitude, wp.longitude, wp.title)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 text-xs font-sans font-semibold text-teal-400 transition-colors"
-                          title="Launch Native Google Maps / GPS Navigation"
-                        >
-                          <Navigation className="w-3.5 h-3.5" />
-                          <span>Navigate</span>
-                          <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-                        </a>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleOpenEditWaypoint(wp)}
-                          className="p-1.5 rounded-lg border border-muted hover:border-foreground/30 text-muted-foreground hover:text-foreground transition-colors"
-                          title="Edit Waypoint"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-
-                        <button
-                          onClick={() => removeWaypoint(wp.id)}
-                          className="p-1.5 rounded-lg border border-muted hover:border-rose-500/40 text-muted-foreground hover:text-rose-400 transition-colors"
-                          title="Delete Waypoint"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* ADD / EDIT WAYPOINT MODAL */}
-      {showWaypointModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setShowWaypointModal(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
-          >
-            <div className="flex items-center justify-between border-b border-muted pb-3">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-accent" />
-                <h3 className="font-display text-xl text-foreground font-normal">
-                  {editingWaypoint ? "Edit Waypoint" : "Add GPS Waypoint"}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowWaypointModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitWaypoint} className="space-y-4">
-              {/* Title & Category */}
-              <div className="space-y-1">
-                <label className="text-xs font-sans font-medium text-foreground">Waypoint Title *</label>
-                <input
-                  type="text"
-                  value={wpTitle}
-                  onChange={(e) => setWpTitle(e.target.value)}
-                  placeholder="e.g. Khardung La Pass, Tandi Fuel Pump"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-sm text-foreground placeholder:text-muted-foreground/50"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Category *</label>
-                  <Select
-                    value={wpCategory}
-                    onChange={(e) => setWpCategory(e.target.value as WaypointCategory)}
-                  >
-                    <option value="PASS">Mountain Pass</option>
-                    <option value="FUEL_PUMP">Fuel Station</option>
-                    <option value="MECHANIC">Mechanic / Workshop</option>
-                    <option value="VIEWPOINT">Scenic Viewpoint</option>
-                    <option value="MEDICAL">Medical SOS / Aid</option>
-                    <option value="CHECKPOST">Permit Checkpost</option>
-                    <option value="HAZARD">Hazard / Water Crossing</option>
-                    <option value="STAY">Camp / Homestay</option>
-                    <option value="FOOD">Dhaba / Food Stop</option>
-                  </Select>
+                  )}
                 </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Elevation (Meters)</label>
-                  <input
-                    type="number"
-                    value={wpElevation}
-                    onChange={(e) => setWpElevation(e.target.value)}
-                    placeholder="e.g. 5359"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
-                  />
-                </div>
-              </div>
-
-              {/* Coordinates */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Latitude (Decimal) *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={wpLat}
-                    onChange={(e) => setWpLat(e.target.value)}
-                    placeholder="e.g. 34.2787"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Longitude (Decimal) *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={wpLng}
-                    onChange={(e) => setWpLng(e.target.value)}
-                    placeholder="e.g. 77.6047"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-1">
-                <label className="text-xs font-sans font-medium text-foreground">
-                  Advisory Notes & Key Details
-                </label>
-                <textarea
-                  value={wpNotes}
-                  onChange={(e) => setWpNotes(e.target.value)}
-                  rows={2}
-                  placeholder="e.g. Limit stay to 15 mins to avoid acute mountain sickness. Carry warm windproof gloves."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-muted">
-                <button
-                  type="button"
-                  onClick={() => setShowWaypointModal(false)}
-                  className="px-4 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium text-xs font-sans transition-all cursor-pointer shadow-xs"
-                >
-                  {isSubmitting ? "Saving..." : editingWaypoint ? "Update Waypoint" : "Save Waypoint"}
-                </button>
-              </div>
-            </form>
+              );
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </section>
 
-      {/* ADD / EDIT ROUTE SEGMENT MODAL */}
+      {/* MODAL: ADD / EDIT ROUTE SEGMENT */}
       {showSegmentModal && (
         <div
           role="dialog"
@@ -1068,148 +559,161 @@ export default function TripRoutesPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+            className="max-w-lg w-full p-6 rounded-3xl border border-muted bg-surface shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between border-b border-muted pb-3">
-              <div className="flex items-center gap-2">
-                <Car className="w-5 h-5 text-accent" />
-                <h3 className="font-display text-xl text-foreground font-normal">
-                  {editingSegment ? "Edit Route Leg" : "Add Route Leg"}
-                </h3>
-              </div>
+              <h3 className="font-display text-lg text-foreground font-normal">
+                {editingSegment ? "Edit Route Leg" : "Add Route Leg"}
+              </h3>
               <button
                 type="button"
                 onClick={() => setShowSegmentModal(false)}
                 className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSubmitSegment} className="space-y-4">
-              {/* From & To */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Origin Stop *</label>
+                  <label className="text-xs font-sans font-medium text-foreground">
+                    From Origin *
+                  </label>
                   <input
                     type="text"
+                    required
                     value={segFrom}
                     onChange={(e) => setSegFrom(e.target.value)}
-                    placeholder="e.g. Manali"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
-                    required
+                    placeholder="e.g. Manali or Kaza"
+                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Destination Stop *</label>
+                  <label className="text-xs font-sans font-medium text-foreground">
+                    To Destination *
+                  </label>
                   <input
                     type="text"
+                    required
                     value={segTo}
                     onChange={(e) => setSegTo(e.target.value)}
-                    placeholder="e.g. Jispa"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
-                    required
+                    placeholder="e.g. Jispa or Tabo"
+                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground"
                   />
                 </div>
               </div>
 
-              {/* Distance & Hours */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Distance (km) *</label>
+                  <label className="text-xs font-sans font-medium text-foreground">
+                    Distance (km) *
+                  </label>
                   <input
                     type="number"
-                    value={segDistance}
-                    onChange={(e) => setSegDistance(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                     required
+                    min={1}
+                    value={segDistance}
+                    onChange={(e) => setSegDistance(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Estimated Drive Time (Hours)</label>
+                  <label className="text-xs font-sans font-medium text-foreground">
+                    Estimated Time (Hours) *
+                  </label>
                   <input
                     type="number"
                     step="0.5"
+                    min={0.5}
+                    required
                     value={segHours}
-                    onChange={(e) => setSegHours(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
+                    onChange={(e) => setSegHours(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
               </div>
 
-              {/* Terrain & Condition */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Terrain Classification</label>
-                  <Select
-                    value={segTerrain}
-                    onChange={(e) => setSegTerrain(e.target.value as RouteSegment["terrainType"])}
-                  >
-                    <option value="MOUNTAIN_TWISTIES">Mountain Twisties / Ghats</option>
-                    <option value="HIGH_ALTITUDE_PASS">High-Altitude Mountain Pass</option>
-                    <option value="OFF_ROAD_TRAIL">Off-Road Trail & Dirt Track</option>
-                    <option value="DESERT_HIGHWAY">Desert Highway</option>
-                    <option value="COASTAL_ROAD">Coastal Road</option>
-                    <option value="EXPRESSWAY">Expressway / 4-Lane</option>
-                  </Select>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Road Surface Condition</label>
+                  <label className="text-xs font-sans font-medium text-foreground">
+                    Road Condition
+                  </label>
                   <Select
                     value={segCondition}
                     onChange={(e) => setSegCondition(e.target.value as RouteSegment["roadCondition"])}
                   >
                     <option value="EXCELLENT">Excellent Tarmac</option>
-                    <option value="PAVED_GOOD">Paved Good Condition</option>
-                    <option value="POTHOLES">Potholes / Broken Asphalt</option>
-                    <option value="GRAVEL_UNPAVED">Loose Gravel / Unpaved</option>
-                    <option value="WATER_CROSSING">Active Water Crossings</option>
-                    <option value="EXTREME">Extreme Off-Road Boulder Field</option>
+                    <option value="PAVED_GOOD">Paved Good</option>
+                    <option value="POTHOLES">Potholes & Broken Asphalt</option>
+                    <option value="GRAVEL_UNPAVED">Loose Gravel / Dirt Road</option>
+                    <option value="WATER_CROSSING">Water / Nallah Crossings</option>
+                    <option value="EXTREME">Extreme Off-Road</option>
+                  </Select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-sans font-medium text-foreground">
+                    Terrain Profile
+                  </label>
+                  <Select
+                    value={segTerrain}
+                    onChange={(e) => setSegTerrain(e.target.value as RouteSegment["terrainType"])}
+                  >
+                    <option value="MOUNTAIN_TWISTIES">Mountain Twisties / Ghats</option>
+                    <option value="HIGH_ALTITUDE_PASS">High Altitude Pass</option>
+                    <option value="OFFROAD_GRAVEL">Offroad Gravel / Boulders</option>
+                    <option value="RIVER_VALLEY">River Valley Highway</option>
+                    <option value="FOREST_SINGLE_LANE">Forest Single Lane</option>
+                    <option value="EXPRESSWAY">National Expressway</option>
                   </Select>
                 </div>
               </div>
 
-              {/* Highest Elevation & Mountain Passes */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Highest Altitude Peak (m)</label>
-                  <input
-                    type="number"
-                    value={segElevation}
-                    onChange={(e) => setSegElevation(e.target.value)}
-                    placeholder="e.g. 4890"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Passes Crossed (Comma Separated)</label>
+                  <label className="text-xs font-sans font-medium text-foreground">
+                    Mountain Passes Crossed
+                  </label>
                   <input
                     type="text"
                     value={segPasses}
                     onChange={(e) => setSegPasses(e.target.value)}
-                    placeholder="e.g. Baralacha La, Rohtang Pass"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                    placeholder="e.g. Rohtang Pass, Kunzum La"
+                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-sans font-medium text-foreground">
+                    Highest Altitude Peak (m)
+                  </label>
+                  <input
+                    type="number"
+                    value={segElevation}
+                    onChange={(e) => setSegElevation(e.target.value)}
+                    placeholder="e.g. 4551"
+                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
               </div>
 
-              {/* Advisory notes */}
               <div className="space-y-1">
-                <label className="text-xs font-sans font-medium text-foreground">Road & Safety Advisories</label>
+                <label className="text-xs font-sans font-medium text-foreground">
+                  Terrain Advisory & Road Warning
+                </label>
                 <textarea
+                  rows={2}
                   value={segAdvisory}
                   onChange={(e) => setSegAdvisory(e.target.value)}
-                  rows={2}
-                  placeholder="e.g. Zero fuel stations after Tandi. Carry cash for road toll checkposts."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
+                  placeholder="e.g. Cross Pagal Nallah before 11 AM before snowmelt increases water flow. Fill fuel at Tandi."
+                  className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground resize-none"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-muted">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-muted">
                 <button
                   type="button"
                   onClick={() => setShowSegmentModal(false)}
@@ -1220,12 +724,52 @@ export default function TripRoutesPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium text-xs font-sans transition-all cursor-pointer shadow-xs"
+                  className="px-5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-medium text-xs font-sans transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                 >
-                  {isSubmitting ? "Saving..." : editingSegment ? "Update Leg" : "Save Route Leg"}
+                  {isSubmitting ? "Saving..." : editingSegment ? "Save Changes" : "Create Route Leg"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {deleteCandidate && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setDeleteCandidate(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-sm w-full p-6 rounded-3xl border border-muted bg-surface shadow-2xl space-y-4"
+          >
+            <div className="space-y-1">
+              <h3 className="font-display text-lg text-foreground font-normal">
+                Delete Route Leg?
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Are you sure you want to remove the leg &ldquo;{deleteCandidate.fromStop} → {deleteCandidate.toStop}&rdquo;?
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-muted">
+              <button
+                type="button"
+                onClick={() => setDeleteCandidate(null)}
+                className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSegment}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-sans font-medium transition-colors cursor-pointer"
+              >
+                Delete Leg
+              </button>
+            </div>
           </div>
         </div>
       )}

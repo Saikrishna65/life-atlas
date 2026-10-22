@@ -35,6 +35,7 @@ import {
 } from "@/lib/vault/types";
 import { computeTripDuration } from "@/lib/vault/tripDuration";
 import { Select } from "@/components/ui/Select";
+import { DateRangePicker } from "@/components/ui/DateRangePicker";
 
 // Curated atmospheric adventure cover presets
 const COVER_PRESETS = [
@@ -526,25 +527,19 @@ export default function NewTripPage() {
         {/* STEP 2: ROUTE & CALENDAR */}
         {currentStep === 2 && (
           <div className="space-y-6 animate-fade-in">
-            {/* Dates Grid with Travel Timing Slots (REQ-TRP-01) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-3.5 rounded-2xl bg-surface border border-muted space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-sans font-medium text-foreground tracking-wide flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-accent" />
-                      <span>Departure Date *</span>
-                    </span>
-                    <span className="text-[10px] font-mono text-muted-foreground">Required</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted focus:border-accent focus:ring-1 focus:ring-accent/20 focus:outline-hidden text-sm text-foreground transition-all"
-                  />
-                </div>
+            {/* Single Unified Custom Calendar for Start & End Dates */}
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              onChange={(start, end) => {
+                setStartDate(start);
+                setEndDate(end);
+              }}
+            />
 
+            {/* Travel Timing Slots Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-surface border border-muted space-y-2">
                 <Select
                   label="Departure Travel Time / Slot"
                   value={departureSlot}
@@ -558,23 +553,7 @@ export default function NewTripPage() {
                 </Select>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-surface border border-muted space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-sans font-medium text-foreground tracking-wide flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-accent" />
-                      <span>Return Date (Optional)</span>
-                    </span>
-                    <span className="text-[10px] font-mono text-muted-foreground">End of trip</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted focus:border-accent focus:ring-1 focus:ring-accent/20 focus:outline-hidden text-sm text-foreground transition-all"
-                  />
-                </div>
-
+              <div className="p-4 rounded-2xl bg-surface border border-muted space-y-2">
                 <Select
                   label="Return Travel Time / Slot"
                   value={returnSlot}

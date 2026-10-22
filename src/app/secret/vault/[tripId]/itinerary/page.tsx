@@ -41,6 +41,7 @@ import {
 } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
+import { Select } from "@/components/ui/Select";
 
 const TIME_SLOTS: { id: ActivityTimeSlot; label: string; icon: React.ReactNode; defaultTime: string }[] = [
   { id: "MORNING", label: "Morning", icon: <Sun className="w-4 h-4 text-amber-600" />, defaultTime: "08:00" },
@@ -744,7 +745,7 @@ export default function TripItineraryPage() {
                                       )}
 
                                       {/* Status pill */}
-                                      <select
+                                      <Select
                                         value={act.status}
                                         onChange={(e) =>
                                           toggleActivityStatus(
@@ -753,21 +754,14 @@ export default function TripItineraryPage() {
                                             e.target.value as ActivityStatus
                                           )
                                         }
-                                        className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border cursor-pointer focus:outline-hidden transition-colors ${
-                                          isCompleted
-                                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                                            : isInProgress
-                                            ? "bg-amber-50 border-amber-200 text-amber-800 font-semibold"
-                                            : isSkipped
-                                            ? "bg-surface border-muted text-muted-foreground"
-                                            : "bg-surface border-muted text-foreground"
-                                        }`}
+                                        className="text-[10px] font-mono uppercase tracking-wider py-1 px-2.5 h-7 min-w-[110px]"
+                                        containerClassName="inline-block"
                                       >
                                         <option value="PLANNED">Planned</option>
                                         <option value="IN_PROGRESS">In Progress</option>
                                         <option value="COMPLETED">Completed</option>
                                         <option value="SKIPPED">Skipped</option>
-                                      </select>
+                                      </Select>
                                     </div>
 
                                     {/* Activity Title */}
