@@ -136,12 +136,14 @@ export default function NewTripPage() {
   ]);
 
   // Step 3: Budget & Logistics
-  const [budgetTotal, setBudgetTotal] = useState<number>(35000);
+  const [budgetTotal, setBudgetTotal] = useState<number | "">("");
   const [currency, setCurrency] = useState("INR");
   const [status, setStatus] = useState<TripStatus>("PLANNING");
   const [companionInput, setCompanionInput] = useState("");
   const [companions, setCompanions] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  // Ghost-click and early-submission shield for Step 3
+  const [canSubmitStep3, setCanSubmitStep3] = useState(false);
 
   // Stop handlers
   const handleAddStop = () => {
@@ -205,21 +207,42 @@ export default function NewTripPage() {
 
   const handleNext = () => {
     if (currentStep === 1) {
-      if (validateStep1()) setCurrentStep(2);
+      if (validateStep1()) {
+        setCurrentStep(2);
+      }
     } else if (currentStep === 2) {
-      if (validateStep2()) setCurrentStep(3);
+      if (validateStep2()) {
+        setCanSubmitStep3(false);
+        setCurrentStep(3);
+        // Cool-down to prevent touchscreen ghost clicks from Step 2 Continue button bleeding into Step 3 Submit
+        setTimeout(() => {
+          setCanSubmitStep3(true);
+        }, 400);
+      }
     }
   };
 
   const handlePrev = () => {
     setFormError(null);
+    setCanSubmitStep3(false);
     if (currentStep === 3) setCurrentStep(2);
     else if (currentStep === 2) setCurrentStep(1);
   };
 
-  // Final Submission
+  // Final Submission - only allowed when user is explicitly on Step 3 and cooldown passed
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // CRITICAL: NEVER allow submission unless user has navigated to and is reviewing Step 3!
+    if (currentStep !== 3) {
+      handleNext();
+      return;
+    }
+
+    if (!canSubmitStep3) {
+      return;
+    }
+
     if (!validateStep1() || !validateStep2()) return;
 
     try {
@@ -258,7 +281,7 @@ export default function NewTripPage() {
         status,
         travelStyle,
         coverImage: selectedCover,
-        budgetTotal: Number(budgetTotal) || 0,
+        budgetTotal: typeof budgetTotal === "number" ? budgetTotal : (Number(budgetTotal) || 0),
         currency,
         companions: companions.length > 0 ? companions : undefined,
         notes: notes.trim() || undefined,
@@ -334,7 +357,16 @@ export default function NewTripPage() {
       )}
 
       {/* Form Content */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={handleSubmit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && currentStep < 3 && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+            e.preventDefault();
+            handleNext();
+          }
+        }}
+        className="space-y-6"
+      >
         {/* STEP 1: IDENTITY */}
         {currentStep === 1 && (
           <div className="space-y-6 animate-fade-in">
@@ -591,8 +623,10 @@ export default function NewTripPage() {
                     min="0"
                     step="500"
                     value={budgetTotal}
-                    onChange={(e) => setBudgetTotal(Math.max(0, parseFloat(e.target.value) || 0))}
-                    placeholder="35000"
+                    onChange={(e) =>
+                      setBudgetTotal(e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))
+                    }
+                    placeholder="e.g. 35000 (Optional)"
                     className="w-full px-4 py-2.5 rounded-xl bg-surface border border-muted focus:border-amber-500 focus:outline-hidden text-sm font-mono text-foreground placeholder:text-muted-foreground/50 transition-colors"
                   />
                 </div>
@@ -723,6 +757,7 @@ export default function NewTripPage() {
         <div className="pt-4 border-t border-muted/80 flex items-center justify-between gap-3">
           {currentStep > 1 ? (
             <button
+              key="btn-prev-step"
               type="button"
               onClick={handlePrev}
               disabled={isSubmitting}
@@ -732,6 +767,7 @@ export default function NewTripPage() {
             </button>
           ) : (
             <Link
+              key="btn-cancel"
               href="/secret/vault"
               className="px-4 py-2.5 rounded-xl border border-muted hover:border-foreground/30 text-xs font-sans text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -741,8 +777,13 @@ export default function NewTripPage() {
 
           {currentStep < 3 ? (
             <button
+              key={`btn-continue-step-${currentStep}`}
               type="button"
-              onClick={handleNext}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleNext();
+              }}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-medium text-xs font-sans tracking-wide transition-all active:scale-[0.98]"
             >
               <span>Continue</span>
@@ -750,9 +791,10 @@ export default function NewTripPage() {
             </button>
           ) : (
             <button
+              key="btn-submit-step-3"
               type="submit"
-              disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 font-semibold text-xs font-sans tracking-wide shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all active:scale-[0.98] disabled:opacity-50"
+              disabled={isSubmitting || !canSubmitStep3}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 font-semibold text-xs font-sans tracking-wide shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
