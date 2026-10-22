@@ -11,6 +11,7 @@ const config: CapacitorConfig = {
     url: 'https://life-atlas-eight-five.vercel.app',
     cleartext: true,
     androidScheme: 'https',
+    errorPath: 'offline.html',
   },
 };
 

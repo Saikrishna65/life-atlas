@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Life Atlas • Offline Sanctuary</title>
+  <style>
+    :root {
+      --bg: #05070a;
+      --surface: #0c0f14;
+      --surface-hover: #141820;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --accent: #f59e0b;
+      --cyan: #22d3ee;
+      --emerald: #10b981;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      display: flex;
+      flex-col: column;
+      position: relative;
+    }
+
+    /* Ambient Glows */
+    .glow-1 {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .glow-2 {
+      position: fixed;
+      bottom: -150px;
+      right: -100px;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Top Bar */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      background: rgba(5, 7, 10, 0.85);
+    }
+
+    .logo-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text);
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-family: monospace;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--accent);
+    }
+
+    /* Screen Containers */
+    main {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 16px 40px;
+      max-width: 680px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* Screen 1: Secret Door Gate */
+    #gateScreen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      text-align: center;
+      min-height: 75vh;
+    }
+
+    .gate-title {
+      font-size: 26px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .gate-sub {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 320px;
+      margin-bottom: 32px;
+    }
+
+    /* 3D Secret Door Visualizer */
+    .door-frame {
+      position: relative;
+      width: 140px;
+      height: 240px;
+      border-radius: 12px;
+      border: 2px solid rgba(245, 158, 11, 0.4);
+      background: linear-gradient(180deg, rgba(20, 24, 32, 0.8) 0%, rgba(12, 15, 20, 0.95) 100%);
+      box-shadow: 0 0 30px rgba(245, 158, 11, 0.15), inset 0 0 20px rgba(0, 0, 0, 0.8);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      touch-action: manipulation;
+    }
+
+    .door-frame:active {
+      transform: scale(0.97);
+    }
+
+    .door-frame.opening {
+      border-color: #fde047;
+      box-shadow: 0 0 50px rgba(253, 224, 71, 0.6);
+      background: rgba(253, 224, 71, 0.15);
+      animation: pulse 1s infinite alternate;
+    }
+
+    .fingerprint-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(34, 211, 238, 0.1);
+      border: 1px solid rgba(34, 211, 238, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--cyan);
+      box-shadow: 0 0 20px rgba(34, 211, 238, 0.25);
+      margin-bottom: 12px;
+    }
+
+    .door-hint {
+      font-size: 10px;
+      font-family: monospace;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      padding: 3px 8px;
+      border-radius: 9999px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(34, 211, 238, 0.2);
+    }
+
+    /* Screen 2: Trip Vault View */
+    #vaultScreen {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .vault-hero {
+      padding: 20px;
+      border-radius: 20px;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(12, 15, 20, 0.6) 100%);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .trip-card {
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: background 0.2s;
+    }
+
+    .trip-card:active {
+      background: var(--surface-hover);
+    }
+
+    .trip-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .status-badge {
+      font-size: 10px;
+      font-family: monospace;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .badge-active {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-planning {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .trip-title {
+      font-size: 18px;
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .trip-dest {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .trip-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    /* Retry Online Button */
+    .reconnect-bar {
+      margin-top: 24px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+    }
+
+    .btn-retry {
+      padding: 6px 14px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #000;
+      font-weight: 600;
+      font-size: 11px;
+      border: none;
+      cursor: pointer;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.8; }
+      100% { opacity: 1; transform: scale(1.02); }
+    }
+  </style>
+</head>
+<body>
+  <div class="glow-1"></div>
+  <div class="glow-2"></div>
+
+  <header>
+    <div class="logo-badge">
+      <div class="badge-dot"></div>
+      <span>Life Atlas</span>
+    </div>
+    <div class="status-pill">
+      <span>● Offline Mode</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Screen 1: Secret Door Entrance -->
+    <div id="gateScreen">
+      <h1 class="gate-title">Offline Sanctuary</h1>
+      <p class="gate-sub">Your travel vault and documents are securely stored on this device. Double-tap the door to unlock.</p>
+
+      <div id="doorTarget" class="door-frame" role="button" aria-label="Double tap to authenticate">
+        <div class="fingerprint-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/>
+            <path d="M14 13.12c0 2.38 0 6.38-1 8.88"/>
+            <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/>
+            <path d="M2 12a10 10 0 0 1 18-6"/>
+            <path d="M2 16h.01"/>
+            <path d="M21.8 16c.2-2 .131-5.354 0-6"/>
+            <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/>
+            <path d="M8.65 22c.21-.66.45-1.32.57-2"/>
+            <path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>
+          </svg>
+        </div>
+        <span class="door-hint">Double Tap</span>
+      </div>
+
+      <div class="reconnect-bar">
+        <span>Connect to Online Chronicles?</span>
+        <button id="retryBtn" class="btn-retry">Retry Connection</button>
+      </div>
+    </div>
+
+    <!-- Screen 2: Offline Vault Dashboard -->
+    <div id="vaultScreen">
+      <div class="vault-hero">
+        <span style="font-size: 11px; font-family: monospace; text-transform: uppercase; color: var(--accent); font-weight: 600;">
+          Offline Expedition Vault
+        </span>
+        <h2 style="font-size: 24px; font-weight: 300;">Saved Trips & Tickets</h2>
+        <p style="font-size: 12px; color: var(--muted);">All records loaded directly from your device storage with zero network connection.</p>
+      </div>
+
+      <div id="tripsList" style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="text-align: center; padding: 40px; color: var(--muted); font-size: 12px;">
+          Scanning local database...
+        </div>
+      </div>
+
+      <div class="reconnect-bar">
+        <span>Internet connection restored?</span>
+        <button onclick="window.location.href='https://life-atlas-eight-five.vercel.app/'" class="btn-retry">Open Online Atlas</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Double-tap detector
+    let tapHistory = [];
+    const door = document.getElementById('doorTarget');
+    const gateScreen = document.getElementById('gateScreen');
+    const vaultScreen = document.getElementById('vaultScreen');
+    const tripsList = document.getElementById('tripsList');
+    const retryBtn = document.getElementById('retryBtn');
+
+    function handleDoorUnlock() {
+      door.classList.add('opening');
+
+      // Native Biometric Authentication if inside Capacitor
+      if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+        const Bio = window.Capacitor.Plugins.BiometricAuth || window.Capacitor.Plugins.BiometricAuthNative;
+        if (Bio && typeof Bio.authenticate === 'function') {
+          Bio.authenticate({
+            androidTitle: 'Life Atlas',
+            androidSubtitle: 'Touch fingerprint sensor',
+            reason: 'Confirm fingerprint to open offline vault',
+            cancelTitle: 'Cancel',
+            allowDeviceCredential: false,
+            androidConfirmationRequired: false,
+          }).then(() => {
+            transitionToVault();
+          }).catch(() => {
+            door.classList.remove('opening');
+          });
+          return;
+        }
+      }
+
+      // Web fallback transition
+      setTimeout(() => {
+        transitionToVault();
+      }, 300);
+    }
+
+    function transitionToVault() {
+      gateScreen.style.display = 'none';
+      vaultScreen.style.display = 'flex';
+      loadLocalTrips();
+    }
+
+    door.addEventListener('pointerdown', (e) => {
+      const now = Date.now();
+      tapHistory = tapHistory.filter(t => now - t < 550);
+      tapHistory.push(now);
+
+      if (tapHistory.length >= 2) {
+        tapHistory = [];
+        handleDoorUnlock();
+      }
+    });
+
+    door.addEventListener('dblclick', () => {
+      tapHistory = [];
+      handleDoorUnlock();
+    });
+
+    // Query IndexedDB directly for offline trips
+    function loadLocalTrips() {
+      const request = indexedDB.open('life_atlas_trip_vault_db', 1);
+
+      request.onerror = () => {
+        tripsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #f87171; font-size: 13px;">Unable to read local database.</div>';
+      };
+
+      request.onsuccess = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('trips')) {
+          tripsList.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--muted); font-size: 13px;">No trips created yet.</div>';
+          return;
+        }
+
+        const tx = db.transaction('trips', 'readonly');
+        const store = tx.objectStore('trips');
+        const getAllReq = store.getAll();
+
+        getAllReq.onsuccess = () => {
+          const trips = getAllReq.result || [];
+          if (trips.length === 0) {
+            tripsList.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--border); border-radius: 16px;">No saved trips in your offline vault.<br><br>When online, plan trips and they will automatically remain cached here.</div>';
+            return;
+          }
+
+          tripsList.innerHTML = trips.map(t => `
+            <div class="trip-card">
+              <div class="trip-header">
+                <span class="status-badge ${t.status === 'ACTIVE' ? 'badge-active' : 'badge-planning'}">${t.status}</span>
+                <span style="font-size: 11px; color: var(--muted);">${t.travelStyle || 'TRAVEL'}</span>
+              </div>
+              <h3 class="trip-title">${t.title}</h3>
+              <div class="trip-dest">📍 ${t.destination}</div>
+              <div class="trip-footer">
+                <span>${t.startDate ? new Date(t.startDate).toLocaleDateString() : ''}</span>
+                <span style="color: var(--text); font-weight: 600;">${t.currency || '₹'} ${(t.budgetTotal || 0).toLocaleString()}</span>
+              </div>
+            </div>
+          `).join('');
+        };
+      };
+    }
+
+    // Network connection retry
+    retryBtn.addEventListener('click', () => {
+      retryBtn.innerText = 'Checking...';
+      fetch('https://life-atlas-eight-five.vercel.app/robots.txt', { mode: 'no-cors', cache: 'no-store' })
+        .then(() => {
+          window.location.href = 'https://life-atlas-eight-five.vercel.app/';
+        })
+        .catch(() => {
+          retryBtn.innerText = 'Still Offline';
+          setTimeout(() => { retryBtn.innerText = 'Retry Connection'; }, 1800);
+        });
+    });
+
+    // Auto-redirect if network is restored
+    window.addEventListener('online', () => {
+      window.location.href = 'https://life-atlas-eight-five.vercel.app/';
+    });
+  </script>
+</body>
+</html>

@@ -15,6 +15,11 @@ export default function MobileAppBridge() {
     StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
     StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
 
+    // Register offline Service Worker for caching application shell
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+
     // Android hardware & gesture back button listener
     const backButtonListener = CapApp.addListener("backButton", () => {
       if (window.location.pathname === "/") {
