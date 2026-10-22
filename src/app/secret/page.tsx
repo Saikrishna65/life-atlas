@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, ArrowUpRight, Lock, Compass } from "lucide-react";
@@ -8,7 +9,15 @@ import { revokeSecretAccess } from "@/lib/deviceAuth";
 export default function SecretDashboard() {
   const router = useRouter();
 
+  // Ensure leaving the secret dashboard immediately locks the vault
+  useEffect(() => {
+    return () => {
+      revokeSecretAccess();
+    };
+  }, []);
+
   const handleBackToPublic = () => {
+    revokeSecretAccess();
     router.push("/");
   };
 

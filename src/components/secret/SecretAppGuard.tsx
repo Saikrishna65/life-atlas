@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useSyncExternalStore, ReactNode, useCallback } from "react";
+import { useState, useEffect, useSyncExternalStore, ReactNode, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Fingerprint, Lock, ArrowLeft, ShieldCheck, RefreshCw } from "lucide-react";
-import { isSecretAccessGranted, grantSecretAccess, authenticateWithDevice } from "@/lib/deviceAuth";
+import { isSecretAccessGranted, grantSecretAccess, revokeSecretAccess, authenticateWithDevice } from "@/lib/deviceAuth";
 
 interface SecretAppGuardProps {
   children: ReactNode;
@@ -42,7 +42,16 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
     }
   }, [isAuthenticating]);
 
+  // Whenever unmounting SecretAppGuard (user navigated away from /secret to public pages),
+  // immediately revoke access so returning always requires authentication
+  useEffect(() => {
+    return () => {
+      revokeSecretAccess();
+    };
+  }, []);
+
   const handleReturnHome = () => {
+    revokeSecretAccess();
     router.replace("/");
   };
 

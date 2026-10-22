@@ -3,12 +3,11 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
-import { Fingerprint, Sparkles } from "lucide-react";
 import {
   authenticateWithDevice,
   triggerHaptic,
   grantSecretAccess,
-  isSecretAccessGranted,
+  revokeSecretAccess,
 } from "@/lib/deviceAuth";
 
 interface SecretDoorHotspotProps {
@@ -19,7 +18,6 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
   const router = useRouter();
   const hotspotRef = useRef<HTMLDivElement>(null);
   const [doorStyle, setDoorStyle] = useState<React.CSSProperties>({ display: "none" });
-  const [isOpening, setIsOpening] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const isTriggeringRef = useRef(false);
   const tapHistoryRef = useRef<number[]>([]);
@@ -121,34 +119,25 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
     };
   }, [progressRef]);
 
-  // Successfully verified door sequence transition (super fast 200ms entry)
+  // Always revoke previous secret access on home mount so returning to door locks it immediately
+  useEffect(() => {
+    revokeSecretAccess();
+  }, []);
+
+  // Successfully verified door sequence transition - ZERO artificial delay
   const executeUnlockNavigation = useCallback(() => {
     grantSecretAccess();
-    setIsOpening(true);
     setIsAuthenticating(false);
-
-    // Fast golden portal glow before entering private sanctuary
-    setTimeout(() => {
-      router.push("/secret");
-      setTimeout(() => {
-        setIsOpening(false);
-        isTriggeringRef.current = false;
-      }, 500);
-    }, 200);
+    isTriggeringRef.current = false;
+    router.push("/secret");
   }, [router]);
 
   // Triggered when door is double-clicked or double-tapped
   const triggerDoorAuthentication = useCallback(async () => {
-    if (isTriggeringRef.current || isOpening) return;
+    if (isTriggeringRef.current) return;
 
     // Verify user is at the initial hero stage where the door is visible in front
     if (progressRef?.current && progressRef.current > 0.35) {
-      return;
-    }
-
-    // If user already authenticated this session, unlock immediately!
-    if (isSecretAccessGranted()) {
-      executeUnlockNavigation();
       return;
     }
 
@@ -161,13 +150,12 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
       const authResult = await authenticateWithDevice();
 
       if (authResult.success) {
-        // Biometric matched! Open the secret door and transition to Private Atlas
+        // Biometric matched! Open immediately with zero delay
         executeUnlockNavigation();
         return;
       }
 
       // If user cancelled or failed native verification, simply reset state.
-      // NO custom design modal, NO PIN pad!
       setIsAuthenticating(false);
       isTriggeringRef.current = false;
       if (!authResult.cancelled) {
@@ -178,7 +166,7 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
       setIsAuthenticating(false);
       isTriggeringRef.current = false;
     }
-  }, [progressRef, isOpening, executeUnlockNavigation]);
+  }, [progressRef, executeUnlockNavigation]);
 
   // Robust double-click and double-tap detection:
   // Detects two taps/clicks within 550ms anywhere on the door hotspot
@@ -213,43 +201,21 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
     <div
       ref={hotspotRef}
       role="button"
-      tabIndex={0}
+      tabIndex={-1}
       aria-label="Private Atlas Entrance - Double Click or Tap to Authenticate"
       onPointerDown={registerDoorTap}
       onDoubleClick={handleDoubleClick}
       style={{
         ...doorStyle,
         transform: `translate3d(${parallax.x}px, ${parallax.y}px, 0)`,
-        transition: "transform 0.08s ease-out, box-shadow 0.25s ease-out, opacity 0.25s ease-out",
+        outline: "none",
+        WebkitTapHighlightColor: "transparent",
+        WebkitTouchCallout: "none",
+        border: "none",
+        background: "transparent",
+        boxShadow: "none",
       }}
-      className={`rounded-sm select-none ${
-        isOpening
-          ? "ring-2 ring-amber-300 shadow-[0_0_60px_rgba(255,230,150,0.8)] bg-amber-100/20"
-          : isAuthenticating
-          ? "ring-2 ring-cyan-400/80 shadow-[0_0_40px_rgba(34,211,238,0.5)] bg-cyan-950/20 cursor-pointer"
-          : "bg-transparent active:bg-white/[0.04]"
-      }`}
-    >
-      {/* Subtle Biometric Ring on the door surface during native scan */}
-      {isAuthenticating && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <div className="p-3.5 rounded-full bg-neutral-950/80 backdrop-blur-md border border-cyan-400/60 shadow-[0_0_30px_rgba(34,211,238,0.6)] animate-pulse">
-            <Fingerprint className="w-8 h-8 text-cyan-300" />
-          </div>
-        </div>
-      )}
-
-      {/* Door edge shimmer when opening */}
-      {isOpening && (
-        <div
-          className="absolute inset-0 pointer-events-none rounded-sm border-2 border-amber-300 animate-pulse bg-gradient-to-b from-amber-200/40 via-amber-100/20 to-amber-300/50 flex flex-col items-center justify-center"
-          aria-hidden="true"
-        >
-          <div className="p-3 rounded-full bg-amber-400/30 backdrop-blur-md border border-amber-300 shadow-[0_0_35px_rgba(251,191,36,0.9)] animate-bounce">
-            <Sparkles className="w-7 h-7 text-amber-200" />
-          </div>
-        </div>
-      )}
-    </div>
+      className="outline-none focus:outline-none focus:ring-0 active:outline-none ring-0 border-0 bg-transparent select-none cursor-pointer"
+    />
   );
 }

@@ -3,460 +3,703 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Life Atlas • Offline Sanctuary</title>
+  <title>Life Atlas • Private Archive</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #05070a;
-      --surface: #0c0f14;
-      --surface-hover: #141820;
-      --border: rgba(255, 255, 255, 0.08);
-      --text: #f1f5f9;
+      --bg: #07080a;
+      --card-bg: rgba(16, 19, 26, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f8fafc;
       --muted: #94a3b8;
       --accent: #f59e0b;
-      --cyan: #22d3ee;
-      --emerald: #10b981;
-      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --accent-glow: rgba(245, 158, 11, 0.15);
+      --font-display: "Cormorant Garamond", Georgia, serif;
+      --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      -webkit-tap-highlight-color: transparent;
+      -webkit-tap-highlight-color: transparent !important;
+      -webkit-focus-ring-color: transparent !important;
+      outline: none !important;
       user-select: none;
+      -webkit-user-select: none;
     }
 
-    body {
+    html, body {
+      width: 100%;
+      height: 100%;
       background-color: var(--bg);
       color: var(--text);
-      font-family: var(--font);
-      min-height: 100vh;
-      min-height: 100dvh;
+      font-family: var(--font-body);
       overflow-x: hidden;
-      display: flex;
-      flex-col: column;
       position: relative;
     }
 
-    /* Ambient Glows */
-    .glow-1 {
+    /* Ambient Atlas Radial Glow */
+    .ambient-glow {
       position: fixed;
-      top: -100px;
+      top: 0;
       left: 50%;
       transform: translateX(-50%);
-      width: 400px;
-      height: 400px;
-      background: radial-gradient(circle, rgba(245, 158, 11, 0.12) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .glow-2 {
-      position: fixed;
-      bottom: -150px;
-      right: -100px;
-      width: 500px;
+      width: 800px;
       height: 500px;
-      background: radial-gradient(circle, rgba(34, 211, 238, 0.08) 0%, transparent 70%);
+      background: radial-gradient(ellipse 75% 50% at 50% 0%, rgba(31, 79, 216, 0.08), transparent 70%);
       pointer-events: none;
-      z-index: 0;
+      z-index: 1;
     }
 
-    /* Top Bar */
-    header {
-      position: sticky;
+    /* ==========================================================================
+       VIEW 1: HERO HOME VIEW (Exact mirror of Life Atlas Hero Scene)
+       ========================================================================== */
+    #viewHero {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      overflow: hidden;
+      background-color: #000;
+    }
+
+    .hero-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url('/images/door-sequence/frame_0.webp');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    .hero-vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 35%, rgba(7, 8, 10, 0.85) 100%);
+      pointer-events: none;
+    }
+
+    /* Hero Top Header */
+    .hero-nav {
+      position: absolute;
       top: 0;
-      z-index: 30;
-      padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 12px;
+      left: 0;
+      right: 0;
+      padding: calc(env(safe-area-inset-top, 0px) + 20px) 24px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      background: rgba(5, 7, 10, 0.85);
+      z-index: 20;
+      pointer-events: none;
     }
 
-    .logo-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.05em;
+    .hero-logo {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 400;
+      letter-spacing: 0.25em;
       text-transform: uppercase;
-      color: var(--text);
-    }
-
-    .badge-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 10px var(--accent);
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 9999px;
-      font-size: 11px;
-      font-family: monospace;
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      background: rgba(245, 158, 11, 0.1);
-      color: var(--accent);
-    }
-
-    /* Screen Containers */
-    main {
-      position: relative;
-      z-index: 10;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 20px 16px 40px;
-      max-width: 680px;
-      margin: 0 auto;
-      width: 100%;
-    }
-
-    /* Screen 1: Secret Door Gate */
-    #gateScreen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      flex: 1;
-      text-align: center;
-      min-height: 75vh;
-    }
-
-    .gate-title {
-      font-size: 26px;
-      font-weight: 300;
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
       color: #fff;
     }
 
-    .gate-sub {
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.5;
-      max-width: 320px;
-      margin-bottom: 32px;
+    .hero-tag {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
     }
 
-    /* 3D Secret Door Visualizer */
-    .door-frame {
-      position: relative;
-      width: 140px;
-      height: 240px;
-      border-radius: 12px;
-      border: 2px solid rgba(245, 158, 11, 0.4);
-      background: linear-gradient(180deg, rgba(20, 24, 32, 0.8) 0%, rgba(12, 15, 20, 0.95) 100%);
-      box-shadow: 0 0 30px rgba(245, 158, 11, 0.15), inset 0 0 20px rgba(0, 0, 0, 0.8);
+    /* Hero Center Subtitle */
+    .hero-center {
+      position: absolute;
+      top: 14%;
+      left: 0;
+      right: 0;
+      text-align: center;
+      z-index: 20;
+      pointer-events: none;
+      padding: 0 20px;
+    }
+
+    .hero-subtitle {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-style: italic;
+      letter-spacing: 0.05em;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Secret Door Hotspot (Invisible, pristine, zero outline, zero border) */
+    #doorHotspot {
+      position: absolute;
+      z-index: 40;
       cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      outline: none !important;
+      border: none !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      -webkit-tap-highlight-color: transparent !important;
       touch-action: manipulation;
     }
 
-    .door-frame:active {
-      transform: scale(0.97);
+    /* ==========================================================================
+       VIEW 2: PRIVATE ATLAS SANCTUARY (Exact mirror of /secret)
+       ========================================================================== */
+    #viewSanctuary {
+      display: none;
+      position: relative;
+      z-index: 20;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 40px);
+      max-width: 680px;
+      margin: 0 auto;
+      flex-direction: column;
+      animation: fadeIn 0.25s ease-out;
     }
 
-    .door-frame.opening {
-      border-color: #fde047;
-      box-shadow: 0 0 50px rgba(253, 224, 71, 0.6);
-      background: rgba(253, 224, 71, 0.15);
-      animation: pulse 1s infinite alternate;
-    }
-
-    .fingerprint-icon {
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      background: rgba(34, 211, 238, 0.1);
-      border: 1px solid rgba(34, 211, 238, 0.4);
+    /* Editorial Nav Bar */
+    .sanctuary-nav {
       display: flex;
       align-items: center;
-      justify-content: center;
-      color: var(--cyan);
-      box-shadow: 0 0 20px rgba(34, 211, 238, 0.25);
-      margin-bottom: 12px;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 16px;
+      margin-bottom: 36px;
     }
 
-    .door-hint {
-      font-size: 10px;
-      font-family: monospace;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--cyan);
-      padding: 3px 8px;
-      border-radius: 9999px;
-      background: rgba(0, 0, 0, 0.5);
-      border: 1px solid rgba(34, 211, 238, 0.2);
+    .nav-btn-back {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: color 0.15s;
     }
 
-    /* Screen 2: Trip Vault View */
-    #vaultScreen {
-      display: none;
+    .nav-btn-back:hover, .nav-btn-back:active {
+      color: #fff;
+    }
+
+    .nav-btn-lock {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      color: var(--muted);
+      font-size: 11px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Editorial Header */
+    .sanctuary-header {
+      margin-bottom: 32px;
+    }
+
+    .sanctuary-title {
+      font-family: var(--font-display);
+      font-size: 42px;
+      font-weight: 400;
+      letter-spacing: -0.02em;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    .sanctuary-desc {
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--muted);
+      max-width: 520px;
+    }
+
+    /* Sanctuary Cards */
+    .cards-stack {
+      display: flex;
       flex-direction: column;
       gap: 16px;
     }
 
-    .vault-hero {
-      padding: 20px;
-      border-radius: 20px;
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, rgba(12, 15, 20, 0.6) 100%);
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .trip-card {
-      padding: 16px;
+    .editorial-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
       border-radius: 16px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      transition: background 0.2s;
+      padding: 24px 20px;
+      cursor: pointer;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+      position: relative;
+      overflow: hidden;
     }
 
-    .trip-card:active {
-      background: var(--surface-hover);
+    .editorial-card:active {
+      transform: scale(0.985);
+      border-color: rgba(245, 158, 11, 0.4);
+      background: rgba(24, 28, 38, 0.8);
     }
 
-    .trip-header {
+    .card-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      margin-bottom: 12px;
     }
 
-    .status-badge {
+    .card-badge {
       font-size: 10px;
-      font-family: monospace;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
       font-weight: 600;
+      color: var(--accent);
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.2);
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    .card-title {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 400;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .card-body {
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ==========================================================================
+       VIEW 3: EXPEDITION VAULT DASHBOARD (Exact mirror of /secret/vault)
+       ========================================================================== */
+    #viewVault {
+      display: none;
+      position: relative;
+      z-index: 20;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: calc(env(safe-area-inset-top, 0px) + 20px) 20px calc(env(safe-area-inset-bottom, 0px) + 40px);
+      max-width: 760px;
+      margin: 0 auto;
+      flex-direction: column;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    .vault-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 16px;
+      margin-bottom: 28px;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 24px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .tab-btn {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--card-border);
+      color: var(--muted);
+      font-size: 11px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .tab-btn.active {
+      background: var(--text);
+      color: #000;
+      font-weight: 600;
+      border-color: var(--text);
+    }
+
+    .trip-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .trip-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .trip-status {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
       padding: 2px 8px;
       border-radius: 6px;
-      text-transform: uppercase;
     }
 
-    .badge-active {
+    .status-active {
       background: rgba(16, 185, 129, 0.15);
       color: #34d399;
       border: 1px solid rgba(16, 185, 129, 0.3);
     }
 
-    .badge-planning {
+    .status-planning {
       background: rgba(245, 158, 11, 0.15);
       color: #fbbf24;
       border: 1px solid rgba(245, 158, 11, 0.3);
     }
 
-    .trip-title {
-      font-size: 18px;
-      font-weight: 500;
+    .trip-name {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 400;
       color: #fff;
+      margin-bottom: 4px;
     }
 
-    .trip-dest {
+    .trip-destination {
       font-size: 12px;
       color: var(--muted);
-      display: flex;
-      align-items: center;
-      gap: 4px;
+      margin-bottom: 14px;
     }
 
-    .trip-footer {
+    .trip-meta-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-top: 1px solid var(--border);
-      padding-top: 8px;
-      margin-top: 4px;
-      font-size: 11px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 12px;
+      font-size: 12px;
       color: var(--muted);
-      font-family: monospace;
     }
 
-    /* Retry Online Button */
-    .reconnect-bar {
+    .trip-budget {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* Offline reconnect bar */
+    .reconnect-pill {
       margin-top: 24px;
       padding: 12px 16px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
+      border-radius: 12px;
       background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed var(--card-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 12px;
+      font-size: 11px;
+      color: var(--muted);
     }
 
     .btn-retry {
-      padding: 6px 14px;
-      border-radius: 8px;
-      background: var(--accent);
-      color: #000;
-      font-weight: 600;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: var(--accent);
+      padding: 4px 10px;
+      border-radius: 6px;
       font-size: 11px;
-      border: none;
       cursor: pointer;
     }
 
-    @keyframes pulse {
-      0% { opacity: 0.8; }
-      100% { opacity: 1; transform: scale(1.02); }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
-  <div class="glow-1"></div>
-  <div class="glow-2"></div>
+  <div class="ambient-glow"></div>
 
-  <header>
-    <div class="logo-badge">
-      <div class="badge-dot"></div>
-      <span>Life Atlas</span>
+  <!-- VIEW 1: HERO HOME VIEW -->
+  <section id="viewHero">
+    <div class="hero-canvas"></div>
+    <div class="hero-vignette"></div>
+
+    <nav class="hero-nav">
+      <div class="hero-logo">Life Atlas</div>
+      <div class="hero-tag">Archive</div>
+    </nav>
+
+    <div class="hero-center">
+      <p class="hero-subtitle">Visual chronicle & private expedition archive</p>
     </div>
-    <div class="status-pill">
-      <span>● Offline Mode</span>
-    </div>
-  </header>
 
-  <main>
-    <!-- Screen 1: Secret Door Entrance -->
-    <div id="gateScreen">
-      <h1 class="gate-title">Offline Sanctuary</h1>
-      <p class="gate-sub">Your travel vault and documents are securely stored on this device. Double-tap the door to unlock.</p>
+    <!-- Invisible door hotspot exactly over ancient door in frame_0.webp -->
+    <div id="doorHotspot" role="button" aria-label="Private Atlas Entrance"></div>
+  </section>
 
-      <div id="doorTarget" class="door-frame" role="button" aria-label="Double tap to authenticate">
-        <div class="fingerprint-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/>
-            <path d="M14 13.12c0 2.38 0 6.38-1 8.88"/>
-            <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/>
-            <path d="M2 12a10 10 0 0 1 18-6"/>
-            <path d="M2 16h.01"/>
-            <path d="M21.8 16c.2-2 .131-5.354 0-6"/>
-            <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/>
-            <path d="M8.65 22c.21-.66.45-1.32.57-2"/>
-            <path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>
-          </svg>
+  <!-- VIEW 2: PRIVATE ATLAS SANCTUARY -->
+  <section id="viewSanctuary">
+    <nav class="sanctuary-nav">
+      <button class="nav-btn-back" onclick="lockAndReturnHome()">
+        ← Return to Atlas
+      </button>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);">Private Journal</span>
+        <button class="nav-btn-lock" onclick="lockAndReturnHome()">Lock</button>
+      </div>
+    </nav>
+
+    <header class="sanctuary-header">
+      <h1 class="sanctuary-title">Private Atlas</h1>
+      <p class="sanctuary-desc">
+        Your personal sanctuary for documenting expeditions, cataloguing visual memories, and quietly expanding your archive.
+      </p>
+    </header>
+
+    <div class="cards-stack">
+      <!-- Card 1: Expedition Vault -->
+      <div class="editorial-card" onclick="openVaultView()">
+        <div class="card-top">
+          <span class="card-badge">Offline Command Center</span>
+          <span style="font-size: 11px; color: var(--muted);">Encrypted</span>
         </div>
-        <span class="door-hint">Double Tap</span>
+        <h2 class="card-title">Expedition Vault</h2>
+        <p class="card-body">
+          Manage offline itineraries, IRCTC/flight bookings, PNR status, tickets, and safety check-ins with zero internet dependency.
+        </p>
       </div>
 
-      <div class="reconnect-bar">
-        <span>Connect to Online Chronicles?</span>
-        <button id="retryBtn" class="btn-retry">Retry Connection</button>
-      </div>
-    </div>
-
-    <!-- Screen 2: Offline Vault Dashboard -->
-    <div id="vaultScreen">
-      <div class="vault-hero">
-        <span style="font-size: 11px; font-family: monospace; text-transform: uppercase; color: var(--accent); font-weight: 600;">
-          Offline Expedition Vault
-        </span>
-        <h2 style="font-size: 24px; font-weight: 300;">Saved Trips & Tickets</h2>
-        <p style="font-size: 12px; color: var(--muted);">All records loaded directly from your device storage with zero network connection.</p>
-      </div>
-
-      <div id="tripsList" style="display: flex; flex-direction: column; gap: 12px;">
-        <div style="text-align: center; padding: 40px; color: var(--muted); font-size: 12px;">
-          Scanning local database...
+      <!-- Card 2: Creator Studio -->
+      <div class="editorial-card" onclick="alert('Creator Studio is reserved for online dispatch.')">
+        <div class="card-top">
+          <span class="card-badge" style="color: #38bdf8; background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.2);">Creative Suite</span>
         </div>
-      </div>
-
-      <div class="reconnect-bar">
-        <span>Internet connection restored?</span>
-        <button onclick="window.location.href='https://life-atlas-eight-five.vercel.app/'" class="btn-retry">Open Online Atlas</button>
+        <h2 class="card-title">Creator Studio</h2>
+        <p class="card-body">
+          Document field encounters, capture fleeting inspirations, and craft narrative logs with high-resolution imagery.
+        </p>
       </div>
     </div>
-  </main>
+
+    <div class="reconnect-pill">
+      <span>Offline Mode • Stored Locally</span>
+      <button class="btn-retry" id="btnRetryNet">Retry Connection</button>
+    </div>
+  </section>
+
+  <!-- VIEW 3: EXPEDITION VAULT DASHBOARD -->
+  <section id="viewVault">
+    <nav class="vault-nav">
+      <button class="nav-btn-back" onclick="returnToSanctuary()">
+        ← Private Atlas
+      </button>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="card-badge">Trip Vault</span>
+        <button class="nav-btn-lock" onclick="lockAndReturnHome()">Lock</button>
+      </div>
+    </nav>
+
+    <div style="margin-bottom: 24px;">
+      <h1 class="sanctuary-title" style="font-size: 32px;">Expedition Vault</h1>
+      <p class="sanctuary-desc">Offline travel command center. View itineraries, tickets, and reservations.</p>
+    </div>
+
+    <div class="filter-tabs">
+      <button class="tab-btn active" onclick="filterTrips('ALL', this)">All Expeditions</button>
+      <button class="tab-btn" onclick="filterTrips('ACTIVE', this)">Active</button>
+      <button class="tab-btn" onclick="filterTrips('COMPLETED', this)">Completed</button>
+    </div>
+
+    <div id="tripsContainer">
+      <div style="padding: 40px 20px; text-align: center; color: var(--muted); font-size: 13px;">
+        Loading local expeditions...
+      </div>
+    </div>
+  </section>
 
   <script>
-    // Double-tap detector
-    let tapHistory = [];
-    const door = document.getElementById('doorTarget');
-    const gateScreen = document.getElementById('gateScreen');
-    const vaultScreen = document.getElementById('vaultScreen');
-    const tripsList = document.getElementById('tripsList');
-    const retryBtn = document.getElementById('retryBtn');
+    // State
+    let isVaultUnlocked = false;
+    let allTrips = [];
+    let currentFilter = 'ALL';
 
-    function handleDoorUnlock() {
-      door.classList.add('opening');
+    // Elements
+    const viewHero = document.getElementById('viewHero');
+    const viewSanctuary = document.getElementById('viewSanctuary');
+    const viewVault = document.getElementById('viewVault');
+    const doorHotspot = document.getElementById('doorHotspot');
+    const tripsContainer = document.getElementById('tripsContainer');
+    const btnRetryNet = document.getElementById('btnRetryNet');
 
-      // Native Biometric Authentication if inside Capacitor
-      if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-        const Bio = window.Capacitor.Plugins.BiometricAuth || window.Capacitor.Plugins.BiometricAuthNative;
-        if (Bio && typeof Bio.authenticate === 'function') {
-          Bio.authenticate({
+    // Synchronize Door Hotspot position matching HeroScene's cover scaling
+    function updateDoorPosition() {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const imgW = 1880;
+      const imgH = 920;
+      const scale = Math.max(W / imgW, H / imgH) * 1.015;
+      const drawW = imgW * scale;
+      const drawH = imgH * scale;
+      const drawX = (W - drawW) / 2;
+      const drawY = (H - drawH) / 2;
+
+      // Exact door coordinates detected in frame_0.webp:
+      // Left: 822px, Top: 250px, Width: 241px, Height: 500px
+      const left = drawX + 822 * scale;
+      const top = drawY + 250 * scale;
+      const width = 241 * scale;
+      const height = 500 * scale;
+
+      doorHotspot.style.left = left + 'px';
+      doorHotspot.style.top = top + 'px';
+      doorHotspot.style.width = width + 'px';
+      doorHotspot.style.height = height + 'px';
+    }
+
+    window.addEventListener('resize', updateDoorPosition, { passive: true });
+    updateDoorPosition();
+
+    // Native Biometric Authentication Invoker
+    async function requestDeviceBiometric() {
+      // 1. Check if Capacitor is available
+      if (window.Capacitor) {
+        // Method A: BiometricAuthNative plugin directly
+        const plugins = window.Capacitor.Plugins || {};
+        const bioPlugin = plugins.BiometricAuthNative || plugins.BiometricAuth;
+        
+        if (bioPlugin) {
+          const authMethod = bioPlugin.internalAuthenticate || bioPlugin.authenticate;
+          if (typeof authMethod === 'function') {
+            try {
+              return await authMethod.call(bioPlugin, {
+                androidTitle: 'Life Atlas',
+                androidSubtitle: 'Touch fingerprint sensor',
+                reason: 'Scan fingerprint to access Private Atlas',
+                cancelTitle: 'Cancel',
+                allowDeviceCredential: false,
+                androidConfirmationRequired: false
+              });
+            } catch (err) {
+              throw err;
+            }
+          }
+        }
+
+        // Method B: Capacitor nativePromise bridge
+        if (typeof window.Capacitor.nativePromise === 'function') {
+          return await window.Capacitor.nativePromise('BiometricAuthNative', 'internalAuthenticate', {
             androidTitle: 'Life Atlas',
             androidSubtitle: 'Touch fingerprint sensor',
-            reason: 'Confirm fingerprint to open offline vault',
+            reason: 'Scan fingerprint to access Private Atlas',
             cancelTitle: 'Cancel',
             allowDeviceCredential: false,
-            androidConfirmationRequired: false,
-          }).then(() => {
-            transitionToVault();
-          }).catch(() => {
-            door.classList.remove('opening');
+            androidConfirmationRequired: false
           });
-          return;
         }
       }
 
-      // Web fallback transition
-      setTimeout(() => {
-        transitionToVault();
-      }, 300);
+      // If in browser test without native hardware, proceed
+      return { success: true };
     }
 
-    function transitionToVault() {
-      gateScreen.style.display = 'none';
-      vaultScreen.style.display = 'flex';
-      loadLocalTrips();
+    // Door double-click and double-tap detection
+    let tapTimes = [];
+    let isAuthenticating = false;
+
+    async function handleDoorTrigger() {
+      if (isAuthenticating) return;
+      isAuthenticating = true;
+
+      try {
+        await requestDeviceBiometric();
+        // Zero delay: immediately navigate to private section
+        isVaultUnlocked = true;
+        showSanctuaryView();
+      } catch (err) {
+        console.warn('Biometric cancelled or failed:', err);
+      } finally {
+        isAuthenticating = false;
+      }
     }
 
-    door.addEventListener('pointerdown', (e) => {
+    doorHotspot.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
       const now = Date.now();
-      tapHistory = tapHistory.filter(t => now - t < 550);
-      tapHistory.push(now);
+      tapTimes = tapTimes.filter(t => now - t < 550);
+      tapTimes.push(now);
 
-      if (tapHistory.length >= 2) {
-        tapHistory = [];
-        handleDoorUnlock();
+      if (tapTimes.length >= 2) {
+        tapTimes = [];
+        handleDoorTrigger();
       }
     });
 
-    door.addEventListener('dblclick', () => {
-      tapHistory = [];
-      handleDoorUnlock();
+    doorHotspot.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      tapTimes = [];
+      handleDoorTrigger();
     });
 
-    // Query IndexedDB directly for offline trips
-    function loadLocalTrips() {
-      const request = indexedDB.open('life_atlas_trip_vault_db', 1);
+    // View Routing Functions
+    function showSanctuaryView() {
+      viewHero.style.display = 'none';
+      viewVault.style.display = 'none';
+      viewSanctuary.style.display = 'flex';
+      window.scrollTo(0, 0);
+    }
 
-      request.onerror = () => {
-        tripsList.innerHTML = '<div style="padding: 24px; text-align: center; color: #f87171; font-size: 13px;">Unable to read local database.</div>';
+    function openVaultView() {
+      viewSanctuary.style.display = 'none';
+      viewVault.style.display = 'flex';
+      window.scrollTo(0, 0);
+      loadOfflineTrips();
+    }
+
+    function returnToSanctuary() {
+      viewVault.style.display = 'none';
+      viewSanctuary.style.display = 'flex';
+      window.scrollTo(0, 0);
+    }
+
+    // Returning to the door locks the vault immediately so entering again requires auth
+    function lockAndReturnHome() {
+      isVaultUnlocked = false;
+      viewSanctuary.style.display = 'none';
+      viewVault.style.display = 'none';
+      viewHero.style.display = 'block';
+      window.scrollTo(0, 0);
+    }
+
+    // IndexedDB Trip Loader
+    function loadOfflineTrips() {
+      const req = indexedDB.open('life_atlas_trip_vault_db', 1);
+
+      req.onerror = () => {
+        tripsContainer.innerHTML = '<div style="padding: 40px 20px; text-align: center; color: #f87171; font-size: 13px;">Unable to read offline database.</div>';
       };
 
-      request.onsuccess = (e) => {
+      req.onsuccess = (e) => {
         const db = e.target.result;
         if (!db.objectStoreNames.contains('trips')) {
-          tripsList.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--muted); font-size: 13px;">No trips created yet.</div>';
+          renderTrips([]);
           return;
         }
 
@@ -465,44 +708,66 @@
         const getAllReq = store.getAll();
 
         getAllReq.onsuccess = () => {
-          const trips = getAllReq.result || [];
-          if (trips.length === 0) {
-            tripsList.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--border); border-radius: 16px;">No saved trips in your offline vault.<br><br>When online, plan trips and they will automatically remain cached here.</div>';
-            return;
-          }
-
-          tripsList.innerHTML = trips.map(t => `
-            <div class="trip-card">
-              <div class="trip-header">
-                <span class="status-badge ${t.status === 'ACTIVE' ? 'badge-active' : 'badge-planning'}">${t.status}</span>
-                <span style="font-size: 11px; color: var(--muted);">${t.travelStyle || 'TRAVEL'}</span>
-              </div>
-              <h3 class="trip-title">${t.title}</h3>
-              <div class="trip-dest">📍 ${t.destination}</div>
-              <div class="trip-footer">
-                <span>${t.startDate ? new Date(t.startDate).toLocaleDateString() : ''}</span>
-                <span style="color: var(--text); font-weight: 600;">${t.currency || '₹'} ${(t.budgetTotal || 0).toLocaleString()}</span>
-              </div>
-            </div>
-          `).join('');
+          allTrips = getAllReq.result || [];
+          renderTrips(allTrips);
         };
       };
     }
 
-    // Network connection retry
-    retryBtn.addEventListener('click', () => {
-      retryBtn.innerText = 'Checking...';
+    function renderTrips(trips) {
+      const filtered = trips.filter(t => {
+        if (currentFilter === 'ALL') return true;
+        if (currentFilter === 'ACTIVE') return t.status === 'ACTIVE' || t.status === 'PLANNING';
+        if (currentFilter === 'COMPLETED') return t.status === 'COMPLETED';
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tripsContainer.innerHTML = `
+          <div style="padding: 48px 24px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--card-border); border-radius: 16px;">
+            No saved expeditions found in your offline vault.<br><br>
+            When online, plan trips and they will automatically remain cached here for offline access.
+          </div>
+        `;
+        return;
+      }
+
+      tripsContainer.innerHTML = filtered.map(t => `
+        <div class="trip-card">
+          <div class="trip-card-top">
+            <span class="trip-status ${t.status === 'ACTIVE' ? 'status-active' : 'status-planning'}">${t.status}</span>
+            <span style="font-size: 11px; color: var(--muted);">${t.travelStyle || 'EXPEDITION'}</span>
+          </div>
+          <h3 class="trip-name">${t.title}</h3>
+          <div class="trip-destination">📍 ${t.destination}</div>
+          <div class="trip-meta-row">
+            <span>${t.startDate ? new Date(t.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}</span>
+            <span class="trip-budget">${t.currency || '₹'} ${(t.budgetTotal || 0).toLocaleString()}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterTrips(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderTrips(allTrips);
+    }
+
+    // Reconnection listener
+    btnRetryNet.addEventListener('click', () => {
+      btnRetryNet.innerText = 'Checking...';
       fetch('https://life-atlas-eight-five.vercel.app/robots.txt', { mode: 'no-cors', cache: 'no-store' })
         .then(() => {
           window.location.href = 'https://life-atlas-eight-five.vercel.app/';
         })
         .catch(() => {
-          retryBtn.innerText = 'Still Offline';
-          setTimeout(() => { retryBtn.innerText = 'Retry Connection'; }, 1800);
+          btnRetryNet.innerText = 'Still Offline';
+          setTimeout(() => { btnRetryNet.innerText = 'Retry Connection'; }, 1800);
         });
     });
 
-    // Auto-redirect if network is restored
     window.addEventListener('online', () => {
       window.location.href = 'https://life-atlas-eight-five.vercel.app/';
     });
