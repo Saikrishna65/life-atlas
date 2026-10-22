@@ -139,7 +139,7 @@ export default function TripCommandCenterPage() {
   // Lock vault session
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   // Status transition handler

@@ -86,7 +86,7 @@ export default function MemoriesPage() {
 
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   const showToast = (msg: string) => {

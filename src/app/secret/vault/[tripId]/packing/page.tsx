@@ -142,7 +142,7 @@ export default function PackingPage() {
 
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   // Open Add Modal

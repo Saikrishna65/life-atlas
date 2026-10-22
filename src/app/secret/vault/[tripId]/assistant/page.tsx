@@ -107,7 +107,7 @@ export default function AssistantPage() {
 
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   // Generate Itinerary Action (REQ-AIX-01)

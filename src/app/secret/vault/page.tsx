@@ -42,7 +42,7 @@ export default function TripVaultDashboard() {
 
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   const filteredTrips = useMemo(() => {

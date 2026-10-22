@@ -9,12 +9,14 @@ import { getHomepageData } from "@/lib/queries/home";
 
 import LazyGlobe from "@/components/home/LazyGlobe";
 import HomePreloader from "@/components/home/HomePreloader";
+import { NativeAppRedirect } from "@/components/native/NativeAppRedirect";
 
 export default async function Home() {
   const { stats, featuredTrips, timelinePreview, photos, experiences, globePlaces } = await getHomepageData();
 
   return (
     <>
+      <NativeAppRedirect />
       <HomePreloader />
       <main className="bg-background text-foreground min-h-screen">
       <Hero />

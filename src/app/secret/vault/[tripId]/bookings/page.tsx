@@ -196,7 +196,7 @@ export default function TripBookingsPage() {
   // Lock vault session
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   // Copy PNR

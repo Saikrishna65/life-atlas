@@ -95,7 +95,7 @@ export default function TripRoutesPage() {
   // Lock vault session
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   // Open Segment Modal

@@ -123,7 +123,7 @@ export default function TripFoodPlannerPage() {
   // Lock vault session
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   // Open Add modal with defaults

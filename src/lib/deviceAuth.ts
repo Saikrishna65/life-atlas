@@ -206,9 +206,9 @@ export async function authenticateWithDevice(): Promise<AuthResult> {
       }
 
       await BiometricAuth.authenticate({
-        androidTitle: "Life Atlas",
+        androidTitle: "Atlas Vault",
         androidSubtitle: "Touch fingerprint sensor",
-        reason: "Scan fingerprint to access Private Atlas",
+        reason: "Scan fingerprint to access Private Vault",
         cancelTitle: "Cancel",
         allowDeviceCredential: false, // Pure native biometric prompt (Fingerprint)
         androidConfirmationRequired: false, // Instant unlock upon fingerprint touch
@@ -421,6 +421,7 @@ export function grantSecretAccess(): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.setItem(SESSION_AUTH_KEY, "true");
+    window.dispatchEvent(new Event("vault-unlocked"));
   } catch {
     // Ignore storage quota/security issues
   }
@@ -433,6 +434,7 @@ export function revokeSecretAccess(): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.removeItem(SESSION_AUTH_KEY);
+    window.dispatchEvent(new Event("vault-locked"));
   } catch {
     // Ignore storage issues
   }

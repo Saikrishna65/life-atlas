@@ -62,7 +62,7 @@ export default function RemindersPage() {
 
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   const showSuccess = (msg: string) => {

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Life Atlas</string>
-    <string name="title_activity_main">Life Atlas</string>
+    <string name="app_name">Atlas Vault</string>
+    <string name="title_activity_main">Atlas Vault</string>
     <string name="package_name">com.lifeatlas.app</string>
     <string name="custom_url_scheme">com.lifeatlas.app</string>
 </resources>

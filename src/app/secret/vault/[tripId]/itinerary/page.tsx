@@ -131,7 +131,7 @@ export default function TripItineraryPage() {
   // Lock vault session
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   // Open add activity modal

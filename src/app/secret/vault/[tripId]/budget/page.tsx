@@ -98,7 +98,7 @@ export default function TripBudgetPage() {
   // Lock vault session
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   // Open Add modal with smart defaults
