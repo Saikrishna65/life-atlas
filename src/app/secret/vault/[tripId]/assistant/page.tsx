@@ -43,6 +43,7 @@ import {
 } from "@/lib/vault/pnrParser";
 import { notifyVaultChange } from "@/lib/vault/useTripVault";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { Select } from "@/components/ui/Select";
 
 type AssistantTab = "ITINERARY" | "PARSER";
 
@@ -257,7 +258,7 @@ export default function AssistantPage() {
               <span>{trip?.title || "Expedition"}</span>
             </Link>
             <span>/</span>
-            <span className="text-purple-400">Pillar 13</span>
+            <span className="text-purple-700 font-medium">Pillar 13</span>
           </div>
           <h1 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
             AI Expedition Assistant & Smart Parser
@@ -284,11 +285,11 @@ export default function AssistantPage() {
           onClick={() => setActiveTab("ITINERARY")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all ${
             activeTab === "ITINERARY"
-              ? "bg-purple-500/20 border border-purple-500/40 text-purple-300 shadow-xs"
+              ? "bg-purple-50 border border-purple-200 text-purple-800 shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-surface"
           }`}
         >
-          <Sparkles className="w-4 h-4 text-purple-400" />
+          <Sparkles className="w-4 h-4 text-purple-600" />
           <span>AI Itinerary Architect (REQ-AIX-01)</span>
         </button>
 
@@ -296,18 +297,18 @@ export default function AssistantPage() {
           onClick={() => setActiveTab("PARSER")}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all ${
             activeTab === "PARSER"
-              ? "bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 shadow-xs"
+              ? "bg-cyan-50 border border-cyan-200 text-cyan-800 shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-surface"
           }`}
         >
-          <Ticket className="w-4 h-4 text-cyan-400" />
+          <Ticket className="w-4 h-4 text-cyan-600" />
           <span>Smart Ticket & PNR Parser (REQ-AIX-02)</span>
         </button>
       </div>
 
       {errorMsg && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 font-mono">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-mono">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
           <span>{errorMsg}</span>
         </div>
       )}
@@ -319,7 +320,7 @@ export default function AssistantPage() {
           <div className="p-5 sm:p-6 rounded-3xl bg-surface border border-muted shadow-xs space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                <div className="p-2.5 rounded-2xl bg-purple-50 border border-purple-200 text-purple-700">
                   <Bot className="w-5 h-5" />
                 </div>
                 <div>
@@ -334,7 +335,7 @@ export default function AssistantPage() {
 
               {/* Graceful Offline Indicator */}
               <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-background border border-muted text-[10px] font-mono text-muted-foreground">
-                <Zap className="w-3 h-3 text-purple-400" />
+                <Zap className="w-3 h-3 text-purple-600" />
                 <span>Neon AI Gateway / Offline Engine</span>
               </div>
             </div>
@@ -376,17 +377,17 @@ export default function AssistantPage() {
                   <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground block mb-1">
                     Travel Style
                   </label>
-                  <select
+                  <Select
                     value={styleInput}
                     onChange={(e) => setStyleInput(e.target.value as TravelStyle)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden"
+                    className="w-full"
                   >
                     <option value="MOTORCYCLE">Motorcycle Expedition</option>
                     <option value="BACKPACKING">Backpacking & Public Transit</option>
                     <option value="ROADTRIP">Self-Drive 4x4 Roadtrip</option>
                     <option value="TREKKING">Alpine Trekking</option>
                     <option value="LEISURE">Leisure & Heritage</option>
-                  </select>
+                  </Select>
                 </div>
 
                 {/* Intensity */}
@@ -394,15 +395,15 @@ export default function AssistantPage() {
                   <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground block mb-1">
                     Expedition Pace
                   </label>
-                  <select
+                  <Select
                     value={intensityInput}
                     onChange={(e) => setIntensityInput(e.target.value as "RELAXED" | "MODERATE" | "CHALLENGING")}
-                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden"
+                    className="w-full"
                   >
                     <option value="RELAXED">Relaxed (Slow Exploration)</option>
                     <option value="MODERATE">Moderate (Balanced Circuit)</option>
                     <option value="CHALLENGING">Challenging (High Passes & Hard Treks)</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -419,7 +420,7 @@ export default function AssistantPage() {
                         if (preset === "Ladakh") setDurationInput(6);
                         if (preset === "Meghalaya") setDurationInput(5);
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-background border border-muted hover:border-purple-400 text-[10px] font-mono text-purple-300 transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-background border border-muted hover:border-purple-400 text-[10px] font-mono text-purple-700 hover:text-purple-900 transition-colors"
                     >
                       {preset}
                     </button>
@@ -429,7 +430,7 @@ export default function AssistantPage() {
                 <button
                   type="submit"
                   disabled={isGenerating || !destInput.trim()}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs disabled:opacity-50"
                 >
                   {isGenerating ? (
                     <>
@@ -438,7 +439,7 @@ export default function AssistantPage() {
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 text-purple-200" />
+                      <Sparkles className="w-4 h-4 text-purple-100" />
                       <span>Generate Itinerary Plan</span>
                     </>
                   )}
@@ -448,14 +449,14 @@ export default function AssistantPage() {
           </div>
 
           {importSuccess && (
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono flex items-center justify-between gap-3">
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 shrink-0" />
+                <Check className="w-4 h-4 shrink-0 text-emerald-600" />
                 <span>{importSuccess}</span>
               </div>
               <Link
                 href={`/secret/vault/${tripId}/itinerary`}
-                className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-sans transition-colors inline-flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-sans transition-colors inline-flex items-center gap-1 font-medium"
               >
                 <span>View in Itinerary</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -473,8 +474,8 @@ export default function AssistantPage() {
                       {generatedPlan.destination} Expedition Blueprint
                     </h3>
                     {generatedPlan.isOfflineFallback && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center gap-1">
-                        <WifiOff className="w-3 h-3" />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-1 font-medium">
+                        <WifiOff className="w-3 h-3 text-amber-600" />
                         <span>Curated Offline Plan</span>
                       </span>
                     )}
@@ -487,7 +488,7 @@ export default function AssistantPage() {
                 <button
                   onClick={handleImportPlan}
                   disabled={isImporting}
-                  className="px-5 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white font-semibold text-xs transition-colors flex items-center gap-2 shrink-0 shadow-xs disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs transition-colors flex items-center gap-2 shrink-0 shadow-xs disabled:opacity-50"
                 >
                   {isImporting ? (
                     <>
@@ -516,7 +517,7 @@ export default function AssistantPage() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-mono font-bold flex items-center justify-center">
+                          <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-800 border border-purple-200 text-xs font-mono font-bold flex items-center justify-center">
                             {d.dayNumber}
                           </span>
                           <span className="font-sans font-semibold text-sm text-foreground">
@@ -525,7 +526,7 @@ export default function AssistantPage() {
                         </div>
                         {d.suggestedStayArea && (
                           <div className="flex items-center gap-1 text-[11px] font-mono text-muted-foreground">
-                            <MapPin className="w-3 h-3 text-amber-400" />
+                            <MapPin className="w-3 h-3 text-amber-600" />
                             <span>Stay: {d.suggestedStayArea}</span>
                           </div>
                         )}
@@ -553,7 +554,7 @@ export default function AssistantPage() {
                               key={idx}
                               className="p-2.5 rounded-xl bg-surface/50 border border-muted/50 text-xs space-y-1"
                             >
-                              <div className="flex items-center justify-between text-[10px] font-mono text-purple-300">
+                              <div className="flex items-center justify-between text-[10px] font-mono text-purple-700 font-medium">
                                 <span>{act.timeSlot}</span>
                                 {act.startTime && <span>{act.startTime}</span>}
                               </div>
@@ -579,13 +580,13 @@ export default function AssistantPage() {
                 {/* Gear */}
                 <div className="p-4 rounded-2xl bg-background border border-muted space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
                     <span>Recommended Expedition Gear</span>
                   </div>
                   <ul className="space-y-1 text-xs text-muted-foreground font-body">
                     {generatedPlan.suggestedGear.map((item, idx) => (
                       <li key={idx} className="flex items-start gap-1.5">
-                        <span className="text-emerald-400 font-bold">•</span>
+                        <span className="text-emerald-600 font-bold">•</span>
                         <span>{item}</span>
                       </li>
                     ))}
@@ -595,13 +596,13 @@ export default function AssistantPage() {
                 {/* Advisories */}
                 <div className="p-4 rounded-2xl bg-background border border-muted space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-muted-foreground">
-                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
                     <span>Route & Terrain Advisories</span>
                   </div>
                   <ul className="space-y-1 text-xs text-muted-foreground font-body">
                     {generatedPlan.localAdvisories.map((adv, idx) => (
                       <li key={idx} className="flex items-start gap-1.5">
-                        <span className="text-amber-400 font-bold">•</span>
+                        <span className="text-amber-600 font-bold">•</span>
                         <span>{adv}</span>
                       </li>
                     ))}
@@ -619,7 +620,7 @@ export default function AssistantPage() {
           <div className="p-5 sm:p-6 rounded-3xl bg-surface border border-muted shadow-xs space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                <div className="p-2.5 rounded-2xl bg-cyan-50 border border-cyan-200 text-cyan-700">
                   <Ticket className="w-5 h-5" />
                 </div>
                 <div>
@@ -632,8 +633,8 @@ export default function AssistantPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-background border border-muted text-[10px] font-mono text-cyan-400">
-                <ShieldCheck className="w-3 h-3" />
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-background border border-cyan-200 text-[10px] font-mono text-cyan-800 font-medium">
+                <ShieldCheck className="w-3 h-3 text-cyan-600" />
                 <span>Zero-Cloud Local Parser</span>
               </div>
             </div>
@@ -649,7 +650,7 @@ export default function AssistantPage() {
                     key={sample.id}
                     type="button"
                     onClick={() => handleLoadSample(sample.text)}
-                    className="px-3 py-1.5 rounded-xl bg-background border border-muted hover:border-cyan-400 text-xs font-sans text-cyan-300 transition-colors flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-xl bg-background border border-muted hover:border-cyan-400 text-xs font-sans text-cyan-800 hover:text-cyan-950 transition-colors flex items-center gap-1.5"
                   >
                     <span>{sample.label}</span>
                   </button>
@@ -685,11 +686,11 @@ export default function AssistantPage() {
                   type="button"
                   onClick={handleParseText}
                   disabled={isParsing || !rawPastedText.trim()}
-                  className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                 >
                   {isParsing ? (
                     <>
-                      <div className="w-3.5 h-3.5 rounded-full border border-black border-t-transparent animate-spin" />
+                      <div className="w-3.5 h-3.5 rounded-full border border-white border-t-transparent animate-spin" />
                       <span>Parsing...</span>
                     </>
                   ) : (
@@ -704,14 +705,14 @@ export default function AssistantPage() {
           </div>
 
           {bookingAddedSuccess && (
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono flex items-center justify-between gap-3">
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 shrink-0" />
+                <Check className="w-4 h-4 shrink-0 text-emerald-600" />
                 <span>{bookingAddedSuccess}</span>
               </div>
               <Link
                 href={`/secret/vault/${tripId}/bookings`}
-                className="px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-sans transition-colors inline-flex items-center gap-1"
+                className="px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-sans transition-colors inline-flex items-center gap-1 font-medium"
               >
                 <span>View Bookings</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -724,7 +725,7 @@ export default function AssistantPage() {
             <div className="p-6 rounded-3xl bg-surface border border-muted space-y-5 shadow-xs animate-in fade-in duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-muted">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                  <div className="p-2.5 rounded-2xl bg-cyan-50 border border-cyan-200 text-cyan-700">
                     {parsedResult.transportType === "FLIGHT" ? (
                       <Plane className="w-5 h-5" />
                     ) : parsedResult.transportType === "BUS" ? (
@@ -746,18 +747,18 @@ export default function AssistantPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-medium">
                     {Math.round((parsedResult.confidenceScore || 0) * 100)}% Confidence
                   </span>
 
                   <button
                     onClick={handleAddBookingToVault}
                     disabled={isAddingBooking}
-                    className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                    className="px-4 py-2 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-xs disabled:opacity-50"
                   >
                     {isAddingBooking ? (
                       <>
-                        <div className="w-3.5 h-3.5 rounded-full border border-black border-t-transparent animate-spin" />
+                        <div className="w-3.5 h-3.5 rounded-full border border-white border-t-transparent animate-spin" />
                         <span>Saving...</span>
                       </>
                     ) : (
@@ -784,10 +785,10 @@ export default function AssistantPage() {
                     {parsedResult.pnrNumber && (
                       <button
                         onClick={() => handleCopyPNR(parsedResult.pnrNumber)}
-                        className="p-1 rounded-md text-muted-foreground hover:text-cyan-400"
+                        className="p-1 rounded-md text-muted-foreground hover:text-cyan-700"
                         title="Copy PNR"
                       >
-                        {copiedPNR ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedPNR ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     )}
                   </div>
@@ -808,7 +809,7 @@ export default function AssistantPage() {
                   <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
                     Coach / Seat / Berth
                   </span>
-                  <span className="text-sm font-sans font-medium text-cyan-400 block truncate">
+                  <span className="text-sm font-sans font-medium text-cyan-800 block truncate">
                     {parsedResult.coachBerthDetails || parsedResult.seatNumbers || "N/A"}
                   </span>
                 </div>

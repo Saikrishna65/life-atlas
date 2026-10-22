@@ -27,6 +27,7 @@ import {
 import { useMemories } from "@/lib/vault/useMemories";
 import { TripMemoryRecord } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 
 export default function MemoriesPage() {
   const params = useParams();
@@ -55,6 +56,9 @@ export default function MemoriesPage() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [activeLightbox, setActiveLightbox] = useState<TripMemoryRecord | null>(null);
   const [memoryToDelete, setMemoryToDelete] = useState<TripMemoryRecord | null>(null);
+
+  // Lock body scroll when any modal is open
+  useLockBodyScroll(showAddModal || showExportModal || !!activeLightbox || !!memoryToDelete);
 
   // Toast / Status
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -227,7 +231,7 @@ export default function MemoriesPage() {
               <span>{trip?.title || "Expedition"}</span>
             </Link>
             <span>/</span>
-            <span className="text-amber-400">Pillar 12</span>
+            <span className="text-accent font-medium">Memories</span>
           </div>
           <h1 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
             Memories & Expedition Archives
@@ -240,16 +244,16 @@ export default function MemoriesPage() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleOpenExportModal}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-yellow-500/10 hover:from-amber-500/30 hover:to-yellow-500/20 border border-amber-500/40 text-amber-300 font-medium text-xs transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-surface border border-muted hover:border-accent text-foreground font-medium text-xs transition-colors shadow-xs"
             title="Export to public journal"
           >
-            <Globe className="w-3.5 h-3.5 text-amber-400" />
+            <Globe className="w-3.5 h-3.5 text-accent" />
             <span>Publish Journal</span>
           </button>
 
           <button
             onClick={handleOpenAddModal}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-xs transition-colors shadow-xs"
           >
             <Camera className="w-4 h-4" />
             <span>Add Memory</span>
@@ -257,40 +261,36 @@ export default function MemoriesPage() {
 
           <button
             onClick={handleLockVault}
-            className="p-2 rounded-xl bg-background border border-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="p-2 rounded-xl bg-surface border border-muted text-muted-foreground hover:text-foreground transition-colors"
             title="Lock Vault"
           >
-            <Lock className="w-3.5 h-3.5" />
+            <Lock className="w-3.5 h-3.5 text-amber-600" />
           </button>
         </div>
       </div>
 
       {successToast && (
-        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono flex items-center gap-2">
-          <Check className="w-4 h-4 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-center gap-2">
+          <Check className="w-4 h-4 shrink-0 text-emerald-700" />
           <span>{successToast}</span>
         </div>
       )}
 
       {(error || actionError) && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 font-mono">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-mono">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
           <span>{actionError || error}</span>
         </div>
       )}
 
       {/* 2. REQ-MEM-01: COMPLETED TRIP DOSSIER CELEBRATION CARD */}
-      <section className={`p-5 sm:p-6 rounded-3xl border transition-all ${
-        dossierStats.isCompleted
-          ? "bg-gradient-to-b from-amber-500/15 via-background to-surface border-amber-500/40 shadow-lg"
-          : "bg-surface border-muted shadow-xs"
-      }`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-muted/60">
+      <section className="p-5 sm:p-6 rounded-3xl border border-muted bg-surface shadow-soft transition-all">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-muted">
           <div className="flex items-start gap-3.5">
             <div className={`p-3 rounded-2xl border shrink-0 ${
               dossierStats.isCompleted
-                ? "bg-amber-500/20 border-amber-500/40 text-amber-400 animate-pulse"
-                : "bg-muted/40 border-muted text-muted-foreground"
+                ? "bg-amber-50 border-amber-200 text-amber-700"
+                : "bg-surface border-muted text-muted-foreground"
             }`}>
               <Trophy className="w-6 h-6" />
             </div>
@@ -302,7 +302,7 @@ export default function MemoriesPage() {
                     : "Expedition Dossier & Milestones"}
                 </h2>
                 {dossierStats.isCompleted && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 font-semibold">
                     ARCHIVED
                   </span>
                 )}
@@ -321,10 +321,10 @@ export default function MemoriesPage() {
 
           <button
             onClick={handleToggleTripCompletion}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-xs ${
+            className={`px-4 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-xs ${
               dossierStats.isCompleted
-                ? "bg-surface border border-muted text-muted-foreground hover:text-foreground"
-                : "bg-amber-500 hover:bg-amber-400 text-black"
+                ? "bg-surface border border-muted text-foreground hover:bg-surface-hover"
+                : "bg-accent hover:bg-accent/90 text-accent-foreground"
             }`}
           >
             {dossierStats.isCompleted ? (
@@ -344,9 +344,9 @@ export default function MemoriesPage() {
         {/* METRICS DOSSIER GRID */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-5">
           {/* 1. Duration on Road */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60 space-y-1">
+          <div className="p-3.5 rounded-2xl bg-background border border-muted space-y-1">
             <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] font-mono uppercase tracking-wider">
-              <Calendar className="w-3.5 h-3.5 text-amber-400" />
+              <Calendar className="w-3.5 h-3.5 text-accent" />
               <span>Days on Road</span>
             </div>
             <div className="text-xl font-bold font-mono text-foreground">
@@ -359,9 +359,9 @@ export default function MemoriesPage() {
           </div>
 
           {/* 2. Total Distance Covered (Telemetry + Segments) */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60 space-y-1">
+          <div className="p-3.5 rounded-2xl bg-background border border-muted space-y-1">
             <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] font-mono uppercase tracking-wider">
-              <Compass className="w-3.5 h-3.5 text-teal-400" />
+              <Compass className="w-3.5 h-3.5 text-teal-700" />
               <span>Distance Covered</span>
             </div>
             <div className="text-xl font-bold font-mono text-foreground">
@@ -381,9 +381,9 @@ export default function MemoriesPage() {
           </div>
 
           {/* 3. Budget & Expenses Spend */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60 space-y-1">
+          <div className="p-3.5 rounded-2xl bg-background border border-muted space-y-1">
             <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] font-mono uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+              <Sparkles className="w-3.5 h-3.5 text-rose-700" />
               <span>Financial Spend</span>
             </div>
             <div className="text-xl font-bold font-mono text-foreground">
@@ -396,47 +396,47 @@ export default function MemoriesPage() {
           </div>
 
           {/* 4. Memories Captured */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60 space-y-1">
+          <div className="p-3.5 rounded-2xl bg-background border border-muted space-y-1">
             <div className="flex items-center gap-1.5 text-muted-foreground text-[10px] font-mono uppercase tracking-wider">
-              <Heart className="w-3.5 h-3.5 text-yellow-400" />
+              <Heart className="w-3.5 h-3.5 text-amber-700" />
               <span>Memories & Wall</span>
             </div>
             <div className="text-xl font-bold font-mono text-foreground">
               {dossierStats.memoriesCount} <span className="text-xs font-normal text-muted-foreground">Photos</span>
             </div>
-            <p className="text-[10px] text-amber-400 truncate">
+            <p className="text-[10px] text-amber-800 font-medium truncate">
               {dossierStats.highlightsCount} Highlighted Moments ★
             </p>
           </div>
         </div>
 
         {/* SUB-PROGRESS BARS (Activities, Food, Packing) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 mt-4 border-t border-muted/60">
-          <div className="p-3 rounded-xl bg-background/60 border border-muted/40 text-xs space-y-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 mt-4 border-t border-muted">
+          <div className="p-3 rounded-xl bg-background border border-muted text-xs space-y-1.5">
             <div className="flex justify-between text-[11px]">
               <span className="text-muted-foreground">Itinerary Activities</span>
               <span className="font-mono text-foreground font-medium">
                 {dossierStats.activitiesCompleted}/{dossierStats.activitiesTotal} ({dossierStats.activityCompletionPct}%)
               </span>
             </div>
-            <div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-cyan-400 transition-all duration-500 rounded-full"
+                className="h-full bg-accent transition-all duration-500 rounded-full"
                 style={{ width: `${dossierStats.activityCompletionPct}%` }}
               />
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-background/60 border border-muted/40 text-xs space-y-1.5">
+          <div className="p-3 rounded-xl bg-background border border-muted text-xs space-y-1.5">
             <div className="flex justify-between text-[11px]">
               <span className="text-muted-foreground">Culinary Delicacies</span>
               <span className="font-mono text-foreground font-medium">
                 {dossierStats.dishesTasted}/{dossierStats.dishesTotal} Tasted
               </span>
             </div>
-            <div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-orange-400 transition-all duration-500 rounded-full"
+                className="h-full bg-orange-600 transition-all duration-500 rounded-full"
                 style={{
                   width: `${
                     dossierStats.dishesTotal > 0
@@ -448,16 +448,16 @@ export default function MemoriesPage() {
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-background/60 border border-muted/40 text-xs space-y-1.5">
+          <div className="p-3 rounded-xl bg-background border border-muted text-xs space-y-1.5">
             <div className="flex justify-between text-[11px]">
               <span className="text-muted-foreground">Gear Checklist</span>
               <span className="font-mono text-foreground font-medium">
                 {dossierStats.packingItemsPacked}/{dossierStats.packingItemsTotal} ({dossierStats.packingReadinessPct}%)
               </span>
             </div>
-            <div className="h-1.5 w-full bg-muted/40 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-emerald-400 transition-all duration-500 rounded-full"
+                className="h-full bg-emerald-600 transition-all duration-500 rounded-full"
                 style={{ width: `${dossierStats.packingReadinessPct}%` }}
               />
             </div>
@@ -482,17 +482,17 @@ export default function MemoriesPage() {
               onClick={() => setHighlightsOnly(!highlightsOnly)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-sans transition-colors ${
                 highlightsOnly
-                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
+                  ? "bg-accent border-accent text-accent-foreground font-medium"
                   : "bg-surface border-muted text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Star className="w-3.5 h-3.5 text-amber-400" />
+              <Star className="w-3.5 h-3.5 text-amber-500" />
               <span>Highlights Only</span>
             </button>
 
             <button
               onClick={handleOpenAddModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-muted text-xs font-sans text-foreground transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-muted text-xs font-sans text-foreground transition-colors shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Photo</span>
@@ -501,8 +501,8 @@ export default function MemoriesPage() {
         </div>
 
         {memories.length === 0 ? (
-          <div className="p-12 rounded-3xl bg-surface/40 border border-muted text-center space-y-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto">
+          <div className="p-12 rounded-3xl bg-surface border border-muted text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto">
               <Camera className="w-6 h-6" />
             </div>
             <div>
@@ -515,13 +515,13 @@ export default function MemoriesPage() {
             </div>
             <button
               onClick={handleOpenAddModal}
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition-colors shadow-xs"
+              className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-xs transition-colors shadow-xs"
             >
               Add First Memory
             </button>
           </div>
         ) : filteredMemories.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-surface/30 border border-muted text-center text-xs text-muted-foreground font-body">
+          <div className="p-8 rounded-2xl bg-surface border border-muted text-center text-xs text-muted-foreground font-body">
             No memories tagged as &quot;Highlights&quot;. Toggle &quot;Highlights Only&quot; off to view all photos.
           </div>
         ) : (
@@ -642,11 +642,19 @@ export default function MemoriesPage() {
 
       {/* 4. REQ-MEM-03: EXPORT TO PUBLIC JOURNAL MODAL */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-xl rounded-3xl bg-surface border border-muted p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowExportModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-xl rounded-3xl bg-surface border border-muted p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                <div className="p-2 rounded-xl bg-accent/10 border border-accent/20 text-accent">
                   <Globe className="w-5 h-5" />
                 </div>
                 <div>
@@ -668,12 +676,12 @@ export default function MemoriesPage() {
 
             {exportResult ? (
               /* Success State */
-              <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center space-y-4">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+              <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-4">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
                   <Check className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-display text-lg text-emerald-300 font-normal">
+                  <h4 className="font-display text-lg text-emerald-950 font-normal">
                     Expedition Chronicle Published!
                   </h4>
                   <p className="font-body text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -686,7 +694,7 @@ export default function MemoriesPage() {
                     href={exportResult.publicUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs transition-colors inline-flex items-center gap-1.5"
+                    className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-xs transition-colors inline-flex items-center gap-1.5 shadow-xs"
                   >
                     <Globe className="w-3.5 h-3.5" />
                     <span>View Live Chronicle</span>
@@ -702,7 +710,7 @@ export default function MemoriesPage() {
             ) : (
               /* Configuration & Selection */
               <div className="space-y-4">
-                <div className="p-3.5 rounded-2xl bg-background border border-muted/80 text-xs space-y-1 font-body">
+                <div className="p-3.5 rounded-2xl bg-background border border-muted text-xs space-y-1 font-body">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Trip Title:</span>
                     <span className="font-medium text-foreground">{trip?.title}</span>
@@ -735,7 +743,7 @@ export default function MemoriesPage() {
                             : memories.map((m) => m.id)
                         )
                       }
-                      className="text-amber-400 hover:underline text-[11px]"
+                      className="text-accent hover:underline text-[11px] font-medium"
                     >
                       {selectedMemoryIds.length === memories.length ? "Deselect All" : "Select All"}
                     </button>
@@ -750,7 +758,7 @@ export default function MemoriesPage() {
                           onClick={() => toggleSelectMemory(m.id)}
                           className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-colors flex items-center justify-between gap-2 ${
                             isSelected
-                              ? "bg-amber-500/10 border-amber-500/40 text-foreground"
+                              ? "bg-accent/10 border-accent/40 text-foreground"
                               : "bg-background border-muted text-muted-foreground"
                           }`}
                         >
@@ -759,12 +767,12 @@ export default function MemoriesPage() {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => {}}
-                              className="rounded border-muted text-amber-500 focus:ring-amber-500 shrink-0 pointer-events-none"
+                              className="rounded border-muted text-accent focus:ring-accent shrink-0 pointer-events-none"
                             />
                             <span className="truncate font-medium">{m.title}</span>
                           </div>
                           {m.imageDataUrl && (
-                            <span className="text-[10px] font-mono text-amber-400 shrink-0">
+                            <span className="text-[10px] font-mono text-accent shrink-0 font-medium">
                               + Photo
                             </span>
                           )}
@@ -775,7 +783,7 @@ export default function MemoriesPage() {
                 </div>
 
                 {actionError && (
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-mono">
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono">
                     {actionError}
                   </div>
                 )}
@@ -792,11 +800,11 @@ export default function MemoriesPage() {
                     type="button"
                     onClick={handleExecuteExport}
                     disabled={isExporting}
-                    className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
                   >
                     {isExporting ? (
                       <>
-                        <div className="w-3.5 h-3.5 rounded-full border border-black border-t-transparent animate-spin" />
+                        <div className="w-3.5 h-3.5 rounded-full border border-white border-t-transparent animate-spin" />
                         <span>Publishing...</span>
                       </>
                     ) : (
@@ -815,11 +823,19 @@ export default function MemoriesPage() {
 
       {/* 5. MODAL: ADD MEMORY WITH PHOTO */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-surface border border-muted p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowAddModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg rounded-3xl bg-surface border border-muted p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                <div className="p-2 rounded-xl bg-accent/10 border border-accent/20 text-accent">
                   <Camera className="w-5 h-5" />
                 </div>
                 <h3 className="font-display text-xl text-foreground font-normal">
@@ -859,7 +875,7 @@ export default function MemoriesPage() {
                 ) : (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-muted hover:border-amber-500/40 rounded-2xl p-6 text-center cursor-pointer transition-colors bg-background/50 hover:bg-background"
+                    className="border-2 border-dashed border-muted hover:border-accent rounded-2xl p-6 text-center cursor-pointer transition-colors bg-background/50 hover:bg-background"
                   >
                     <Camera className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                     <span className="text-xs text-foreground font-medium block">
@@ -890,7 +906,7 @@ export default function MemoriesPage() {
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="e.g. Sunset at Kunzum Pass, Breakfast with Monks"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-sm font-sans text-foreground focus:outline-hidden focus:border-amber-500/50"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-sm font-sans text-foreground focus:outline-hidden focus:border-accent"
                 />
               </div>
 
@@ -904,7 +920,7 @@ export default function MemoriesPage() {
                     type="date"
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted text-xs font-mono text-foreground focus:outline-hidden"
+                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted text-xs font-mono text-foreground focus:outline-hidden focus:border-accent"
                   />
                 </div>
 
@@ -918,7 +934,7 @@ export default function MemoriesPage() {
                     value={formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
                     placeholder="e.g. Spiti Valley"
-                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden"
+                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden focus:border-accent"
                   />
                 </div>
               </div>
@@ -933,7 +949,7 @@ export default function MemoriesPage() {
                   value={formCaption}
                   onChange={(e) => setFormCaption(e.target.value)}
                   placeholder="Tell the story of this moment..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden resize-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden focus:border-accent resize-none"
                 />
               </div>
 
@@ -950,7 +966,7 @@ export default function MemoriesPage() {
                         type="button"
                         onClick={() => setFormRating(s)}
                         className={`text-base transition-colors ${
-                          s <= formRating ? "text-amber-400" : "text-muted-foreground/30"
+                          s <= formRating ? "text-amber-500" : "text-muted-foreground/30"
                         }`}
                       >
                         ★
@@ -964,7 +980,7 @@ export default function MemoriesPage() {
                     type="checkbox"
                     checked={formIsHighlight}
                     onChange={(e) => setFormIsHighlight(e.target.checked)}
-                    className="rounded border-muted text-amber-500 focus:ring-amber-500"
+                    className="rounded border-muted text-accent focus:ring-accent"
                   />
                   <span>Expedition Highlight ★</span>
                 </label>
@@ -981,7 +997,7 @@ export default function MemoriesPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting || !formTitle.trim()}
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition-colors disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-xs transition-colors disabled:opacity-50 shadow-xs"
                 >
                   {isSubmitting ? "Saving..." : "Save Memory"}
                 </button>
@@ -995,7 +1011,7 @@ export default function MemoriesPage() {
       {activeLightbox && (
         <div
           onClick={() => setActiveLightbox(null)}
-          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 overscroll-contain animate-fade-in"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1041,9 +1057,17 @@ export default function MemoriesPage() {
 
       {/* 7. DELETE CONFIRMATION MODAL */}
       {memoryToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-3xl bg-surface border border-muted p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-2 text-rose-400">
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setMemoryToDelete(null)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl bg-surface border border-muted p-5 space-y-4 shadow-2xl"
+          >
+            <div className="flex items-center gap-2 text-rose-600">
               <Trash2 className="w-5 h-5" />
               <h3 className="font-display text-lg text-foreground font-normal">
                 Delete Memory?
@@ -1065,7 +1089,7 @@ export default function MemoriesPage() {
                   setMemoryToDelete(null);
                   showToast("Memory deleted.");
                 }}
-                className="px-4 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-semibold text-xs transition-colors"
+                className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs transition-colors"
               >
                 Delete
               </button>

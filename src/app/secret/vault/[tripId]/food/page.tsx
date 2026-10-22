@@ -37,6 +37,8 @@ import {
   DietaryTag,
 } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
+import { Select } from "@/components/ui/Select";
 
 type ViewTab = "ALL" | "SPECIALTY_DISH" | "RESTAURANT";
 type StatusFilter = "ALL" | "TO_TRY" | "VISITED" | "SKIPPED";
@@ -75,6 +77,9 @@ export default function TripFoodPlannerPage() {
   const [editingItem, setEditingItem] = useState<FoodPlannerRecord | null>(null);
   const [reviewingItem, setReviewingItem] = useState<FoodPlannerRecord | null>(null);
   const [seedingNotice, setSeedingNotice] = useState<string | null>(null);
+
+  // Lock body scroll when add/edit or review modal is open
+  useLockBodyScroll(showAddModal || !!reviewingItem);
 
   // Add / Edit form state
   const [formType, setFormType] = useState<FoodType>("SPECIALTY_DISH");
@@ -881,19 +886,24 @@ export default function TripFoodPlannerPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowAddModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <ChefHat className="w-5 h-5 text-orange-400" />
+                <ChefHat className="w-5 h-5 text-accent" />
                 <h3 className="font-display text-xl text-foreground font-normal">
                   {editingItem ? "Edit Culinary Item" : "Add to Food Roadmap"}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -907,10 +917,10 @@ export default function TripFoodPlannerPage() {
                   <button
                     type="button"
                     onClick={() => setFormType("SPECIALTY_DISH")}
-                    className={`py-2 px-3 rounded-xl border text-xs font-sans font-medium flex items-center justify-center gap-2 transition-all ${
+                    className={`py-2 px-3 rounded-xl border text-xs font-sans font-medium flex items-center justify-center gap-2 transition-all cursor-pointer ${
                       formType === "SPECIALTY_DISH"
-                        ? "bg-orange-500/15 border-orange-500/40 text-orange-400"
-                        : "bg-background border-muted text-muted-foreground"
+                        ? "bg-accent/10 border-accent text-accent font-semibold"
+                        : "bg-background border-muted text-muted-foreground hover:border-foreground/30"
                     }`}
                   >
                     <ChefHat className="w-3.5 h-3.5" />
@@ -920,10 +930,10 @@ export default function TripFoodPlannerPage() {
                   <button
                     type="button"
                     onClick={() => setFormType("RESTAURANT")}
-                    className={`py-2 px-3 rounded-xl border text-xs font-sans font-medium flex items-center justify-center gap-2 transition-all ${
+                    className={`py-2 px-3 rounded-xl border text-xs font-sans font-medium flex items-center justify-center gap-2 transition-all cursor-pointer ${
                       formType === "RESTAURANT"
-                        ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-400"
-                        : "bg-background border-muted text-muted-foreground"
+                        ? "bg-accent/10 border-accent text-accent font-semibold"
+                        : "bg-background border-muted text-muted-foreground hover:border-foreground/30"
                     }`}
                   >
                     <Utensils className="w-3.5 h-3.5" />
@@ -946,7 +956,7 @@ export default function TripFoodPlannerPage() {
                       ? "e.g. Siddu with Desi Ghee, Thukpa, Laal Maas"
                       : "e.g. Lassiwala MI Road, Cafe 1947, Zomsa Tibetan"
                   }
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-orange-500 focus:outline-hidden text-sm text-foreground placeholder:text-muted-foreground/50"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-sm text-foreground placeholder:text-muted-foreground/50"
                   required
                 />
               </div>
@@ -960,23 +970,22 @@ export default function TripFoodPlannerPage() {
                     value={formCuisine}
                     onChange={(e) => setFormCuisine(e.target.value)}
                     placeholder="e.g. Ladakhi, Rajasthani, Pahadi, Tibetan"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-orange-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-sans font-medium text-foreground">Meal Slot *</label>
-                  <select
+                  <Select
                     value={formMealSlot}
                     onChange={(e) => setFormMealSlot(e.target.value as MealSlot)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-orange-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
                   >
                     <option value="BREAKFAST">Breakfast</option>
                     <option value="LUNCH">Lunch</option>
                     <option value="DINNER">Dinner</option>
                     <option value="CAFE_CHAI">Cafe & Chai</option>
                     <option value="SNACK">Street Snack</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -991,22 +1000,21 @@ export default function TripFoodPlannerPage() {
                     value={formLocation}
                     onChange={(e) => setFormLocation(e.target.value)}
                     placeholder="e.g. Old Leh Main Bazaar, Mall Road Manali"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-orange-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-sans font-medium text-foreground">Price Tier</label>
-                  <select
+                  <Select
                     value={formPriceLevel}
                     onChange={(e) => setFormPriceLevel(Number(e.target.value) as 1 | 2 | 3 | 4)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-orange-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
                   >
                     <option value={1}>₹ (Budget / Street Food)</option>
                     <option value={2}>₹₹ (Moderate Dhaba / Cafe)</option>
                     <option value={3}>₹₹₹ (Upscale Dining)</option>
                     <option value={4}>₹₹₹₹ (Fine Dine / Luxury)</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -1021,10 +1029,10 @@ export default function TripFoodPlannerPage() {
                         key={tag}
                         type="button"
                         onClick={() => toggleDietaryTag(tag)}
-                        className={`px-3 py-1 rounded-xl border text-xs font-mono font-medium transition-colors ${
+                        className={`px-3 py-1 rounded-xl border text-xs font-mono font-medium transition-colors cursor-pointer ${
                           active
-                            ? "bg-orange-500/15 border-orange-500/40 text-orange-400"
-                            : "bg-background border-muted text-muted-foreground"
+                            ? "bg-accent/10 border-accent text-accent font-semibold"
+                            : "bg-background border-muted text-muted-foreground hover:border-foreground/30"
                         }`}
                       >
                         {tag === "NON_VEG" ? "NON-VEG" : tag}
@@ -1044,7 +1052,7 @@ export default function TripFoodPlannerPage() {
                   value={formMustOrder}
                   onChange={(e) => setFormMustOrder(e.target.value)}
                   placeholder="e.g. Mutton Rogan Josh, Honey Lemon Ginger Tea, Apple Pie"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-orange-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                 />
               </div>
 
@@ -1058,36 +1066,35 @@ export default function TripFoodPlannerPage() {
                   onChange={(e) => setFormNotes(e.target.value)}
                   rows={2}
                   placeholder="e.g. Gets crowded by 1 PM; ask for extra walnut ghee dip."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-orange-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
                 />
               </div>
 
               {/* Status */}
               <div className="space-y-1">
                 <label className="text-xs font-sans font-medium text-foreground">Exploration Status</label>
-                <select
+                <Select
                   value={formStatus}
                   onChange={(e) => setFormStatus(e.target.value as "TO_TRY" | "VISITED" | "SKIPPED")}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-orange-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
                 >
                   <option value="TO_TRY">To Taste (On Wishlist)</option>
                   <option value="VISITED">Tasted / Visited</option>
                   <option value="SKIPPED">Skipped</option>
-                </select>
+                </Select>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-muted">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl border border-muted hover:bg-surface-hover text-xs font-sans text-muted-foreground"
+                  className="px-4 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-black font-semibold text-xs font-sans transition-all"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium text-xs font-sans transition-all cursor-pointer shadow-xs"
                 >
                   {isSubmitting ? "Saving..." : editingItem ? "Update Item" : "Save to Roadmap"}
                 </button>
@@ -1102,19 +1109,24 @@ export default function TripFoodPlannerPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setReviewingItem(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
                 <h3 className="font-display text-lg text-foreground font-normal">
                   Rate & Critique: {reviewingItem.name}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setReviewingItem(null)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1127,20 +1139,21 @@ export default function TripFoodPlannerPage() {
                   {[1, 2, 3, 4, 5].map((val) => (
                     <button
                       key={val}
+                      type="button"
                       onClick={() => setReviewRating(val)}
-                      className="p-1 transition-transform hover:scale-125 focus:outline-hidden"
+                      className="p-1 transition-transform hover:scale-125 focus:outline-hidden cursor-pointer"
                     >
                       <Star
                         className={`w-7 h-7 ${
                           reviewRating >= val
-                            ? "fill-amber-400 text-amber-400"
-                            : "text-muted-foreground/30 hover:text-amber-400/80"
+                            ? "fill-amber-500 text-amber-500"
+                            : "text-muted-foreground/30 hover:text-amber-500/80"
                         }`}
                       />
                     </button>
                   ))}
                 </div>
-                <span className="text-sm font-mono font-bold text-amber-400 block">
+                <span className="text-sm font-mono font-bold text-amber-800 block">
                   {reviewRating} of 5 Stars
                 </span>
               </div>
@@ -1154,7 +1167,7 @@ export default function TripFoodPlannerPage() {
                   onChange={(e) => setReviewNotes(e.target.value)}
                   rows={3}
                   placeholder="e.g. Crispy texture, authentic wooden stove smokiness, incredible chutney!"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
                 />
               </div>
 
@@ -1162,14 +1175,14 @@ export default function TripFoodPlannerPage() {
                 <button
                   type="button"
                   onClick={() => setReviewingItem(null)}
-                  className="px-4 py-2 rounded-xl border border-muted hover:bg-surface-hover text-xs font-sans text-muted-foreground"
+                  className="px-4 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveReview}
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-black font-semibold text-xs font-sans transition-all"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-medium text-xs font-sans transition-all cursor-pointer shadow-xs"
                 >
                   Submit Critique
                 </button>

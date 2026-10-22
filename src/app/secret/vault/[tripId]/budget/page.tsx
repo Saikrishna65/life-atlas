@@ -34,6 +34,8 @@ import {
   DepositRefundStatus,
 } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { Select } from "@/components/ui/Select";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 
 type ViewTab = "LOG" | "ALLOCATION" | "DEPOSITS";
 type CategoryFilter = "ALL" | ExpenseCategory;
@@ -83,6 +85,9 @@ export default function TripBudgetPage() {
 
   // Allocation Form State
   const [allocations, setAllocations] = useState<Partial<Record<ExpenseCategory, number>>>({});
+
+  // Lock body scroll when any modal is open
+  useLockBodyScroll(showAddModal || showAllocationModal || !!refundModalExpense);
 
   // Open Allocation modal with current values
   const handleOpenAllocationModal = () => {
@@ -231,25 +236,25 @@ export default function TripBudgetPage() {
   const getCategoryDetails = (cat: ExpenseCategory) => {
     switch (cat) {
       case "TRANSPORT":
-        return { label: "Transport & Tickets", icon: <Car className="w-3.5 h-3.5 text-cyan-400" />, badge: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30" };
+        return { label: "Transport & Tickets", icon: <Car className="w-3.5 h-3.5 text-cyan-700" />, badge: "bg-cyan-50 text-cyan-800 border-cyan-200" };
       case "ACCOMMODATION":
-        return { label: "Stays & Hotels", icon: <Home className="w-3.5 h-3.5 text-indigo-400" />, badge: "bg-indigo-500/10 text-indigo-400 border-indigo-500/30" };
+        return { label: "Stays & Hotels", icon: <Home className="w-3.5 h-3.5 text-indigo-700" />, badge: "bg-indigo-50 text-indigo-800 border-indigo-200" };
       case "FOOD":
-        return { label: "Food & Cafes", icon: <Utensils className="w-3.5 h-3.5 text-orange-400" />, badge: "bg-orange-500/10 text-orange-400 border-orange-500/30" };
+        return { label: "Food & Cafes", icon: <Utensils className="w-3.5 h-3.5 text-orange-700" />, badge: "bg-orange-50 text-orange-800 border-orange-200" };
       case "RENTAL":
-        return { label: "Bike / Car Rentals", icon: <CreditCard className="w-3.5 h-3.5 text-emerald-400" />, badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" };
+        return { label: "Bike / Car Rentals", icon: <CreditCard className="w-3.5 h-3.5 text-emerald-700" />, badge: "bg-emerald-50 text-emerald-800 border-emerald-200" };
       case "FUEL":
-        return { label: "Fuel & Jerry Cans", icon: <Fuel className="w-3.5 h-3.5 text-amber-400" />, badge: "bg-amber-500/10 text-amber-400 border-amber-500/30" };
+        return { label: "Fuel & Jerry Cans", icon: <Fuel className="w-3.5 h-3.5 text-amber-700" />, badge: "bg-amber-50 text-amber-800 border-amber-200" };
       case "ACTIVITIES":
-        return { label: "Activities & Entry", icon: <Ticket className="w-3.5 h-3.5 text-teal-400" />, badge: "bg-teal-500/10 text-teal-400 border-teal-500/30" };
+        return { label: "Activities & Entry", icon: <Ticket className="w-3.5 h-3.5 text-teal-700" />, badge: "bg-teal-50 text-teal-800 border-teal-200" };
       case "PERMITS":
-        return { label: "Permits & Tolls", icon: <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />, badge: "bg-blue-500/10 text-blue-400 border-blue-500/30" };
+        return { label: "Permits & Tolls", icon: <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />, badge: "bg-blue-50 text-blue-800 border-blue-200" };
       case "SHOPPING":
-        return { label: "Gear & Souvenirs", icon: <ShoppingBag className="w-3.5 h-3.5 text-purple-400" />, badge: "bg-purple-500/10 text-purple-400 border-purple-500/30" };
+        return { label: "Gear & Souvenirs", icon: <ShoppingBag className="w-3.5 h-3.5 text-purple-700" />, badge: "bg-purple-50 text-purple-800 border-purple-200" };
       case "EMERGENCY":
-        return { label: "Medical & Repairs", icon: <HeartPulse className="w-3.5 h-3.5 text-rose-400" />, badge: "bg-rose-500/10 text-rose-400 border-rose-500/30" };
+        return { label: "Medical & Repairs", icon: <HeartPulse className="w-3.5 h-3.5 text-rose-700" />, badge: "bg-rose-50 text-rose-800 border-rose-200" };
       default:
-        return { label: "Miscellaneous", icon: <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />, badge: "bg-muted border-muted text-muted-foreground" };
+        return { label: "Miscellaneous", icon: <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />, badge: "bg-surface border-muted text-foreground" };
     }
   };
 
@@ -268,8 +273,8 @@ export default function TripBudgetPage() {
   if (!trip) {
     return (
       <div className="max-w-md mx-auto py-20 text-center space-y-4">
-        <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto">
-          <CreditCard className="w-6 h-6 text-rose-400" />
+        <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 flex items-center justify-center mx-auto">
+          <CreditCard className="w-6 h-6 text-rose-600" />
         </div>
         <h2 className="font-display text-2xl text-foreground font-normal">
           Expedition Dossier Not Found
@@ -298,9 +303,9 @@ export default function TripBudgetPage() {
         </Link>
 
         <div className="flex items-center gap-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-[11px] font-mono tracking-wider text-rose-400 font-semibold uppercase">
-            <CreditCard className="w-3 h-3 text-rose-400" />
-            <span>Pillar 08 • Budget</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-[11px] font-mono tracking-wider text-rose-700 font-semibold uppercase">
+            <CreditCard className="w-3 h-3 text-rose-600" />
+            <span>Budget & Expenses</span>
           </div>
 
           <button
@@ -308,18 +313,18 @@ export default function TripBudgetPage() {
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors"
             title="Lock Private Atlas"
           >
-            <Lock className="w-3 h-3 text-amber-500" />
+            <Lock className="w-3 h-3 text-amber-600" />
             <span>Lock</span>
           </button>
         </div>
       </nav>
 
       {/* FINANCIAL RADAR / HERO BUDGET BANNER */}
-      <section className="relative rounded-3xl border border-rose-500/30 bg-surface/80 overflow-hidden shadow-soft p-6 sm:p-8 backdrop-blur-xs">
+      <section className="relative rounded-3xl border border-muted bg-surface overflow-hidden shadow-soft p-6 sm:p-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-[10px] font-mono text-rose-400 uppercase tracking-widest">
-              <PieChart className="w-3 h-3 text-rose-400" />
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[10px] font-mono text-rose-700 uppercase tracking-widest font-semibold">
+              <PieChart className="w-3 h-3 text-rose-600" />
               <span>Expenditure Telemetry</span>
             </div>
             <h1 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
@@ -334,7 +339,7 @@ export default function TripBudgetPage() {
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
             <button
               onClick={() => handleOpenAddModal("FOOD")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-black font-semibold text-xs font-sans transition-all shadow-md active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-xs font-sans transition-all shadow-md active:scale-95"
             >
               <Plus className="w-4 h-4" />
               <span>Log Expense</span>
@@ -342,18 +347,18 @@ export default function TripBudgetPage() {
 
             <button
               onClick={handleOpenAllocationModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-surface border border-muted hover:border-rose-500/40 text-xs font-sans text-foreground transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-surface border border-muted hover:border-accent text-xs font-sans text-foreground transition-colors shadow-xs"
             >
-              <PieChart className="w-3.5 h-3.5 text-rose-400" />
+              <PieChart className="w-3.5 h-3.5 text-rose-600" />
               <span>Allocate Budget</span>
             </button>
           </div>
         </div>
 
         {/* FINANCIAL SUMMARY METRICS RIBBON */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-muted/60">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-muted">
           {/* Metric 1: Total Budget */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+          <div className="p-3.5 rounded-2xl bg-background border border-muted">
             <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
               Expedition Budget
             </span>
@@ -368,14 +373,14 @@ export default function TripBudgetPage() {
           </div>
 
           {/* Metric 2: Total Spent */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+          <div className="p-3.5 rounded-2xl bg-background border border-muted">
             <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
               Actual Spent
             </span>
             <div className="flex items-baseline gap-1 mt-0.5">
               <span
                 className={`text-xl font-bold font-mono ${
-                  stats.isOverBudget ? "text-rose-400" : "text-amber-400"
+                  stats.isOverBudget ? "text-rose-700" : "text-foreground"
                 }`}
               >
                 {curr} {stats.totalSpent.toLocaleString()}
@@ -385,14 +390,14 @@ export default function TripBudgetPage() {
               </span>
             </div>
             {/* Progress bar */}
-            <div className="w-full bg-muted/60 h-1.5 rounded-full overflow-hidden mt-1.5">
+            <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden mt-1.5">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   stats.isOverBudget
                     ? "bg-rose-500"
                     : stats.percentSpent > 80
-                    ? "bg-amber-400"
-                    : "bg-emerald-400"
+                    ? "bg-amber-500"
+                    : "bg-emerald-600"
                 }`}
                 style={{ width: `${Math.min(stats.percentSpent, 100)}%` }}
               />
@@ -400,14 +405,14 @@ export default function TripBudgetPage() {
           </div>
 
           {/* Metric 3: Remaining Budget */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+          <div className="p-3.5 rounded-2xl bg-background border border-muted">
             <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
               Remaining Balance
             </span>
             <div className="flex items-baseline gap-1 mt-0.5">
               <span
                 className={`text-xl font-bold font-mono ${
-                  stats.remainingBudget < 0 ? "text-rose-400" : "text-emerald-400"
+                  stats.remainingBudget < 0 ? "text-rose-700" : "text-emerald-700"
                 }`}
               >
                 {curr} {stats.remainingBudget.toLocaleString()}
@@ -415,7 +420,7 @@ export default function TripBudgetPage() {
             </div>
             <span
               className={`text-[10px] block mt-0.5 ${
-                stats.remainingBudget < 0 ? "text-rose-400 font-semibold" : "text-emerald-400"
+                stats.remainingBudget < 0 ? "text-rose-700 font-semibold" : "text-emerald-700 font-medium"
               }`}
             >
               {stats.remainingBudget < 0 ? "⚠️ Over-budget limit" : "Safe liquidity balance"}
@@ -423,12 +428,12 @@ export default function TripBudgetPage() {
           </div>
 
           {/* Metric 4: Pending Deposits Recovery */}
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+          <div className="p-3.5 rounded-2xl bg-background border border-muted">
             <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
               Pending Deposits
             </span>
             <div className="flex items-baseline gap-1 mt-0.5">
-              <span className="text-xl font-bold font-mono text-cyan-400">
+              <span className="text-xl font-bold font-mono text-cyan-800">
                 {curr} {stats.pendingRefundAmount.toLocaleString()}
               </span>
             </div>
@@ -448,7 +453,7 @@ export default function TripBudgetPage() {
               onClick={() => setActiveTab("LOG")}
               className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
                 activeTab === "LOG"
-                  ? "bg-rose-500 text-black font-semibold shadow-xs"
+                  ? "bg-accent text-accent-foreground font-medium shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -460,7 +465,7 @@ export default function TripBudgetPage() {
               onClick={() => setActiveTab("ALLOCATION")}
               className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
                 activeTab === "ALLOCATION"
-                  ? "bg-rose-500 text-black font-semibold shadow-xs"
+                  ? "bg-accent text-accent-foreground font-medium shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -472,7 +477,7 @@ export default function TripBudgetPage() {
               onClick={() => setActiveTab("DEPOSITS")}
               className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 ${
                 activeTab === "DEPOSITS"
-                  ? "bg-rose-500 text-black font-semibold shadow-xs"
+                  ? "bg-accent text-accent-foreground font-medium shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -490,7 +495,7 @@ export default function TripBudgetPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search expense, note, paid by..."
-                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-surface border border-muted focus:border-rose-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/60"
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-surface border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/60"
               />
               {searchQuery && (
                 <button
@@ -511,8 +516,8 @@ export default function TripBudgetPage() {
               onClick={() => setCategoryFilter("ALL")}
               className={`px-2.5 py-1 rounded-xl border transition-colors ${
                 categoryFilter === "ALL"
-                  ? "bg-rose-500/20 border-rose-500/40 text-rose-300 font-semibold"
-                  : "bg-surface/60 border-muted text-muted-foreground hover:text-foreground"
+                  ? "bg-accent text-accent-foreground border-accent font-medium"
+                  : "bg-surface border-muted text-muted-foreground hover:text-foreground"
               }`}
             >
               All Categories
@@ -523,8 +528,8 @@ export default function TripBudgetPage() {
                 onClick={() => setCategoryFilter(cat)}
                 className={`px-2.5 py-1 rounded-xl border transition-colors ${
                   categoryFilter === cat
-                    ? "bg-rose-500/20 border-rose-500/40 text-rose-300 font-semibold"
-                    : "bg-surface/60 border-muted text-muted-foreground hover:text-foreground"
+                    ? "bg-accent text-accent-foreground border-accent font-medium"
+                    : "bg-surface border-muted text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {cat}
@@ -539,8 +544,8 @@ export default function TripBudgetPage() {
         <section className="space-y-3">
           {filteredExpenses.length === 0 ? (
             <div className="p-12 text-center rounded-2xl border border-muted bg-surface/40 space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto">
-                <Receipt className="w-6 h-6 text-rose-400" />
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+                <Receipt className="w-6 h-6 text-rose-600" />
               </div>
               <h3 className="font-display text-base text-foreground font-normal">
                 No Expenses Logged Yet
@@ -550,7 +555,7 @@ export default function TripBudgetPage() {
               </p>
               <button
                 onClick={() => handleOpenAddModal("FOOD")}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-black text-xs font-semibold shadow-xs"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-medium shadow-xs"
               >
                 <Plus className="w-4 h-4" />
                 <span>Log First Expense</span>
@@ -564,7 +569,7 @@ export default function TripBudgetPage() {
                 return (
                   <div
                     key={exp.id}
-                    className="rounded-2xl border border-muted hover:border-rose-500/40 bg-surface shadow-soft p-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    className="rounded-2xl border border-muted hover:border-accent bg-surface shadow-soft p-4 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                   >
                     <div className="flex items-start gap-3 flex-1 min-w-0">
                       <div className="p-2.5 rounded-xl bg-background border border-muted shrink-0 mt-0.5">
@@ -589,10 +594,10 @@ export default function TripBudgetPage() {
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase border ${
                                 exp.depositRefundStatus === "REFUNDED"
-                                  ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                                   : exp.depositRefundStatus === "PENDING"
-                                  ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
-                                  : "bg-rose-500/20 border-rose-500/40 text-rose-400"
+                                  ? "bg-amber-50 border-amber-200 text-amber-800"
+                                  : "bg-rose-50 border-rose-200 text-rose-800"
                               }`}
                             >
                               Deposit: {exp.depositRefundStatus}
@@ -613,7 +618,7 @@ export default function TripBudgetPage() {
                             <>
                               <span>•</span>
                               <span className="flex items-center gap-1">
-                                <Users className="w-3 h-3 text-cyan-400" />
+                                <Users className="w-3 h-3 text-cyan-700" />
                                 <span>Split: {exp.splitWith.join(", ")}</span>
                               </span>
                             </>
@@ -635,7 +640,7 @@ export default function TripBudgetPage() {
                           {exp.currency} {exp.amount.toLocaleString()}
                         </span>
                         {exp.isDeposit && exp.depositRefundStatus === "REFUNDED" && (
-                          <span className="text-[10px] font-mono text-emerald-400 block">
+                          <span className="text-[10px] font-mono text-emerald-700 block">
                             (Refunded: {exp.currency} {(exp.refundAmount || exp.amount).toLocaleString()})
                           </span>
                         )}
@@ -645,7 +650,7 @@ export default function TripBudgetPage() {
                         {exp.isDeposit && exp.depositRefundStatus === "PENDING" && (
                           <button
                             onClick={() => handleOpenRefundModal(exp)}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-[11px] font-sans font-medium text-emerald-400 transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-[11px] font-sans font-medium text-emerald-800 transition-colors"
                             title="Settle Deposit Refund"
                           >
                             Settle Refund
@@ -662,7 +667,7 @@ export default function TripBudgetPage() {
 
                         <button
                           onClick={() => removeExpense(exp.id)}
-                          className="p-1.5 rounded-lg border border-muted hover:border-rose-500/40 text-muted-foreground hover:text-rose-400 transition-colors"
+                          className="p-1.5 rounded-lg border border-muted hover:border-rose-500/40 text-muted-foreground hover:text-rose-600 transition-colors"
                           title="Delete Expense"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -686,15 +691,15 @@ export default function TripBudgetPage() {
                 Category Budget Allocation
               </h3>
               <p className="font-body text-xs text-muted-foreground mt-0.5">
-                Spending vs target quota for each expedition pillar.
+                Spending vs target quota for each expedition category.
               </p>
             </div>
 
             <button
               onClick={handleOpenAllocationModal}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-muted hover:border-rose-500/40 text-xs font-sans text-foreground transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-muted hover:border-accent text-xs font-sans text-foreground transition-colors"
             >
-              <Edit3 className="w-3 h-3 text-rose-400" />
+              <Edit3 className="w-3 h-3 text-rose-600" />
               <span>Configure Quotas</span>
             </button>
           </div>
@@ -713,7 +718,7 @@ export default function TripBudgetPage() {
                   key={catKey}
                   className={`rounded-2xl border p-4 shadow-soft space-y-3 transition-all ${
                     isOver
-                      ? "border-rose-500/40 bg-rose-500/5"
+                      ? "border-rose-300 bg-rose-50/50"
                       : "border-muted bg-surface"
                   }`}
                 >
@@ -750,19 +755,19 @@ export default function TripBudgetPage() {
                           isOver
                             ? "bg-rose-500"
                             : percent > 85
-                            ? "bg-amber-400"
-                            : "bg-emerald-400"
+                            ? "bg-amber-500"
+                            : "bg-emerald-600"
                         }`}
                         style={{ width: `${allocated > 0 ? Math.min(percent, 100) : 0}%` }}
                       />
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] font-mono">
-                      <span className={isOver ? "text-rose-400 font-bold" : "text-muted-foreground"}>
+                      <span className={isOver ? "text-rose-700 font-bold" : "text-muted-foreground"}>
                         {allocated > 0 ? `${percent}% of allocated` : "No quota defined"}
                       </span>
                       {isOver && (
-                        <span className="text-rose-400 font-semibold flex items-center gap-1">
+                        <span className="text-rose-700 font-semibold flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
                           <span>Over by {curr} {(spent - allocated).toLocaleString()}</span>
                         </span>
@@ -790,7 +795,7 @@ export default function TripBudgetPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-xl border border-cyan-500/20">
+              <span className="text-xs font-mono text-cyan-800 bg-cyan-50 px-3 py-1 rounded-xl border border-cyan-200">
                 Pending Recovery: {curr} {stats.pendingRefundAmount.toLocaleString()}
               </span>
             </div>
@@ -798,7 +803,7 @@ export default function TripBudgetPage() {
 
           {stats.depositLedger.length === 0 ? (
             <div className="p-12 text-center rounded-2xl border border-muted bg-surface/40 space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-50 border border-cyan-200 text-cyan-700 flex items-center justify-center mx-auto">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <h4 className="font-display text-base text-foreground font-normal">
@@ -814,7 +819,7 @@ export default function TripBudgetPage() {
                   setFormTitle("Bike Rental Security Deposit");
                   setFormAmount("5000");
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-cyan-500 text-black text-xs font-semibold"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-accent text-accent-foreground text-xs font-medium shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Log Security Deposit</span>
@@ -831,10 +836,10 @@ export default function TripBudgetPage() {
                     key={dep.id}
                     className={`rounded-2xl border p-4 sm:p-5 shadow-soft transition-all space-y-3 ${
                       isPending
-                        ? "border-amber-500/30 bg-surface/90"
+                        ? "border-amber-300 bg-amber-50/20"
                         : isRefunded
-                        ? "border-emerald-500/30 bg-surface/60"
-                        : "border-rose-500/30 bg-surface/60"
+                        ? "border-emerald-300 bg-emerald-50/20"
+                        : "border-rose-300 bg-rose-50/20"
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -847,10 +852,10 @@ export default function TripBudgetPage() {
                           <span
                             className={`px-2.5 py-0.5 rounded-md font-mono text-[10px] uppercase font-bold border ${
                               isRefunded
-                                ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                                 : isPending
-                                ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
-                                : "bg-rose-500/20 border-rose-500/40 text-rose-400"
+                                ? "bg-amber-50 border-amber-200 text-amber-800"
+                                : "bg-rose-50 border-rose-200 text-rose-800"
                             }`}
                           >
                             {dep.depositRefundStatus}
@@ -878,11 +883,11 @@ export default function TripBudgetPage() {
 
                       <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
                         <div className="text-right">
-                          <span className="text-lg font-bold font-mono text-amber-400 block">
+                          <span className="text-lg font-bold font-mono text-amber-800 block">
                             {dep.currency} {dep.amount.toLocaleString()}
                           </span>
                           {isRefunded && (
-                            <span className="text-[10px] font-mono text-emerald-400 block">
+                            <span className="text-[10px] font-mono text-emerald-700 block">
                               Refunded: {dep.currency} {(dep.refundAmount || dep.amount).toLocaleString()}
                             </span>
                           )}
@@ -891,7 +896,7 @@ export default function TripBudgetPage() {
                         {isPending ? (
                           <button
                             onClick={() => handleOpenRefundModal(dep)}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-semibold text-xs font-sans transition-all shadow-xs"
+                            className="px-3 py-1.5 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-xs font-sans transition-all shadow-xs"
                           >
                             Mark Refunded
                           </button>
@@ -918,12 +923,16 @@ export default function TripBudgetPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowAddModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-rose-400" />
+                <Receipt className="w-5 h-5 text-rose-600" />
                 <h3 className="font-display text-xl text-foreground font-normal">
                   {editingExpense ? "Edit Expense" : "Log Expense"}
                 </h3>
@@ -945,7 +954,7 @@ export default function TripBudgetPage() {
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="e.g. Tandi Petrol Fill, Keylong Homestay Dinner, Rohtang Permit"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-rose-500 focus:outline-hidden text-sm text-foreground placeholder:text-muted-foreground/50"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-sm text-foreground placeholder:text-muted-foreground/50"
                   required
                 />
               </div>
@@ -959,24 +968,21 @@ export default function TripBudgetPage() {
                     value={formAmount}
                     onChange={(e) => setFormAmount(e.target.value)}
                     placeholder="e.g. 1500"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-rose-500 focus:outline-hidden text-sm font-mono text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-sm font-mono text-foreground"
                     required
                   />
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-sans font-medium text-foreground">Category *</label>
-                  <select
+                  <Select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value as ExpenseCategory)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-rose-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
-                  >
-                    {ALL_EXPENSE_CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
+                    options={ALL_EXPENSE_CATEGORIES.map((c) => ({
+                      value: c,
+                      label: c,
+                    }))}
+                  />
                 </div>
               </div>
 
@@ -984,17 +990,17 @@ export default function TripBudgetPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-sans font-medium text-foreground">Payment Mode</label>
-                  <select
+                  <Select
                     value={formPaymentMode}
                     onChange={(e) => setFormPaymentMode(e.target.value as PaymentMode)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-rose-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
-                  >
-                    <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
-                    <option value="CASH">Cash</option>
-                    <option value="CARD">Debit / Credit Card</option>
-                    <option value="NET_BANKING">Net Banking</option>
-                    <option value="OTHER">Other</option>
-                  </select>
+                    options={[
+                      { value: "UPI", label: "UPI (GPay / PhonePe / Paytm)" },
+                      { value: "CASH", label: "Cash" },
+                      { value: "CARD", label: "Debit / Credit Card" },
+                      { value: "NET_BANKING", label: "Net Banking" },
+                      { value: "OTHER", label: "Other" },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -1004,7 +1010,7 @@ export default function TripBudgetPage() {
                     value={formPaidBy}
                     onChange={(e) => setFormPaidBy(e.target.value)}
                     placeholder="e.g. Self, Rohit, Priya"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-rose-500 focus:outline-hidden text-xs text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                   />
                 </div>
               </div>
@@ -1017,7 +1023,7 @@ export default function TripBudgetPage() {
                     type="datetime-local"
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-rose-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                   />
                 </div>
 
@@ -1028,7 +1034,7 @@ export default function TripBudgetPage() {
                     value={formSplitWith}
                     onChange={(e) => setFormSplitWith(e.target.value)}
                     placeholder="e.g. Rahul, Sneha (comma-separated)"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-rose-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                   />
                 </div>
               </div>
@@ -1040,7 +1046,7 @@ export default function TripBudgetPage() {
                     type="checkbox"
                     checked={formIsDeposit}
                     onChange={(e) => setFormIsDeposit(e.target.checked)}
-                    className="rounded border-muted text-rose-500 focus:ring-rose-500"
+                    className="rounded border-muted text-accent focus:ring-accent"
                   />
                   <span className="text-xs font-sans font-medium text-foreground">
                     This is a Refundable Security Deposit
@@ -1050,15 +1056,15 @@ export default function TripBudgetPage() {
                 {formIsDeposit && (
                   <div className="pt-2 border-t border-muted/50 space-y-1">
                     <label className="text-[11px] font-sans text-muted-foreground">Refund Status</label>
-                    <select
+                    <Select
                       value={formDepositStatus}
                       onChange={(e) => setFormDepositStatus(e.target.value as DepositRefundStatus)}
-                      className="w-full px-3 py-1.5 rounded-lg bg-surface border border-muted text-xs text-foreground [color-scheme:dark]"
-                    >
-                      <option value="PENDING">Pending Refund on Return</option>
-                      <option value="REFUNDED">Refunded & Settled</option>
-                      <option value="DEDUCTED">Deductions Applied</option>
-                    </select>
+                      options={[
+                        { value: "PENDING", label: "Pending Refund on Return" },
+                        { value: "REFUNDED", label: "Refunded & Settled" },
+                        { value: "DEDUCTED", label: "Deductions Applied" },
+                      ]}
+                    />
                   </div>
                 )}
               </div>
@@ -1071,7 +1077,7 @@ export default function TripBudgetPage() {
                   onChange={(e) => setFormNotes(e.target.value)}
                   rows={2}
                   placeholder="e.g. Paid cash at remote dhaba without mobile connectivity."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-rose-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
                 />
               </div>
 
@@ -1086,7 +1092,7 @@ export default function TripBudgetPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-black font-semibold text-xs font-sans transition-all"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-accent-foreground font-medium text-xs font-sans transition-all"
                 >
                   {isSubmitting ? "Saving..." : editingExpense ? "Update Expense" : "Save Expense"}
                 </button>
@@ -1101,12 +1107,16 @@ export default function TripBudgetPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowAllocationModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <PieChart className="w-5 h-5 text-rose-400" />
+                <PieChart className="w-5 h-5 text-rose-600" />
                 <h3 className="font-display text-xl text-foreground font-normal">
                   Configure Category Budgets
                 </h3>
@@ -1147,7 +1157,7 @@ export default function TripBudgetPage() {
                           })
                         }
                         placeholder="0"
-                        className="w-full pl-12 pr-3 py-1.5 rounded-xl bg-background border border-muted focus:border-rose-500 focus:outline-hidden text-xs font-mono text-foreground"
+                        className="w-full pl-12 pr-3 py-1.5 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                       />
                     </div>
                   </div>
@@ -1167,7 +1177,7 @@ export default function TripBudgetPage() {
                 type="button"
                 onClick={handleSaveAllocations}
                 disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-black font-semibold text-xs font-sans transition-all"
+                className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-accent-foreground font-medium text-xs font-sans transition-all"
               >
                 {isSubmitting ? "Saving..." : "Save Allocations"}
               </button>
@@ -1181,12 +1191,16 @@ export default function TripBudgetPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setRefundModalExpense(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <ShieldCheck className="w-5 h-5 text-emerald-600" />
                 <h3 className="font-display text-lg text-foreground font-normal">
                   Settle Deposit: {refundModalExpense.title}
                 </h3>
@@ -1211,15 +1225,15 @@ export default function TripBudgetPage() {
 
               <div className="space-y-1">
                 <label className="text-xs font-sans font-medium text-foreground">Refund Status</label>
-                <select
+                <Select
                   value={refundStatusInput}
                   onChange={(e) => setRefundStatusInput(e.target.value as DepositRefundStatus)}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
-                >
-                  <option value="REFUNDED">Fully or Partially Refunded</option>
-                  <option value="DEDUCTED">Fully Deducted (Penalty / Damage)</option>
-                  <option value="PENDING">Revert to Pending</option>
-                </select>
+                  options={[
+                    { value: "REFUNDED", label: "Fully or Partially Refunded" },
+                    { value: "DEDUCTED", label: "Fully Deducted (Penalty / Damage)" },
+                    { value: "PENDING", label: "Revert to Pending" },
+                  ]}
+                />
               </div>
 
               {refundStatusInput === "REFUNDED" && (
@@ -1232,10 +1246,10 @@ export default function TripBudgetPage() {
                     step="any"
                     value={refundAmountInput}
                     onChange={(e) => setRefundAmountInput(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-sm font-mono text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-sm font-mono text-foreground"
                   />
                   {parseFloat(refundAmountInput || "0") < refundModalExpense.amount && (
-                    <span className="text-[10px] text-amber-400 block pt-1">
+                    <span className="text-[10px] text-amber-800 font-medium block pt-1">
                       Note: Difference of {curr} {(refundModalExpense.amount - parseFloat(refundAmountInput || "0")).toLocaleString()} will be counted as spent due to deduction.
                     </span>
                   )}
@@ -1253,7 +1267,7 @@ export default function TripBudgetPage() {
                 <button
                   type="button"
                   onClick={handleSaveRefund}
-                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-semibold text-xs font-sans transition-all"
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs font-sans transition-all"
                 >
                   Confirm Settlement
                 </button>

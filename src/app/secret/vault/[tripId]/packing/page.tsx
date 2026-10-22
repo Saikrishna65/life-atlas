@@ -36,6 +36,8 @@ import {
 } from "@/lib/vault/usePackingList";
 import { PackingCategory, PackingItemRecord } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { Select } from "@/components/ui/Select";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 
 const CATEGORY_META: Record<
   PackingCategory,
@@ -43,51 +45,51 @@ const CATEGORY_META: Record<
 > = {
   DOCUMENTS: {
     label: "Documents & Passes",
-    icon: <FileText className="w-4 h-4 text-cyan-400" />,
-    color: "text-cyan-400",
-    badgeBg: "bg-cyan-500/10 border-cyan-500/20 text-cyan-400",
+    icon: <FileText className="w-4 h-4 text-cyan-700" />,
+    color: "text-cyan-700",
+    badgeBg: "bg-cyan-50 border-cyan-200 text-cyan-800",
   },
   RIDING_GEAR: {
     label: "Riding Gear",
-    icon: <Bike className="w-4 h-4 text-amber-400" />,
-    color: "text-amber-400",
-    badgeBg: "bg-amber-500/10 border-amber-500/20 text-amber-400",
+    icon: <Bike className="w-4 h-4 text-amber-700" />,
+    color: "text-amber-700",
+    badgeBg: "bg-amber-50 border-amber-200 text-amber-800",
   },
   ELECTRONICS: {
     label: "Electronics & Tech",
-    icon: <Zap className="w-4 h-4 text-indigo-400" />,
-    color: "text-indigo-400",
-    badgeBg: "bg-indigo-500/10 border-indigo-500/20 text-indigo-400",
+    icon: <Zap className="w-4 h-4 text-indigo-700" />,
+    color: "text-indigo-700",
+    badgeBg: "bg-indigo-50 border-indigo-200 text-indigo-800",
   },
   FIRST_AID: {
     label: "First Aid & Meds",
-    icon: <HeartPulse className="w-4 h-4 text-rose-400" />,
-    color: "text-rose-400",
-    badgeBg: "bg-rose-500/10 border-rose-500/20 text-rose-400",
+    icon: <HeartPulse className="w-4 h-4 text-rose-700" />,
+    color: "text-rose-700",
+    badgeBg: "bg-rose-50 border-rose-200 text-rose-800",
   },
   CLOTHING: {
     label: "Clothing & Layers",
-    icon: <Shirt className="w-4 h-4 text-emerald-400" />,
-    color: "text-emerald-400",
-    badgeBg: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+    icon: <Shirt className="w-4 h-4 text-emerald-700" />,
+    color: "text-emerald-700",
+    badgeBg: "bg-emerald-50 border-emerald-200 text-emerald-800",
   },
   TOILETRIES: {
     label: "Toiletries & Hygiene",
-    icon: <Sparkles className="w-4 h-4 text-purple-400" />,
-    color: "text-purple-400",
-    badgeBg: "bg-purple-500/10 border-purple-500/20 text-purple-400",
+    icon: <Sparkles className="w-4 h-4 text-purple-700" />,
+    color: "text-purple-700",
+    badgeBg: "bg-purple-50 border-purple-200 text-purple-800",
   },
   CAMPING: {
     label: "Camping & Shelter",
-    icon: <Tent className="w-4 h-4 text-yellow-400" />,
-    color: "text-yellow-400",
-    badgeBg: "bg-yellow-500/10 border-yellow-500/20 text-yellow-400",
+    icon: <Tent className="w-4 h-4 text-amber-800" />,
+    color: "text-amber-800",
+    badgeBg: "bg-amber-50 border-amber-200 text-amber-800",
   },
   MISC: {
     label: "Spares & Tools",
-    icon: <Briefcase className="w-4 h-4 text-zinc-400" />,
-    color: "text-zinc-400",
-    badgeBg: "bg-zinc-500/10 border-zinc-500/20 text-zinc-400",
+    icon: <Briefcase className="w-4 h-4 text-zinc-700" />,
+    color: "text-zinc-700",
+    badgeBg: "bg-zinc-100 border-zinc-300 text-zinc-800",
   },
 };
 
@@ -126,6 +128,9 @@ export default function PackingPage() {
   const [itemToEdit, setItemToEdit] = useState<PackingItemRecord | null>(null);
   const [seedingPreset, setSeedingPreset] = useState<boolean>(false);
   const [presetSuccessMsg, setPresetSuccessMsg] = useState<string | null>(null);
+
+  // Lock body scroll when any modal is open
+  useLockBodyScroll(showAddModal || showEditModal || showPresetModal || showDeleteModal);
 
   // Form State for Add / Edit
   const [formName, setFormName] = useState<string>("");
@@ -287,7 +292,7 @@ export default function PackingPage() {
               <span>{trip?.title || "Expedition"}</span>
             </Link>
             <span>/</span>
-            <span className="text-emerald-400">Pillar 09</span>
+            <span className="text-accent font-medium">Checklist</span>
           </div>
           <h1 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
             Gear & Packing Checklists
@@ -300,16 +305,16 @@ export default function PackingPage() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setShowPresetModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-background border border-muted text-xs font-sans text-muted-foreground hover:text-foreground hover:border-amber-500/40 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface border border-muted text-xs font-sans text-foreground hover:border-accent transition-colors shadow-xs"
             title="Import expedition gear presets"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5 text-accent" />
             <span className="hidden sm:inline">Expedition</span> Presets
           </button>
 
           <button
             onClick={() => handleOpenAddModal()}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs transition-all shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-xs transition-all shadow-xs"
           >
             <Plus className="w-4 h-4" />
             <span>Add Item</span>
@@ -317,23 +322,23 @@ export default function PackingPage() {
 
           <button
             onClick={handleLockVault}
-            className="p-2 rounded-xl bg-background border border-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="p-2 rounded-xl bg-surface border border-muted text-muted-foreground hover:text-foreground transition-colors"
             title="Lock Vault"
           >
-            <Lock className="w-3.5 h-3.5" />
+            <Lock className="w-3.5 h-3.5 text-amber-600" />
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 font-mono">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-mono">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
           <span>{error}</span>
         </div>
       )}
 
       {/* 2. Packing Telemetry & Overall Progress Bar (REQ-PCK-01) */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-surface/60 border border-muted/80 backdrop-blur-xs space-y-4 shadow-soft">
+      <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-muted space-y-4 shadow-soft">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground block">
@@ -353,19 +358,19 @@ export default function PackingPage() {
             <button
               onClick={() => bulkSetPacked(true, selectedCategory === "ALL" ? undefined : selectedCategory)}
               disabled={items.length === 0}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-background border border-muted text-[11px] font-sans text-muted-foreground hover:text-emerald-400 hover:border-emerald-500/40 transition-colors disabled:opacity-40"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-surface border border-muted text-[11px] font-sans text-muted-foreground hover:text-emerald-700 hover:border-emerald-300 transition-colors disabled:opacity-40 shadow-xs"
               title="Mark all items in view as packed"
             >
-              <Check className="w-3 h-3 text-emerald-400" />
+              <Check className="w-3 h-3 text-emerald-700" />
               <span>Pack All</span>
             </button>
             <button
               onClick={() => bulkSetPacked(false, selectedCategory === "ALL" ? undefined : selectedCategory)}
               disabled={items.length === 0}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-background border border-muted text-[11px] font-sans text-muted-foreground hover:text-amber-400 hover:border-amber-500/40 transition-colors disabled:opacity-40"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-surface border border-muted text-[11px] font-sans text-muted-foreground hover:text-amber-800 hover:border-amber-300 transition-colors disabled:opacity-40 shadow-xs"
               title="Reset all items in view to unpacked"
             >
-              <RotateCcw className="w-3 h-3 text-amber-400" />
+              <RotateCcw className="w-3 h-3 text-amber-700" />
               <span>Reset All</span>
             </button>
           </div>
@@ -373,13 +378,13 @@ export default function PackingPage() {
 
         {/* Dynamic Progress Bar */}
         <div className="space-y-1.5">
-          <div className="w-full h-2.5 bg-background rounded-full overflow-hidden border border-muted/60 p-0.5">
+          <div className="w-full h-2.5 bg-background rounded-full overflow-hidden border border-muted p-0.5">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
                 stats.percentPacked === 100
-                  ? "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.5)]"
+                  ? "bg-emerald-600 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
                   : stats.percentPacked > 50
-                  ? "bg-emerald-500"
+                  ? "bg-emerald-600"
                   : "bg-amber-500"
               }`}
               style={{ width: `${Math.min(100, stats.percentPacked)}%` }}
@@ -396,17 +401,17 @@ export default function PackingPage() {
 
       {/* 3. CRITICAL UNPACKED ESSENTIALS ALERT BANNER (REQ-PCK-02) */}
       {stats.hasUnpackedEssentials ? (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 space-y-3 animate-pulse-subtle shadow-soft">
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-3 shadow-soft">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
-                <ShieldAlert className="w-4 h-4 text-amber-400" />
+              <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 shrink-0">
+                <ShieldAlert className="w-4 h-4 text-amber-800" />
               </div>
               <div>
-                <h3 className="font-sans font-semibold text-sm text-amber-300">
+                <h3 className="font-sans font-semibold text-sm text-amber-900">
                   {stats.unpackedEssential} Critical Item{stats.unpackedEssential > 1 ? "s" : ""} Still Unpacked!
                 </h3>
-                <p className="text-[11px] text-amber-200/80 mt-0.5">
+                <p className="text-[11px] text-amber-800/90 mt-0.5">
                   Missing vital travel documentation, safety permits, or life-support medical supplies.
                 </p>
               </div>
@@ -417,21 +422,21 @@ export default function PackingPage() {
                 setEssentialOnly(true);
                 setSelectedCategory("ALL");
               }}
-              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-[11px] font-medium text-amber-200 shrink-0 transition-colors"
+              className="px-2.5 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 border border-amber-300 text-[11px] font-medium text-amber-900 shrink-0 transition-colors"
             >
               Filter Essentials
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-2 pt-1 border-t border-amber-500/20">
+          <div className="flex flex-wrap gap-2 pt-1 border-t border-amber-200">
             {stats.unpackedEssentialItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => togglePacked(item.id, true)}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-background/80 hover:bg-background border border-amber-500/30 text-xs font-sans text-amber-200 hover:text-emerald-300 hover:border-emerald-500/40 transition-all group"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-surface hover:bg-surface-hover border border-amber-300 text-xs font-sans text-amber-900 hover:text-emerald-800 hover:border-emerald-300 transition-all group shadow-xs"
                 title="Tap to mark packed"
               >
-                <Square className="w-3.5 h-3.5 text-amber-400 group-hover:text-emerald-400" />
+                <Square className="w-3.5 h-3.5 text-amber-700 group-hover:text-emerald-700" />
                 <span>{item.name}</span>
                 {item.quantity > 1 && (
                   <span className="text-[10px] font-mono text-muted-foreground">×{item.quantity}</span>
@@ -441,14 +446,14 @@ export default function PackingPage() {
           </div>
         </div>
       ) : stats.totalEssential > 0 ? (
-        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex items-center justify-between gap-3 text-xs">
+        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
             <span>
-              <strong>All {stats.totalEssential} Critical Essentials Packed!</strong> Driving license, permits, protective gear, and medical kits are secured.
+              <strong className="text-emerald-950">All {stats.totalEssential} Critical Essentials Packed!</strong> Driving license, permits, protective gear, and medical kits are secured.
             </span>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0 font-medium">
             100% READY
           </span>
         </div>
@@ -465,14 +470,14 @@ export default function PackingPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search gear, spares, notes..."
-              className="w-full pl-9 pr-8 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground placeholder:text-muted-foreground/60 focus:outline-hidden focus:border-amber-500/50"
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-surface border border-muted text-xs font-sans text-foreground placeholder:text-muted-foreground/60 focus:outline-hidden focus:border-accent"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3 h-3" />
               </button>
             )}
           </div>
@@ -483,11 +488,11 @@ export default function PackingPage() {
               onClick={() => setEssentialOnly(!essentialOnly)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-sans transition-colors ${
                 essentialOnly
-                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300 font-medium"
-                  : "bg-background border-muted text-muted-foreground hover:text-foreground"
+                  ? "bg-accent border-accent text-accent-foreground font-medium"
+                  : "bg-surface border-muted text-muted-foreground hover:text-foreground"
               }`}
             >
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
               <span>Essentials ({stats.totalEssential})</span>
             </button>
 
@@ -496,11 +501,11 @@ export default function PackingPage() {
               onClick={() => setHidePacked(!hidePacked)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-sans transition-colors ${
                 hidePacked
-                  ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-medium"
-                  : "bg-background border-muted text-muted-foreground hover:text-foreground"
+                  ? "bg-accent border-accent text-accent-foreground font-medium"
+                  : "bg-surface border-muted text-muted-foreground hover:text-foreground"
               }`}
             >
-              <CheckSquare className="w-3.5 h-3.5 text-emerald-400" />
+              <CheckSquare className="w-3.5 h-3.5 text-emerald-700" />
               <span>Hide Packed</span>
             </button>
           </div>
@@ -512,7 +517,7 @@ export default function PackingPage() {
             onClick={() => setSelectedCategory("ALL")}
             className={`px-3 py-1.5 rounded-xl text-xs font-sans whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
               selectedCategory === "ALL"
-                ? "bg-amber-500/20 border border-amber-500/40 text-amber-300 font-semibold"
+                ? "bg-accent border border-accent text-accent-foreground font-medium"
                 : "bg-surface border border-muted text-muted-foreground hover:text-foreground hover:bg-surface-hover"
             }`}
           >
@@ -531,7 +536,7 @@ export default function PackingPage() {
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-sans whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
                   isSelected
-                    ? `${meta.badgeBg} border font-semibold`
+                    ? "bg-accent border border-accent text-accent-foreground font-medium shadow-xs"
                     : "bg-surface border border-muted text-muted-foreground hover:text-foreground hover:bg-surface-hover"
                 }`}
               >
@@ -701,11 +706,19 @@ export default function PackingPage() {
 
       {/* MODAL 1: ADD CUSTOM ITEM (REQ-PCK-03) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-surface border border-muted p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowAddModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg rounded-3xl bg-surface border border-muted p-6 space-y-5 shadow-2xl"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700">
                   <CheckSquare className="w-5 h-5" />
                 </div>
                 <h3 className="font-display text-xl text-foreground font-normal">
@@ -731,7 +744,7 @@ export default function PackingPage() {
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="e.g., Rain Cover for Tank Bag, Thermal Gloves, Diamox"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-sm font-sans text-foreground placeholder:text-muted-foreground/50 focus:outline-hidden focus:border-emerald-500/50"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-sm font-sans text-foreground placeholder:text-muted-foreground/50 focus:outline-hidden focus:border-accent"
                 />
               </div>
 
@@ -740,17 +753,14 @@ export default function PackingPage() {
                   <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground block mb-1">
                     Gear Category
                   </label>
-                  <select
+                  <Select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value as PackingCategory)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden focus:border-emerald-500/50"
-                  >
-                    {ALL_PACKING_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {CATEGORY_META[cat].label}
-                      </option>
-                    ))}
-                  </select>
+                    options={ALL_PACKING_CATEGORIES.map((cat) => ({
+                      value: cat,
+                      label: CATEGORY_META[cat].label,
+                    }))}
+                  />
                 </div>
 
                 <div>
@@ -789,11 +799,11 @@ export default function PackingPage() {
                   type="checkbox"
                   checked={formIsEssential}
                   onChange={(e) => setFormIsEssential(e.target.checked)}
-                  className="mt-0.5 rounded border-muted text-amber-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                  className="mt-0.5 rounded border-muted text-accent focus:ring-0 focus:ring-offset-0 cursor-pointer"
                 />
                 <div className="text-xs">
                   <span className="font-semibold text-foreground flex items-center gap-1.5">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
                     <span>Critical / Essential Gear</span>
                   </span>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -811,7 +821,7 @@ export default function PackingPage() {
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
                   placeholder="e.g., Inside tank bag waterproof pouch, Under pillion seat"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-xs font-sans text-foreground placeholder:text-muted-foreground/50 focus:outline-hidden focus:border-emerald-500/50"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-xs font-sans text-foreground placeholder:text-muted-foreground/50 focus:outline-hidden focus:border-accent"
                 />
               </div>
 
@@ -826,7 +836,7 @@ export default function PackingPage() {
                 <button
                   type="submit"
                   disabled={formSubmitting || !formName.trim()}
-                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-xs transition-colors disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-xs transition-colors disabled:opacity-50"
                 >
                   {formSubmitting ? "Saving..." : "Add to Checklist"}
                 </button>
@@ -838,11 +848,22 @@ export default function PackingPage() {
 
       {/* MODAL 2: EDIT CUSTOM ITEM (REQ-PCK-03) */}
       {showEditModal && itemToEdit && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-surface border border-muted p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            setShowEditModal(false);
+            setItemToEdit(null);
+          }}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg rounded-3xl bg-surface border border-muted p-6 space-y-5 shadow-2xl"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700">
                   <Edit3 className="w-5 h-5" />
                 </div>
                 <h3 className="font-display text-xl text-foreground font-normal">
@@ -870,7 +891,7 @@ export default function PackingPage() {
                   required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-sm font-sans text-foreground focus:outline-hidden focus:border-amber-500/50"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-sm font-sans text-foreground focus:outline-hidden focus:border-accent"
                 />
               </div>
 
@@ -879,17 +900,14 @@ export default function PackingPage() {
                   <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground block mb-1">
                     Gear Category
                   </label>
-                  <select
+                  <Select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value as PackingCategory)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden focus:border-amber-500/50"
-                  >
-                    {ALL_PACKING_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {CATEGORY_META[cat].label}
-                      </option>
-                    ))}
-                  </select>
+                    options={ALL_PACKING_CATEGORIES.map((cat) => ({
+                      value: cat,
+                      label: CATEGORY_META[cat].label,
+                    }))}
+                  />
                 </div>
 
                 <div>
@@ -928,11 +946,11 @@ export default function PackingPage() {
                   type="checkbox"
                   checked={formIsEssential}
                   onChange={(e) => setFormIsEssential(e.target.checked)}
-                  className="mt-0.5 rounded border-muted text-amber-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                  className="mt-0.5 rounded border-muted text-accent focus:ring-0 focus:ring-offset-0 cursor-pointer"
                 />
                 <div className="text-xs">
                   <span className="font-semibold text-foreground flex items-center gap-1.5">
-                    <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
                     <span>Critical / Essential Gear</span>
                   </span>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -949,7 +967,7 @@ export default function PackingPage() {
                   type="text"
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden focus:border-amber-500/50"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden focus:border-accent"
                 />
               </div>
 
@@ -967,7 +985,7 @@ export default function PackingPage() {
                 <button
                   type="submit"
                   disabled={formSubmitting || !formName.trim()}
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition-colors disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-xs transition-colors disabled:opacity-50"
                 >
                   {formSubmitting ? "Updating..." : "Save Changes"}
                 </button>
@@ -979,11 +997,19 @@ export default function PackingPage() {
 
       {/* MODAL 3: EXPEDITION PRESETS SEEDER */}
       {showPresetModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-xl rounded-3xl bg-surface border border-muted p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setShowPresetModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-xl rounded-3xl bg-surface border border-muted p-6 space-y-5 shadow-2xl"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                <div className="p-2 rounded-xl bg-accent/10 border border-accent/20 text-accent">
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
@@ -1004,8 +1030,8 @@ export default function PackingPage() {
             </div>
 
             {presetSuccessMsg && (
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono flex items-center gap-2">
-                <Check className="w-4 h-4" />
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-700" />
                 <span>{presetSuccessMsg}</span>
               </div>
             )}
@@ -1018,14 +1044,14 @@ export default function PackingPage() {
                 return (
                   <div
                     key={presetId}
-                    className="p-4 rounded-2xl bg-background border border-muted hover:border-amber-500/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                    className="p-4 rounded-2xl bg-background border border-muted hover:border-accent transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="font-display text-base text-foreground font-normal group-hover:text-amber-400 transition-colors">
+                        <h4 className="font-display text-base text-foreground font-normal group-hover:text-accent transition-colors">
                           {preset.title}
                         </h4>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-accent/10 text-accent border border-accent/20 font-medium">
                           {preset.items.length} items
                         </span>
                       </div>
@@ -1037,9 +1063,9 @@ export default function PackingPage() {
                     <button
                       onClick={() => handleSeedPreset(presetId)}
                       disabled={seedingPreset}
-                      className="px-3.5 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-muted hover:border-amber-500/40 text-xs font-semibold text-foreground transition-all shrink-0 flex items-center gap-1.5 disabled:opacity-50"
+                      className="px-3.5 py-1.5 rounded-xl bg-surface hover:bg-surface-hover border border-muted hover:border-accent text-xs font-medium text-foreground transition-all shrink-0 flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
                     >
-                      <Plus className="w-3.5 h-3.5 text-amber-400" />
+                      <Plus className="w-3.5 h-3.5 text-accent" />
                       <span>Import Blueprint</span>
                     </button>
                   </div>
@@ -1062,9 +1088,20 @@ export default function PackingPage() {
 
       {/* MODAL 4: DELETE CONFIRMATION */}
       {showDeleteModal && itemToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-3xl bg-surface border border-muted p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-2 text-rose-400">
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            setShowDeleteModal(false);
+            setItemToDelete(null);
+          }}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain animate-fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl bg-surface border border-muted p-5 space-y-4 shadow-2xl"
+          >
+            <div className="flex items-center gap-2 text-rose-600">
               <Trash2 className="w-5 h-5" />
               <h3 className="font-display text-lg text-foreground font-normal">
                 Delete Gear Item?
@@ -1085,7 +1122,7 @@ export default function PackingPage() {
               </button>
               <button
                 onClick={handleConfirmDelete}
-                className="px-4 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-semibold text-xs transition-colors"
+                className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs transition-colors"
               >
                 Delete
               </button>

@@ -23,6 +23,9 @@ export type TravelStyle =
 
 export type ActivityTimeSlot = "MORNING" | "AFTERNOON" | "EVENING" | "NIGHT";
 
+export type DepartureTravelSlot = "MORNING" | "AFTERNOON" | "EVENING" | "NIGHT" | "OVERNIGHT";
+export type ReturnTravelSlot = "EARLY_MORNING" | "MORNING" | "AFTERNOON" | "EVENING" | "NIGHT";
+
 export type ActivityStatus = "PLANNED" | "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
 
 export type BookingCategory = "TRANSPORT" | "ACCOMMODATION";
@@ -112,6 +115,9 @@ export interface TripRecord {
   destinations?: DestinationStop[];
   startDate: ISODateString;
   endDate?: ISODateString;
+  departureSlot?: DepartureTravelSlot;
+  returnSlot?: ReturnTravelSlot;
+  effectiveDays?: number;
   status: TripStatus;
   travelStyle: TravelStyle;
   coverImage?: string;

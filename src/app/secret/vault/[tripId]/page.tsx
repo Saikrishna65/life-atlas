@@ -31,6 +31,7 @@ import {
   Camera,
   Bot,
   X,
+  Clock,
 } from "lucide-react";
 import { useTripVault } from "@/lib/vault/useTripVault";
 import { getTrip } from "@/lib/vault/storage";
@@ -38,8 +39,13 @@ import {
   TripRecord,
   TripStatus,
   TravelStyle,
+  DepartureTravelSlot,
+  ReturnTravelSlot,
 } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
+import { computeTripDuration } from "@/lib/vault/tripDuration";
+import { Select } from "@/components/ui/Select";
 
 export default function TripCommandCenterPage() {
   const params = useParams();
@@ -62,11 +68,28 @@ export default function TripCommandCenterPage() {
   const [editDestination, setEditDestination] = useState("");
   const [editStartDate, setEditStartDate] = useState("");
   const [editEndDate, setEditEndDate] = useState("");
+  const [editDepartureSlot, setEditDepartureSlot] = useState<DepartureTravelSlot>("NIGHT");
+  const [editReturnSlot, setEditReturnSlot] = useState<ReturnTravelSlot>("MORNING");
+  const [editEffectiveDays, setEditEffectiveDays] = useState<number | null>(null);
   const [editTravelStyle, setEditTravelStyle] = useState<TravelStyle>("MOTORCYCLE");
   const [editBudgetTotal, setEditBudgetTotal] = useState<number>(0);
   const [editCurrency, setEditCurrency] = useState("INR");
   const [editNotes, setEditNotes] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  // Lock body scroll when any modal is open
+  useLockBodyScroll(showEditModal || showDeleteModal);
+
+  // Dynamic Duration computation for Edit Modal
+  const editDurationBreakdown = useMemo(() => {
+    return computeTripDuration(
+      editStartDate,
+      editEndDate,
+      editDepartureSlot,
+      editReturnSlot,
+      editEffectiveDays ?? undefined
+    );
+  }, [editStartDate, editEndDate, editDepartureSlot, editReturnSlot, editEffectiveDays]);
 
   // Load trip data
   useEffect(() => {
@@ -85,6 +108,9 @@ export default function TripCommandCenterPage() {
           setEditDestination(data.destination);
           setEditStartDate(data.startDate ? data.startDate.split("T")[0] : "");
           setEditEndDate(data.endDate ? data.endDate.split("T")[0] : "");
+          setEditDepartureSlot(data.departureSlot || "NIGHT");
+          setEditReturnSlot(data.returnSlot || "MORNING");
+          setEditEffectiveDays(data.effectiveDays ?? null);
           setEditTravelStyle(data.travelStyle);
           setEditBudgetTotal(data.budgetTotal);
           setEditCurrency(data.currency);
@@ -153,6 +179,9 @@ export default function TripCommandCenterPage() {
         destination: editDestination.trim() || trip.destination,
         startDate: editStartDate ? new Date(editStartDate).toISOString() : trip.startDate,
         endDate: editEndDate ? new Date(editEndDate).toISOString() : undefined,
+        departureSlot: editDepartureSlot,
+        returnSlot: editReturnSlot,
+        effectiveDays: editDurationBreakdown.effectiveDays,
         travelStyle: editTravelStyle,
         budgetTotal: Number(editBudgetTotal) || 0,
         currency: editCurrency,
@@ -283,115 +312,106 @@ export default function TripCommandCenterPage() {
     );
   }
 
-  // 8 Pillars Feature Hubs
+  // Trip Vault Feature Hubs
   const FEATURE_HUBS = [
     {
       id: "itinerary",
       title: "Itinerary & Schedule",
       subtitle: "Day-by-day timeline, themes & hourly activity blocks",
       href: `/secret/vault/${trip.id}/itinerary`,
-      icon: <CalendarDays className="w-5 h-5 text-amber-500" />,
-      badge: "Pillar 02",
-      accent: "border-amber-500/30 hover:border-amber-400/60 bg-amber-500/5",
+      icon: <CalendarDays className="w-5 h-5 text-accent" />,
+      badge: "Schedule",
+      accent: "border-muted hover:border-accent/40 bg-surface",
     },
     {
       id: "bookings",
       title: "Bookings & PNRs",
       subtitle: "Train berths, flights, stay vouchers & 1-tap copy PNR",
       href: `/secret/vault/${trip.id}/bookings`,
-      icon: <Ticket className="w-5 h-5 text-cyan-400" />,
-      badge: "Pillar 03",
-      accent: "border-cyan-500/30 hover:border-cyan-400/60 bg-cyan-500/5",
+      icon: <Ticket className="w-5 h-5 text-accent" />,
+      badge: "Bookings",
+      accent: "border-muted hover:border-accent/40 bg-surface",
     },
     {
       id: "documents",
       title: "Offline Document Vault",
       subtitle: "IRCTC PDFs, boarding passes, ID cards cached offline",
       href: `/secret/vault/${trip.id}/documents`,
-      icon: <FileText className="w-5 h-5 text-indigo-400" />,
-      badge: "Pillar 04",
-      accent: "border-indigo-500/30 hover:border-indigo-400/60 bg-indigo-500/5",
+      icon: <FileText className="w-5 h-5 text-accent" />,
+      badge: "Document Vault",
+      accent: "border-muted hover:border-accent/40 bg-surface",
     },
     {
       id: "rentals",
       title: "Bike & Scooter Rentals",
       subtitle: "Vehicle models, security deposits & fuel policies",
       href: `/secret/vault/${trip.id}/rentals`,
-      icon: <Bike className="w-5 h-5 text-emerald-400" />,
-      badge: "Pillar 06",
-      accent: "border-emerald-500/30 hover:border-emerald-400/60 bg-emerald-500/5",
+      icon: <Bike className="w-5 h-5 text-emerald-600" />,
+      badge: "Rentals",
+      accent: "border-muted hover:border-emerald-500/40 bg-surface",
     },
     {
       id: "routes",
       title: "Maps & Offline Waypoints",
       subtitle: "GPS waypoints, mountain passes, road advisories & maps intent",
       href: `/secret/vault/${trip.id}/routes`,
-      icon: <MapPin className="w-5 h-5 text-teal-400" />,
-      badge: "Pillar 07",
-      accent: "border-teal-500/30 hover:border-teal-400/60 bg-teal-500/5",
+      icon: <MapPin className="w-5 h-5 text-teal-600" />,
+      badge: "Waypoints",
+      accent: "border-muted hover:border-teal-500/40 bg-surface",
     },
     {
       id: "food",
       title: "Culinary Roadmap",
       subtitle: "Regional delicacies, street eats & restaurant wishlist",
       href: `/secret/vault/${trip.id}/food`,
-      icon: <Utensils className="w-5 h-5 text-orange-400" />,
-      badge: "Pillar 05",
-      accent: "border-orange-500/30 hover:border-orange-400/60 bg-orange-500/5",
+      icon: <Utensils className="w-5 h-5 text-amber-600" />,
+      badge: "Culinary",
+      accent: "border-muted hover:border-amber-500/40 bg-surface",
     },
     {
       id: "budget",
       title: "Budget & Expenses",
       subtitle: "Multi-currency expense log, payment modes & totals",
       href: `/secret/vault/${trip.id}/budget`,
-      icon: <CreditCard className="w-5 h-5 text-rose-400" />,
-      badge: "Pillar 08",
-      accent: "border-rose-500/30 hover:border-rose-400/60 bg-rose-500/5",
+      icon: <CreditCard className="w-5 h-5 text-rose-600" />,
+      badge: "Expenses",
+      accent: "border-muted hover:border-rose-500/40 bg-surface",
     },
     {
       id: "packing",
       title: "Gear & Packing Checklist",
       subtitle: "Categorized audit: riding gear, first aid & electronics",
       href: `/secret/vault/${trip.id}/packing`,
-      icon: <CheckSquare className="w-5 h-5 text-teal-400" />,
-      badge: "Pillar 09",
-      accent: "border-teal-500/30 hover:border-teal-400/60 bg-teal-500/5",
-    },
-    {
-      id: "safety",
-      title: "Safety & Emergency ICE",
-      subtitle: "Quick-dial rescue, hospitals, blood group & Plan B",
-      href: `/secret/vault/${trip.id}/safety`,
-      icon: <PhoneCall className="w-5 h-5 text-red-400" />,
-      badge: "Pillar 10",
-      accent: "border-red-500/30 hover:border-red-400/60 bg-red-500/5",
+      icon: <CheckSquare className="w-5 h-5 text-teal-600" />,
+      badge: "Checklist",
+      accent: "border-muted hover:border-teal-500/40 bg-surface",
     },
     {
       id: "reminders",
       title: "Alarms & Departure Reminders",
-      subtitle: "Native local notifications for departures, stays & rental returns",
+      subtitle: "100% offline local notifications for departures, stays & rental returns",
       href: `/secret/vault/${trip.id}/reminders`,
-      icon: <Bell className="w-5 h-5 text-yellow-400" />,
-      badge: "Pillar 11",
-      accent: "border-yellow-500/30 hover:border-yellow-400/60 bg-yellow-500/5",
+      icon: <Bell className="w-5 h-5 text-amber-600" />,
+      badge: "Local Alarms",
+      accent: "border-muted hover:border-amber-500/40 bg-surface",
     },
     {
       id: "memories",
       title: "Memories & Completed Archives",
       subtitle: "Milestone celebration dossier, photo wall & public journal export",
       href: `/secret/vault/${trip.id}/memories`,
-      icon: <Camera className="w-5 h-5 text-amber-400" />,
-      badge: "Pillar 12",
-      accent: "border-amber-500/30 hover:border-amber-400/60 bg-amber-500/5",
+      icon: <Camera className="w-5 h-5 text-accent" />,
+      badge: "Archives",
+      accent: "border-muted hover:border-accent/40 bg-surface",
     },
     {
       id: "assistant",
       title: "AI Assistant & Smart Parser",
       subtitle: "Neon AI Gateway itinerary generator & offline PNR ticket extractor",
       href: `/secret/vault/${trip.id}/assistant`,
-      icon: <Bot className="w-5 h-5 text-purple-400" />,
-      badge: "Pillar 13",
-      accent: "border-purple-500/30 hover:border-purple-400/60 bg-purple-500/5",
+      icon: <Bot className="w-5 h-5 text-indigo-600" />,
+      badge: "AI Copilot",
+      accent: "border-muted hover:border-indigo-500/40 bg-surface",
     },
   ];
 
@@ -408,17 +428,17 @@ export default function TripCommandCenterPage() {
         </Link>
 
         <div className="flex items-center gap-2.5">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[11px] font-mono tracking-wider text-amber-400 font-semibold uppercase">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-[11px] font-mono tracking-wider text-amber-800 font-semibold uppercase">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
             <span>Command Center</span>
           </div>
 
           <button
             onClick={handleLockVault}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title="Lock Private Atlas"
           >
-            <Lock className="w-3 h-3 text-amber-500" />
+            <Lock className="w-3 h-3 text-amber-600" />
             <span>Lock</span>
           </button>
         </div>
@@ -448,14 +468,14 @@ export default function TripCommandCenterPage() {
                 <select
                   value={trip.status}
                   onChange={(e) => handleStatusChange(e.target.value as TripStatus)}
-                  className={`text-xs font-mono uppercase tracking-wider px-3 py-1 rounded-full font-semibold border cursor-pointer focus:outline-hidden transition-all ${
+                  className={`text-xs font-mono uppercase tracking-wider px-3 py-1.5 rounded-full font-semibold border cursor-pointer focus:outline-hidden transition-all shadow-xs ${
                     trip.status === "ACTIVE"
-                      ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-400"
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                       : trip.status === "PLANNING"
-                      ? "bg-amber-500/20 border-amber-500/40 text-amber-400"
+                      ? "bg-amber-50 border-amber-200 text-amber-800"
                       : trip.status === "COMPLETED"
-                      ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-400"
-                      : "bg-muted border-muted text-muted-foreground"
+                      ? "bg-indigo-50 border-indigo-200 text-indigo-800"
+                      : "bg-surface border-muted text-muted-foreground"
                   }`}
                 >
                   <option value="PLANNING">Planning</option>
@@ -555,7 +575,7 @@ export default function TripCommandCenterPage() {
                 <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
                   Status Timeline
                 </span>
-                <span className="text-sm sm:text-base font-semibold font-mono text-amber-400 mt-0.5 block truncate">
+                <span className="text-sm sm:text-base font-semibold font-mono text-accent mt-0.5 block truncate">
                   {countdownLabel}
                 </span>
                 <span className="text-[10px] text-muted-foreground truncate block mt-0.5">
@@ -711,14 +731,19 @@ export default function TripCommandCenterPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowEditModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
         >
-          <div className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-lg w-full max-h-[90vh] overflow-y-auto overscroll-contain p-6 rounded-2xl border border-muted bg-background shadow-2xl space-y-5 animate-fade-in-up"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <h3 className="font-display text-xl text-foreground font-normal">
                 Edit Expedition Details
               </h3>
               <button
+                type="button"
                 onClick={() => setShowEditModal(false)}
                 className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
               >
@@ -733,7 +758,7 @@ export default function TripCommandCenterPage() {
                   type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-sm text-foreground"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-muted focus:border-accent focus:outline-hidden text-sm text-foreground"
                   required
                 />
               </div>
@@ -744,7 +769,7 @@ export default function TripCommandCenterPage() {
                   type="text"
                   value={editSubtitle}
                   onChange={(e) => setEditSubtitle(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                 />
               </div>
 
@@ -756,30 +781,71 @@ export default function TripCommandCenterPage() {
                   type="text"
                   value={editDestination}
                   onChange={(e) => setEditDestination(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-muted focus:border-accent focus:outline-hidden text-sm text-foreground"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">Start Date</label>
-                  <input
-                    type="date"
-                    value={editStartDate}
-                    onChange={(e) => setEditStartDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
-                  />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2 p-3 rounded-xl bg-surface border border-muted">
+                  <div className="space-y-1">
+                    <label className="text-xs font-sans font-medium text-foreground">Departure Date</label>
+                    <input
+                      type="date"
+                      value={editStartDate}
+                      onChange={(e) => setEditStartDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
+                    />
+                  </div>
+                  <Select
+                    label="Departure Travel Slot"
+                    value={editDepartureSlot}
+                    onChange={(e) => setEditDepartureSlot(e.target.value as DepartureTravelSlot)}
+                  >
+                    <option value="NIGHT">Night Departure (Overnight travel)</option>
+                    <option value="EVENING">Evening Transit</option>
+                    <option value="AFTERNOON">Afternoon Transit</option>
+                    <option value="MORNING">Morning Departure</option>
+                  </Select>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-sans font-medium text-foreground">End Date</label>
-                  <input
-                    type="date"
-                    value={editEndDate}
-                    onChange={(e) => setEditEndDate(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
-                  />
+
+                <div className="space-y-2 p-3 rounded-xl bg-surface border border-muted">
+                  <div className="space-y-1">
+                    <label className="text-xs font-sans font-medium text-foreground">Return Date</label>
+                    <input
+                      type="date"
+                      value={editEndDate}
+                      onChange={(e) => setEditEndDate(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
+                    />
+                  </div>
+                  <Select
+                    label="Return Travel Slot"
+                    value={editReturnSlot}
+                    onChange={(e) => setEditReturnSlot(e.target.value as ReturnTravelSlot)}
+                  >
+                    <option value="MORNING">Morning Return (Leaves morning)</option>
+                    <option value="EARLY_MORNING">Dawn / Early Morning</option>
+                    <option value="AFTERNOON">Afternoon Return</option>
+                    <option value="EVENING">Evening Return</option>
+                    <option value="NIGHT">Night Return</option>
+                  </Select>
                 </div>
+              </div>
+
+              {/* Dynamic Duration Insight Card */}
+              <div className="p-3.5 rounded-xl bg-surface border border-muted space-y-1.5 text-xs">
+                <div className="flex items-center justify-between font-mono">
+                  <span className="text-muted-foreground">
+                    {editDurationBreakdown.calendarDays} Calendar Days
+                  </span>
+                  <span className="text-accent font-semibold px-2 py-0.5 rounded-full bg-accent/10 border border-accent/20">
+                    {editDurationBreakdown.effectiveDays} Active Destination Days
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {editDurationBreakdown.explanation}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -792,7 +858,7 @@ export default function TripCommandCenterPage() {
                     min="0"
                     value={editBudgetTotal}
                     onChange={(e) => setEditBudgetTotal(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs font-mono text-foreground"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
                 <div className="space-y-1">
@@ -801,7 +867,7 @@ export default function TripCommandCenterPage() {
                     type="text"
                     value={editCurrency}
                     onChange={(e) => setEditCurrency(e.target.value.toUpperCase())}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs font-mono text-foreground uppercase"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground uppercase"
                   />
                 </div>
               </div>
@@ -814,7 +880,7 @@ export default function TripCommandCenterPage() {
                   rows={3}
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground resize-none"
                 />
               </div>
 
@@ -822,14 +888,14 @@ export default function TripCommandCenterPage() {
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground"
+                  className="px-4 py-2 rounded-xl border border-muted hover:border-foreground/30 text-xs font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingEdit}
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-semibold text-xs font-sans transition-colors"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-medium text-xs font-sans transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   {isSavingEdit ? "Saving..." : "Save Changes"}
                 </button>
@@ -844,11 +910,15 @@ export default function TripCommandCenterPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowDeleteModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
         >
-          <div className="max-w-sm w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl text-center">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="w-6 h-6 text-rose-500" />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-sm w-full p-6 rounded-2xl border border-muted bg-background shadow-2xl text-center overscroll-contain animate-fade-in-up"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-6 h-6 text-rose-600" />
             </div>
 
             <h3 className="font-display text-xl text-foreground font-normal mb-2">
@@ -860,16 +930,18 @@ export default function TripCommandCenterPage() {
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
-                className="flex-1 py-2.5 px-3 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground transition-colors"
+                className="flex-1 py-2.5 px-3 rounded-xl border border-muted hover:border-foreground/30 text-xs font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleDeleteTrip}
                 disabled={isDeleting}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs font-sans transition-colors flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs font-sans transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-50"
               >
                 {isDeleting ? "Erasing..." : "Delete Forever"}
               </button>

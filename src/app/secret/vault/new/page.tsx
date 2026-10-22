@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -23,9 +23,18 @@ import {
   ChevronRight,
   ShieldCheck,
   AlertCircle,
+  Clock,
 } from "lucide-react";
 import { useTripVault } from "@/lib/vault/useTripVault";
-import { TravelStyle, TripStatus, DestinationStop } from "@/lib/vault/types";
+import {
+  TravelStyle,
+  TripStatus,
+  DestinationStop,
+  DepartureTravelSlot,
+  ReturnTravelSlot,
+} from "@/lib/vault/types";
+import { computeTripDuration } from "@/lib/vault/tripDuration";
+import { Select } from "@/components/ui/Select";
 
 // Curated atmospheric adventure cover presets
 const COVER_PRESETS = [
@@ -134,6 +143,20 @@ export default function NewTripPage() {
   const [stops, setStops] = useState<{ id: string; name: string; stayNights: number }[]>([
     { id: "stop-1", name: "", stayNights: 1 },
   ]);
+  const [departureSlot, setDepartureSlot] = useState<DepartureTravelSlot>("NIGHT");
+  const [returnSlot, setReturnSlot] = useState<ReturnTravelSlot>("MORNING");
+  const [manualEffectiveDays, setManualEffectiveDays] = useState<number | null>(null);
+
+  // Dynamic Duration & Active Exploration Days Engine (REQ-TRP-01)
+  const durationBreakdown = useMemo(() => {
+    return computeTripDuration(
+      startDate,
+      endDate,
+      departureSlot,
+      returnSlot,
+      manualEffectiveDays ?? undefined
+    );
+  }, [startDate, endDate, departureSlot, returnSlot, manualEffectiveDays]);
 
   // Step 3: Budget & Logistics
   const [budgetTotal, setBudgetTotal] = useState<number | "">("");
@@ -142,8 +165,6 @@ export default function NewTripPage() {
   const [companionInput, setCompanionInput] = useState("");
   const [companions, setCompanions] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
-  // Ghost-click and early-submission shield for Step 3
-  const [canSubmitStep3, setCanSubmitStep3] = useState(false);
 
   // Stop handlers
   const handleAddStop = () => {
@@ -212,38 +233,34 @@ export default function NewTripPage() {
       }
     } else if (currentStep === 2) {
       if (validateStep2()) {
-        setCanSubmitStep3(false);
         setCurrentStep(3);
-        // Cool-down to prevent touchscreen ghost clicks from Step 2 Continue button bleeding into Step 3 Submit
-        setTimeout(() => {
-          setCanSubmitStep3(true);
-        }, 400);
       }
     }
   };
 
   const handlePrev = () => {
     setFormError(null);
-    setCanSubmitStep3(false);
     if (currentStep === 3) setCurrentStep(2);
     else if (currentStep === 2) setCurrentStep(1);
   };
 
-  // Final Submission - only allowed when user is explicitly on Step 3 and cooldown passed
+  // Final Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // CRITICAL: NEVER allow submission unless user has navigated to and is reviewing Step 3!
     if (currentStep !== 3) {
       handleNext();
       return;
     }
 
-    if (!canSubmitStep3) {
+    if (!validateStep1()) {
+      setCurrentStep(1);
       return;
     }
-
-    if (!validateStep1() || !validateStep2()) return;
+    if (!validateStep2()) {
+      setCurrentStep(2);
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -278,6 +295,9 @@ export default function NewTripPage() {
         destinations: formattedStops,
         startDate: new Date(startDate).toISOString(),
         endDate: endDate ? new Date(endDate).toISOString() : undefined,
+        departureSlot,
+        returnSlot,
+        effectiveDays: durationBreakdown.effectiveDays,
         status,
         travelStyle,
         coverImage: selectedCover,
@@ -506,32 +526,139 @@ export default function NewTripPage() {
         {/* STEP 2: ROUTE & CALENDAR */}
         {currentStep === 2 && (
           <div className="space-y-6 animate-fade-in">
-            {/* Dates Grid */}
+            {/* Dates Grid with Travel Timing Slots (REQ-TRP-01) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-sans font-medium text-foreground tracking-wide flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Departure Date *</span>
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-muted focus:border-amber-500 focus:outline-hidden text-sm text-foreground transition-colors [color-scheme:dark]"
-                />
+              <div className="p-3.5 rounded-2xl bg-surface border border-muted space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-sans font-medium text-foreground tracking-wide flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-accent" />
+                      <span>Departure Date *</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground">Required</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted focus:border-accent focus:ring-1 focus:ring-accent/20 focus:outline-hidden text-sm text-foreground transition-all"
+                  />
+                </div>
+
+                <Select
+                  label="Departure Travel Time / Slot"
+                  value={departureSlot}
+                  onChange={(e) => setDepartureSlot(e.target.value as DepartureTravelSlot)}
+                  hint="Specify if you travel overnight or depart during the day"
+                >
+                  <option value="NIGHT">Night Departure (Overnight travel • arrives morning)</option>
+                  <option value="EVENING">Evening Transit (Departs late afternoon/evening)</option>
+                  <option value="AFTERNOON">Afternoon Transit (Half-day travel)</option>
+                  <option value="MORNING">Morning Departure (Full first day active)</option>
+                </Select>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-sans font-medium text-foreground tracking-wide flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-accent" />
-                  <span>Return Date (Optional)</span>
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface border border-muted focus:border-amber-500 focus:outline-hidden text-sm text-foreground transition-colors [color-scheme:dark]"
-                />
+              <div className="p-3.5 rounded-2xl bg-surface border border-muted space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-sans font-medium text-foreground tracking-wide flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-accent" />
+                      <span>Return Date (Optional)</span>
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground">End of trip</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted focus:border-accent focus:ring-1 focus:ring-accent/20 focus:outline-hidden text-sm text-foreground transition-all"
+                  />
+                </div>
+
+                <Select
+                  label="Return Travel Time / Slot"
+                  value={returnSlot}
+                  onChange={(e) => setReturnSlot(e.target.value as ReturnTravelSlot)}
+                  hint="Specify if you return in the morning or spend full day"
+                >
+                  <option value="MORNING">Morning Return (Leaves morning • trip wrap-up)</option>
+                  <option value="EARLY_MORNING">Dawn / Early Morning Return (Immediate transit)</option>
+                  <option value="AFTERNOON">Afternoon Return (Half morning available)</option>
+                  <option value="EVENING">Evening Return (Full active day at destination)</option>
+                  <option value="NIGHT">Night Return (Full day + late travel)</option>
+                </Select>
+              </div>
+            </div>
+
+            {/* Dynamic Duration & Destination Active Days Breakdown Card */}
+            <div className="p-4 rounded-2xl bg-surface border border-muted space-y-3 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-muted/80 pb-3">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-accent" />
+                  <span className="font-sans font-semibold text-xs text-foreground uppercase tracking-wider">
+                    Expedition Duration Intelligence
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-background border border-muted text-muted-foreground">
+                    {durationBreakdown.calendarDays} Calendar Days ({durationBreakdown.calendarNights} Nights)
+                  </span>
+                  <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-accent/10 border border-accent/20 text-accent font-semibold">
+                    {durationBreakdown.effectiveDays} Active Destination Days
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {durationBreakdown.explanation}
+              </p>
+
+              {/* Quick Calibration Stepper */}
+              <div className="flex items-center justify-between pt-1 text-xs">
+                <span className="text-[11px] font-sans text-muted-foreground">
+                  Adjust active destination days:
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setManualEffectiveDays(
+                        Math.max(0.5, (manualEffectiveDays ?? durationBreakdown.effectiveDays) - 0.5)
+                      )
+                    }
+                    className="w-7 h-7 rounded-lg bg-background border border-muted hover:border-foreground/30 text-foreground text-xs font-semibold flex items-center justify-center transition-colors"
+                    title="Decrease 0.5 day"
+                  >
+                    -
+                  </button>
+                  <span className="w-14 text-center font-mono font-semibold text-xs text-foreground">
+                    {durationBreakdown.effectiveDays} Days
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setManualEffectiveDays(
+                        Math.min(
+                          durationBreakdown.calendarDays,
+                          (manualEffectiveDays ?? durationBreakdown.effectiveDays) + 0.5
+                        )
+                      )
+                    }
+                    className="w-7 h-7 rounded-lg bg-background border border-muted hover:border-foreground/30 text-foreground text-xs font-semibold flex items-center justify-center transition-colors"
+                    title="Increase 0.5 day"
+                  >
+                    +
+                  </button>
+                  {manualEffectiveDays !== null && (
+                    <button
+                      type="button"
+                      onClick={() => setManualEffectiveDays(null)}
+                      className="ml-2 text-[10px] text-accent hover:underline font-mono"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -614,7 +741,7 @@ export default function NewTripPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2 space-y-1.5">
                 <label className="text-xs font-sans font-medium text-foreground tracking-wide flex items-center gap-1.5">
-                  <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                  <DollarSign className="w-3.5 h-3.5 text-accent" />
                   <span>Target Budget Allocated</span>
                 </label>
                 <div className="relative">
@@ -627,27 +754,22 @@ export default function NewTripPage() {
                       setBudgetTotal(e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))
                     }
                     placeholder="e.g. 35000 (Optional)"
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface border border-muted focus:border-amber-500 focus:outline-hidden text-sm font-mono text-foreground placeholder:text-muted-foreground/50 transition-colors"
+                    className="w-full px-4 py-2.5 rounded-xl bg-surface border border-muted focus:border-accent focus:outline-hidden text-sm font-mono text-foreground placeholder:text-muted-foreground/50 transition-colors"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-sans font-medium text-foreground tracking-wide">
-                  Base Currency
-                </label>
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-surface border border-muted focus:border-amber-500 focus:outline-hidden text-xs font-mono text-foreground transition-colors"
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.code} ({c.symbol})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Select
+                label="Base Currency"
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+              >
+                {CURRENCIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} ({c.symbol})
+                  </option>
+                ))}
+              </Select>
             </div>
 
             {/* Initial Lifecycle Status */}
@@ -667,13 +789,13 @@ export default function NewTripPage() {
                     onClick={() => setStatus(s.id as TripStatus)}
                     className={`p-2.5 rounded-xl border text-left transition-all ${
                       status === s.id
-                        ? "bg-amber-500/10 border-amber-500/50 text-foreground ring-1 ring-amber-500/30"
-                        : "bg-surface border-muted text-muted-foreground hover:text-foreground"
+                        ? "bg-accent/10 border-accent/40 text-foreground ring-1 ring-accent/30 shadow-xs"
+                        : "bg-surface border-muted text-muted-foreground hover:text-foreground hover:bg-surface-hover"
                     }`}
                   >
                     <div className="text-xs font-sans font-semibold text-foreground flex items-center justify-between">
                       <span>{s.label}</span>
-                      {status === s.id && <Check className="w-3.5 h-3.5 text-amber-500" />}
+                      {status === s.id && <Check className="w-3.5 h-3.5 text-accent" />}
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">
                       {s.desc}
@@ -702,12 +824,12 @@ export default function NewTripPage() {
                     }
                   }}
                   placeholder="Companion name (e.g. Vikram)"
-                  className="flex-1 px-4 py-2 rounded-xl bg-surface border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 transition-colors"
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-surface border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={handleAddCompanion}
-                  className="px-3.5 py-2 rounded-xl bg-surface border border-muted hover:border-foreground/30 text-xs font-sans text-foreground transition-colors"
+                  className="px-4 py-2.5 rounded-xl bg-surface border border-muted hover:border-foreground/30 text-xs font-sans font-medium text-foreground transition-colors"
                 >
                   Add
                 </button>
@@ -719,13 +841,13 @@ export default function NewTripPage() {
                   {companions.map((comp) => (
                     <span
                       key={comp}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-background border border-muted text-xs font-sans text-foreground"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-surface border border-muted text-xs font-sans text-foreground"
                     >
                       <span>{comp}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveCompanion(comp)}
-                        className="text-muted-foreground hover:text-rose-400"
+                        className="text-muted-foreground hover:text-rose-500 font-bold ml-1"
                         aria-label={`Remove ${comp}`}
                       >
                         ×
@@ -747,7 +869,7 @@ export default function NewTripPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Permits needed (Inner Line Permit), cold weather gear requirements, high altitude acclimatization guidelines..."
-                className="w-full px-4 py-2.5 rounded-xl bg-surface border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 transition-colors resize-none"
+                className="w-full px-4 py-2.5 rounded-xl bg-surface border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 transition-colors resize-none"
               />
             </div>
           </div>
@@ -761,7 +883,7 @@ export default function NewTripPage() {
               type="button"
               onClick={handlePrev}
               disabled={isSubmitting}
-              className="px-4 py-2.5 rounded-xl border border-muted hover:border-foreground/30 text-xs font-sans text-muted-foreground hover:text-foreground transition-colors"
+              className="px-4 py-2.5 rounded-xl border border-muted hover:border-foreground/30 text-xs font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               Previous Step
             </button>
@@ -784,7 +906,7 @@ export default function NewTripPage() {
                 e.stopPropagation();
                 handleNext();
               }}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-medium text-xs font-sans tracking-wide transition-all active:scale-[0.98]"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-foreground hover:bg-foreground/90 text-background font-medium text-xs font-sans tracking-wide transition-all active:scale-[0.98] shadow-xs cursor-pointer"
             >
               <span>Continue</span>
               <ChevronRight className="w-4 h-4" />
@@ -793,17 +915,17 @@ export default function NewTripPage() {
             <button
               key="btn-submit-step-3"
               type="submit"
-              disabled={isSubmitting || !canSubmitStep3}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 font-semibold text-xs font-sans tracking-wide shadow-[0_0_20px_rgba(245,158,11,0.3)] transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-accent hover:bg-accent/90 text-white font-semibold text-xs font-sans tracking-wide shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isSubmitting ? (
                 <>
-                  <div className="w-3.5 h-3.5 rounded-full border border-neutral-950 border-t-transparent animate-spin" />
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
                   <span>Storing Expedition...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <Sparkles className="w-4 h-4 text-amber-300" />
                   <span>Launch Expedition Vault</span>
                 </>
               )}

@@ -110,21 +110,36 @@ export function useItinerary(tripId: string) {
           }
         }
 
-        const title =
-          i === 1
-            ? `Day 1 - Launch & Departure (${stopName})`
-            : i === totalDays
-            ? `Day ${i} - Final Leg & Return`
-            : `Day ${i} - ${stopName} Exploration`;
+        const isNightDeparture = (trip.departureSlot === "NIGHT" || trip.departureSlot === "OVERNIGHT") && i === 1;
+        const isMorningReturn = (trip.returnSlot === "MORNING" || trip.returnSlot === "EARLY_MORNING") && i === totalDays && totalDays > 1;
+
+        let title = `Day ${i} - ${stopName} Exploration`;
+        let description = `Planned transit & scheduled activities for Day ${i}.`;
+
+        if (isNightDeparture) {
+          title = `Day 1 - Night Travel & Overnight Transit (En Route to ${stopName})`;
+          description = `Overnight travel leg. Rest en route; arrival at destination scheduled for Day 2 morning.`;
+        } else if (isMorningReturn) {
+          title = `Day ${i} - Morning Return Transit & Expedition Wrap-up`;
+          description = `Morning departure from ${stopName} and return transit. Unpack and archive expedition.`;
+        } else if (i === 1) {
+          title = `Day 1 - Launch & Departure (${stopName})`;
+          description = `Departure & transit to ${stopName}. Check-in and settle in.`;
+        } else if (i === totalDays) {
+          title = `Day ${i} - Final Leg & Return`;
+          description = `Final exploration day, packing, and return journey.`;
+        }
+
+        const intensity = isNightDeparture || isMorningReturn || i === 1 || i === totalDays ? "CHALLENGING" : "MODERATE";
 
         const newDay: ItineraryDayRecord = {
-          id: `itn-${trip.id}-d${i}-${Math.random().toString(36).slice(2, 6)}`,
+          id: `day_${trip.id}_${i}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           tripId: trip.id,
           dayIndex: i,
-          date: dayDate.toISOString(),
+          date: dayDate.toISOString().split("T")[0],
           title,
-          description: `Planned transit & scheduled activities for Day ${i}.`,
-          intensity: i === 1 || i === totalDays ? "CHALLENGING" : "MODERATE",
+          description,
+          intensity,
           activities: [],
           createdAt: now,
           updatedAt: now,

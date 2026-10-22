@@ -23,6 +23,7 @@ import {
 import { useReminders } from "@/lib/vault/useReminders";
 import { ReminderRecord, BookingRecord, VehicleRentalRecord } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 
 export default function RemindersPage() {
   const params = useParams();
@@ -58,6 +59,9 @@ export default function RemindersPage() {
   const [formTitle, setFormTitle] = useState("");
   const [formBody, setFormBody] = useState("");
   const [formTriggerTime, setFormTriggerTime] = useState("");
+
+  // Lock body scroll when modals are open
+  useLockBodyScroll(showAddModal || !!reminderToDelete);
 
   const handleLockVault = () => {
     revokeSecretAccess();
@@ -183,38 +187,41 @@ export default function RemindersPage() {
               <span>{trip?.title || "Expedition"}</span>
             </Link>
             <span>/</span>
-            <span className="text-yellow-400">Pillar 11</span>
+            <span className="text-accent font-medium">Local Alarms & Reminders</span>
           </div>
           <h1 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
             Alarms & Departure Reminders
           </h1>
           <p className="font-body text-xs text-muted-foreground mt-0.5">
-            Android native local notifications for departures, hotel check-ins, and bike return deadlines.
+            Local hardware alarms for departures, hotel check-ins, and bike return deadlines.
           </p>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <button
+            type="button"
             onClick={handleTestNotification}
             disabled={testTriggered}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-background border border-yellow-500/30 hover:border-yellow-400 text-xs font-sans text-yellow-300 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-surface border border-muted hover:border-foreground/30 text-xs font-sans text-foreground transition-all disabled:opacity-50 cursor-pointer shadow-xs active:scale-[0.98]"
             title="Test a 5-second notification"
           >
-            <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
-            <span>{testTriggered ? "Firing in 5s..." : "Test Alarm (5s)"}</span>
+            <Sparkles className="w-3.5 h-3.5 text-accent" />
+            <span>{testTriggered ? "Firing Alarm in 5s..." : "Test Local Alarm (5s)"}</span>
           </button>
 
           <button
+            type="button"
             onClick={handleOpenAddModal}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-xs transition-colors shadow-xs"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-accent hover:bg-accent/90 text-white font-medium text-xs font-sans transition-all shadow-xs cursor-pointer active:scale-[0.98]"
           >
             <Plus className="w-4 h-4" />
             <span>Add Reminder</span>
           </button>
 
           <button
+            type="button"
             onClick={handleLockVault}
-            className="p-2 rounded-xl bg-background border border-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="p-2 rounded-xl bg-surface border border-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title="Lock Vault"
           >
             <Lock className="w-3.5 h-3.5" />
@@ -223,31 +230,53 @@ export default function RemindersPage() {
       </div>
 
       {actionSuccessMsg && (
-        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono flex items-center gap-2">
-          <Check className="w-4 h-4 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono flex items-center gap-2 shadow-xs animate-fade-in">
+          <Check className="w-4 h-4 shrink-0 text-emerald-600" />
           <span>{actionSuccessMsg}</span>
         </div>
       )}
 
       {error && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 font-mono">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
+        <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-mono shadow-xs animate-fade-in">
+          <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* 2. ANDROID NOTIFICATION PERMISSION STATUS (REQ-NOT-01) */}
+      {/* 2. 100% OFFLINE ASSURANCE BANNER (Directly answers user issue 5) */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-muted shadow-soft">
+        <div className="flex items-start gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent shrink-0 mt-0.5">
+            <BellRing className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-sans font-semibold text-sm text-foreground">
+                100% Offline Android System Alarms
+              </h3>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+                No Internet or Cellular Signal Required
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
+              Alarms are registered directly inside Android’s native <span className="font-mono text-[11px] text-foreground font-semibold">AlarmManager</span> and <span className="font-mono text-[11px] text-foreground font-semibold">NotificationManager</span>. They will reliably ring, vibrate, and alert you on schedule even when your phone is in complete Airplane Mode with zero network reception.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. ANDROID NOTIFICATION PERMISSION STATUS (REQ-NOT-01) */}
       <div className={`p-4 sm:p-5 rounded-2xl border transition-all ${
         permissionGranted
-          ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-          : "bg-amber-500/10 border-amber-500/30 text-amber-300"
+          ? "bg-emerald-50/60 border-emerald-200 text-emerald-900"
+          : "bg-amber-50/60 border-amber-200 text-amber-900"
       }`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className={`p-2 rounded-xl border shrink-0 ${
               permissionGranted
-                ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-400"
-                : "bg-amber-500/20 border-amber-500/30 text-amber-400"
+                ? "bg-emerald-100 border-emerald-300 text-emerald-700"
+                : "bg-amber-100 border-amber-300 text-amber-700"
             }`}>
               <BellRing className="w-5 h-5" />
             </div>
@@ -259,16 +288,17 @@ export default function RemindersPage() {
               </h3>
               <p className="text-[11px] opacity-80 mt-0.5 max-w-xl">
                 {permissionGranted
-                  ? "Time-critical alerts will ring and vibrate even when your screen is locked, offline, or the app is closed."
-                  : "Enable notification permissions so Android rings heads-up alarm banners before your train departs or bike rental expires."}
+                  ? "Time-critical alerts will ring and vibrate even when your screen is locked or the app is closed."
+                  : "Grant permission so Android can trigger alarm banners before your train departs or rental return expires."}
               </p>
             </div>
           </div>
 
           {!permissionGranted && (
             <button
+              type="button"
               onClick={askPermission}
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition-colors shrink-0 shadow-xs"
+              className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-medium text-xs font-sans transition-colors shrink-0 shadow-xs cursor-pointer"
             >
               Grant Notification Access
             </button>
@@ -276,7 +306,7 @@ export default function RemindersPage() {
         </div>
       </div>
 
-      {/* 3. AUTOMATED EXPEDITION ALARM SCHEDULERS (REQ-NOT-02, REQ-NOT-03) */}
+      {/* 4. AUTOMATED EXPEDITION ALARM SCHEDULERS (REQ-NOT-02, REQ-NOT-03) */}
       <div className="space-y-4">
         <h2 className="font-display text-lg text-foreground font-normal">
           1-Tap Automated Expedition Alarms
@@ -585,11 +615,17 @@ export default function RemindersPage() {
 
       {/* MODAL: ADD CUSTOM REMINDER */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-3xl bg-surface border border-muted p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div
+          onClick={() => setShowAddModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg rounded-3xl bg-surface border border-muted p-6 space-y-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-400">
+                <div className="p-2 rounded-xl bg-accent/10 border border-accent/20 text-accent">
                   <Bell className="w-5 h-5" />
                 </div>
                 <h3 className="font-display text-xl text-foreground font-normal">
@@ -597,8 +633,9 @@ export default function RemindersPage() {
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-surface transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -615,7 +652,7 @@ export default function RemindersPage() {
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder="e.g. Check Engine Oil, Take Diamox Tab, Pick Up Permits"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-sm font-sans text-foreground focus:outline-hidden focus:border-yellow-500/50"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-sm font-sans text-foreground focus:outline-hidden focus:border-accent"
                 />
               </div>
 
@@ -628,7 +665,7 @@ export default function RemindersPage() {
                   required
                   value={formTriggerTime}
                   onChange={(e) => setFormTriggerTime(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-xs font-mono text-foreground focus:outline-hidden focus:border-yellow-500/50"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-muted text-xs font-mono text-foreground focus:outline-hidden focus:border-accent"
                 />
               </div>
 
@@ -641,7 +678,7 @@ export default function RemindersPage() {
                   value={formBody}
                   onChange={(e) => setFormBody(e.target.value)}
                   placeholder="e.g. Verify tire pressure at HP petrol pump before entering Zoji La pass."
-                  className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden resize-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-background border border-muted text-xs font-sans text-foreground focus:outline-hidden focus:border-accent resize-none"
                 />
               </div>
 
@@ -649,14 +686,14 @@ export default function RemindersPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground transition-colors"
+                  className="px-4 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting || !formTitle.trim() || !formTriggerTime}
-                  className="px-5 py-2 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-xs transition-colors disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-medium text-xs transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
                 >
                   {isSubmitting ? "Scheduling..." : "Arm Alarm"}
                 </button>
@@ -668,9 +705,15 @@ export default function RemindersPage() {
 
       {/* MODAL: DELETE CONFIRMATION */}
       {reminderToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-3xl bg-surface border border-muted p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-2 text-rose-400">
+        <div
+          onClick={() => setReminderToDelete(null)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overscroll-contain"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-3xl bg-surface border border-muted p-5 space-y-4 shadow-2xl"
+          >
+            <div className="flex items-center gap-2 text-rose-500">
               <Trash2 className="w-5 h-5" />
               <h3 className="font-display text-lg text-foreground font-normal">
                 Cancel Alarm?
@@ -681,18 +724,20 @@ export default function RemindersPage() {
             </p>
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-muted">
               <button
+                type="button"
                 onClick={() => setReminderToDelete(null)}
-                className="px-3 py-1.5 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground"
+                className="px-3 py-1.5 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 Keep Alarm
               </button>
               <button
+                type="button"
                 onClick={async () => {
                   await removeReminder(reminderToDelete.id);
                   setReminderToDelete(null);
                   showSuccess("Alarm disarmed and cancelled.");
                 }}
-                className="px-4 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-semibold text-xs transition-colors"
+                className="px-4 py-1.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-medium text-xs transition-colors cursor-pointer"
               >
                 Disarm Alarm
               </button>

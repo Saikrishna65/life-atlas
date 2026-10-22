@@ -34,6 +34,8 @@ import {
   DepositRefundStatus,
 } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
+import { Select } from "@/components/ui/Select";
 
 const COMMON_GEAR_OPTIONS = [
   "Helmet x1",
@@ -75,6 +77,9 @@ export default function TripRentalsPage() {
   const [odometerRental, setOdometerRental] = useState<VehicleRentalRecord | null>(null);
   const [odometerValue, setOdometerValue] = useState<number>(0);
   const [lightboxPhoto, setLightboxPhoto] = useState<string | null>(null);
+
+  // Lock body scroll when any modal or lightbox is active
+  useLockBodyScroll(showAddModal || !!odometerRental || !!lightboxPhoto);
 
   // Form State
   const [formVehicleType, setFormVehicleType] = useState<VehicleType>("MOTORCYCLE");
@@ -838,19 +843,24 @@ export default function TripRentalsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowAddModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <Bike className="w-5 h-5 text-emerald-400" />
+                <Bike className="w-5 h-5 text-accent" />
                 <h3 className="font-display text-xl text-foreground font-normal">
                   {editingRental ? "Edit Rental Record" : "Add Vehicle Rental"}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -861,10 +871,9 @@ export default function TripRentalsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-sans font-medium text-foreground">Vehicle Type *</label>
-                  <select
+                  <Select
                     value={formVehicleType}
                     onChange={(e) => setFormVehicleType(e.target.value as VehicleType)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
                   >
                     <option value="MOTORCYCLE">Motorcycle</option>
                     <option value="SCOOTER">Scooter</option>
@@ -872,7 +881,7 @@ export default function TripRentalsPage() {
                     <option value="SUV">SUV 4x4</option>
                     <option value="BICYCLE">Bicycle</option>
                     <option value="OTHER">Other</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1">
@@ -882,7 +891,7 @@ export default function TripRentalsPage() {
                     value={formVehicleModel}
                     onChange={(e) => setFormVehicleModel(e.target.value)}
                     placeholder="e.g. Royal Enfield Himalayan 450"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                     required
                   />
                 </div>
@@ -897,7 +906,7 @@ export default function TripRentalsPage() {
                     value={formRegNumber}
                     onChange={(e) => setFormRegNumber(e.target.value)}
                     placeholder="e.g. HP-01-AB-1234"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs font-mono uppercase text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono uppercase text-foreground placeholder:text-muted-foreground/50"
                     required
                   />
                 </div>
@@ -909,7 +918,7 @@ export default function TripRentalsPage() {
                     value={formVendorPhone}
                     onChange={(e) => setFormVendorPhone(e.target.value)}
                     placeholder="e.g. +91 98765 43210"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
                   />
                 </div>
               </div>
@@ -922,7 +931,7 @@ export default function TripRentalsPage() {
                   value={formVendorName}
                   onChange={(e) => setFormVendorName(e.target.value)}
                   placeholder="e.g. Himalayan Adventure Moto Hire"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                 />
               </div>
 
@@ -935,7 +944,7 @@ export default function TripRentalsPage() {
                     value={formPickupLocation}
                     onChange={(e) => setFormPickupLocation(e.target.value)}
                     placeholder="e.g. Manali Mall Road Workshop"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                   />
                 </div>
 
@@ -945,7 +954,7 @@ export default function TripRentalsPage() {
                     type="datetime-local"
                     value={formPickupTime}
                     onChange={(e) => setFormPickupTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
               </div>
@@ -959,7 +968,7 @@ export default function TripRentalsPage() {
                     value={formDropoffLocation}
                     onChange={(e) => setFormDropoffLocation(e.target.value)}
                     placeholder="e.g. Leh Main Market Drop"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                   />
                 </div>
 
@@ -969,7 +978,7 @@ export default function TripRentalsPage() {
                     type="datetime-local"
                     value={formDropoffTime}
                     onChange={(e) => setFormDropoffTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
               </div>
@@ -982,7 +991,7 @@ export default function TripRentalsPage() {
                     type="number"
                     value={formStartOdo}
                     onChange={(e) => setFormStartOdo(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs font-mono text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
 
@@ -993,7 +1002,7 @@ export default function TripRentalsPage() {
                     value={formEndOdo}
                     onChange={(e) => setFormEndOdo(e.target.value)}
                     placeholder="Leave blank until return"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
                   />
                 </div>
               </div>
@@ -1006,7 +1015,7 @@ export default function TripRentalsPage() {
                     type="number"
                     value={formDailyRate}
                     onChange={(e) => setFormDailyRate(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs font-mono text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
 
@@ -1016,7 +1025,7 @@ export default function TripRentalsPage() {
                     type="number"
                     value={formDeposit}
                     onChange={(e) => setFormDeposit(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs font-mono text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
               </div>
@@ -1025,30 +1034,28 @@ export default function TripRentalsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-sans font-medium text-foreground">Deposit Payment Mode</label>
-                  <select
+                  <Select
                     value={formPaymentMode}
                     onChange={(e) => setFormPaymentMode(e.target.value as PaymentMode)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
                   >
                     <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
                     <option value="CASH">Cash</option>
                     <option value="CARD">Credit / Debit Card</option>
                     <option value="NET_BANKING">Net Banking</option>
                     <option value="OTHER">Other</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-sans font-medium text-foreground">Deposit Refund Status</label>
-                  <select
+                  <Select
                     value={formDepositStatus}
                     onChange={(e) => setFormDepositStatus(e.target.value as DepositRefundStatus)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
                   >
                     <option value="PENDING">Pending Refund on Return</option>
                     <option value="REFUNDED">Refunded & Settled</option>
                     <option value="DEDUCTED">Deductions Applied</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -1063,10 +1070,10 @@ export default function TripRentalsPage() {
                         key={gear}
                         type="button"
                         onClick={() => toggleGear(gear)}
-                        className={`px-3 py-1 rounded-xl border text-xs font-sans transition-colors ${
+                        className={`px-3 py-1 rounded-xl border text-xs font-sans transition-colors cursor-pointer ${
                           active
-                            ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-medium"
-                            : "bg-background border-muted text-muted-foreground"
+                            ? "bg-accent/10 border-accent text-accent font-semibold"
+                            : "bg-background border-muted text-muted-foreground hover:border-foreground/30"
                         }`}
                       >
                         {gear}
@@ -1084,7 +1091,7 @@ export default function TripRentalsPage() {
                   onChange={(e) => setFormConditionNotes(e.target.value)}
                   rows={2}
                   placeholder="e.g. Scratches on left tank protector, slight dent on rear rim."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-emerald-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
                 />
               </div>
 
@@ -1092,14 +1099,14 @@ export default function TripRentalsPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl border border-muted hover:bg-surface-hover text-xs font-sans text-muted-foreground"
+                  className="px-4 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-black font-semibold text-xs font-sans transition-all"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium text-xs font-sans transition-all cursor-pointer shadow-xs"
                 >
                   {isSubmitting ? "Saving..." : editingRental ? "Update Record" : "Save Rental"}
                 </button>
@@ -1114,19 +1121,24 @@ export default function TripRentalsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setOdometerRental(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <Gauge className="w-5 h-5 text-cyan-400" />
+                <Gauge className="w-5 h-5 text-accent" />
                 <h3 className="font-display text-lg text-foreground font-normal">
                   Log End Km: {odometerRental.vehicleModel}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setOdometerRental(null)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1141,7 +1153,7 @@ export default function TripRentalsPage() {
                   </span>
                 </div>
                 {odometerValue >= odometerRental.startOdometerKm && (
-                  <div className="flex justify-between text-cyan-400 font-semibold pt-1 border-t border-muted/50">
+                  <div className="flex justify-between text-accent font-semibold pt-1 border-t border-muted/50">
                     <span>Computed Distance:</span>
                     <span className="font-mono">
                       +{(odometerValue - odometerRental.startOdometerKm).toLocaleString()} km
@@ -1158,7 +1170,7 @@ export default function TripRentalsPage() {
                   type="number"
                   value={odometerValue}
                   onChange={(e) => setOdometerValue(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-sm font-mono text-foreground"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-sm font-mono text-foreground"
                   autoFocus
                 />
               </div>
@@ -1167,14 +1179,14 @@ export default function TripRentalsPage() {
                 <button
                   type="button"
                   onClick={() => setOdometerRental(null)}
-                  className="px-4 py-2 rounded-xl border border-muted hover:bg-surface-hover text-xs font-sans text-muted-foreground"
+                  className="px-4 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveOdometer}
-                  className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-black font-semibold text-xs font-sans transition-all"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-medium text-xs font-sans transition-all cursor-pointer shadow-xs"
                 >
                   Save Odometer
                 </button>
@@ -1189,7 +1201,7 @@ export default function TripRentalsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fade-in overscroll-contain"
           onClick={() => setLightboxPhoto(null)}
         >
           <div
@@ -1197,8 +1209,9 @@ export default function TripRentalsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <button
+              type="button"
               onClick={() => setLightboxPhoto(null)}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-black/90 transition-colors"
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-black/90 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>

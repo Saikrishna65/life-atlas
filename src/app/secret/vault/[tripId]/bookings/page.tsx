@@ -43,6 +43,8 @@ import {
   DocumentAttachmentRecord,
 } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
+import { Select } from "@/components/ui/Select";
 
 type TabFilter = "ALL" | "TRANSPORT" | "ACCOMMODATION";
 
@@ -71,6 +73,9 @@ export default function TripBookingsPage() {
   const [editingBooking, setEditingBooking] = useState<BookingRecord | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<BookingRecord | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Lock body scroll when modal or delete dialog is open
+  useLockBodyScroll(showModal || !!deleteCandidate);
 
   // Form state
   const [category, setCategory] = useState<BookingCategory>("TRANSPORT");
@@ -760,16 +765,21 @@ export default function TripBookingsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <h3 className="font-display text-xl text-foreground font-normal">
                 {editingBooking ? "Edit Booking Voucher" : "Add Booking Voucher"}
               </h3>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -781,10 +791,10 @@ export default function TripBookingsPage() {
                 <button
                   type="button"
                   onClick={() => setCategory("TRANSPORT")}
-                  className={`py-2 px-3 rounded-xl border text-xs font-sans font-semibold transition-all ${
+                  className={`py-2 px-3 rounded-xl border text-xs font-sans font-semibold transition-all cursor-pointer ${
                     category === "TRANSPORT"
-                      ? "bg-cyan-500/15 border-cyan-500/50 text-cyan-400 shadow-xs"
-                      : "bg-background border-muted text-muted-foreground"
+                      ? "bg-accent/10 border-accent text-accent shadow-xs"
+                      : "bg-background border-muted text-muted-foreground hover:border-foreground/30"
                   }`}
                 >
                   Transport & Tickets
@@ -792,10 +802,10 @@ export default function TripBookingsPage() {
                 <button
                   type="button"
                   onClick={() => setCategory("ACCOMMODATION")}
-                  className={`py-2 px-3 rounded-xl border text-xs font-sans font-semibold transition-all ${
+                  className={`py-2 px-3 rounded-xl border text-xs font-sans font-semibold transition-all cursor-pointer ${
                     category === "ACCOMMODATION"
-                      ? "bg-purple-500/15 border-purple-500/50 text-purple-400 shadow-xs"
-                      : "bg-background border-muted text-muted-foreground"
+                      ? "bg-accent/10 border-accent text-accent shadow-xs"
+                      : "bg-background border-muted text-muted-foreground hover:border-foreground/30"
                   }`}
                 >
                   Stay & Accommodation
@@ -806,10 +816,9 @@ export default function TripBookingsPage() {
               <div className="space-y-1">
                 <label className="text-xs font-sans font-medium text-foreground">Booking Type</label>
                 {category === "TRANSPORT" ? (
-                  <select
+                  <Select
                     value={transportType}
                     onChange={(e) => setTransportType(e.target.value as TransportType)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs text-foreground"
                   >
                     <option value="TRAIN">Train (IRCTC)</option>
                     <option value="FLIGHT">Flight</option>
@@ -817,12 +826,11 @@ export default function TripBookingsPage() {
                     <option value="CAB">Taxi / Private Cab</option>
                     <option value="SELF_DRIVE">Self-Drive Rental</option>
                     <option value="FERRY">Ferry / Boat</option>
-                  </select>
+                  </Select>
                 ) : (
-                  <select
+                  <Select
                     value={accommodationType}
                     onChange={(e) => setAccommodationType(e.target.value as AccommodationType)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-purple-500 focus:outline-hidden text-xs text-foreground"
                   >
                     <option value="HOTEL">Hotel</option>
                     <option value="HOMESTAY">Homestay</option>
@@ -830,7 +838,7 @@ export default function TripBookingsPage() {
                     <option value="CAMP">Alpine Camp / Tent</option>
                     <option value="RESORT">Resort</option>
                     <option value="OTHER">Other Stay</option>
-                  </select>
+                  </Select>
                 )}
               </div>
 
@@ -849,7 +857,7 @@ export default function TripBookingsPage() {
                         ? "e.g. New Delhi to Kalka Shatabdi"
                         : "e.g. Zostel Manali Riverside"
                     }
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                     required
                   />
                 </div>
@@ -865,7 +873,7 @@ export default function TripBookingsPage() {
                     placeholder={
                       category === "TRANSPORT" ? "e.g. IRCTC Train 12011" : "e.g. Zostel Hospitality"
                     }
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                   />
                 </div>
               </div>
@@ -881,7 +889,7 @@ export default function TripBookingsPage() {
                     value={pnrNumber}
                     onChange={(e) => setPnrNumber(e.target.value.toUpperCase())}
                     placeholder="e.g. 2849182390"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs font-mono uppercase text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono uppercase text-foreground"
                   />
                 </div>
 
@@ -898,7 +906,7 @@ export default function TripBookingsPage() {
                         ? "e.g. Coach B3, Berth 42 (Side Lower)"
                         : "e.g. Deluxe Room 204"
                     }
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                   />
                 </div>
               </div>
@@ -913,7 +921,7 @@ export default function TripBookingsPage() {
                     type="datetime-local"
                     value={departureOrCheckInTime}
                     onChange={(e) => setDepartureOrCheckInTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs font-mono text-foreground [color-scheme:dark]"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
 
@@ -925,7 +933,7 @@ export default function TripBookingsPage() {
                     type="datetime-local"
                     value={arrivalOrCheckOutTime}
                     onChange={(e) => setArrivalOrCheckOutTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs font-mono text-foreground [color-scheme:dark]"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
               </div>
@@ -945,7 +953,7 @@ export default function TripBookingsPage() {
                         ? "e.g. New Delhi Railway Station (NDLS)"
                         : "e.g. Old Manali Road, Himachal Pradesh"
                     }
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                   />
                 </div>
 
@@ -959,7 +967,7 @@ export default function TripBookingsPage() {
                       value={arrivalAddress}
                       onChange={(e) => setArrivalAddress(e.target.value)}
                       placeholder="e.g. Kalka (KLK)"
-                      className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs text-foreground"
+                      className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                     />
                   </div>
                 ) : (
@@ -972,7 +980,7 @@ export default function TripBookingsPage() {
                       value={contactPhone}
                       onChange={(e) => setContactPhone(e.target.value)}
                       placeholder="+91 98160 12345"
-                      className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs font-mono text-foreground"
+                      className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                     />
                   </div>
                 )}
@@ -1003,13 +1011,13 @@ export default function TripBookingsPage() {
                       min="0"
                       value={depositPaid}
                       onChange={(e) => setDepositPaid(parseFloat(e.target.value) || 0)}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-surface border border-muted text-xs font-mono text-emerald-400"
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-surface border border-muted text-xs font-mono text-emerald-700 font-semibold"
                     />
                   </div>
 
                   <div className="space-y-1">
                     <label className="text-[11px] font-sans text-muted-foreground">Balance Due</label>
-                    <div className="px-2.5 py-1.5 rounded-lg bg-surface border border-muted text-xs font-mono font-semibold text-amber-400">
+                    <div className="px-2.5 py-1.5 rounded-lg bg-surface border border-muted text-xs font-mono font-semibold text-amber-800">
                       {Math.max(0, (Number(totalCost) || 0) - (Number(depositPaid) || 0)).toLocaleString()}
                     </div>
                   </div>
@@ -1028,10 +1036,10 @@ export default function TripBookingsPage() {
                         type="button"
                         key={st}
                         onClick={() => setStatus(st)}
-                        className={`py-1.5 px-2 rounded-lg border text-[10px] font-mono uppercase transition-all ${
+                        className={`py-1.5 px-2 rounded-lg border text-[10px] font-mono uppercase transition-all cursor-pointer ${
                           status === st
-                            ? "bg-cyan-500/15 border-cyan-500/50 text-cyan-400 font-semibold"
-                            : "bg-background border-muted text-muted-foreground"
+                            ? "bg-accent/10 border-accent text-accent font-semibold"
+                            : "bg-background border-muted text-muted-foreground hover:border-foreground/30"
                         }`}
                       >
                         {st}
@@ -1051,7 +1059,7 @@ export default function TripBookingsPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="e.g. Free breakfast included. Early check-in requested."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-cyan-500 focus:outline-hidden text-xs text-foreground resize-none"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground resize-none"
                 />
               </div>
 
@@ -1059,14 +1067,14 @@ export default function TripBookingsPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground"
+                  className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-neutral-950 font-semibold text-xs font-sans transition-colors"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-medium text-xs font-sans transition-colors cursor-pointer shadow-xs"
                 >
                   {isSubmitting ? "Saving..." : editingBooking ? "Update Voucher" : "Save Voucher"}
                 </button>
@@ -1081,11 +1089,15 @@ export default function TripBookingsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setDeleteCandidate(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-sm w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto">
-              <AlertCircle className="w-6 h-6 text-rose-500" />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-sm w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl text-center space-y-4"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6 text-rose-600" />
             </div>
 
             <h3 className="font-display text-lg text-foreground font-normal">
@@ -1097,14 +1109,16 @@ export default function TripBookingsPage() {
 
             <div className="flex items-center gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => setDeleteCandidate(null)}
-                className="flex-1 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground"
+                className="flex-1 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleConfirmDelete}
-                className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs font-sans"
+                className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs font-sans cursor-pointer"
               >
                 Delete Voucher
               </button>

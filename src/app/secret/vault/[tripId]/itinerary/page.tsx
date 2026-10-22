@@ -40,12 +40,13 @@ import {
   TravelStyle,
 } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 
 const TIME_SLOTS: { id: ActivityTimeSlot; label: string; icon: React.ReactNode; defaultTime: string }[] = [
-  { id: "MORNING", label: "Morning", icon: <Sun className="w-4 h-4 text-amber-400" />, defaultTime: "08:00" },
-  { id: "AFTERNOON", label: "Afternoon", icon: <CloudSun className="w-4 h-4 text-orange-400" />, defaultTime: "13:00" },
-  { id: "EVENING", label: "Evening", icon: <Coffee className="w-4 h-4 text-rose-400" />, defaultTime: "17:30" },
-  { id: "NIGHT", label: "Night", icon: <Moon className="w-4 h-4 text-indigo-400" />, defaultTime: "20:30" },
+  { id: "MORNING", label: "Morning", icon: <Sun className="w-4 h-4 text-amber-600" />, defaultTime: "08:00" },
+  { id: "AFTERNOON", label: "Afternoon", icon: <CloudSun className="w-4 h-4 text-orange-600" />, defaultTime: "13:00" },
+  { id: "EVENING", label: "Evening", icon: <Coffee className="w-4 h-4 text-rose-600" />, defaultTime: "17:30" },
+  { id: "NIGHT", label: "Night", icon: <Moon className="w-4 h-4 text-indigo-600" />, defaultTime: "20:30" },
 ];
 
 export default function TripItineraryPage() {
@@ -97,6 +98,9 @@ export default function TripItineraryPage() {
 
   // Auto-generation spinner
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Lock body scroll when modals are open
+  useLockBodyScroll(showAddActivityModal || showEditDayModal);
 
   // Load trip record
   useEffect(() => {
@@ -308,17 +312,17 @@ export default function TripItineraryPage() {
         </Link>
 
         <div className="flex items-center gap-2.5">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[11px] font-mono tracking-wider text-amber-400 font-semibold uppercase">
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-[11px] font-mono tracking-wider text-amber-800 font-semibold uppercase">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
             <span>Itinerary & Route</span>
           </div>
 
           <button
             onClick={handleLockVault}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             title="Lock Private Atlas"
           >
-            <Lock className="w-3 h-3 text-amber-500" />
+            <Lock className="w-3 h-3 text-amber-600" />
             <span>Lock</span>
           </button>
         </div>
@@ -329,8 +333,8 @@ export default function TripItineraryPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-semibold">
-                Pillar 02 • Master Itinerary
+              <span className="text-[10px] font-mono uppercase tracking-widest text-amber-800 font-semibold">
+                Itinerary • Schedule
               </span>
               <span className="text-muted-foreground/40">•</span>
               <span className="inline-flex items-center gap-1 text-[11px] font-sans text-muted-foreground">
@@ -342,7 +346,7 @@ export default function TripItineraryPage() {
               {trip.title}
             </h1>
             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-              <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
               <span>{trip.destination}</span>
               <span>•</span>
               <Calendar className="w-3.5 h-3.5 text-accent shrink-0" />
@@ -358,10 +362,10 @@ export default function TripItineraryPage() {
           <div className="flex items-center gap-2.5 shrink-0">
             <Link
               href={`/secret/vault/${trip.id}/assistant`}
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-purple-500/10 border border-purple-500/30 hover:border-purple-400 text-purple-300 font-medium text-xs font-sans tracking-wide transition-colors shadow-soft"
+              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-purple-50 border border-purple-200 hover:border-purple-300 text-purple-900 font-medium text-xs font-sans tracking-wide transition-colors shadow-xs"
               title="Generate full day-by-day itinerary with AI"
             >
-              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
               <span>AI Architect</span>
             </Link>
 
@@ -372,7 +376,7 @@ export default function TripItineraryPage() {
                   Expedition Progress
                 </span>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-sm font-semibold font-mono text-amber-400">
+                  <span className="text-sm font-semibold font-mono text-accent">
                     {stats.tripPercentage}%
                   </span>
                   <span className="text-[11px] text-muted-foreground">
@@ -749,13 +753,13 @@ export default function TripItineraryPage() {
                                             e.target.value as ActivityStatus
                                           )
                                         }
-                                        className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border cursor-pointer focus:outline-hidden ${
+                                        className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border cursor-pointer focus:outline-hidden transition-colors ${
                                           isCompleted
-                                            ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                                             : isInProgress
-                                            ? "bg-amber-500/20 border-amber-500/40 text-amber-400 font-semibold"
+                                            ? "bg-amber-50 border-amber-200 text-amber-800 font-semibold"
                                             : isSkipped
-                                            ? "bg-muted border-muted text-muted-foreground"
+                                            ? "bg-surface border-muted text-muted-foreground"
                                             : "bg-surface border-muted text-foreground"
                                         }`}
                                       >
@@ -837,16 +841,21 @@ export default function TripItineraryPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowAddActivityModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-4">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <h3 className="font-display text-lg text-foreground font-normal">
                 {editingActivity ? "Edit Activity" : "Schedule New Activity"}
               </h3>
               <button
+                type="button"
                 onClick={() => setShowAddActivityModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -862,10 +871,10 @@ export default function TripItineraryPage() {
                       type="button"
                       key={s.id}
                       onClick={() => setActSlot(s.id)}
-                      className={`py-2 px-1.5 rounded-xl border text-center transition-all ${
+                      className={`py-2 px-1.5 rounded-xl border text-center transition-all cursor-pointer ${
                         actSlot === s.id
-                          ? "bg-amber-500/15 border-amber-500/50 text-amber-400 font-semibold"
-                          : "bg-background border-muted text-muted-foreground"
+                          ? "bg-accent/10 border-accent text-accent font-semibold"
+                          : "bg-background border-muted text-muted-foreground hover:border-foreground/30"
                       }`}
                     >
                       <div className="flex justify-center mb-1">{s.icon}</div>
@@ -885,7 +894,7 @@ export default function TripItineraryPage() {
                   value={actTitle}
                   onChange={(e) => setActTitle(e.target.value)}
                   placeholder="e.g. Ascent across Baralacha La Pass"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                   required
                   autoFocus
                 />
@@ -899,7 +908,7 @@ export default function TripItineraryPage() {
                     type="time"
                     value={actStartTime}
                     onChange={(e) => setActStartTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs font-mono text-foreground [color-scheme:dark]"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
                 <div className="space-y-1">
@@ -908,7 +917,7 @@ export default function TripItineraryPage() {
                     type="time"
                     value={actEndTime}
                     onChange={(e) => setActEndTime(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs font-mono text-foreground [color-scheme:dark]"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
               </div>
@@ -922,7 +931,7 @@ export default function TripItineraryPage() {
                     value={actLocation}
                     onChange={(e) => setActLocation(e.target.value)}
                     placeholder="e.g. Baralacha La (4,890m)"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                   />
                 </div>
                 <div className="space-y-1">
@@ -935,7 +944,7 @@ export default function TripItineraryPage() {
                     value={actCost}
                     onChange={(e) => setActCost(parseFloat(e.target.value) || 0)}
                     placeholder="0"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs font-mono text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
               </div>
@@ -948,7 +957,7 @@ export default function TripItineraryPage() {
                   value={actNotes}
                   onChange={(e) => setActNotes(e.target.value)}
                   placeholder="e.g. Check road condition before crossing. Bring oxygen canister."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground resize-none"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground resize-none"
                 />
               </div>
 
@@ -956,14 +965,14 @@ export default function TripItineraryPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddActivityModal(false)}
-                  className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground"
+                  className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingActivity}
-                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-semibold text-xs font-sans transition-colors"
+                  className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-medium text-xs font-sans transition-colors cursor-pointer shadow-xs"
                 >
                   {isSubmittingActivity ? "Saving..." : editingActivity ? "Update" : "Schedule"}
                 </button>
@@ -978,16 +987,21 @@ export default function TripItineraryPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowEditDayModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-4">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <h3 className="font-display text-lg text-foreground font-normal">
                 Edit Day 0{currentDay.dayIndex} Details
               </h3>
               <button
+                type="button"
                 onClick={() => setShowEditDayModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1001,7 +1015,7 @@ export default function TripItineraryPage() {
                   value={dayTitle}
                   onChange={(e) => setDayTitle(e.target.value)}
                   placeholder="e.g. Day 2 - Manali to Jispa via Atal Tunnel"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                   required
                 />
               </div>
@@ -1013,7 +1027,7 @@ export default function TripItineraryPage() {
                   value={dayDescription}
                   onChange={(e) => setDayDescription(e.target.value)}
                   placeholder="Route details, road milestones, scenic highlights..."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground resize-none"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground resize-none"
                 />
               </div>
 
@@ -1024,7 +1038,7 @@ export default function TripItineraryPage() {
                   value={dayWeather}
                   onChange={(e) => setDayWeather(e.target.value)}
                   placeholder="e.g. Sunny 14°C at valley, sub-zero winds above 4,000m"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-amber-500 focus:outline-hidden text-xs text-foreground"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                 />
               </div>
 
@@ -1036,10 +1050,10 @@ export default function TripItineraryPage() {
                       type="button"
                       key={lvl}
                       onClick={() => setDayIntensity(lvl)}
-                      className={`py-2 rounded-xl border text-center transition-all ${
+                      className={`py-2 rounded-xl border text-center transition-all cursor-pointer ${
                         dayIntensity === lvl
-                          ? "bg-amber-500/15 border-amber-500/50 text-amber-400 font-semibold"
-                          : "bg-background border-muted text-muted-foreground"
+                          ? "bg-accent/10 border-accent text-accent font-semibold"
+                          : "bg-background border-muted text-muted-foreground hover:border-foreground/30"
                       }`}
                     >
                       <span className="text-[10px] font-mono uppercase">{lvl}</span>
@@ -1052,14 +1066,14 @@ export default function TripItineraryPage() {
                 <button
                   type="button"
                   onClick={() => setShowEditDayModal(false)}
-                  className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground"
+                  className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingDay}
-                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-semibold text-xs font-sans transition-colors"
+                  className="px-4 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-medium text-xs font-sans transition-colors cursor-pointer shadow-xs"
                 >
                   {isSubmittingDay ? "Saving..." : "Save Day"}
                 </button>

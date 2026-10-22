@@ -40,6 +40,8 @@ import {
   RouteSegment,
 } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
+import { Select } from "@/components/ui/Select";
 
 type ViewTab = "ALL" | "WAYPOINTS" | "SEGMENTS";
 type WaypointCategoryFilter = "ALL" | WaypointCategory;
@@ -79,6 +81,9 @@ export default function TripRoutesPage() {
   const [editingWaypoint, setEditingWaypoint] = useState<WaypointRecord | null>(null);
   const [showSegmentModal, setShowSegmentModal] = useState(false);
   const [editingSegment, setEditingSegment] = useState<RouteSegment | null>(null);
+
+  // Lock body scroll when waypoint or segment modal is open
+  useLockBodyScroll(showWaypointModal || showSegmentModal);
 
   // Waypoint Form State
   const [wpTitle, setWpTitle] = useState("");
@@ -921,19 +926,24 @@ export default function TripRoutesPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowWaypointModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-teal-400" />
+                <MapPin className="w-5 h-5 text-accent" />
                 <h3 className="font-display text-xl text-foreground font-normal">
                   {editingWaypoint ? "Edit Waypoint" : "Add GPS Waypoint"}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowWaypointModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -948,7 +958,7 @@ export default function TripRoutesPage() {
                   value={wpTitle}
                   onChange={(e) => setWpTitle(e.target.value)}
                   placeholder="e.g. Khardung La Pass, Tandi Fuel Pump"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-sm text-foreground placeholder:text-muted-foreground/50"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-sm text-foreground placeholder:text-muted-foreground/50"
                   required
                 />
               </div>
@@ -956,10 +966,9 @@ export default function TripRoutesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-sans font-medium text-foreground">Category *</label>
-                  <select
+                  <Select
                     value={wpCategory}
                     onChange={(e) => setWpCategory(e.target.value as WaypointCategory)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
                   >
                     <option value="PASS">Mountain Pass</option>
                     <option value="FUEL_PUMP">Fuel Station</option>
@@ -970,7 +979,7 @@ export default function TripRoutesPage() {
                     <option value="HAZARD">Hazard / Water Crossing</option>
                     <option value="STAY">Camp / Homestay</option>
                     <option value="FOOD">Dhaba / Food Stop</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1">
@@ -980,7 +989,7 @@ export default function TripRoutesPage() {
                     value={wpElevation}
                     onChange={(e) => setWpElevation(e.target.value)}
                     placeholder="e.g. 5359"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
                   />
                 </div>
               </div>
@@ -995,7 +1004,7 @@ export default function TripRoutesPage() {
                     value={wpLat}
                     onChange={(e) => setWpLat(e.target.value)}
                     placeholder="e.g. 34.2787"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
                     required
                   />
                 </div>
@@ -1008,7 +1017,7 @@ export default function TripRoutesPage() {
                     value={wpLng}
                     onChange={(e) => setWpLng(e.target.value)}
                     placeholder="e.g. 77.6047"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
                     required
                   />
                 </div>
@@ -1024,7 +1033,7 @@ export default function TripRoutesPage() {
                   onChange={(e) => setWpNotes(e.target.value)}
                   rows={2}
                   placeholder="e.g. Limit stay to 15 mins to avoid acute mountain sickness. Carry warm windproof gloves."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
                 />
               </div>
 
@@ -1032,14 +1041,14 @@ export default function TripRoutesPage() {
                 <button
                   type="button"
                   onClick={() => setShowWaypointModal(false)}
-                  className="px-4 py-2 rounded-xl border border-muted hover:bg-surface-hover text-xs font-sans text-muted-foreground"
+                  className="px-4 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-black font-semibold text-xs font-sans transition-all"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium text-xs font-sans transition-all cursor-pointer shadow-xs"
                 >
                   {isSubmitting ? "Saving..." : editingWaypoint ? "Update Waypoint" : "Save Waypoint"}
                 </button>
@@ -1054,19 +1063,24 @@ export default function TripRoutesPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowSegmentModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-5"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <div className="flex items-center gap-2">
-                <Car className="w-5 h-5 text-teal-400" />
+                <Car className="w-5 h-5 text-accent" />
                 <h3 className="font-display text-xl text-foreground font-normal">
                   {editingSegment ? "Edit Route Leg" : "Add Route Leg"}
                 </h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowSegmentModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1082,7 +1096,7 @@ export default function TripRoutesPage() {
                     value={segFrom}
                     onChange={(e) => setSegFrom(e.target.value)}
                     placeholder="e.g. Manali"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                     required
                   />
                 </div>
@@ -1094,7 +1108,7 @@ export default function TripRoutesPage() {
                     value={segTo}
                     onChange={(e) => setSegTo(e.target.value)}
                     placeholder="e.g. Jispa"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                     required
                   />
                 </div>
@@ -1108,7 +1122,7 @@ export default function TripRoutesPage() {
                     type="number"
                     value={segDistance}
                     onChange={(e) => setSegDistance(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs font-mono text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                     required
                   />
                 </div>
@@ -1120,7 +1134,7 @@ export default function TripRoutesPage() {
                     step="0.5"
                     value={segHours}
                     onChange={(e) => setSegHours(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs font-mono text-foreground"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground"
                   />
                 </div>
               </div>
@@ -1129,10 +1143,9 @@ export default function TripRoutesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-sans font-medium text-foreground">Terrain Classification</label>
-                  <select
+                  <Select
                     value={segTerrain}
                     onChange={(e) => setSegTerrain(e.target.value as RouteSegment["terrainType"])}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
                   >
                     <option value="MOUNTAIN_TWISTIES">Mountain Twisties / Ghats</option>
                     <option value="HIGH_ALTITUDE_PASS">High-Altitude Mountain Pass</option>
@@ -1140,15 +1153,14 @@ export default function TripRoutesPage() {
                     <option value="DESERT_HIGHWAY">Desert Highway</option>
                     <option value="COASTAL_ROAD">Coastal Road</option>
                     <option value="EXPRESSWAY">Expressway / 4-Lane</option>
-                  </select>
+                  </Select>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-xs font-sans font-medium text-foreground">Road Surface Condition</label>
-                  <select
+                  <Select
                     value={segCondition}
                     onChange={(e) => setSegCondition(e.target.value as RouteSegment["roadCondition"])}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground [color-scheme:dark]"
                   >
                     <option value="EXCELLENT">Excellent Tarmac</option>
                     <option value="PAVED_GOOD">Paved Good Condition</option>
@@ -1156,7 +1168,7 @@ export default function TripRoutesPage() {
                     <option value="GRAVEL_UNPAVED">Loose Gravel / Unpaved</option>
                     <option value="WATER_CROSSING">Active Water Crossings</option>
                     <option value="EXTREME">Extreme Off-Road Boulder Field</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -1169,7 +1181,7 @@ export default function TripRoutesPage() {
                     value={segElevation}
                     onChange={(e) => setSegElevation(e.target.value)}
                     placeholder="e.g. 4890"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs font-mono text-foreground placeholder:text-muted-foreground/50"
                   />
                 </div>
 
@@ -1180,7 +1192,7 @@ export default function TripRoutesPage() {
                     value={segPasses}
                     onChange={(e) => setSegPasses(e.target.value)}
                     placeholder="e.g. Baralacha La, Rohtang Pass"
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
+                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50"
                   />
                 </div>
               </div>
@@ -1193,7 +1205,7 @@ export default function TripRoutesPage() {
                   onChange={(e) => setSegAdvisory(e.target.value)}
                   rows={2}
                   placeholder="e.g. Zero fuel stations after Tandi. Carry cash for road toll checkposts."
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-teal-500 focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground placeholder:text-muted-foreground/50 resize-none"
                 />
               </div>
 
@@ -1201,14 +1213,14 @@ export default function TripRoutesPage() {
                 <button
                   type="button"
                   onClick={() => setShowSegmentModal(false)}
-                  className="px-4 py-2 rounded-xl border border-muted hover:bg-surface-hover text-xs font-sans text-muted-foreground"
+                  className="px-4 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-600 disabled:opacity-50 text-black font-semibold text-xs font-sans transition-all"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-50 text-white font-medium text-xs font-sans transition-all cursor-pointer shadow-xs"
                 >
                   {isSubmitting ? "Saving..." : editingSegment ? "Update Leg" : "Save Route Leg"}
                 </button>

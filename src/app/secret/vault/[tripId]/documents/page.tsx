@@ -29,6 +29,8 @@ import {
   DocumentAttachmentRecord,
 } from "@/lib/vault/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
+import { Select } from "@/components/ui/Select";
 
 type DocTabFilter = "ALL" | "PDF" | "IMAGE";
 
@@ -72,6 +74,9 @@ export default function TripDocumentsPage() {
 
   // Delete modal state
   const [deleteCandidate, setDeleteCandidate] = useState<DocumentAttachmentRecord | null>(null);
+
+  // Lock body scroll when any modal or previewer is open
+  useLockBodyScroll(showUploadModal || !!previewDoc || !!linkingDoc || !!deleteCandidate);
 
   // Load trip and bookings
   useEffect(() => {
@@ -398,10 +403,10 @@ export default function TripDocumentsPage() {
         {bookings.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-mono text-muted-foreground shrink-0">Filter by Booking:</span>
-            <select
+            <Select
               value={selectedBookingFilter}
               onChange={(e) => setSelectedBookingFilter(e.target.value)}
-              className="px-3 py-1.5 rounded-xl bg-surface border border-muted text-xs text-foreground focus:outline-hidden"
+              className="text-xs"
             >
               <option value="ALL">All Bookings</option>
               {bookings.map((b) => (
@@ -409,7 +414,7 @@ export default function TripDocumentsPage() {
                   {b.title} ({b.type})
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
       </div>
@@ -559,23 +564,26 @@ export default function TripDocumentsPage() {
             );
           })}
         </div>
-      )}
-
-      {/* MODAL: UPLOAD DOCUMENT (REQ-DOC-01) */}
+      )}      {/* MODAL: UPLOAD DOCUMENT */}
       {showUploadModal && (
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowUploadModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-4">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <h3 className="font-display text-lg text-foreground font-normal">
                 Upload Document to Offline Vault
               </h3>
               <button
+                type="button"
                 onClick={() => setShowUploadModal(false)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -585,7 +593,7 @@ export default function TripDocumentsPage() {
               {/* File Dropzone */}
               <div
                 onClick={() => fileInputRef.current?.click()}
-                className="p-6 rounded-2xl border border-dashed border-indigo-500/40 hover:border-indigo-400 bg-background/50 hover:bg-indigo-500/5 text-center cursor-pointer transition-colors space-y-2"
+                className="p-6 rounded-2xl border border-dashed border-accent/40 hover:border-accent bg-background/50 hover:bg-accent/5 text-center cursor-pointer transition-colors space-y-2"
               >
                 <input
                   type="file"
@@ -595,8 +603,8 @@ export default function TripDocumentsPage() {
                   className="hidden"
                 />
 
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto">
-                  <Upload className="w-5 h-5 text-indigo-400" />
+                <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 text-accent flex items-center justify-center mx-auto">
+                  <Upload className="w-5 h-5 text-accent" />
                 </div>
 
                 {selectedFile ? (
@@ -630,7 +638,7 @@ export default function TripDocumentsPage() {
                   value={uploadTitle}
                   onChange={(e) => setUploadTitle(e.target.value)}
                   placeholder="e.g. IRCTC Train 12011 E-Ticket PDF"
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-indigo-500 focus:outline-hidden text-xs text-foreground"
+                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-accent focus:outline-hidden text-xs text-foreground"
                   required
                 />
               </div>
@@ -641,10 +649,9 @@ export default function TripDocumentsPage() {
                   <label className="text-xs font-sans font-medium text-foreground">
                     Attach to Booking (Optional)
                   </label>
-                  <select
+                  <Select
                     value={associatedBookingId}
                     onChange={(e) => setAssociatedBookingId(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-indigo-500 focus:outline-hidden text-xs text-foreground"
                   >
                     <option value="">No Booking (General Document)</option>
                     {bookings.map((b) => (
@@ -652,7 +659,7 @@ export default function TripDocumentsPage() {
                         {b.title} ({b.type})
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               )}
 
@@ -660,14 +667,14 @@ export default function TripDocumentsPage() {
                 <button
                   type="button"
                   onClick={() => setShowUploadModal(false)}
-                  className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground"
+                  className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!selectedFile || isUploading}
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-semibold text-xs font-sans transition-colors"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 disabled:opacity-40 text-white font-medium text-xs font-sans transition-colors cursor-pointer shadow-xs"
                 >
                   {isUploading ? "Storing in Vault..." : "Store Offline"}
                 </button>
@@ -682,13 +689,17 @@ export default function TripDocumentsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md animate-fade-in"
+          onClick={handleClosePreview}
+          className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/75 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="w-full max-w-4xl h-[92vh] flex flex-col rounded-2xl border border-muted bg-surface shadow-2xl overflow-hidden">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-4xl h-[92vh] flex flex-col rounded-2xl border border-muted bg-surface shadow-2xl overflow-hidden"
+          >
             {/* Previewer Header */}
             <div className="flex items-center justify-between p-3 sm:p-4 border-b border-muted bg-background/80 shrink-0">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded font-bold bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 shrink-0">
+                <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded font-bold bg-accent/10 border border-accent/20 text-accent shrink-0">
                   {previewDoc.fileType}
                 </span>
                 <span className="text-xs sm:text-sm font-semibold text-foreground truncate">
@@ -701,8 +712,9 @@ export default function TripDocumentsPage() {
                 {previewDoc.fileType === "IMAGE" && (
                   <>
                     <button
+                      type="button"
                       onClick={() => setZoomLevel((z) => Math.max(0.5, z - 0.25))}
-                      className="p-1.5 rounded-lg bg-surface border border-muted text-muted-foreground hover:text-foreground"
+                      className="p-1.5 rounded-lg bg-surface border border-muted text-muted-foreground hover:text-foreground cursor-pointer"
                       title="Zoom Out"
                     >
                       <ZoomOut className="w-3.5 h-3.5" />
@@ -711,8 +723,9 @@ export default function TripDocumentsPage() {
                       {Math.round(zoomLevel * 100)}%
                     </span>
                     <button
+                      type="button"
                       onClick={() => setZoomLevel((z) => Math.min(3, z + 0.25))}
-                      className="p-1.5 rounded-lg bg-surface border border-muted text-muted-foreground hover:text-foreground"
+                      className="p-1.5 rounded-lg bg-surface border border-muted text-muted-foreground hover:text-foreground cursor-pointer"
                       title="Zoom In"
                     >
                       <ZoomIn className="w-3.5 h-3.5" />
@@ -721,16 +734,18 @@ export default function TripDocumentsPage() {
                 )}
 
                 <button
+                  type="button"
                   onClick={() => handleDownload(previewDoc)}
-                  className="p-1.5 rounded-lg bg-surface border border-muted text-muted-foreground hover:text-foreground"
+                  className="p-1.5 rounded-lg bg-surface border border-muted text-muted-foreground hover:text-foreground cursor-pointer"
                   title="Download File"
                 >
                   <Download className="w-3.5 h-3.5" />
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleClosePreview}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
                   title="Close Preview"
                 >
                   <X className="w-5 h-5" />
@@ -763,8 +778,9 @@ export default function TripDocumentsPage() {
                     This file format cannot be rendered in-app.
                   </p>
                   <button
+                    type="button"
                     onClick={() => handleDownload(previewDoc)}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-sans"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent text-white text-xs font-sans cursor-pointer shadow-xs"
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download to Device</span>
@@ -781,16 +797,21 @@ export default function TripDocumentsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setLinkingDoc(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-4">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-md w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <h3 className="font-display text-lg text-foreground font-normal">
                 Link Document to Booking
               </h3>
               <button
+                type="button"
                 onClick={() => setLinkingDoc(null)}
-                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -805,10 +826,9 @@ export default function TripDocumentsPage() {
                 <label className="text-xs font-sans font-medium text-foreground">
                   Select Booking
                 </label>
-                <select
+                <Select
                   value={targetBookingId}
                   onChange={(e) => setTargetBookingId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-background border border-muted focus:border-indigo-500 focus:outline-hidden text-xs text-foreground"
                 >
                   <option value="">No Association (Unlink)</option>
                   {bookings.map((b) => (
@@ -816,20 +836,20 @@ export default function TripDocumentsPage() {
                       {b.title} ({b.type})
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-muted">
                 <button
                   type="button"
                   onClick={() => setLinkingDoc(null)}
-                  className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground"
+                  className="px-3.5 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs font-sans transition-colors"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent/90 text-white font-medium text-xs font-sans transition-colors cursor-pointer shadow-xs"
                 >
                   Save Link
                 </button>
@@ -844,11 +864,15 @@ export default function TripDocumentsPage() {
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setDeleteCandidate(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in overscroll-contain"
         >
-          <div className="max-w-sm w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl text-center space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mx-auto">
-              <AlertCircle className="w-6 h-6 text-rose-500" />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-sm w-full p-6 rounded-2xl border border-muted bg-surface shadow-2xl text-center space-y-4"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+              <AlertCircle className="w-6 h-6 text-rose-600" />
             </div>
 
             <h3 className="font-display text-lg text-foreground font-normal">
@@ -860,14 +884,16 @@ export default function TripDocumentsPage() {
 
             <div className="flex items-center gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => setDeleteCandidate(null)}
-                className="flex-1 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground"
+                className="flex-1 py-2 rounded-xl border border-muted text-xs font-sans text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleConfirmDelete}
-                className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs font-sans"
+                className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs font-sans cursor-pointer"
               >
                 Delete
               </button>
