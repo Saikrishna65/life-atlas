@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useSyncExternalStore, ReactNode } from "react";
+import { useState, useSyncExternalStore, ReactNode, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Fingerprint, Lock, ArrowLeft, ShieldCheck } from "lucide-react";
-import DeviceAuthModal from "@/components/auth/DeviceAuthModal";
-import { isSecretAccessGranted, grantSecretAccess } from "@/lib/deviceAuth";
+import { Fingerprint, Lock, ArrowLeft, ShieldCheck, RefreshCw } from "lucide-react";
+import { isSecretAccessGranted, grantSecretAccess, authenticateWithDevice } from "@/lib/deviceAuth";
 
 interface SecretAppGuardProps {
   children: ReactNode;
@@ -18,18 +17,32 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
   const [isUnlocked, setIsUnlocked] = useState(() => {
     return typeof window !== "undefined" && isSecretAccessGranted();
   });
-  const [isModalOpen, setIsModalOpen] = useState(() => {
-    return typeof window !== "undefined" && !isSecretAccessGranted();
-  });
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleAuthSuccess = () => {
-    grantSecretAccess();
-    setIsUnlocked(true);
-    setIsModalOpen(false);
-  };
+  const handleVerifyBiometric = useCallback(async () => {
+    if (isAuthenticating) return;
+    setIsAuthenticating(true);
+    setErrorMessage("");
+
+    try {
+      const result = await authenticateWithDevice();
+      if (result.success) {
+        grantSecretAccess();
+        setIsUnlocked(true);
+      } else if (result.cancelled) {
+        setErrorMessage("Biometric prompt cancelled. Tap to try again.");
+      } else {
+        setErrorMessage(result.error || "Authentication failed. Tap to retry.");
+      }
+    } catch {
+      setErrorMessage("Authentication error. Tap to retry.");
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }, [isAuthenticating]);
 
   const handleReturnHome = () => {
-    setIsModalOpen(false);
     router.replace("/");
   };
 
@@ -63,16 +76,32 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
             Private Atlas
           </h1>
           <p className="font-body text-xs sm:text-sm text-muted-foreground leading-relaxed mb-6">
-            Device biometric authentication is required to access your private expeditions and journal entries.
+            Native device fingerprint authentication is required to access your private expeditions and journal entries.
           </p>
+
+          {errorMessage && (
+            <p className="text-xs text-rose-500 mb-4 animate-fade-in font-medium">
+              {errorMessage}
+            </p>
+          )}
 
           <div className="w-full space-y-3">
             <button
-              onClick={() => setIsModalOpen(true)}
-              className="w-full py-3 px-4 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 shadow-[0_0_20px_rgba(245,158,11,0.25)] active:scale-[0.98]"
+              onClick={handleVerifyBiometric}
+              disabled={isAuthenticating}
+              className="w-full py-3 px-4 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-neutral-950 shadow-[0_0_20px_rgba(245,158,11,0.25)] active:scale-[0.98] disabled:opacity-50"
             >
-              <Fingerprint className="w-4 h-4" />
-              <span>Verify Fingerprint</span>
+              {isAuthenticating ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Awaiting Fingerprint...</span>
+                </>
+              ) : (
+                <>
+                  <Fingerprint className="w-4 h-4" />
+                  <span>Verify Fingerprint</span>
+                </>
+              )}
             </button>
 
             <button
@@ -84,21 +113,9 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
             </button>
           </div>
         </div>
-
-        <DeviceAuthModal
-          isOpen={isModalOpen}
-          onSuccess={handleAuthSuccess}
-          onClose={() => {
-            setIsModalOpen(false);
-            if (!isSecretAccessGranted()) {
-              handleReturnHome();
-            }
-          }}
-        />
       </div>
     );
   }
 
   return <>{children}</>;
 }
-

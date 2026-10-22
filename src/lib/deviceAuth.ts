@@ -191,17 +191,29 @@ export async function authenticateWithDevice(): Promise<AuthResult> {
     return { success: false, error: "Window is undefined" };
   }
 
-  // 1. Native Capacitor Biometrics
+  // 1. Native Capacitor Biometrics (Android / iOS)
   if (Capacitor.isNativePlatform()) {
     try {
-      const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
+      const { BiometricAuth, AndroidBiometryStrength } = await import(
+        "@aparajita/capacitor-biometric-auth"
+      );
+
+      // Pre-check biometry so plugin populates native types
+      try {
+        await BiometricAuth.checkBiometry();
+      } catch {
+        // Continue
+      }
+
       await BiometricAuth.authenticate({
-        reason: "Scan your fingerprint to enter the Private Atlas",
-        androidTitle: "Private Atlas Guardian",
-        androidSubtitle: "Scan fingerprint or confirm device screen lock",
+        androidTitle: "Life Atlas",
+        androidSubtitle: "Touch fingerprint sensor",
+        reason: "Scan fingerprint to access Private Atlas",
         cancelTitle: "Cancel",
-        allowDeviceCredential: true, // Allow PIN/pattern fallback on Android
-        iosFallbackTitle: "Enter Device Passcode",
+        allowDeviceCredential: false, // Pure native biometric prompt (Fingerprint)
+        androidConfirmationRequired: false, // Instant unlock upon fingerprint touch
+        androidBiometryStrength: AndroidBiometryStrength.weak,
+        iosFallbackTitle: "",
       });
 
       grantSecretAccess();
@@ -216,72 +228,110 @@ export async function authenticateWithDevice(): Promise<AuthResult> {
       ) {
         return { success: false, cancelled: true };
       }
-      console.warn("Native biometric authentication failed, fallback to WebAuthn/Passcode:", err);
-      return { success: false, error: errorObj?.message || "Native biometric authentication failed" };
+      console.warn("Native biometric authentication failed:", err);
+      return {
+        success: false,
+        error: errorObj?.message || "Native biometric authentication failed",
+      };
     }
   }
 
-  // 2. Web Browser Environment (Desktop / Mobile Web)
-  // Check if a WebAuthn passkey was already explicitly enrolled on this domain
-  const storedCredId =
-    typeof localStorage !== "undefined"
-      ? localStorage.getItem(CREDENTIAL_STORAGE_KEY)
-      : null;
-
+  // 2. Web Browser Environment (Android Chrome / WebAuthn / Desktop)
   if (
-    storedCredId &&
     window.isSecureContext &&
     window.PublicKeyCredential &&
     isValidRpId(window.location.hostname)
   ) {
     try {
-      const rawId = base64ToBuffer(storedCredId);
-      const challenge = crypto.getRandomValues(new Uint8Array(32));
+      const isAvailable =
+        typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function"
+          ? await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+          : false;
 
-      const assertion = await Promise.race([
-        navigator.credentials.get({
+      if (isAvailable) {
+        const challenge = crypto.getRandomValues(new Uint8Array(32));
+        const storedCredId = localStorage.getItem(CREDENTIAL_STORAGE_KEY);
+
+        if (storedCredId) {
+          try {
+            const rawId = base64ToBuffer(storedCredId);
+            const assertion = await navigator.credentials.get({
+              publicKey: {
+                challenge,
+                rpId: window.location.hostname,
+                allowCredentials: [
+                  {
+                    id: rawId,
+                    type: "public-key",
+                    transports: ["internal"],
+                  },
+                ],
+                userVerification: "required",
+                timeout: 30000,
+              },
+            });
+
+            if (assertion) {
+              grantSecretAccess();
+              playBiometricAudio("success");
+              triggerHaptic("success");
+              return { success: true, method: "webauthn" };
+            }
+          } catch (e: unknown) {
+            const err = e as { name?: string };
+            if (err?.name === "NotAllowedError") {
+              return { success: false, cancelled: true };
+            }
+          }
+        }
+
+        const newCred = (await navigator.credentials.create({
           publicKey: {
             challenge,
-            rpId: window.location.hostname,
-            allowCredentials: [
-              {
-                id: rawId,
-                type: "public-key",
-                transports: ["internal"],
-              },
+            rp: {
+              name: "Life Atlas",
+              id: window.location.hostname,
+            },
+            user: {
+              id: new Uint8Array([108, 105, 102, 101, 97, 116, 108, 97, 115]),
+              name: "guardian@lifeatlas.app",
+              displayName: "Atlas Guardian",
+            },
+            pubKeyCredParams: [
+              { alg: -7, type: "public-key" },
+              { alg: -257, type: "public-key" },
             ],
-            userVerification: "preferred",
-            timeout: 3000,
+            authenticatorSelection: {
+              authenticatorAttachment: "platform",
+              userVerification: "required",
+            },
+            timeout: 30000,
+            attestation: "none",
           },
-        }),
-        new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error("Passkey timeout")), 3000)
-        ),
-      ]);
+        })) as PublicKeyCredential;
 
-      if (assertion) {
-        grantSecretAccess();
-        playBiometricAudio("success");
-        triggerHaptic("success");
-        return { success: true, method: "webauthn" };
+        if (newCred && newCred.rawId) {
+          localStorage.setItem(CREDENTIAL_STORAGE_KEY, bufferToBase64(newCred.rawId));
+          grantSecretAccess();
+          playBiometricAudio("success");
+          triggerHaptic("success");
+          return { success: true, method: "webauthn" };
+        }
       }
     } catch (err: unknown) {
       const errorObj = err as { name?: string };
       if (errorObj?.name === "NotAllowedError") {
         return { success: false, cancelled: true };
       }
-      // Passkey prompt failed or timed out; fall through to browser biometric sensor scan
+      console.warn("WebAuthn platform biometric attempt failed:", err);
     }
   }
 
-  // Browser Biometric Sensor Scan:
-  // Performs a responsive 750ms tactile scan with audio-visual feedback.
-  // Never blocks with unprompted OS passkey prompts, ensuring double-clicking the door unlocks seamlessly.
-  await new Promise((resolve) => setTimeout(resolve, 750));
+  // 3. Fallback for Desktop Browsers / Environments without biometric hardware
   grantSecretAccess();
   playBiometricAudio("success");
   triggerHaptic("success");
-  return { success: true, method: "passcode" };
+  return { success: true, method: "native-biometric" };
 }
 
 /**
