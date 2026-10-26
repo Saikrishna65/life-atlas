@@ -20,9 +20,16 @@ export default function MobileAppBridge() {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
 
+    // Immediate native route guard: Android app must strictly remain in private atlas
+    if (!window.location.pathname.startsWith("/secret")) {
+      window.location.replace("/secret/vault");
+      return;
+    }
+
     // Android hardware & gesture back button listener
     const backButtonListener = CapApp.addListener("backButton", () => {
-      if (window.location.pathname === "/") {
+      const path = window.location.pathname;
+      if (path === "/" || path === "/secret/vault" || path === "/secret") {
         CapApp.exitApp();
       } else {
         window.history.back();
@@ -55,7 +62,8 @@ export default function MobileAppBridge() {
 
       // Horizontal rightward swipe from edge
       if (deltaX > 55 && deltaY < deltaX * 0.75) {
-        if (window.location.pathname !== "/") {
+        const path = window.location.pathname;
+        if (path !== "/" && path !== "/secret/vault" && path !== "/secret") {
           window.history.back();
         }
       }

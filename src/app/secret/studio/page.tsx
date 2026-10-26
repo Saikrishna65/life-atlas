@@ -14,7 +14,7 @@ export default function SecretStudioPage() {
 
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/");
+    router.push("/secret/vault");
   };
 
   return (

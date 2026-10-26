@@ -31,6 +31,14 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Append custom User-Agent so backend middleware strictly routes native app to private atlas
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            String defaultUA = getBridge().getWebView().getSettings().getUserAgentString();
+            if (defaultUA != null && !defaultUA.contains("LifeAtlasApp")) {
+                getBridge().getWebView().getSettings().setUserAgentString(defaultUA + " LifeAtlasApp/1.0");
+            }
+        }
+
         // Enable true edge-to-edge layout so content draws behind system bars
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 

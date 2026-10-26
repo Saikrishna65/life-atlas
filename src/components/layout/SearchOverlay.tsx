@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Search, X, Command } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 interface SearchResult {
   id: string;
@@ -18,6 +18,7 @@ interface SearchResult {
 }
 
 export default function SearchOverlay() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -27,6 +28,7 @@ export default function SearchOverlay() {
   const router = useRouter();
 
   useEffect(() => {
+    if (pathname?.startsWith("/secret")) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
@@ -101,7 +103,7 @@ export default function SearchOverlay() {
     }
   };
 
-  if (!isOpen) return null;
+  if (pathname?.startsWith("/secret") || !isOpen) return null;
 
   return (
     <div 

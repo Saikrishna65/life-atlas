@@ -3,7 +3,8 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.lifeatlas.app',
   appName: 'Atlas Vault',
-  webDir: 'public',
+  webDir: 'mobile-shell',
+  appendUserAgent: 'LifeAtlasApp/1.0',
   android: {
     allowMixedContent: true,
   },

@@ -1,4 +1,14 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+
 export default function Footer() {
+  const pathname = usePathname();
+
+  if (pathname?.startsWith("/secret")) {
+    return null;
+  }
+
   return (
     <footer className="py-12 md:py-24 px-6 md:px-12 border-t border-muted/20">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-12">

@@ -32,6 +32,7 @@ import {
   Bot,
   X,
   Clock,
+  Music,
 } from "lucide-react";
 import { useTripVault } from "@/lib/vault/useTripVault";
 import { getTrip } from "@/lib/vault/storage";
@@ -415,6 +416,17 @@ export default function TripCommandCenterPage() {
       accent: "border-muted/80 hover:border-violet-500/50 bg-surface/90 hover:bg-surface",
       iconBg: "bg-violet-500/10 border-violet-500/25 text-violet-400",
       badgeStyle: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+    },
+    {
+      id: "soundtrack",
+      title: "Expedition Soundtrack",
+      subtitle: "Offline roadtrip playlists, ambient music & expedition soundscapes",
+      href: `/secret/music/playlists`,
+      icon: <Music className="w-5 h-5 text-amber-400" />,
+      badge: "Music Vault",
+      accent: "border-muted/80 hover:border-amber-500/50 bg-surface/90 hover:bg-surface",
+      iconBg: "bg-amber-500/10 border-amber-500/25 text-amber-400",
+      badgeStyle: "bg-amber-500/15 text-amber-300 border-amber-500/30",
     },
   ];
 
