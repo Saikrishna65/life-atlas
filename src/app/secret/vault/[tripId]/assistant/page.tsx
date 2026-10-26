@@ -107,6 +107,7 @@ export default function AssistantPage() {
 
   const handleLockVault = () => {
     revokeSecretAccess();
+
     router.push("/secret/vault");
   };
 
@@ -285,11 +286,10 @@ export default function AssistantPage() {
         <button
           type="button"
           onClick={() => setActiveTab("ITINERARY")}
-          className={`w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
-            activeTab === "ITINERARY"
+          className={`w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${activeTab === "ITINERARY"
               ? "bg-purple-600 text-white shadow-md font-semibold"
               : "text-muted-foreground hover:text-foreground hover:bg-surface-hover"
-          }`}
+            }`}
         >
           <Sparkles className="w-4 h-4 shrink-0 text-purple-200" />
           <span className="truncate">AI Itinerary Architect</span>
@@ -299,11 +299,10 @@ export default function AssistantPage() {
         <button
           type="button"
           onClick={() => setActiveTab("PARSER")}
-          className={`w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${
-            activeTab === "PARSER"
+          className={`w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer ${activeTab === "PARSER"
               ? "bg-cyan-600 text-white shadow-md font-semibold"
               : "text-muted-foreground hover:text-foreground hover:bg-surface-hover"
-          }`}
+            }`}
         >
           <Ticket className="w-4 h-4 shrink-0 text-cyan-200" />
           <span className="truncate">Smart Ticket & PNR Parser</span>
