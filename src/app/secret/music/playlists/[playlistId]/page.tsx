@@ -17,6 +17,7 @@ import {
   Plus,
   Music,
   Check,
+  Disc,
 } from "lucide-react";
 import MusicNav from "@/components/music/MusicNav";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
@@ -39,7 +40,7 @@ export default function PlaylistDetailPage() {
   const router = useRouter();
   const playlistId = typeof params?.playlistId === "string" ? params.playlistId : "";
 
-  const { playTrack, currentTrack } = useMusicPlayer();
+  const { playTrack, currentTrack, isPlaying } = useMusicPlayer();
   const [playlist, setPlaylist] = useState<MusicPlaylist | null>(null);
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [trips, setTrips] = useState<TripRecord[]>([]);
@@ -139,7 +140,7 @@ export default function PlaylistDetailPage() {
 
   if (isLoading || !playlist) {
     return (
-      <div className="max-w-4xl mx-auto py-12 text-center text-muted-foreground text-xs animate-fade-in">
+      <div className="max-w-4xl mx-auto py-16 text-center text-neutral-400 text-xs animate-fade-in">
         Loading soundtrack...
       </div>
     );
@@ -150,38 +151,40 @@ export default function PlaylistDetailPage() {
   const totalMins = Math.floor(totalDurationSecs / 60);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-28">
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-28 select-none">
       <MusicNav onTrackImported={loadData} />
 
       {/* Playlist Hero Header */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-surface border border-white/10 flex flex-col sm:flex-row items-start sm:items-center gap-6 shadow-soft">
-        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0 shadow-md">
+      <div className="p-6 sm:p-8 rounded-3xl glass-card-premium border border-white/12 flex flex-col sm:flex-row items-start sm:items-center gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
           <ListMusic className="w-12 h-12" />
         </div>
 
         <div className="min-w-0 flex-1 space-y-2">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 inline-block">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300 font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 inline-block shadow-xs">
             Soundtrack Collection
           </span>
 
-          <h2 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
+          <h2 className="font-display text-2xl sm:text-3xl text-white font-normal tracking-tight">
             {playlist.title}
           </h2>
 
-          <p className="text-xs text-muted-foreground max-w-lg">
+          <p className="text-xs text-neutral-300 max-w-lg leading-relaxed">
             {playlist.description || "Custom expedition soundtrack playlist."}
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground font-sans pt-1">
-            <span>{tracks.length} track(s)</span>
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-neutral-400 font-sans pt-1">
+            <span className="font-mono text-neutral-300">{tracks.length} track(s)</span>
             <span>•</span>
-            <span>{totalMins} min listening</span>
+            <span className="font-mono text-neutral-300">{totalMins} min listening</span>
             {linkedTrip && (
               <>
                 <span>•</span>
-                <span className="inline-flex items-center gap-1 text-amber-400 font-medium">
-                  <Compass className="w-3 h-3" />
-                  <span>Linked to: {linkedTrip.title}</span>
+                <span className="inline-flex items-center gap-1.5 text-amber-300 font-medium bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/25">
+                  <Compass className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Expedition: {linkedTrip.title}</span>
                 </span>
               </>
             )}
@@ -195,18 +198,18 @@ export default function PlaylistDetailPage() {
           <button
             onClick={() => handlePlayAll(false)}
             disabled={tracks.length === 0}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-sans text-xs font-semibold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-95"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-neutral-950 font-sans text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-[0_0_25px_rgba(245,158,11,0.35)] active:scale-95"
           >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Play</span>
+            <Play className="w-3.5 h-3.5 fill-current stroke-[2.5]" />
+            <span>Play All</span>
           </button>
 
           <button
             onClick={() => handlePlayAll(true)}
             disabled={tracks.length === 0}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-200 text-xs font-sans font-medium transition-colors disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl glass-card-subtle hover:bg-white/[0.08] text-neutral-200 text-xs font-sans font-semibold transition-all disabled:opacity-50 cursor-pointer active:scale-95 border border-white/10"
           >
-            <Shuffle className="w-3.5 h-3.5" />
+            <Shuffle className="w-3.5 h-3.5 text-amber-400" />
             <span>Shuffle</span>
           </button>
         </div>
@@ -214,7 +217,7 @@ export default function PlaylistDetailPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowTripModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-neutral-300 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl glass-card-subtle hover:bg-white/[0.08] text-xs font-sans text-neutral-200 hover:text-white transition-all cursor-pointer active:scale-95 border border-white/10 shadow-sm"
             title="Attach to an expedition in Trip Vault"
           >
             <Compass className="w-3.5 h-3.5 text-amber-400" />
@@ -224,7 +227,7 @@ export default function PlaylistDetailPage() {
           <button
             onClick={handleExportM3U}
             disabled={tracks.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-neutral-300 transition-colors disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl glass-card-subtle hover:bg-white/[0.08] text-xs font-sans text-neutral-200 hover:text-white transition-all disabled:opacity-40 cursor-pointer active:scale-95 border border-white/10 shadow-sm"
             title="Export M3U playlist file"
           >
             <Download className="w-3.5 h-3.5 text-cyan-400" />
@@ -235,18 +238,18 @@ export default function PlaylistDetailPage() {
 
       {/* Track List with Reordering */}
       {tracks.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl border border-dashed border-white/10 text-muted-foreground text-xs space-y-3">
-          <p>This playlist has no tracks yet.</p>
+        <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-white/10 text-neutral-400 text-xs space-y-3">
+          <p className="text-neutral-300 font-medium">This playlist has no tracks yet.</p>
           <Link
             href="/secret/music/library"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-medium hover:bg-amber-500/20 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold hover:bg-amber-500/30 transition-all shadow-sm"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             <span>Browse Library to Add Tracks</span>
           </Link>
         </div>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {tracks.map((t, idx) => {
             const isCurrent = currentTrack?.id === t.id;
             return (
@@ -259,10 +262,10 @@ export default function PlaylistDetailPage() {
                     title: playlist.title,
                   })
                 }
-                className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer group active:scale-[0.99] ${
+                className={`p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3.5 cursor-pointer group active:scale-[0.99] ${
                   isCurrent
-                    ? "bg-amber-500/10 border-amber-500/30"
-                    : "bg-surface hover:bg-surface-hover/80 border-white/5"
+                    ? "bg-amber-500/15 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+                    : "glass-card-subtle hover:bg-white/[0.08] border-white/[0.08]"
                 }`}
               >
                 {/* Index / Reorder Steppers */}
@@ -273,16 +276,16 @@ export default function PlaylistDetailPage() {
                   <button
                     disabled={idx === 0}
                     onClick={() => handleMoveTrack(idx, "UP")}
-                    className="p-0.5 text-neutral-500 hover:text-white disabled:opacity-20 cursor-pointer"
+                    className="p-1 text-neutral-400 hover:text-white disabled:opacity-20 cursor-pointer active:scale-90 transition-transform"
                     aria-label="Move track up"
                   >
                     <ChevronUp className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-[10px] font-mono text-muted-foreground">{idx + 1}</span>
+                  <span className="text-[10px] font-mono text-neutral-400">{idx + 1}</span>
                   <button
                     disabled={idx === tracks.length - 1}
                     onClick={() => handleMoveTrack(idx, "DOWN")}
-                    className="p-0.5 text-neutral-500 hover:text-white disabled:opacity-20 cursor-pointer"
+                    className="p-1 text-neutral-400 hover:text-white disabled:opacity-20 cursor-pointer active:scale-90 transition-transform"
                     aria-label="Move track down"
                   >
                     <ChevronDown className="w-3.5 h-3.5" />
@@ -290,31 +293,45 @@ export default function PlaylistDetailPage() {
                 </div>
 
                 {/* Artwork + Title */}
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white/5 border border-white/10 shrink-0 flex items-center justify-center">
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                  <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[#121622] border border-white/10 shrink-0 flex items-center justify-center shadow-md">
                     {t.artworkUrl ? (
                       <Image
                         src={t.artworkUrl}
                         alt={t.title}
                         fill
-                        sizes="40px"
+                        sizes="44px"
                         className="object-cover"
                         unoptimized
                       />
                     ) : (
-                      <Music className="w-4 h-4 text-amber-400" />
+                      <Disc className="w-4 h-4 text-amber-400" />
+                    )}
+
+                    {isCurrent && (
+                      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center">
+                        {isPlaying ? (
+                          <div className="flex items-end gap-0.5 h-3" aria-label="Playing">
+                            <span className="w-0.5 bg-amber-400 rounded-full animate-eq-1" />
+                            <span className="w-0.5 bg-amber-400 rounded-full animate-eq-2" />
+                            <span className="w-0.5 bg-amber-400 rounded-full animate-eq-3" />
+                          </div>
+                        ) : (
+                          <Play className="w-4 h-4 fill-amber-400 text-amber-400 ml-0.5" />
+                        )}
+                      </div>
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <h4
-                      className={`text-xs sm:text-sm font-medium truncate ${
-                        isCurrent ? "text-amber-400" : "text-foreground group-hover:text-amber-300"
+                      className={`text-xs sm:text-sm font-semibold truncate transition-colors ${
+                        isCurrent ? "text-amber-300" : "text-white group-hover:text-amber-200"
                       }`}
                     >
                       {t.title}
                     </h4>
-                    <p className="text-[11px] text-muted-foreground truncate">{t.artist}</p>
+                    <p className="text-[11px] font-sans text-neutral-400 truncate mt-0.5">{t.artist || "Unknown Artist"}</p>
                   </div>
                 </div>
 
@@ -323,15 +340,15 @@ export default function PlaylistDetailPage() {
                   className="flex items-center gap-3 shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <span className="text-[11px] font-mono text-muted-foreground">
+                  <span className="text-[11px] font-mono text-neutral-400">
                     {Math.floor(t.duration / 60)}:
                     {(t.duration % 60).toString().padStart(2, "0")}
                   </span>
 
                   <button
                     onClick={() => handleRemoveTrack(t.id)}
-                    className="p-1.5 text-neutral-500 hover:text-rose-400 transition-colors rounded-lg hover:bg-rose-500/10 cursor-pointer"
-                    title="Remove from this playlist (audio file preserved)"
+                    className="p-1.5 text-neutral-400 hover:text-rose-400 transition-colors rounded-xl hover:bg-rose-500/15 cursor-pointer active:scale-90"
+                    title="Remove from this playlist (audio file preserved in library)"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -345,23 +362,23 @@ export default function PlaylistDetailPage() {
       {/* Link to Trip Vault Expedition Modal */}
       {showTripModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setShowTripModal(false)}
         >
           <div
-            className="w-full max-w-sm rounded-3xl bg-[#141822] border border-white/10 p-6 space-y-4 shadow-2xl"
+            className="w-full max-w-sm rounded-3xl glass-card-premium border border-white/15 p-6 space-y-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="font-display text-xl text-foreground font-normal">
+            <h3 className="font-display text-xl text-white font-normal">
               Link to Trip Vault
             </h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-neutral-400 leading-relaxed">
               Select an expedition to make this playlist the official soundtrack for the journey.
             </p>
 
-            <div className="max-h-60 overflow-y-auto space-y-1.5 no-scrollbar">
+            <div className="max-h-60 overflow-y-auto space-y-2 scrollbar-none">
               {trips.length === 0 ? (
-                <p className="text-xs text-muted-foreground p-3 text-center">
+                <p className="text-xs text-neutral-400 p-3 text-center">
                   No active expeditions found in Trip Vault.
                 </p>
               ) : (
@@ -369,14 +386,14 @@ export default function PlaylistDetailPage() {
                   <button
                     key={tr.id}
                     onClick={() => handleLinkTrip(tr.id)}
-                    className={`w-full p-2.5 rounded-xl text-left text-xs font-medium transition-colors flex items-center justify-between cursor-pointer ${
+                    className={`w-full p-3 rounded-2xl text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer border ${
                       playlist.tripId === tr.id
-                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                        : "hover:bg-white/10 text-foreground"
+                        ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm"
+                        : "glass-card-subtle hover:bg-white/10 text-white border-white/5"
                     }`}
                   >
                     <span>{tr.title}</span>
-                    <span className="text-[10px] text-muted-foreground">{tr.destination}</span>
+                    <span className="text-[10px] font-mono text-neutral-400">{tr.destination}</span>
                   </button>
                 ))
               )}
@@ -387,7 +404,7 @@ export default function PlaylistDetailPage() {
                 <button
                   type="button"
                   onClick={handleUnlinkTrip}
-                  className="flex-1 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs text-rose-400 transition-colors cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-300 transition-colors cursor-pointer border border-rose-500/20 active:scale-95"
                 >
                   Unlink
                 </button>
@@ -395,7 +412,7 @@ export default function PlaylistDetailPage() {
               <button
                 type="button"
                 onClick={() => setShowTripModal(false)}
-                className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-neutral-300 transition-colors cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-neutral-300 hover:text-white transition-colors cursor-pointer border border-white/10 active:scale-95"
               >
                 Close
               </button>

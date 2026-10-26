@@ -113,6 +113,115 @@
     0% { opacity: 0; transform: translateY(30px); }
     100% { opacity: 1; transform: translateY(0); }
   }
+
+  /* Ultra-Premium Glassmorphism & Audio Visualizer Utilities */
+  .glass-card-premium {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(20, 24, 38, 0.65) 40%, rgba(7, 10, 16, 0.95) 100%);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-card-subtle {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(13, 16, 26, 0.5) 100%);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .glass-pill-nav {
+    background: rgba(10, 13, 22, 0.88);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 12px 36px -6px rgba(0, 0, 0, 0.6), inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  }
+
+  .glass-pill-luxury {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5), inset 0 1px 1px 0 rgba(255, 255, 255, 0.25);
+  }
+
+  .vinyl-grooves {
+    background: repeating-radial-gradient(
+      circle at center,
+      #141720 0px,
+      #141720 2px,
+      #0b0d13 3px,
+      #0b0d13 5px
+    );
+  }
+
+  .neon-glow-amber {
+    box-shadow: 0 0 25px -3px rgba(245, 158, 11, 0.45), 0 0 10px -2px rgba(245, 158, 11, 0.3);
+  }
+
+  .neon-glow-cyan {
+    box-shadow: 0 0 25px -3px rgba(6, 182, 212, 0.45), 0 0 10px -2px rgba(6, 182, 212, 0.3);
+  }
+
+  .neon-glow-rose {
+    box-shadow: 0 0 25px -3px rgba(244, 63, 94, 0.45), 0 0 10px -2px rgba(244, 63, 94, 0.3);
+  }
+
+  .neon-glow-emerald {
+    box-shadow: 0 0 25px -3px rgba(16, 185, 129, 0.45), 0 0 10px -2px rgba(16, 185, 129, 0.3);
+  }
+
+  @keyframes eqBounce1 {
+    0%, 100% { height: 3px; }
+    50% { height: 18px; }
+  }
+  @keyframes eqBounce2 {
+    0%, 100% { height: 16px; }
+    50% { height: 4px; }
+  }
+  @keyframes eqBounce3 {
+    0%, 100% { height: 6px; }
+    50% { height: 22px; }
+  }
+  @keyframes eqBounce4 {
+    0%, 100% { height: 19px; }
+    50% { height: 5px; }
+  }
+  @keyframes eqBounce5 {
+    0%, 100% { height: 8px; }
+    50% { height: 20px; }
+  }
+  @keyframes eqBounce6 {
+    0%, 100% { height: 14px; }
+    50% { height: 6px; }
+  }
+  @keyframes eqBounce7 {
+    0%, 100% { height: 5px; }
+    50% { height: 17px; }
+  }
+  @keyframes eqBounce8 {
+    0%, 100% { height: 12px; }
+    50% { height: 4px; }
+  }
+
+  .animate-eq-1 { animation: eqBounce1 0.75s ease-in-out infinite; }
+  .animate-eq-2 { animation: eqBounce2 0.65s ease-in-out infinite 0.12s; }
+  .animate-eq-3 { animation: eqBounce3 0.85s ease-in-out infinite 0.2s; }
+  .animate-eq-4 { animation: eqBounce4 0.7s ease-in-out infinite 0.08s; }
+  .animate-eq-5 { animation: eqBounce5 0.9s ease-in-out infinite 0.15s; }
+  .animate-eq-6 { animation: eqBounce6 0.6s ease-in-out infinite 0.25s; }
+  .animate-eq-7 { animation: eqBounce7 0.8s ease-in-out infinite 0.05s; }
+  .animate-eq-8 { animation: eqBounce8 0.72s ease-in-out infinite 0.18s; }
+
+  @keyframes vinylRotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .animate-vinyl {
+    animation: vinylRotate 16s linear infinite;
+  }
 }
 
 /* Reduced motion preference */

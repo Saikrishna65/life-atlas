@@ -31,7 +31,7 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
 
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/secret/vault");
+    router.push("/secret");
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,43 +122,28 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
   ];
 
   return (
-    <div className="space-y-4 mb-6">
+    <div className="space-y-4 mb-6 select-none">
       {/* Top Header Bar */}
-      <nav className="flex items-center justify-between border-b border-muted/30 pb-4">
+      <nav className="flex items-center justify-between gap-2.5 pb-2">
         <Link
           href="/secret"
-          className="group inline-flex items-center gap-2 text-xs font-sans tracking-wide text-muted-foreground hover:text-foreground transition-colors py-1.5"
+          className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-card-subtle text-xs font-sans tracking-wide text-neutral-300 hover:text-white transition-all border border-white/10 hover:border-white/20 active:scale-95 shadow-sm"
         >
-          <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
-          <span>Private Atlas</span>
+          <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1 text-neutral-400 group-hover:text-amber-400" />
+          <span className="font-medium">Private Atlas</span>
         </Link>
 
-        <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[11px] font-mono tracking-wider text-amber-400 font-semibold uppercase">
-            <Music className="w-3.5 h-3.5 text-amber-400" />
-            <span>Music Vault</span>
-          </div>
-
-          <button
-            onClick={handleLockVault}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            title="Lock Private Atlas"
-          >
-            <Lock className="w-3 h-3 text-amber-500" />
-            <span>Lock</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* Action Row: Title + Import Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-        <div>
-          <h1 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight flex items-center gap-2.5">
-            <span>Expedition Soundtrack</span>
-          </h1>
-          <p className="font-body text-xs text-muted-foreground mt-0.5">
-            Offline personal audio archive & background roadtrip listening.
-          </p>
+        {/* Center Audiophile Status Indicator */}
+        <div className="hidden sm:flex items-center gap-2 px-3.5 py-1 rounded-full glass-pill-luxury text-[10px] font-mono tracking-widest text-amber-300 font-semibold uppercase shadow-[0_0_20px_rgba(245,158,11,0.15)]">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400 shadow-[0_0_8px_#f59e0b]" />
+          </span>
+          <span className="bg-gradient-to-r from-amber-200 via-amber-300 to-amber-400 bg-clip-text text-transparent">
+            HI-FI LOSSLESS VAULT
+          </span>
+          <span className="text-white/25">|</span>
+          <span className="text-[9px] text-cyan-300/80 font-mono">48kHz / 24-bit</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -175,24 +160,33 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isImporting}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-black font-sans text-xs font-semibold tracking-wide transition-all shadow-md disabled:opacity-50 cursor-pointer"
+            className="relative group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-neutral-950 font-sans text-xs font-bold tracking-wide transition-all shadow-[0_0_20px_rgba(245,158,11,0.35)] disabled:opacity-50 cursor-pointer overflow-hidden"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>{isImporting ? "Importing..." : "Import Audio"}</span>
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>{isImporting ? "Importing..." : "Import"}</span>
+          </button>
+
+          <button
+            onClick={handleLockVault}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-card-subtle hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-sans text-neutral-400 hover:text-white transition-all cursor-pointer shadow-sm"
+            title="Lock Private Atlas"
+          >
+            <Lock className="w-3 h-3 text-amber-400" />
+            <span className="hidden sm:inline">Lock</span>
           </button>
         </div>
-      </div>
+      </nav>
 
       {/* Notification Toast */}
       {importStatus && (
-        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-mono text-amber-300 animate-fade-in flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+        <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs font-mono text-amber-300 backdrop-blur-xl animate-fade-in flex items-center gap-2.5 shadow-lg">
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
           <span>{importStatus}</span>
         </div>
       )}
 
-      {/* Category Navigation Pills (Horizontally scrollable on mobile) */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar border-b border-white/5">
+      {/* Capsule Navigation Bar (Luxury Frosted Glass Deck) */}
+      <div className="glass-pill-nav rounded-2xl p-1.5 flex items-center gap-1 overflow-x-auto scrollbar-none border border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.7)]">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -200,14 +194,17 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
             <Link
               key={item.href}
               href={item.href}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-sans whitespace-nowrap transition-colors shrink-0 ${
+              className={`relative inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-sans whitespace-nowrap transition-all duration-200 shrink-0 ${
                 isActive
-                  ? "bg-amber-500/15 text-amber-400 font-medium border border-amber-500/30"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5 border border-transparent"
+                  ? "bg-gradient-to-r from-amber-500/25 via-amber-500/15 to-transparent text-amber-300 font-semibold border border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.25)]"
+                  : "text-neutral-400 hover:text-white hover:bg-white/[0.06] border border-transparent"
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className={`w-3.5 h-3.5 ${isActive ? "text-amber-400" : "text-neutral-400"}`} />
               <span>{item.label}</span>
+              {isActive && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] ml-0.5 animate-pulse" />
+              )}
             </Link>
           );
         })}

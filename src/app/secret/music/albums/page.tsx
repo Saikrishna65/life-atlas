@@ -18,7 +18,6 @@ interface AlbumGroup {
 export default function AlbumsPage() {
   const { playTrack, currentTrack } = useMusicPlayer();
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
-  const [selectedAlbum, setSelectedAlbum] = useState<AlbumGroup | null>(null);
 
   useEffect(() => {
     getAllTracks().then(setTracks).catch(console.error);
@@ -57,21 +56,21 @@ export default function AlbumsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-28">
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-28 select-none">
       <MusicNav onTrackImported={() => getAllTracks().then(setTracks)} />
 
       <div>
-        <h2 className="font-display text-2xl text-foreground font-normal">
+        <h2 className="font-display text-2xl sm:text-3xl text-white font-normal tracking-tight">
           Albums ({albumGroups.length})
         </h2>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-neutral-400 mt-0.5">
           Albums compiled from your local tracks and expedition recordings.
         </p>
       </div>
 
       {albumGroups.length === 0 ? (
-        <div className="p-12 text-center rounded-2xl border border-dashed border-white/10 text-muted-foreground text-xs space-y-2">
-          <Disc className="w-8 h-8 text-muted-foreground/60 mx-auto" />
+        <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-white/10 text-neutral-400 text-xs space-y-2">
+          <Disc className="w-8 h-8 text-neutral-500 mx-auto" />
           <p>No albums indexed yet. Import audio files to populate your catalogue.</p>
         </div>
       ) : (
@@ -80,37 +79,45 @@ export default function AlbumsPage() {
             <div
               key={`${group.album}-${group.artist}`}
               onClick={() => handlePlayAlbum(group)}
-              className="p-3.5 rounded-2xl bg-surface hover:bg-surface-hover/80 border border-white/5 transition-all group cursor-pointer space-y-3"
+              className="p-3.5 rounded-3xl glass-card-subtle hover:bg-white/[0.08] border border-white/10 hover:border-amber-500/40 transition-all duration-300 group cursor-pointer space-y-3 active:scale-98 shadow-lg relative overflow-hidden"
             >
-              <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center shadow-md">
+              {/* Album Art with Vinyl Rim Simulation */}
+              <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-[#10131d] border border-white/15 flex items-center justify-center shadow-md">
                 {group.artworkUrl ? (
                   <Image
                     src={group.artworkUrl}
                     alt={group.album}
                     fill
                     sizes="(max-width: 640px) 160px, 200px"
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
                     unoptimized
                   />
                 ) : (
-                  <Disc className="w-10 h-10 text-amber-500/70" />
+                  <div className="w-16 h-16 rounded-full vinyl-grooves border border-neutral-700 flex items-center justify-center shadow-inner">
+                    <Disc className="w-8 h-8 text-amber-400" />
+                  </div>
                 )}
 
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="w-10 h-10 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-lg">
-                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                {/* Holographic Gloss Sheen */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-white/15 pointer-events-none" />
+
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-xs">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-neutral-950 flex items-center justify-center neon-glow-amber transform scale-90 group-hover:scale-100 transition-transform">
+                    <Play className="w-5 h-5 fill-current ml-0.5" />
                   </div>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-xs sm:text-sm font-medium text-foreground truncate group-hover:text-amber-400 transition-colors">
+                <h4 className="text-xs sm:text-sm font-semibold text-white truncate group-hover:text-amber-300 transition-colors">
                   {group.album}
                 </h4>
-                <p className="text-[11px] text-muted-foreground truncate">{group.artist}</p>
-                <span className="text-[10px] font-mono text-muted-foreground/70">
-                  {group.tracks.length} track(s)
-                </span>
+                <p className="text-[11px] font-sans text-neutral-400 truncate mt-0.5">{group.artist}</p>
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-cyan-300 font-semibold">
+                    {group.tracks.length} track(s)
+                  </span>
+                </div>
               </div>
             </div>
           ))}

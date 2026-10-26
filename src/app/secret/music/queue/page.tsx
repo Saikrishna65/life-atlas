@@ -12,6 +12,7 @@ import {
   Music,
   Shuffle,
   Volume2,
+  Disc,
 } from "lucide-react";
 import MusicNav from "@/components/music/MusicNav";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
@@ -44,16 +45,16 @@ export default function QueuePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-28">
+    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pb-28 select-none">
       <MusicNav />
 
       {/* Queue Header & Actions */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display text-2xl text-foreground font-normal">
+          <h2 className="font-display text-2xl sm:text-3xl text-white font-normal tracking-tight">
             Up Next Queue ({queue.length})
           </h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-neutral-400 mt-0.5">
             {sourceContext?.title ? `Playing from: ${sourceContext.title}` : "Interactive playlist queue."}
           </p>
         </div>
@@ -61,8 +62,10 @@ export default function QueuePage() {
         <div className="flex items-center gap-2">
           <button
             onClick={toggleShuffle}
-            className={`p-2 rounded-xl text-xs transition-colors cursor-pointer ${
-              isShuffle ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" : "bg-white/5 hover:bg-white/10 text-neutral-300"
+            className={`p-2.5 rounded-2xl text-xs transition-all cursor-pointer border ${
+              isShuffle
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.25)]"
+                : "glass-card-subtle text-neutral-300 hover:text-white"
             }`}
             title="Toggle shuffle queue"
           >
@@ -72,7 +75,7 @@ export default function QueuePage() {
           <button
             onClick={clearQueue}
             disabled={queue.length === 0}
-            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-rose-500/10 text-neutral-300 hover:text-rose-400 text-xs font-sans transition-colors disabled:opacity-50 cursor-pointer"
+            className="px-3.5 py-2.5 rounded-2xl glass-card-subtle hover:bg-rose-500/15 text-neutral-300 hover:text-rose-400 text-xs font-sans transition-all disabled:opacity-40 cursor-pointer active:scale-95"
           >
             Clear Queue
           </button>
@@ -81,14 +84,24 @@ export default function QueuePage() {
 
       {/* Now Playing Featured in Queue */}
       {currentTrack && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-semibold block">
-            Currently Playing
-          </span>
+        <div className="p-4 sm:p-5 rounded-3xl glass-card-premium border border-amber-500/30 space-y-2.5 relative overflow-hidden shadow-[0_15px_35px_rgba(245,158,11,0.15)]">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-white/5 border border-white/10 shrink-0 flex items-center justify-center">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300 font-bold flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <span>CURRENTLY PLAYING</span>
+            </span>
+            <div className="flex items-end gap-0.5 h-3">
+              <span className="w-0.5 bg-amber-400 rounded-full animate-eq-1" />
+              <span className="w-0.5 bg-amber-400 rounded-full animate-eq-2" />
+              <span className="w-0.5 bg-amber-400 rounded-full animate-eq-3" />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 pt-1">
+            <div className="flex items-center gap-3.5 min-w-0 flex-1">
+              <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#121622] border border-white/10 shrink-0 flex items-center justify-center shadow-md">
                 {currentTrack.artworkUrl ? (
                   <Image
                     src={currentTrack.artworkUrl}
@@ -99,36 +112,37 @@ export default function QueuePage() {
                     unoptimized
                   />
                 ) : (
-                  <Music className="w-5 h-5 text-amber-400" />
+                  <Disc className="w-5 h-5 text-amber-400" />
                 )}
               </div>
 
               <div className="min-w-0 flex-1">
-                <h4 className="text-sm font-medium text-amber-400 truncate">
+                <h4 className="text-sm font-semibold text-white truncate">
                   {currentTrack.title}
                 </h4>
-                <p className="text-xs text-muted-foreground truncate">
-                  {currentTrack.artist}
+                <p className="text-xs text-neutral-400 truncate mt-0.5">
+                  {currentTrack.artist || "Unknown Artist"}
                 </p>
               </div>
             </div>
 
             <button
               onClick={togglePlayPause}
-              className="w-10 h-10 rounded-full bg-amber-500 hover:bg-amber-400 text-black flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              className="w-11 h-11 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-neutral-950 flex items-center justify-center transition-all shadow-[0_0_20px_rgba(245,158,11,0.4)] cursor-pointer shrink-0 active:scale-90"
             >
-              {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+              {isPlaying ? <Pause className="w-4 h-4 fill-current stroke-[2.5]" /> : <Play className="w-4 h-4 fill-current stroke-[2.5] ml-0.5" />}
             </button>
           </div>
         </div>
       )}
 
       {/* Queue Items */}
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         {queue.length === 0 ? (
-          <div className="p-12 text-center rounded-2xl border border-dashed border-white/10 text-muted-foreground text-xs space-y-2">
-            <ListOrdered className="w-8 h-8 text-muted-foreground/60 mx-auto" />
-            <p>Queue is empty.</p>
+          <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-white/10 text-neutral-400 text-xs space-y-2">
+            <ListOrdered className="w-8 h-8 text-neutral-500 mx-auto" />
+            <p className="text-neutral-300 font-medium">Queue is empty.</p>
+            <p className="text-neutral-500">Add songs to your queue from your Library or Playlists.</p>
           </div>
         ) : (
           queue.map((t, idx) => {
@@ -136,10 +150,10 @@ export default function QueuePage() {
             return (
               <div
                 key={`${t.id}-${idx}`}
-                className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                className={`p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3.5 ${
                   isPlayingThis
-                    ? "bg-amber-500/10 border-amber-500/30"
-                    : "bg-surface hover:bg-surface-hover/80 border-white/5"
+                    ? "bg-amber-500/15 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
+                    : "glass-card-subtle hover:bg-white/[0.08] border-white/[0.08]"
                 }`}
               >
                 {/* Steppers */}
@@ -147,15 +161,17 @@ export default function QueuePage() {
                   <button
                     disabled={idx === 0}
                     onClick={() => handleMoveQueueItem(idx, "UP")}
-                    className="p-0.5 text-neutral-500 hover:text-white disabled:opacity-20 cursor-pointer"
+                    className="p-1 text-neutral-400 hover:text-white disabled:opacity-20 cursor-pointer active:scale-90 transition-transform"
+                    aria-label="Move up"
                   >
                     <ChevronUp className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-[10px] font-mono text-muted-foreground">{idx + 1}</span>
+                  <span className="text-[10px] font-mono text-neutral-400">{idx + 1}</span>
                   <button
                     disabled={idx === queue.length - 1}
                     onClick={() => handleMoveQueueItem(idx, "DOWN")}
-                    className="p-0.5 text-neutral-500 hover:text-white disabled:opacity-20 cursor-pointer"
+                    className="p-1 text-neutral-400 hover:text-white disabled:opacity-20 cursor-pointer active:scale-90 transition-transform"
+                    aria-label="Move down"
                   >
                     <ChevronDown className="w-3.5 h-3.5" />
                   </button>
@@ -164,39 +180,39 @@ export default function QueuePage() {
                 {/* Track Details */}
                 <div
                   onClick={() => playTrack(t, queue, sourceContext)}
-                  className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                  className="flex items-center gap-3.5 min-w-0 flex-1 cursor-pointer group"
                 >
-                  <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white/5 border border-white/10 shrink-0 flex items-center justify-center">
+                  <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[#121622] border border-white/10 shrink-0 flex items-center justify-center shadow-md">
                     {t.artworkUrl ? (
                       <Image
                         src={t.artworkUrl}
                         alt={t.title}
                         fill
-                        sizes="40px"
+                        sizes="44px"
                         className="object-cover"
                         unoptimized
                       />
                     ) : (
-                      <Music className="w-4 h-4 text-amber-400" />
+                      <Disc className="w-4 h-4 text-amber-400" />
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <h4
-                      className={`text-xs sm:text-sm font-medium truncate ${
-                        isPlayingThis ? "text-amber-400" : "text-foreground"
+                      className={`text-xs sm:text-sm font-semibold truncate transition-colors ${
+                        isPlayingThis ? "text-amber-300" : "text-white group-hover:text-amber-200"
                       }`}
                     >
                       {t.title}
                     </h4>
-                    <p className="text-[11px] text-muted-foreground truncate">{t.artist}</p>
+                    <p className="text-[11px] font-sans text-neutral-400 truncate mt-0.5">{t.artist || "Unknown Artist"}</p>
                   </div>
                 </div>
 
                 {/* Remove from Queue */}
                 <button
                   onClick={() => removeFromQueue(idx)}
-                  className="p-1.5 text-neutral-500 hover:text-rose-400 transition-colors rounded-lg hover:bg-rose-500/10 cursor-pointer shrink-0"
+                  className="p-2 text-neutral-400 hover:text-rose-400 transition-colors rounded-xl hover:bg-rose-500/15 cursor-pointer shrink-0 active:scale-90"
                   title="Remove from queue"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
