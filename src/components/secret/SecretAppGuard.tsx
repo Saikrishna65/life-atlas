@@ -70,7 +70,7 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
 
   if (!isClient) {
     return (
-      <div className="min-h-screen bg-[#07080a] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
         <div className="w-6 h-6 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
       </div>
     );
@@ -82,13 +82,13 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
     return (
       <div
         onClick={handleVerifyBiometric}
-        className="fixed inset-0 bg-[#07080a] z-50 flex flex-col items-center justify-center cursor-pointer select-none"
+        className="fixed inset-0 bg-[#f8fafc] z-50 flex flex-col items-center justify-center cursor-pointer select-none"
       >
-        <div className="flex flex-col items-center gap-3 animate-fade-in">
-          <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-            <Fingerprint className={`w-8 h-8 ${isAuthenticating ? "animate-pulse" : ""} text-amber-400`} />
+        <div className="flex flex-col items-center gap-3.5 animate-fade-in">
+          <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-500 shadow-sm">
+            <Fingerprint className={`w-8 h-8 ${isAuthenticating ? "animate-pulse" : ""} text-amber-500`} />
           </div>
-          <span className="text-[11px] font-mono uppercase tracking-widest text-neutral-500">
+          <span className="text-[11px] font-mono uppercase tracking-widest text-slate-500 font-medium">
             Touch fingerprint sensor
           </span>
         </div>

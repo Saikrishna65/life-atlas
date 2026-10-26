@@ -63,17 +63,17 @@ export default function ArtistsPage() {
       <MusicNav onTrackImported={() => getAllTracks().then(setTracks)} />
 
       <div>
-        <h2 className="font-display text-2xl sm:text-3xl text-white font-normal tracking-tight">
+        <h2 className="font-display text-2xl sm:text-3xl text-slate-900 font-normal tracking-tight">
           Artists & Composers ({artistGroups.length})
         </h2>
-        <p className="text-xs text-neutral-400 mt-0.5">
+        <p className="text-xs text-slate-500 mt-0.5">
           Musicians and ambient field recordists represented in your Vault.
         </p>
       </div>
 
       {artistGroups.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-white/10 text-neutral-400 text-xs space-y-2">
-          <Users className="w-8 h-8 text-neutral-500 mx-auto" />
+        <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-slate-300 text-slate-500 text-xs space-y-2">
+          <Users className="w-8 h-8 text-slate-400 mx-auto" />
           <p>No artists found in your library yet.</p>
         </div>
       ) : (
@@ -82,10 +82,10 @@ export default function ArtistsPage() {
             <div
               key={group.artist}
               onClick={() => handlePlayArtist(group)}
-              className="p-4 rounded-3xl glass-card-subtle hover:bg-white/[0.08] border border-white/10 hover:border-amber-500/40 transition-all duration-300 flex items-center justify-between gap-4 group cursor-pointer active:scale-98 shadow-lg"
+              className="p-4 rounded-3xl bg-white/90 hover:bg-white border border-slate-200/90 hover:border-amber-300 transition-all duration-300 flex items-center justify-between gap-4 group cursor-pointer active:scale-98 shadow-xs hover:shadow-md"
             >
               <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                <div className="relative w-14 h-14 rounded-full overflow-hidden bg-[#10131d] border-2 border-white/15 group-hover:border-amber-400 group-hover:shadow-[0_0_20px_rgba(245,158,11,0.35)] shrink-0 flex items-center justify-center shadow-md transition-all">
+                <div className="relative w-14 h-14 rounded-full overflow-hidden bg-slate-100 border-2 border-slate-200 group-hover:border-amber-400 group-hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] shrink-0 flex items-center justify-center shadow-xs transition-all">
                   {group.artworkUrl ? (
                     <Image
                       src={group.artworkUrl}
@@ -96,26 +96,26 @@ export default function ArtistsPage() {
                       unoptimized
                     />
                   ) : (
-                    <Users className="w-5 h-5 text-amber-400" />
+                    <Users className="w-5 h-5 text-amber-600" />
                   )}
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <h4 className="text-xs sm:text-sm font-semibold text-white group-hover:text-amber-300 transition-colors truncate">
+                  <h4 className="text-xs sm:text-sm font-semibold text-slate-900 group-hover:text-amber-800 transition-colors truncate">
                     {group.artist}
                   </h4>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-cyan-300 font-semibold">
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-semibold">
                       {group.tracks.length} track(s)
                     </span>
-                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-neutral-400">
+                    <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500">
                       {group.albums.length} album(s)
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="w-10 h-10 rounded-full bg-white/5 group-hover:bg-gradient-to-r group-hover:from-amber-400 group-hover:to-amber-500 group-hover:text-neutral-950 flex items-center justify-center text-neutral-300 transition-all shrink-0 shadow-sm group-hover:neon-glow-amber">
+              <div className="w-10 h-10 rounded-full bg-slate-100 group-hover:bg-gradient-to-r group-hover:from-amber-500 group-hover:to-amber-600 group-hover:text-white flex items-center justify-center text-slate-600 transition-all shrink-0 shadow-xs">
                 <Play className="w-4 h-4 fill-current ml-0.5" />
               </div>
             </div>

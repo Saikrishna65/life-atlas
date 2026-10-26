@@ -155,35 +155,35 @@ export default function PlaylistDetailPage() {
       <MusicNav onTrackImported={loadData} />
 
       {/* Playlist Hero Header */}
-      <div className="p-6 sm:p-8 rounded-3xl glass-card-premium border border-white/12 flex flex-col sm:flex-row items-start sm:items-center gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="p-6 sm:p-8 rounded-3xl glass-card-premium border border-slate-200/90 flex flex-col sm:flex-row items-start sm:items-center gap-6 shadow-[0_12px_36px_rgba(15,23,42,0.06)] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
+        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0 shadow-xs">
           <ListMusic className="w-12 h-12" />
         </div>
 
         <div className="min-w-0 flex-1 space-y-2">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300 font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 inline-block shadow-xs">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-amber-900 font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 inline-block shadow-xs">
             Soundtrack Collection
           </span>
 
-          <h2 className="font-display text-2xl sm:text-3xl text-white font-normal tracking-tight">
+          <h2 className="font-display text-2xl sm:text-3xl text-slate-900 font-normal tracking-tight">
             {playlist.title}
           </h2>
 
-          <p className="text-xs text-neutral-300 max-w-lg leading-relaxed">
+          <p className="text-xs text-slate-600 max-w-lg leading-relaxed">
             {playlist.description || "Custom expedition soundtrack playlist."}
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 text-[11px] text-neutral-400 font-sans pt-1">
-            <span className="font-mono text-neutral-300">{tracks.length} track(s)</span>
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 font-sans pt-1">
+            <span className="font-mono text-slate-700 font-medium">{tracks.length} track(s)</span>
             <span>•</span>
-            <span className="font-mono text-neutral-300">{totalMins} min listening</span>
+            <span className="font-mono text-slate-700 font-medium">{totalMins} min listening</span>
             {linkedTrip && (
               <>
                 <span>•</span>
-                <span className="inline-flex items-center gap-1.5 text-amber-300 font-medium bg-amber-500/15 px-2.5 py-0.5 rounded-full border border-amber-500/25">
-                  <Compass className="w-3.5 h-3.5 text-amber-400" />
+                <span className="inline-flex items-center gap-1.5 text-amber-800 font-medium bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                  <Compass className="w-3.5 h-3.5 text-amber-600" />
                   <span>Expedition: {linkedTrip.title}</span>
                 </span>
               </>
@@ -198,7 +198,7 @@ export default function PlaylistDetailPage() {
           <button
             onClick={() => handlePlayAll(false)}
             disabled={tracks.length === 0}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-neutral-950 font-sans text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-[0_0_25px_rgba(245,158,11,0.35)] active:scale-95"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-white font-sans text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer shadow-md active:scale-95"
           >
             <Play className="w-3.5 h-3.5 fill-current stroke-[2.5]" />
             <span>Play All</span>
@@ -207,9 +207,9 @@ export default function PlaylistDetailPage() {
           <button
             onClick={() => handlePlayAll(true)}
             disabled={tracks.length === 0}
-            className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl glass-card-subtle hover:bg-white/[0.08] text-neutral-200 text-xs font-sans font-semibold transition-all disabled:opacity-50 cursor-pointer active:scale-95 border border-white/10"
+            className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl glass-card-subtle hover:bg-white text-slate-700 text-xs font-sans font-semibold transition-all disabled:opacity-50 cursor-pointer active:scale-95 border border-slate-200/90 shadow-xs"
           >
-            <Shuffle className="w-3.5 h-3.5 text-amber-400" />
+            <Shuffle className="w-3.5 h-3.5 text-amber-600" />
             <span>Shuffle</span>
           </button>
         </div>
@@ -217,20 +217,20 @@ export default function PlaylistDetailPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowTripModal(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl glass-card-subtle hover:bg-white/[0.08] text-xs font-sans text-neutral-200 hover:text-white transition-all cursor-pointer active:scale-95 border border-white/10 shadow-sm"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl glass-card-subtle hover:bg-white text-xs font-sans text-slate-700 hover:text-slate-900 transition-all cursor-pointer active:scale-95 border border-slate-200/90 shadow-xs"
             title="Attach to an expedition in Trip Vault"
           >
-            <Compass className="w-3.5 h-3.5 text-amber-400" />
+            <Compass className="w-3.5 h-3.5 text-amber-600" />
             <span>{linkedTrip ? "Change Expedition" : "Link to Trip"}</span>
           </button>
 
           <button
             onClick={handleExportM3U}
             disabled={tracks.length === 0}
-            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl glass-card-subtle hover:bg-white/[0.08] text-xs font-sans text-neutral-200 hover:text-white transition-all disabled:opacity-40 cursor-pointer active:scale-95 border border-white/10 shadow-sm"
+            className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl glass-card-subtle hover:bg-white text-xs font-sans text-slate-700 hover:text-slate-900 transition-all disabled:opacity-40 cursor-pointer active:scale-95 border border-slate-200/90 shadow-xs"
             title="Export M3U playlist file"
           >
-            <Download className="w-3.5 h-3.5 text-cyan-400" />
+            <Download className="w-3.5 h-3.5 text-sky-600" />
             <span>Export M3U</span>
           </button>
         </div>
@@ -238,11 +238,11 @@ export default function PlaylistDetailPage() {
 
       {/* Track List with Reordering */}
       {tracks.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-white/10 text-neutral-400 text-xs space-y-3">
-          <p className="text-neutral-300 font-medium">This playlist has no tracks yet.</p>
+        <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-slate-300 text-slate-500 text-xs space-y-3">
+          <p className="text-slate-700 font-medium">This playlist has no tracks yet.</p>
           <Link
             href="/secret/music/library"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold hover:bg-amber-500/30 transition-all shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-amber-50 text-amber-800 border border-amber-300 text-xs font-semibold hover:bg-amber-100 transition-all shadow-xs"
           >
             <Plus className="w-4 h-4" />
             <span>Browse Library to Add Tracks</span>
@@ -264,8 +264,8 @@ export default function PlaylistDetailPage() {
                 }
                 className={`p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3.5 cursor-pointer group active:scale-[0.99] ${
                   isCurrent
-                    ? "bg-amber-500/15 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
-                    : "glass-card-subtle hover:bg-white/[0.08] border-white/[0.08]"
+                    ? "bg-amber-500/10 border-amber-400 shadow-[0_4px_20px_rgba(245,158,11,0.12)] ring-1 ring-amber-400/30"
+                    : "glass-card-subtle hover:bg-white border-slate-200/80 hover:border-slate-300 shadow-xs hover:shadow-sm"
                 }`}
               >
                 {/* Index / Reorder Steppers */}
@@ -276,16 +276,16 @@ export default function PlaylistDetailPage() {
                   <button
                     disabled={idx === 0}
                     onClick={() => handleMoveTrack(idx, "UP")}
-                    className="p-1 text-neutral-400 hover:text-white disabled:opacity-20 cursor-pointer active:scale-90 transition-transform"
+                    className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 cursor-pointer active:scale-90 transition-transform"
                     aria-label="Move track up"
                   >
                     <ChevronUp className="w-3.5 h-3.5" />
                   </button>
-                  <span className="text-[10px] font-mono text-neutral-400">{idx + 1}</span>
+                  <span className="text-[10px] font-mono text-slate-500">{idx + 1}</span>
                   <button
                     disabled={idx === tracks.length - 1}
                     onClick={() => handleMoveTrack(idx, "DOWN")}
-                    className="p-1 text-neutral-400 hover:text-white disabled:opacity-20 cursor-pointer active:scale-90 transition-transform"
+                    className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-20 cursor-pointer active:scale-90 transition-transform"
                     aria-label="Move track down"
                   >
                     <ChevronDown className="w-3.5 h-3.5" />
@@ -294,7 +294,7 @@ export default function PlaylistDetailPage() {
 
                 {/* Artwork + Title */}
                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-[#121622] border border-white/10 shrink-0 flex items-center justify-center shadow-md">
+                  <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center shadow-xs">
                     {t.artworkUrl ? (
                       <Image
                         src={t.artworkUrl}
@@ -305,19 +305,19 @@ export default function PlaylistDetailPage() {
                         unoptimized
                       />
                     ) : (
-                      <Disc className="w-4 h-4 text-amber-400" />
+                      <Disc className="w-4 h-4 text-amber-600" />
                     )}
 
                     {isCurrent && (
-                      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center">
+                      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center">
                         {isPlaying ? (
                           <div className="flex items-end gap-0.5 h-3" aria-label="Playing">
-                            <span className="w-0.5 bg-amber-400 rounded-full animate-eq-1" />
-                            <span className="w-0.5 bg-amber-400 rounded-full animate-eq-2" />
-                            <span className="w-0.5 bg-amber-400 rounded-full animate-eq-3" />
+                            <span className="w-0.5 bg-amber-300 rounded-full animate-eq-1" />
+                            <span className="w-0.5 bg-amber-300 rounded-full animate-eq-2" />
+                            <span className="w-0.5 bg-sky-300 rounded-full animate-eq-3" />
                           </div>
                         ) : (
-                          <Play className="w-4 h-4 fill-amber-400 text-amber-400 ml-0.5" />
+                          <Play className="w-4 h-4 fill-amber-300 text-amber-300 ml-0.5" />
                         )}
                       </div>
                     )}
@@ -326,12 +326,12 @@ export default function PlaylistDetailPage() {
                   <div className="min-w-0 flex-1">
                     <h4
                       className={`text-xs sm:text-sm font-semibold truncate transition-colors ${
-                        isCurrent ? "text-amber-300" : "text-white group-hover:text-amber-200"
+                        isCurrent ? "text-amber-900" : "text-slate-900 group-hover:text-amber-800"
                       }`}
                     >
                       {t.title}
                     </h4>
-                    <p className="text-[11px] font-sans text-neutral-400 truncate mt-0.5">{t.artist || "Unknown Artist"}</p>
+                    <p className="text-[11px] font-sans text-slate-500 truncate mt-0.5">{t.artist || "Unknown Artist"}</p>
                   </div>
                 </div>
 
@@ -340,14 +340,14 @@ export default function PlaylistDetailPage() {
                   className="flex items-center gap-3 shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <span className="text-[11px] font-mono text-neutral-400">
+                  <span className="text-[11px] font-mono text-slate-500">
                     {Math.floor(t.duration / 60)}:
                     {(t.duration % 60).toString().padStart(2, "0")}
                   </span>
 
                   <button
                     onClick={() => handleRemoveTrack(t.id)}
-                    className="p-1.5 text-neutral-400 hover:text-rose-400 transition-colors rounded-xl hover:bg-rose-500/15 cursor-pointer active:scale-90"
+                    className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors rounded-xl hover:bg-rose-50 cursor-pointer active:scale-90"
                     title="Remove from this playlist (audio file preserved in library)"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -362,23 +362,23 @@ export default function PlaylistDetailPage() {
       {/* Link to Trip Vault Expedition Modal */}
       {showTripModal && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setShowTripModal(false)}
         >
           <div
-            className="w-full max-w-sm rounded-3xl glass-card-premium border border-white/15 p-6 space-y-4 shadow-2xl"
+            className="w-full max-w-sm rounded-3xl bg-white border border-slate-200 p-6 space-y-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="font-display text-xl text-white font-normal">
+            <h3 className="font-display text-xl text-slate-900 font-normal">
               Link to Trip Vault
             </h3>
-            <p className="text-xs text-neutral-400 leading-relaxed">
+            <p className="text-xs text-slate-500 leading-relaxed">
               Select an expedition to make this playlist the official soundtrack for the journey.
             </p>
 
             <div className="max-h-60 overflow-y-auto space-y-2 scrollbar-none">
               {trips.length === 0 ? (
-                <p className="text-xs text-neutral-400 p-3 text-center">
+                <p className="text-xs text-slate-500 p-3 text-center">
                   No active expeditions found in Trip Vault.
                 </p>
               ) : (
@@ -388,12 +388,12 @@ export default function PlaylistDetailPage() {
                     onClick={() => handleLinkTrip(tr.id)}
                     className={`w-full p-3 rounded-2xl text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer border ${
                       playlist.tripId === tr.id
-                        ? "bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm"
-                        : "glass-card-subtle hover:bg-white/10 text-white border-white/5"
+                        ? "bg-amber-500/15 text-amber-900 border-amber-400 shadow-xs"
+                        : "bg-slate-50 hover:bg-slate-100 text-slate-900 border-slate-200"
                     }`}
                   >
                     <span>{tr.title}</span>
-                    <span className="text-[10px] font-mono text-neutral-400">{tr.destination}</span>
+                    <span className="text-[10px] font-mono text-slate-500">{tr.destination}</span>
                   </button>
                 ))
               )}
@@ -404,7 +404,7 @@ export default function PlaylistDetailPage() {
                 <button
                   type="button"
                   onClick={handleUnlinkTrip}
-                  className="flex-1 py-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-300 transition-colors cursor-pointer border border-rose-500/20 active:scale-95"
+                  className="flex-1 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-xs font-semibold text-rose-600 transition-colors cursor-pointer border border-rose-200 active:scale-95"
                 >
                   Unlink
                 </button>
@@ -412,7 +412,7 @@ export default function PlaylistDetailPage() {
               <button
                 type="button"
                 onClick={() => setShowTripModal(false)}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-neutral-300 hover:text-white transition-colors cursor-pointer border border-white/10 active:scale-95"
+                className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 transition-colors cursor-pointer border border-slate-200 active:scale-95"
               >
                 Close
               </button>

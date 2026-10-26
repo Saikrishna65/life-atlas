@@ -128,67 +128,67 @@ export default function MusicSettingsPage() {
       <MusicNav />
 
       <div>
-        <h2 className="font-display text-2xl sm:text-3xl text-white font-normal tracking-tight">
+        <h2 className="font-display text-2xl sm:text-3xl text-slate-900 font-normal tracking-tight">
           Vault Storage & Diagnostics
         </h2>
-        <p className="text-xs text-neutral-400 mt-0.5">
+        <p className="text-xs text-slate-500 mt-0.5">
           Storage allocations, metadata backups, and offline cache operations.
         </p>
       </div>
 
       {feedback && (
-        <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs font-mono text-amber-300 animate-fade-in shadow-md">
+        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-xs font-mono text-amber-900 animate-fade-in shadow-xs">
           {feedback}
         </div>
       )}
 
       {/* Storage Breakdown */}
       {report && (
-        <div className="p-6 rounded-3xl glass-card-premium border border-white/10 space-y-4 shadow-[0_15px_35px_rgba(0,0,0,0.7)]">
+        <div className="p-6 rounded-3xl glass-card-premium border border-slate-200/90 space-y-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+            <div className="w-11 h-11 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shadow-xs">
               <HardDrive className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-white">Physical Storage Metrics</h3>
-              <p className="text-xs text-neutral-400">IndexedDB audio blob footprint on device</p>
+              <h3 className="text-sm font-semibold text-slate-900">Physical Storage Metrics</h3>
+              <p className="text-xs text-slate-500">IndexedDB audio blob footprint on device</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-            <div className="p-3.5 rounded-2xl glass-card-subtle border border-white/5">
-              <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider block">Total Tracks</span>
-              <span className="text-lg font-mono font-bold text-white mt-0.5 block">{report.totalTracks}</span>
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">Total Tracks</span>
+              <span className="text-lg font-mono font-bold text-slate-900 mt-0.5 block">{report.totalTracks}</span>
             </div>
-            <div className="p-3.5 rounded-2xl glass-card-subtle border border-white/5">
-              <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider block">Imported Audio</span>
-              <span className="text-lg font-mono font-bold text-emerald-400 mt-0.5 block">{report.importedTracks}</span>
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">Imported Audio</span>
+              <span className="text-lg font-mono font-bold text-emerald-700 mt-0.5 block">{report.importedTracks}</span>
             </div>
-            <div className="p-3.5 rounded-2xl glass-card-subtle border border-white/5">
-              <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider block">Downloads</span>
-              <span className="text-lg font-mono font-bold text-cyan-400 mt-0.5 block">{report.downloadedTracks}</span>
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">Downloads</span>
+              <span className="text-lg font-mono font-bold text-sky-700 mt-0.5 block">{report.downloadedTracks}</span>
             </div>
-            <div className="p-3.5 rounded-2xl glass-card-subtle border border-white/5">
-              <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider block">Allocated Size</span>
-              <span className="text-lg font-mono font-bold text-amber-300 mt-0.5 block">{report.formattedSize}</span>
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">Allocated Size</span>
+              <span className="text-lg font-mono font-bold text-amber-800 mt-0.5 block">{report.formattedSize}</span>
             </div>
           </div>
         </div>
       )}
 
       {/* Backup and Restore */}
-      <div className="p-6 rounded-3xl glass-card-premium border border-white/10 space-y-4 shadow-[0_15px_35px_rgba(0,0,0,0.7)]">
-        <h3 className="text-sm font-semibold text-white">Library Backup & Restoration</h3>
-        <p className="text-xs text-neutral-400">
+      <div className="p-6 rounded-3xl glass-card-premium border border-slate-200/90 space-y-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+        <h3 className="text-sm font-semibold text-slate-900">Library Backup & Restoration</h3>
+        <p className="text-xs text-slate-500">
           Export your playlist architecture and track metadata into a portable JSON document.
         </p>
 
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <button
             onClick={handleExportJSON}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl glass-card-subtle hover:bg-white/[0.08] border border-white/10 text-xs font-sans text-neutral-200 hover:text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl glass-card-subtle hover:bg-white border border-slate-200 text-xs font-sans text-slate-700 hover:text-slate-900 transition-all cursor-pointer active:scale-95 shadow-xs"
           >
-            <Download className="w-4 h-4 text-amber-400" />
+            <Download className="w-4 h-4 text-amber-600" />
             <span>Export Library JSON</span>
           </button>
 
@@ -202,34 +202,34 @@ export default function MusicSettingsPage() {
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl glass-card-subtle hover:bg-white/[0.08] border border-white/10 text-xs font-sans text-neutral-200 hover:text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl glass-card-subtle hover:bg-white border border-slate-200 text-xs font-sans text-slate-700 hover:text-slate-900 transition-all cursor-pointer active:scale-95 shadow-xs"
           >
-            <Upload className="w-4 h-4 text-cyan-400" />
+            <Upload className="w-4 h-4 text-sky-600" />
             <span>Restore from Backup</span>
           </button>
 
           <button
             onClick={handleSeedSamples}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl glass-card-subtle hover:bg-white/[0.08] border border-white/10 text-xs font-sans text-neutral-200 hover:text-white transition-all cursor-pointer active:scale-95 shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl glass-card-subtle hover:bg-white border border-slate-200 text-xs font-sans text-slate-700 hover:text-slate-900 transition-all cursor-pointer active:scale-95 shadow-xs"
           >
-            <Sparkles className="w-4 h-4 text-emerald-400" />
+            <Sparkles className="w-4 h-4 text-emerald-600" />
             <span>Reload Sample Tracks</span>
           </button>
         </div>
       </div>
 
       {/* Danger Zone */}
-      <div className="p-6 rounded-3xl glass-card-subtle border border-rose-500/20 space-y-3 shadow-md">
-        <div className="flex items-center gap-2 text-rose-400">
+      <div className="p-6 rounded-3xl bg-rose-50/50 border border-rose-200 space-y-3 shadow-xs">
+        <div className="flex items-center gap-2 text-rose-700">
           <ShieldAlert className="w-4 h-4" />
           <h3 className="text-sm font-semibold">Reset Music Vault</h3>
         </div>
-        <p className="text-xs text-neutral-400 leading-relaxed">
+        <p className="text-xs text-slate-600 leading-relaxed">
           Wipes the local Music Vault IndexedDB table. Does not affect Trip Vault expeditions or public records.
         </p>
         <button
           onClick={handleResetDatabase}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-300 text-xs font-semibold tracking-wide transition-all cursor-pointer active:scale-95"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-100 hover:bg-rose-200 border border-rose-300 text-rose-800 text-xs font-semibold tracking-wide transition-all cursor-pointer active:scale-95"
         >
           <Trash2 className="w-3.5 h-3.5" />
           <span>Wipe & Reset Music Database</span>

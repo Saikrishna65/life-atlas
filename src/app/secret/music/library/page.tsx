@@ -117,18 +117,17 @@ export default function MusicLibraryPage() {
       <MusicNav onTrackImported={loadData} />
 
       {/* Search and Filters Bar */}
-      {/* Search and Filters Bar */}
       <div className="space-y-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Glass Search Box */}
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="Search library by title, artist, album, genre..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-2xl glass-card-subtle border border-white/10 text-xs sm:text-sm text-white placeholder:text-neutral-500 focus:outline-none focus:border-amber-400/60 focus:shadow-[0_0_20px_rgba(245,158,11,0.2)] transition-all"
+              className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white/90 border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all shadow-xs"
             />
           </div>
 
@@ -140,26 +139,26 @@ export default function MusicLibraryPage() {
                   const shuffled = [...tracks].sort(() => Math.random() - 0.5);
                   playTrack(shuffled[0], shuffled, { type: "LIBRARY", title: "Shuffled Library" });
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl glass-card-subtle hover:bg-white/10 text-xs font-sans text-amber-300 border border-amber-500/30 hover:border-amber-500/50 transition-all cursor-pointer shadow-sm active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl glass-card-subtle hover:bg-white text-xs font-sans text-amber-800 border border-amber-300 hover:border-amber-400 transition-all cursor-pointer shadow-xs active:scale-95"
                 title="Shuffle all library tracks"
               >
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <Sparkles className="w-3.5 h-3.5 text-amber-600" />
                 <span className="font-semibold">Shuffle All</span>
               </button>
             )}
 
-            <div className="flex items-center gap-1.5 glass-card-subtle border border-white/10 rounded-xl px-2.5 py-1.5">
-              <ArrowUpDown className="w-3.5 h-3.5 text-neutral-400" />
+            <div className="flex items-center gap-1.5 bg-white/90 border border-slate-200 rounded-xl px-2.5 py-1.5">
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
               <select
                 value={sortField}
                 onChange={(e) => setSortField(e.target.value as SortField)}
-                className="bg-transparent text-xs text-neutral-200 focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs text-slate-700 focus:outline-none cursor-pointer"
               >
-                <option value="RECENT" className="bg-[#0b0e17] text-white">Recently Added</option>
-                <option value="TITLE" className="bg-[#0b0e17] text-white">Title (A-Z)</option>
-                <option value="ARTIST" className="bg-[#0b0e17] text-white">Artist (A-Z)</option>
-                <option value="DURATION" className="bg-[#0b0e17] text-white">Duration</option>
-                <option value="PLAY_COUNT" className="bg-[#0b0e17] text-white">Most Played</option>
+                <option value="RECENT" className="bg-white text-slate-900">Recently Added</option>
+                <option value="TITLE" className="bg-white text-slate-900">Title (A-Z)</option>
+                <option value="ARTIST" className="bg-white text-slate-900">Artist (A-Z)</option>
+                <option value="DURATION" className="bg-white text-slate-900">Duration</option>
+                <option value="PLAY_COUNT" className="bg-white text-slate-900">Most Played</option>
               </select>
             </div>
           </div>
@@ -173,8 +172,8 @@ export default function MusicLibraryPage() {
               onClick={() => setFilterSource(tab)}
               className={`px-3.5 py-1.5 rounded-full transition-all font-sans whitespace-nowrap cursor-pointer active:scale-95 text-xs ${
                 filterSource === tab
-                  ? "bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 neon-glow-amber"
-                  : "glass-card-subtle text-neutral-400 hover:text-white border border-white/5 hover:border-white/15"
+                  ? "bg-amber-500/15 text-amber-900 font-bold border border-amber-400/50 shadow-xs"
+                  : "glass-card-subtle text-slate-600 hover:text-slate-900 border border-slate-200/80 hover:border-slate-300"
               }`}
             >
               {tab === "ALL" && `All Tracks (${tracks.length})`}
@@ -188,7 +187,7 @@ export default function MusicLibraryPage() {
 
       {/* Tracks Listing */}
       {filteredAndSortedTracks.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-white/10 text-neutral-400 text-xs space-y-2">
+        <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-slate-300 text-slate-500 text-xs space-y-2">
           <p>No audio files matching the current filter query.</p>
         </div>
       ) : (
@@ -206,13 +205,13 @@ export default function MusicLibraryPage() {
                 }
                 className={`p-3 rounded-2xl border transition-all duration-200 flex items-center justify-between gap-3.5 cursor-pointer group active:scale-[0.99] relative ${
                   isCurrent
-                    ? "bg-amber-500/15 border-amber-500/50 shadow-[0_0_25px_rgba(245,158,11,0.2)] ring-1 ring-amber-500/30"
-                    : "glass-card-subtle hover:bg-white/[0.08] border-white/10 hover:border-white/20"
+                    ? "bg-amber-500/10 border-amber-400 shadow-[0_4px_20px_rgba(245,158,11,0.12)] ring-1 ring-amber-400/30"
+                    : "glass-card-subtle hover:bg-white border-slate-200/80 hover:border-slate-300 shadow-xs hover:shadow-sm"
                 }`}
               >
                 {/* Artwork + Title */}
                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[#10131d] border border-white/15 shrink-0 flex items-center justify-center shadow-md">
+                  <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0 flex items-center justify-center shadow-xs">
                     {t.artworkUrl ? (
                       <Image
                         src={t.artworkUrl}
@@ -223,22 +222,22 @@ export default function MusicLibraryPage() {
                         unoptimized
                       />
                     ) : (
-                      <Disc className="w-5 h-5 text-amber-400" />
+                      <Disc className="w-5 h-5 text-amber-600" />
                     )}
                     {isCurrent ? (
-                      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center">
+                      <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center">
                         {isPlaying ? (
                           <div className="flex items-end gap-0.5 h-3" aria-label="Playing">
-                            <span className="w-0.5 bg-amber-400 rounded-full animate-eq-1" />
-                            <span className="w-0.5 bg-amber-400 rounded-full animate-eq-2" />
-                            <span className="w-0.5 bg-cyan-400 rounded-full animate-eq-3" />
+                            <span className="w-0.5 bg-amber-300 rounded-full animate-eq-1" />
+                            <span className="w-0.5 bg-amber-300 rounded-full animate-eq-2" />
+                            <span className="w-0.5 bg-sky-300 rounded-full animate-eq-3" />
                           </div>
                         ) : (
-                          <Play className="w-4 h-4 fill-amber-400 text-amber-400 ml-0.5" />
+                          <Play className="w-4 h-4 fill-amber-300 text-amber-300 ml-0.5" />
                         )}
                       </div>
                     ) : (
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <Play className="w-4 h-4 fill-white text-white ml-0.5" />
                       </div>
                     )}
@@ -247,12 +246,12 @@ export default function MusicLibraryPage() {
                   <div className="min-w-0 flex-1">
                     <h4
                       className={`text-xs sm:text-sm font-semibold truncate transition-colors ${
-                        isCurrent ? "text-amber-300" : "text-white group-hover:text-amber-200"
+                        isCurrent ? "text-amber-900" : "text-slate-900 group-hover:text-amber-800"
                       }`}
                     >
                       {t.title}
                     </h4>
-                    <p className="text-[11px] font-sans text-neutral-400 truncate mt-0.5">
+                    <p className="text-[11px] font-sans text-slate-500 truncate mt-0.5">
                       {t.artist || "Unknown Artist"} {t.album ? `• ${t.album}` : ""}
                     </p>
                   </div>
@@ -267,7 +266,7 @@ export default function MusicLibraryPage() {
                   {t.source === "IMPORTED" && (
                     <span
                       title="Stored locally in offline storage"
-                      className="text-emerald-400 p-1"
+                      className="text-emerald-600 p-1"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                     </span>
@@ -276,7 +275,7 @@ export default function MusicLibraryPage() {
                     <button
                       onClick={() => downloadTrack(t)}
                       title="Download for offline playback"
-                      className="text-neutral-400 hover:text-cyan-400 transition-colors p-1"
+                      className="text-slate-400 hover:text-sky-600 transition-colors p-1"
                     >
                       <Download className="w-4 h-4" />
                     </button>
@@ -285,7 +284,7 @@ export default function MusicLibraryPage() {
                   {/* Favorite Toggle */}
                   <button
                     onClick={() => toggleFavorite(t.id)}
-                    className="p-1 text-neutral-400 hover:text-rose-400 transition-colors"
+                    className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
                   >
                     <Heart
                       className={`w-4 h-4 transition-transform ${
@@ -294,7 +293,7 @@ export default function MusicLibraryPage() {
                     />
                   </button>
 
-                  <span className="text-[11px] font-mono text-neutral-400 w-11 text-right">
+                  <span className="text-[11px] font-mono text-slate-500 w-11 text-right">
                     {Math.floor(t.duration / 60)}:
                     {(t.duration % 60).toString().padStart(2, "0")}
                   </span>
@@ -304,7 +303,7 @@ export default function MusicLibraryPage() {
                     onClick={() =>
                       setActiveMenuTrackId(activeMenuTrackId === t.id ? null : t.id)
                     }
-                    className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                     aria-label="Track options"
                   >
                     <MoreVertical className="w-4 h-4" />
@@ -315,16 +314,16 @@ export default function MusicLibraryPage() {
                 {activeMenuTrackId === t.id && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="absolute right-3 top-14 z-30 w-48 rounded-2xl glass-card-premium border border-white/15 shadow-2xl p-1.5 text-xs space-y-1 animate-fade-in"
+                    className="absolute right-3 top-14 z-30 w-48 rounded-2xl bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-xl p-1.5 text-xs space-y-1 animate-fade-in"
                   >
                     <button
                       onClick={() => {
                         playNext(t);
                         setActiveMenuTrackId(null);
                       }}
-                      className="w-full px-3 py-2 rounded-xl hover:bg-white/10 text-left text-neutral-200 hover:text-white transition-colors flex items-center gap-2.5 cursor-pointer"
+                      className="w-full px-3 py-2 rounded-xl hover:bg-slate-100 text-left text-slate-700 hover:text-slate-900 transition-colors flex items-center gap-2.5 cursor-pointer"
                     >
-                      <Play className="w-3.5 h-3.5 text-amber-400" />
+                      <Play className="w-3.5 h-3.5 text-amber-600" />
                       <span>Play Next</span>
                     </button>
 
@@ -333,9 +332,9 @@ export default function MusicLibraryPage() {
                         addToQueue(t);
                         setActiveMenuTrackId(null);
                       }}
-                      className="w-full px-3 py-2 rounded-xl hover:bg-white/10 text-left text-neutral-200 hover:text-white transition-colors flex items-center gap-2.5 cursor-pointer"
+                      className="w-full px-3 py-2 rounded-xl hover:bg-slate-100 text-left text-slate-700 hover:text-slate-900 transition-colors flex items-center gap-2.5 cursor-pointer"
                     >
-                      <ListPlus className="w-3.5 h-3.5 text-cyan-400" />
+                      <ListPlus className="w-3.5 h-3.5 text-sky-600" />
                       <span>Add to Queue</span>
                     </button>
 
@@ -344,17 +343,17 @@ export default function MusicLibraryPage() {
                         setShowPlaylistPickerTrack(t);
                         setActiveMenuTrackId(null);
                       }}
-                      className="w-full px-3 py-2 rounded-xl hover:bg-white/10 text-left text-neutral-200 hover:text-white transition-colors flex items-center gap-2.5 cursor-pointer"
+                      className="w-full px-3 py-2 rounded-xl hover:bg-slate-100 text-left text-slate-700 hover:text-slate-900 transition-colors flex items-center gap-2.5 cursor-pointer"
                     >
-                      <Plus className="w-3.5 h-3.5 text-emerald-400" />
+                      <Plus className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Add to Playlist...</span>
                     </button>
 
-                    <div className="h-[1px] bg-white/10 my-1" />
+                    <div className="h-[1px] bg-slate-200 my-1" />
 
                     <button
                       onClick={() => handleDelete(t.id)}
-                      className="w-full px-3 py-2 rounded-xl hover:bg-rose-500/20 text-left text-rose-400 transition-colors flex items-center gap-2.5 cursor-pointer"
+                      className="w-full px-3 py-2 rounded-xl hover:bg-rose-50 text-left text-rose-600 transition-colors flex items-center gap-2.5 cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>Delete from Vault</span>
@@ -370,23 +369,23 @@ export default function MusicLibraryPage() {
       {/* Playlist Picker Modal */}
       {showPlaylistPickerTrack && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setShowPlaylistPickerTrack(null)}
         >
           <div
-            className="w-full max-w-sm rounded-3xl glass-card-premium border border-white/15 p-6 space-y-4 shadow-2xl"
+            className="w-full max-w-sm rounded-3xl bg-white border border-slate-200 p-6 space-y-4 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="font-display text-lg text-white font-normal">
+            <h3 className="font-display text-lg text-slate-900 font-normal">
               Add to Playlist
             </h3>
-            <p className="text-xs text-neutral-400 truncate">
+            <p className="text-xs text-slate-500 truncate">
               {showPlaylistPickerTrack.title} — {showPlaylistPickerTrack.artist}
             </p>
 
             <div className="max-h-60 overflow-y-auto space-y-1.5 scrollbar-none">
               {playlists.length === 0 ? (
-                <p className="text-xs text-neutral-400 p-3 text-center">
+                <p className="text-xs text-slate-500 p-3 text-center">
                   No custom playlists found. Create one in the Playlists tab!
                 </p>
               ) : (
@@ -394,10 +393,10 @@ export default function MusicLibraryPage() {
                   <button
                     key={pl.id}
                     onClick={() => handleAddToPlaylist(pl.id)}
-                    className="w-full p-3 rounded-2xl glass-card-subtle hover:bg-white/10 text-left text-xs font-medium text-white transition-all flex items-center justify-between cursor-pointer border border-white/5 hover:border-amber-500/30 active:scale-98"
+                    className="w-full p-3 rounded-2xl bg-slate-50 hover:bg-amber-50 text-left text-xs font-medium text-slate-900 transition-all flex items-center justify-between cursor-pointer border border-slate-200 hover:border-amber-300 active:scale-98"
                   >
                     <span>{pl.title}</span>
-                    <span className="text-[11px] font-mono text-amber-300">
+                    <span className="text-[11px] font-mono text-amber-700">
                       {pl.trackIds.length} tracks
                     </span>
                   </button>
@@ -407,7 +406,7 @@ export default function MusicLibraryPage() {
 
             <button
               onClick={() => setShowPlaylistPickerTrack(null)}
-              className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-neutral-300 hover:text-white transition-colors cursor-pointer border border-white/10 active:scale-95"
+              className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 transition-colors cursor-pointer border border-slate-200 active:scale-95"
             >
               Cancel
             </button>

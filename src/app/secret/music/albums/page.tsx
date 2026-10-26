@@ -60,17 +60,17 @@ export default function AlbumsPage() {
       <MusicNav onTrackImported={() => getAllTracks().then(setTracks)} />
 
       <div>
-        <h2 className="font-display text-2xl sm:text-3xl text-white font-normal tracking-tight">
+        <h2 className="font-display text-2xl sm:text-3xl text-slate-900 font-normal tracking-tight">
           Albums ({albumGroups.length})
         </h2>
-        <p className="text-xs text-neutral-400 mt-0.5">
+        <p className="text-xs text-slate-500 mt-0.5">
           Albums compiled from your local tracks and expedition recordings.
         </p>
       </div>
 
       {albumGroups.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-white/10 text-neutral-400 text-xs space-y-2">
-          <Disc className="w-8 h-8 text-neutral-500 mx-auto" />
+        <div className="p-12 text-center rounded-3xl glass-card-subtle border border-dashed border-slate-300 text-slate-500 text-xs space-y-2">
+          <Disc className="w-8 h-8 text-slate-400 mx-auto" />
           <p>No albums indexed yet. Import audio files to populate your catalogue.</p>
         </div>
       ) : (
@@ -79,10 +79,10 @@ export default function AlbumsPage() {
             <div
               key={`${group.album}-${group.artist}`}
               onClick={() => handlePlayAlbum(group)}
-              className="p-3.5 rounded-3xl glass-card-subtle hover:bg-white/[0.08] border border-white/10 hover:border-amber-500/40 transition-all duration-300 group cursor-pointer space-y-3 active:scale-98 shadow-lg relative overflow-hidden"
+              className="p-3.5 rounded-3xl bg-white/90 hover:bg-white border border-slate-200/90 hover:border-amber-300 transition-all duration-300 group cursor-pointer space-y-3 active:scale-98 shadow-xs hover:shadow-md relative overflow-hidden"
             >
               {/* Album Art with Vinyl Rim Simulation */}
-              <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-[#10131d] border border-white/15 flex items-center justify-center shadow-md">
+              <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center shadow-xs">
                 {group.artworkUrl ? (
                   <Image
                     src={group.artworkUrl}
@@ -93,28 +93,28 @@ export default function AlbumsPage() {
                     unoptimized
                   />
                 ) : (
-                  <div className="w-16 h-16 rounded-full vinyl-grooves border border-neutral-700 flex items-center justify-center shadow-inner">
-                    <Disc className="w-8 h-8 text-amber-400" />
+                  <div className="w-16 h-16 rounded-full bg-slate-100 border border-slate-300 flex items-center justify-center shadow-inner">
+                    <Disc className="w-8 h-8 text-amber-600" />
                   </div>
                 )}
 
                 {/* Holographic Gloss Sheen */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-black/40 via-transparent to-white/15 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/10 via-transparent to-white/30 pointer-events-none" />
 
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-xs">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-neutral-950 flex items-center justify-center neon-glow-amber transform scale-90 group-hover:scale-100 transition-transform">
+                <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-xs">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 text-white flex items-center justify-center shadow-md transform scale-90 group-hover:scale-100 transition-transform">
                     <Play className="w-5 h-5 fill-current ml-0.5" />
                   </div>
                 </div>
               </div>
 
               <div>
-                <h4 className="text-xs sm:text-sm font-semibold text-white truncate group-hover:text-amber-300 transition-colors">
+                <h4 className="text-xs sm:text-sm font-semibold text-slate-900 truncate group-hover:text-amber-800 transition-colors">
                   {group.album}
                 </h4>
-                <p className="text-[11px] font-sans text-neutral-400 truncate mt-0.5">{group.artist}</p>
+                <p className="text-[11px] font-sans text-slate-500 truncate mt-0.5">{group.artist}</p>
                 <div className="flex items-center gap-1.5 mt-1.5">
-                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-cyan-300 font-semibold">
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-semibold">
                     {group.tracks.length} track(s)
                   </span>
                 </div>
