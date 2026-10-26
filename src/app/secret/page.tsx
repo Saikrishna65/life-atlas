@@ -15,17 +15,10 @@ export default function SecretDashboard() {
     setIsNative(Capacitor.isNativePlatform());
   }, []);
 
-  // Ensure leaving the secret dashboard immediately locks the vault
-  useEffect(() => {
-    return () => {
-      revokeSecretAccess();
-    };
-  }, []);
-
   const handleBackToPublic = () => {
     revokeSecretAccess();
     if (Capacitor.isNativePlatform()) {
-      router.push("/secret/vault");
+      router.push("/secret");
     } else {
       router.push("/");
     }
@@ -33,7 +26,7 @@ export default function SecretDashboard() {
 
   const handleLockVault = () => {
     revokeSecretAccess();
-    router.push("/secret/vault");
+    router.push("/secret");
   };
 
   return (
@@ -50,13 +43,9 @@ export default function SecretDashboard() {
             <span>Return to Atlas</span>
           </button>
         ) : (
-          <Link
-            href="/secret/vault"
-            className="group inline-flex items-center gap-2 text-xs font-sans tracking-wide text-muted-foreground hover:text-foreground transition-colors py-1.5"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
-            <span>Trip Vault</span>
-          </Link>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[11px] font-mono tracking-wider text-amber-400 font-semibold uppercase">
+            <span>Private Atlas</span>
+          </div>
         )}
 
         <div className="flex items-center gap-4">

@@ -23,7 +23,7 @@ export function proxy(request: NextRequest) {
       !pathname.startsWith('/api') &&
       !pathname.startsWith('/_next')
     ) {
-      return NextResponse.redirect(new URL('/secret/vault', request.url), 307);
+      return NextResponse.redirect(new URL('/secret', request.url), 307);
     }
   }
 

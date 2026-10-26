@@ -198,26 +198,18 @@ export async function authenticateWithDevice(): Promise<AuthResult> {
         "@aparajita/capacitor-biometric-auth"
       );
 
-      // Pre-check biometry so plugin populates native types
-      try {
-        await BiometricAuth.checkBiometry();
-      } catch {
-        // Continue
-      }
-
       await BiometricAuth.authenticate({
         androidTitle: "Atlas Vault",
         androidSubtitle: "Touch fingerprint sensor",
         reason: "Scan fingerprint to access Private Vault",
         cancelTitle: "Cancel",
         allowDeviceCredential: false, // Pure native biometric prompt (Fingerprint)
-        androidConfirmationRequired: false, // Instant unlock upon fingerprint touch
+        androidConfirmationRequired: false, // Instant unlock upon fingerprint touch - zero lag
         androidBiometryStrength: AndroidBiometryStrength.weak,
         iosFallbackTitle: "",
       });
 
       grantSecretAccess();
-      playBiometricAudio("success");
       triggerHaptic("success");
       return { success: true, method: "native-biometric" };
     } catch (err: unknown) {
@@ -421,6 +413,7 @@ export function grantSecretAccess(): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.setItem(SESSION_AUTH_KEY, "true");
+    localStorage.setItem(SESSION_AUTH_KEY, "true");
     window.dispatchEvent(new Event("vault-unlocked"));
   } catch {
     // Ignore storage quota/security issues
@@ -434,6 +427,7 @@ export function revokeSecretAccess(): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.removeItem(SESSION_AUTH_KEY);
+    localStorage.removeItem(SESSION_AUTH_KEY);
     window.dispatchEvent(new Event("vault-locked"));
   } catch {
     // Ignore storage issues
@@ -446,7 +440,10 @@ export function revokeSecretAccess(): void {
 export function isSecretAccessGranted(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return sessionStorage.getItem(SESSION_AUTH_KEY) === "true";
+    return (
+      sessionStorage.getItem(SESSION_AUTH_KEY) === "true" ||
+      localStorage.getItem(SESSION_AUTH_KEY) === "true"
+    );
   } catch {
     return false;
   }
