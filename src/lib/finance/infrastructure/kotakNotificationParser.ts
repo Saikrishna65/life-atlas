@@ -1,10 +1,9 @@
 /**
- * Life Atlas Finance: Kotak 811 Notification & SMS Parser
+ * Life Atlas Finance: Kotak 811 Notification Parser
  * 
  * Deterministic parser for transaction notifications received from:
- * 1. Kotak 811 App (com.msf.kbank.mobile, com.kotak.mbanking)
- * 2. SMS Messages from Kotak (VK-KOTAKB, VM-KOTAKB, etc.)
- * 3. Truecaller displaying Kotak SMS
+ * - Kotak 811 & Mobile Banking App (com.msf.kbank.mobile)
+ * - Kotak Mobile Banking (com.kotak.mbanking)
  * 
  * Strictly rejects OTPs, login alerts, promotional marketing, and balance-only inquiries.
  * Produces structured ParsedNotificationTransaction with deduplication fingerprints.

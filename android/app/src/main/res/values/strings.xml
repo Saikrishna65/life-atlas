@@ -4,4 +4,6 @@
     <string name="title_activity_main">Atlas Vault</string>
     <string name="package_name">com.lifeatlas.app</string>
     <string name="custom_url_scheme">com.lifeatlas.app</string>
+    <string name="kotak_notification_listener_label">Kotak 811 Transaction Tracker</string>
+    <string name="kotak_notification_listener_description">Detects incoming transaction notifications from official Kotak mobile banking apps to record them locally in your personal finance ledger.</string>
 </resources>

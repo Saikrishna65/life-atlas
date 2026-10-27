@@ -33,6 +33,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        registerPlugin(KotakNotificationTrackerPlugin.class);
         handleSendIntent(getIntent());
 
         // Append custom User-Agent so backend middleware strictly routes native app to private atlas

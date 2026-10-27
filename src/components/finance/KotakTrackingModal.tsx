@@ -56,6 +56,7 @@ export default function KotakTrackingModal({
   const [selectedCategories, setSelectedCategories] = useState<Record<string, string>>({});
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
   const [showOsGuide, setShowOsGuide] = useState(false);
+  const [showPermissionDisclosure, setShowPermissionDisclosure] = useState(false);
 
   // Load Status and Review Items
   const loadStatus = useCallback(async () => {
@@ -95,8 +96,13 @@ export default function KotakTrackingModal({
     }
   };
 
-  // Request Android Notification Access
-  const handleRequestPermission = async () => {
+  // Request Android Notification Access with upfront disclosure
+  const handleRequestPermission = () => {
+    setShowPermissionDisclosure(true);
+  };
+
+  const handleConfirmOpenSettings = async () => {
+    setShowPermissionDisclosure(false);
     try {
       await trackingService.requestNotificationAccess();
       setFeedbackMessage("Opening Android Notification Listener settings...");
@@ -145,9 +151,9 @@ export default function KotakTrackingModal({
       } else if (type === "zepto") {
         raw = {
           id: `sim_zepto_${now}`,
-          packageName: "com.google.android.apps.messaging",
-          sender: "VK-KOTAKB",
-          title: "VK-KOTAKB",
+          packageName: "com.msf.kbank.mobile",
+          sender: "Kotak Bank",
+          title: "Debited Rs. 620.00",
           text: `Debited Rs. 620.00 from Kotak Bank A/c ...XX1234 to ZEPTO via UPI. Ref: ${Math.floor(100000000000 + Math.random() * 900000000000)}. Avl Bal: Rs 18,500.00`,
           postTime: now,
           postTimeIso: iso,
@@ -248,7 +254,7 @@ export default function KotakTrackingModal({
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Automatic Kotak 811 app & SMS transaction detection with zero cloud sync
+                Automatic Kotak 811 mobile app transaction tracking with zero cloud sync
               </p>
             </div>
           </div>
@@ -355,7 +361,7 @@ export default function KotakTrackingModal({
               <div className="text-xl font-bold text-foreground font-mono">
                 {status?.eventsReceivedCount ?? 0}
               </div>
-              <span className="text-[10px] text-muted-foreground block truncate">Kotak & SMS alerts</span>
+              <span className="text-[10px] text-muted-foreground block truncate">Kotak app alerts</span>
             </div>
 
             <div className="p-3 bg-surface border border-border rounded-xl space-y-1">
@@ -577,7 +583,7 @@ export default function KotakTrackingModal({
                 disabled={isSimulating}
                 className="px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-foreground transition-all cursor-pointer font-medium text-[11px]"
               >
-                + Zepto ₹620 Outflow (SMS)
+                + Zepto ₹620 Outflow (App)
               </button>
               <button
                 onClick={() => handleSimulateNotification("salary")}
@@ -640,11 +646,33 @@ export default function KotakTrackingModal({
               <span>100% On-Device Local Privacy Guarantee</span>
             </div>
             <p className="leading-relaxed text-muted-foreground text-[11px]">
-              Kotak notifications and SMS alerts are processed <strong>exclusively inside your phone</strong>.
+              Kotak transaction notifications are processed <strong>exclusively inside your phone</strong>.
               OTPs, login security notices, passwords, promotional loan banners, and balance inquiries are
-              strictly rejected. The triple-source deduplication algorithm guarantees that matching notifications
-              from the Kotak App, SMS, and Truecaller will <strong>never produce duplicate ledger entries</strong>.
+              strictly rejected. Deduplication ensures repeated alerts will <strong>never produce duplicate ledger entries</strong>.
+              Zero notification text is transmitted over the internet.
             </p>
+          </div>
+
+          {/* 8. Explicit Feature Limitations Disclosure */}
+          <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-2 text-foreground">
+            <div className="flex items-center gap-2 font-bold text-amber-400">
+              <AlertTriangle className="w-4 h-4" />
+              <span>Feature Limitations & Scope</span>
+            </div>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px] leading-relaxed">
+              <li>
+                <strong>Official Kotak Apps Only:</strong> Listens strictly for transaction notifications posted by official Kotak mobile banking apps (<code className="text-amber-300 font-mono text-[10px]">com.msf.kbank.mobile</code>, <code className="text-amber-300 font-mono text-[10px]">com.kotak.mbanking</code>).
+              </li>
+              <li>
+                <strong>No SMS Inbox Access:</strong> Life Atlas does <em>not</em> request or use <code className="text-foreground font-mono text-[10px]">READ_SMS</code> or <code className="text-foreground font-mono text-[10px]">RECEIVE_SMS</code> permissions and cannot read your SMS inbox or historical text messages.
+              </li>
+              <li>
+                <strong>No Historical Sync:</strong> Only new notifications arriving while Notification Access is granted will be captured.
+              </li>
+              <li>
+                <strong>System Dependent:</strong> If OEM battery managers (e.g. MIUI/HyperOS, Samsung One UI) terminate background listeners or notifications are silenced, transactions cannot be detected.
+              </li>
+            </ul>
           </div>
         </div>
 
@@ -657,6 +685,61 @@ export default function KotakTrackingModal({
             Close
           </button>
         </div>
+
+        {/* Upfront Permission Disclosure Dialog (Requirement 5) */}
+        {showPermissionDisclosure && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="relative w-full max-w-lg bg-card border border-amber-500/40 rounded-2xl shadow-2xl p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground">
+                    Android Notification Access Disclosure
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Please review how Life Atlas uses Notification Access before proceeding to Android Settings.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-surface border border-border/80 rounded-xl space-y-2 text-[11px] text-muted-foreground leading-relaxed">
+                <div>
+                  <strong className="text-foreground block">Why does Life Atlas need this?</strong>
+                  To automatically detect incoming debit and credit transaction notifications from official Kotak mobile banking apps and record them into your local finance ledger.
+                </div>
+                <div>
+                  <strong className="text-foreground block">What Life Atlas does NOT do:</strong>
+                  <ul className="list-disc list-inside mt-1 space-y-0.5">
+                    <li>Does <strong>not</strong> read your SMS inbox or text messages (<code className="text-foreground font-mono text-[10px]">READ_SMS</code> is never requested).</li>
+                    <li>Does <strong>not</strong> monitor personal chats, WhatsApp, social media, or other apps.</li>
+                    <li>Does <strong>not</strong> upload, send, or transmit notification text to any external server or cloud.</li>
+                  </ul>
+                </div>
+                <div>
+                  <strong className="text-foreground block">Limitations:</strong>
+                  Only new notifications from official Kotak apps received while the feature is enabled will be detected. Past transactions and suppressed notifications cannot be tracked.
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  onClick={() => setShowPermissionDisclosure(false)}
+                  className="px-4 py-2 rounded-xl border border-border hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmOpenSettings}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold transition-all cursor-pointer shadow-sm active:scale-95"
+                >
+                  I Understand — Open Android Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

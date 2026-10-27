@@ -20,10 +20,9 @@ import java.util.TimeZone;
 /**
  * Life Atlas: Native Android Notification Listener for Kotak Transactions
  * 
- * Intercepts notifications from supported packages:
- * - Kotak 811 App (com.msf.kbank.mobile, com.kotak.mbanking)
- * - SMS Messaging Apps displaying bank alerts (Google Messages, Samsung Messages, AOSP, etc.)
- * - Truecaller (com.truecaller)
+ * Intercepts notifications strictly from official Kotak mobile banking apps:
+ * - Kotak 811 & Mobile Banking (com.msf.kbank.mobile)
+ * - Kotak Mobile Banking (com.kotak.mbanking)
  * 
  * Invariants:
  * - Operates ONLY when user explicitly enables tracking in Life Atlas settings.
