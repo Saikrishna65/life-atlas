@@ -346,8 +346,16 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    if (!audioSrc && track.audioUrl) {
+      audioSrc = track.audioUrl;
+    }
+
     if (!audioSrc && track.streamUrl) {
       audioSrc = track.streamUrl;
+    }
+
+    if (!audioSrc && track.id) {
+      audioSrc = `/api/music/stream/${track.id}`;
     }
 
     if (!audioSrc) {
@@ -483,7 +491,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   };
 
   const downloadTrack = async (track: MusicTrack): Promise<void> => {
-    if (!track.streamUrl) return;
+    const downloadSrc = track.audioUrl || track.streamUrl || `/api/music/stream/${track.id}`;
+    if (!downloadSrc) return;
 
     try {
       // Update state to downloading
@@ -491,8 +500,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       track.downloadProgress = 15;
       await saveTrack(track);
 
-      const response = await fetch(track.streamUrl);
-      if (!response.ok) throw new Error("Network stream download failed");
+      const response = await fetch(downloadSrc);
+      if (!response.ok) throw new Error("Audio download failed");
 
       const blob = await response.blob();
       track.audioBlob = blob;
@@ -521,7 +530,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     const track = await getTrack(trackId);
     if (!track) return;
 
-    if (track.source === "DOWNLOADED" && track.streamUrl) {
+    if (track.source === "DOWNLOADED" && (track.streamUrl || track.audioUrl)) {
       delete track.audioBlob;
       track.source = "STREAM";
       track.downloadStatus = "IDLE";

@@ -1,81 +1,15 @@
 /**
- * Curated Legal Ambient & Expedition Sample Audio Streams
- * Public Domain / Creative Commons audio for immediate streaming and offline download testing.
+ * Life Atlas Music Vault - Samples Registry
+ * Curated default nature/adventure samples removed completely per user request.
  */
 
 import { MusicTrack } from "./types";
 
-export const CURATED_EXPEDITION_SAMPLES: Omit<MusicTrack, "id" | "addedAt">[] = [
-  {
-    title: "Mountain Pass Horizon",
-    artist: "Himalayan Wind Ensemble",
-    album: "Altitude Whispers",
-    genre: "Ambient Expedition",
-    duration: 372,
-    format: "audio/mpeg",
-    size: 5952000,
-    bitrate: 128,
-    artworkUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&auto=format&fit=crop&q=80",
-    streamUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    source: "STREAM",
-    downloadStatus: "IDLE",
-    downloadProgress: 0,
-    isFavorite: true,
-    playCount: 12,
-    year: "2024",
-  },
-  {
-    title: "Nocturne across Pine Valleys",
-    artist: "Kasol Acoustic Trio",
-    album: "Parvati Valley Sessions",
-    genre: "Acoustic / Travel",
-    duration: 423,
-    format: "audio/mpeg",
-    size: 6768000,
-    bitrate: 128,
-    artworkUrl: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&auto=format&fit=crop&q=80",
-    streamUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-    source: "STREAM",
-    downloadStatus: "IDLE",
-    downloadProgress: 0,
-    isFavorite: false,
-    playCount: 6,
-    year: "2024",
-  },
-  {
-    title: "Desert Twilight Roadtrip",
-    artist: "Thar Dune Collective",
-    album: "Golden Sands",
-    genre: "Desert Folk / Cinematic",
-    duration: 345,
-    format: "audio/mpeg",
-    size: 5520000,
-    bitrate: 128,
-    artworkUrl: "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=600&auto=format&fit=crop&q=80",
-    streamUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-    source: "STREAM",
-    downloadStatus: "IDLE",
-    downloadProgress: 0,
-    isFavorite: true,
-    playCount: 19,
-    year: "2023",
-  },
-  {
-    title: "High Altitude Solitude",
-    artist: "Ladakh Monastic Strings",
-    album: "Zanskar Drift",
-    genre: "Meditative / Ambient",
-    duration: 390,
-    format: "audio/mpeg",
-    size: 6240000,
-    bitrate: 128,
-    artworkUrl: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80",
-    streamUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
-    source: "STREAM",
-    downloadStatus: "IDLE",
-    downloadProgress: 0,
-    isFavorite: false,
-    playCount: 3,
-    year: "2024",
-  },
+export const SAMPLE_DEFAULT_TRACK_TITLES: readonly string[] = [
+  "Mountain Pass Horizon",
+  "Nocturne across Pine Valleys",
+  "Desert Twilight Roadtrip",
+  "High Altitude Solitude",
 ];
+
+export const CURATED_EXPEDITION_SAMPLES: Omit<MusicTrack, "id" | "addedAt">[] = [];

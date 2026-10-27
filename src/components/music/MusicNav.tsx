@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -17,10 +17,13 @@ import {
   Settings,
   Sparkles,
 } from "lucide-react";
+import { YoutubeIcon } from "./YoutubeIcon";
 import { parseAudioFile } from "@/lib/music/metadataParser";
 import { saveTrack, getAllTracks } from "@/lib/music/storage";
+import { uploadTrackToCloud } from "@/lib/music/cloudSync";
 import { MusicTrack } from "@/lib/music/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import YouTubeShareModal from "./YouTubeShareModal";
 
 export default function MusicNav({ onTrackImported }: { onTrackImported?: () => void }) {
   const pathname = usePathname();
@@ -28,6 +31,36 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+
+  // YouTube modal states
+  const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState(false);
+  const [youtubeInitialUrl, setYoutubeInitialUrl] = useState("");
+
+  // Listen for native Android YouTube share event and URL query params
+  useEffect(() => {
+    const handleShare = (e: Event) => {
+      const customEvent = e as CustomEvent<{ url?: string }>;
+      const sharedUrl = customEvent?.detail?.url;
+      if (sharedUrl) {
+        setYoutubeInitialUrl(sharedUrl);
+        setIsYouTubeModalOpen(true);
+      }
+    };
+
+    window.addEventListener("lifeatlas_youtube_share", handleShare);
+
+    // Also check query parameter (e.g. /secret/music?youtube_url=...)
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const ytUrl = params.get("youtube_url") || params.get("share_url") || params.get("yt");
+      if (ytUrl) {
+        setYoutubeInitialUrl(ytUrl);
+        setIsYouTubeModalOpen(true);
+      }
+    }
+
+    return () => window.removeEventListener("lifeatlas_youtube_share", handleShare);
+  }, []);
 
   const handleLockVault = () => {
     revokeSecretAccess();
@@ -85,10 +118,20 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
         await saveTrack(newTrack);
         existingTracks.push(newTrack);
         importedCount++;
+
+        // Dual persistence: upload audio & metadata to online database and Neon Object Storage
+        uploadTrackToCloud(newTrack, file)
+          .then((res) => {
+            if (res.success && res.audioUrl) {
+              newTrack.audioUrl = res.audioUrl;
+              newTrack.syncedToCloud = true;
+            }
+          })
+          .catch((e) => console.warn("Cloud upload background error:", e));
       }
 
       setImportStatus(
-        `Imported ${importedCount} track(s)${
+        `Imported ${importedCount} track(s) to local storage and synced with online database${
           duplicateCount > 0 ? ` (${duplicateCount} duplicate(s) skipped)` : ""
         }`
       );
@@ -97,7 +140,7 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
         onTrackImported();
       }
 
-      setTimeout(() => setImportStatus(null), 3500);
+      setTimeout(() => setImportStatus(null), 4500);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Import failed";
       setImportStatus(`Error: ${msg}`);
@@ -147,6 +190,19 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
         </div>
 
         <div className="flex items-center gap-2">
+          {/* YouTube Video / Shorts Direct Extractor Button */}
+          <button
+            onClick={() => {
+              setYoutubeInitialUrl("");
+              setIsYouTubeModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold tracking-wide transition-all shadow-xs active:scale-95 cursor-pointer"
+            title="Extract & Import Audio from YouTube Link or Share"
+          >
+            <YoutubeIcon className="w-3.5 h-3.5 fill-current" />
+            <span className="hidden sm:inline">YouTube</span>
+          </button>
+
           {/* Hidden File Picker triggering Android Document Selector */}
           <input
             type="file"
@@ -209,6 +265,16 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
           );
         })}
       </div>
+
+      {/* YouTube Direct Share & Audio Extractor Modal */}
+      <YouTubeShareModal
+        isOpen={isYouTubeModalOpen}
+        onClose={() => setIsYouTubeModalOpen(false)}
+        initialUrl={youtubeInitialUrl}
+        onSuccess={() => {
+          if (onTrackImported) onTrackImported();
+        }}
+      />
     </div>
   );
 }

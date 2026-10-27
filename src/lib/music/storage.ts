@@ -5,6 +5,7 @@
  */
 
 import { MusicTrack, MusicPlaylist, MusicStorageReport, SmartPlaylistType } from "./types";
+import { SAMPLE_DEFAULT_TRACK_TITLES } from "./samples";
 
 export const MUSIC_DB_NAME = "life_atlas_music_db";
 export const MUSIC_DB_VERSION = 1;
@@ -98,6 +99,63 @@ export async function deleteMusicDB(): Promise<void> {
   });
 }
 
+/**
+ * Completely scrubs any default nature/adventure sample songs from IndexedDB
+ */
+export async function purgeDefaultSampleTracks(): Promise<number> {
+  if (typeof indexedDB === "undefined") return 0;
+  try {
+    const db = await getMusicDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(["tracks", "playlists"], "readwrite");
+      const trackStore = tx.objectStore("tracks");
+      const playlistStore = tx.objectStore("playlists");
+      const req = trackStore.getAll();
+
+      req.onsuccess = () => {
+        const tracks = (req.result || []) as MusicTrack[];
+        const sampleIds = new Set<string>();
+
+        for (const t of tracks) {
+          const isSample =
+            SAMPLE_DEFAULT_TRACK_TITLES.includes(t.title) ||
+            (t.streamUrl && t.streamUrl.includes("soundhelix.com")) ||
+            (t.artist &&
+              (t.artist.includes("Himalayan Wind") ||
+                t.artist.includes("Kasol Acoustic") ||
+                t.artist.includes("Thar Dune") ||
+                t.artist.includes("Ladakh Monastic")));
+
+          if (isSample) {
+            sampleIds.add(t.id);
+            trackStore.delete(t.id);
+          }
+        }
+
+        if (sampleIds.size > 0) {
+          const plReq = playlistStore.getAll();
+          plReq.onsuccess = () => {
+            const playlists = (plReq.result || []) as MusicPlaylist[];
+            for (const pl of playlists) {
+              const filtered = pl.trackIds.filter((id) => !sampleIds.has(id));
+              if (filtered.length !== pl.trackIds.length) {
+                pl.trackIds = filtered;
+                pl.updatedAt = Date.now();
+                playlistStore.put(pl);
+              }
+            }
+          };
+        }
+      };
+
+      tx.oncomplete = () => resolve(1);
+      tx.onerror = () => resolve(0);
+    });
+  } catch {
+    return 0;
+  }
+}
+
 // =============================================================================
 // TRACK OPERATIONS
 // =============================================================================
@@ -127,6 +185,9 @@ export async function getTrack(id: string): Promise<MusicTrack | null> {
 }
 
 export async function getAllTracks(): Promise<MusicTrack[]> {
+  // Always ensure default sample songs are purged
+  await purgeDefaultSampleTracks().catch(() => {});
+
   const db = await getMusicDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction("tracks", "readonly");
@@ -134,7 +195,18 @@ export async function getAllTracks(): Promise<MusicTrack[]> {
     const req = store.getAll();
 
     req.onsuccess = () => {
-      const tracks = (req.result || []) as MusicTrack[];
+      let tracks = (req.result || []) as MusicTrack[];
+      // Extra safety filter against default sample tracks
+      tracks = tracks.filter(
+        (t) =>
+          !SAMPLE_DEFAULT_TRACK_TITLES.includes(t.title) &&
+          !(t.streamUrl && t.streamUrl.includes("soundhelix.com")) &&
+          !(t.artist &&
+            (t.artist.includes("Himalayan Wind") ||
+              t.artist.includes("Kasol Acoustic") ||
+              t.artist.includes("Thar Dune") ||
+              t.artist.includes("Ladakh Monastic")))
+      );
       // Sort newest first by default
       tracks.sort((a, b) => b.addedAt - a.addedAt);
       resolve(tracks);
@@ -143,9 +215,9 @@ export async function getAllTracks(): Promise<MusicTrack[]> {
   });
 }
 
-export async function deleteTrack(id: string): Promise<void> {
+export async function deleteTrack(id: string, deleteOnline: boolean = true): Promise<void> {
   const db = await getMusicDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(["tracks", "playlists"], "readwrite");
     const trackStore = tx.objectStore("tracks");
     const playlistStore = tx.objectStore("playlists");
@@ -169,6 +241,14 @@ export async function deleteTrack(id: string): Promise<void> {
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+
+  if (deleteOnline && typeof window !== "undefined") {
+    import("./cloudSync")
+      .then(({ deleteTrackFromCloud }) => {
+        deleteTrackFromCloud(id).catch(() => {});
+      })
+      .catch(() => {});
+  }
 }
 
 export async function toggleFavoriteTrack(id: string): Promise<boolean> {
@@ -177,6 +257,20 @@ export async function toggleFavoriteTrack(id: string): Promise<boolean> {
 
   track.isFavorite = !track.isFavorite;
   await saveTrack(track);
+
+  // Sync favorite update to online database
+  if (typeof window !== "undefined") {
+    fetch("/api/music", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "UPDATE_METADATA",
+        trackId: id,
+        updates: { isFavorite: track.isFavorite },
+      }),
+    }).catch(() => {});
+  }
+
   return track.isFavorite;
 }
 
@@ -196,6 +290,22 @@ export async function incrementPlayCount(id: string): Promise<void> {
     timestamp: Date.now(),
     durationPlayed: track.duration,
   });
+
+  // Sync playcount to online database
+  if (typeof window !== "undefined") {
+    fetch("/api/music", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "UPDATE_METADATA",
+        trackId: id,
+        updates: {
+          playCount: track.playCount,
+          lastPlayedAt: new Date(track.lastPlayedAt).toISOString(),
+        },
+      }),
+    }).catch(() => {});
+  }
 }
 
 export async function updateTrackMetadata(
@@ -207,6 +317,19 @@ export async function updateTrackMetadata(
 
   Object.assign(track, updates);
   await saveTrack(track);
+
+  if (typeof window !== "undefined") {
+    fetch("/api/music", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "UPDATE_METADATA",
+        trackId: id,
+        updates,
+      }),
+    }).catch(() => {});
+  }
+
   return track;
 }
 
@@ -214,9 +337,9 @@ export async function updateTrackMetadata(
 // PLAYLIST OPERATIONS
 // =============================================================================
 
-export async function savePlaylist(playlist: MusicPlaylist): Promise<MusicPlaylist> {
+export async function savePlaylist(playlist: MusicPlaylist, syncOnline: boolean = true): Promise<MusicPlaylist> {
   const db = await getMusicDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<MusicPlaylist>((resolve, reject) => {
     const tx = db.transaction("playlists", "readwrite");
     const store = tx.objectStore("playlists");
     const req = store.put(playlist);
@@ -224,6 +347,16 @@ export async function savePlaylist(playlist: MusicPlaylist): Promise<MusicPlayli
     req.onsuccess = () => resolve(playlist);
     req.onerror = () => reject(req.error);
   });
+
+  if (syncOnline && typeof window !== "undefined") {
+    import("./cloudSync")
+      .then(({ syncPlaylistToCloud }) => {
+        syncPlaylistToCloud(playlist).catch(() => {});
+      })
+      .catch(() => {});
+  }
+
+  return playlist;
 }
 
 export async function getPlaylist(id: string): Promise<MusicPlaylist | null> {
@@ -257,9 +390,9 @@ export async function getAllPlaylists(): Promise<MusicPlaylist[]> {
 /**
  * Deletes a playlist. CRITICAL: Never deletes underlying audio files!
  */
-export async function deletePlaylist(id: string): Promise<void> {
+export async function deletePlaylist(id: string, deleteOnline: boolean = true): Promise<void> {
   const db = await getMusicDB();
-  return new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const tx = db.transaction("playlists", "readwrite");
     const store = tx.objectStore("playlists");
     const req = store.delete(id);
@@ -267,6 +400,14 @@ export async function deletePlaylist(id: string): Promise<void> {
     req.onsuccess = () => resolve();
     req.onerror = () => reject(req.error);
   });
+
+  if (deleteOnline && typeof window !== "undefined") {
+    import("./cloudSync")
+      .then(({ deletePlaylistFromCloud }) => {
+        deletePlaylistFromCloud(id).catch(() => {});
+      })
+      .catch(() => {});
+  }
 }
 
 export async function addTrackToPlaylist(playlistId: string, trackId: string): Promise<MusicPlaylist> {

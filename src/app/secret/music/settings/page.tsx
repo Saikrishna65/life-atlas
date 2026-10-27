@@ -8,8 +8,10 @@ import {
   Upload,
   RefreshCw,
   Trash2,
-  Sparkles,
   ShieldAlert,
+  Cloud,
+  DownloadCloud,
+  CheckCircle2,
 } from "lucide-react";
 import MusicNav from "@/components/music/MusicNav";
 import {
@@ -21,11 +23,17 @@ import {
   deleteMusicDB,
 } from "@/lib/music/storage";
 import { MusicStorageReport, MusicTrack, MusicPlaylist } from "@/lib/music/types";
-import { CURATED_EXPEDITION_SAMPLES } from "@/lib/music/samples";
+import {
+  fetchCloudTracks,
+  syncCloudToLocalStorage,
+  downloadTrackToLocalStorage,
+  uploadTrackToCloud,
+} from "@/lib/music/cloudSync";
 
 export default function MusicSettingsPage() {
   const [report, setReport] = useState<MusicStorageReport | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadReport = async () => {
@@ -92,34 +100,86 @@ export default function MusicSettingsPage() {
     reader.readAsText(file);
   };
 
-  const handleSeedSamples = async () => {
+  const handleSyncCloud = async () => {
+    setIsCloudSyncing(true);
+    setFeedback("Connecting to online database...");
     try {
-      for (const sample of CURATED_EXPEDITION_SAMPLES) {
-        const newTrack: MusicTrack = {
-          ...sample,
-          id: `trk_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
-          addedAt: Date.now(),
-        };
-        await saveTrack(newTrack);
-      }
-      setFeedback("Expedition sample tracks refreshed.");
+      const res = await syncCloudToLocalStorage();
       await loadReport();
-      setTimeout(() => setFeedback(null), 3000);
-    } catch (err) {
-      setFeedback("Failed seeding sample tracks.");
+      setFeedback(`Online sync completed. ${res.total} tracks tracked in online database.`);
+      setTimeout(() => setFeedback(null), 4000);
+    } catch {
+      setFeedback("Could not reach online database.");
+      setTimeout(() => setFeedback(null), 4000);
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  const handleDownloadAllToLocal = async () => {
+    setIsCloudSyncing(true);
+    setFeedback("Downloading all tracks into local device storage...");
+    try {
+      const tracks = await getAllTracks();
+      let count = 0;
+      for (const t of tracks) {
+        if (!t.audioBlob && (t.audioUrl || t.streamUrl)) {
+          try {
+            await downloadTrackToLocalStorage(t);
+            count++;
+          } catch {
+            // Continue
+          }
+        }
+      }
+      await loadReport();
+      setFeedback(`Successfully saved ${count} track(s) to local app storage.`);
+      setTimeout(() => setFeedback(null), 4000);
+    } catch {
+      setFeedback("Error downloading tracks to local storage.");
+      setTimeout(() => setFeedback(null), 4000);
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  const handleUploadLocalToCloud = async () => {
+    setIsCloudSyncing(true);
+    setFeedback("Backing up local audio files to online database...");
+    try {
+      const tracks = await getAllTracks();
+      let count = 0;
+      for (const t of tracks) {
+        if (t.audioBlob && !t.audioUrl) {
+          try {
+            await uploadTrackToCloud(t, t.audioBlob);
+            count++;
+          } catch {
+            // Continue
+          }
+        }
+      }
+      await loadReport();
+      setFeedback(`Successfully uploaded ${count} track(s) to online database.`);
+      setTimeout(() => setFeedback(null), 4000);
+    } catch {
+      setFeedback("Error backing up tracks to online database.");
+      setTimeout(() => setFeedback(null), 4000);
+    } finally {
+      setIsCloudSyncing(false);
     }
   };
 
   const handleResetDatabase = async () => {
     if (
       confirm(
-        "Are you sure you want to reset the Music Vault database? All imported music tracks and custom playlists will be erased. (Trip Vault expeditions will NOT be touched)."
+        "Reset local Music Vault storage? Your tracks in the online database remain intact and can be restored anytime. (Trip Vault will NOT be touched)."
       )
     ) {
       await deleteMusicDB();
       await loadReport();
-      setFeedback("Music Vault reset to factory empty state.");
-      setTimeout(() => setFeedback(null), 3000);
+      setFeedback("Local storage cleared. You can restore your tracks from the online database.");
+      setTimeout(() => setFeedback(null), 4000);
     }
   };
 
@@ -132,7 +192,7 @@ export default function MusicSettingsPage() {
           Vault Storage & Diagnostics
         </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Storage allocations, metadata backups, and offline cache operations.
+          Dual persistence management: Local IndexedDB + Online Postgres & Object Storage.
         </p>
       </div>
 
@@ -141,6 +201,50 @@ export default function MusicSettingsPage() {
           {feedback}
         </div>
       )}
+
+      {/* Online Database & Dual Sync Panel */}
+      <div className="p-6 rounded-3xl glass-card-premium border border-slate-200/90 space-y-4 shadow-[0_12px_36px_rgba(15,23,42,0.06)]">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-600 shadow-xs">
+            <Cloud className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Online Database & Cloud Storage</h3>
+            <p className="text-xs text-slate-500">
+              Synchronize your music library with your remote Postgres database and cloud storage bucket.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <button
+            onClick={handleSyncCloud}
+            disabled={isCloudSyncing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-sky-50 hover:bg-sky-100 border border-sky-300 text-xs font-sans text-sky-800 transition-all cursor-pointer active:scale-95 shadow-xs disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 text-sky-600 ${isCloudSyncing ? "animate-spin" : ""}`} />
+            <span>Sync with Online Database</span>
+          </button>
+
+          <button
+            onClick={handleDownloadAllToLocal}
+            disabled={isCloudSyncing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-xs font-sans text-emerald-800 transition-all cursor-pointer active:scale-95 shadow-xs disabled:opacity-50"
+          >
+            <DownloadCloud className="w-4 h-4 text-emerald-600" />
+            <span>Download All to Local Storage</span>
+          </button>
+
+          <button
+            onClick={handleUploadLocalToCloud}
+            disabled={isCloudSyncing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl glass-card-subtle hover:bg-white border border-slate-200 text-xs font-sans text-slate-700 hover:text-slate-900 transition-all cursor-pointer active:scale-95 shadow-xs disabled:opacity-50"
+          >
+            <Upload className="w-4 h-4 text-amber-600" />
+            <span>Upload Local Tracks to Cloud</span>
+          </button>
+        </div>
+      </div>
 
       {/* Storage Breakdown */}
       {report && (
@@ -205,15 +309,7 @@ export default function MusicSettingsPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl glass-card-subtle hover:bg-white border border-slate-200 text-xs font-sans text-slate-700 hover:text-slate-900 transition-all cursor-pointer active:scale-95 shadow-xs"
           >
             <Upload className="w-4 h-4 text-sky-600" />
-            <span>Restore from Backup</span>
-          </button>
-
-          <button
-            onClick={handleSeedSamples}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl glass-card-subtle hover:bg-white border border-slate-200 text-xs font-sans text-slate-700 hover:text-slate-900 transition-all cursor-pointer active:scale-95 shadow-xs"
-          >
-            <Sparkles className="w-4 h-4 text-emerald-600" />
-            <span>Reload Sample Tracks</span>
+            <span>Restore from JSON Backup</span>
           </button>
         </div>
       </div>
@@ -222,17 +318,17 @@ export default function MusicSettingsPage() {
       <div className="p-6 rounded-3xl bg-rose-50/50 border border-rose-200 space-y-3 shadow-xs">
         <div className="flex items-center gap-2 text-rose-700">
           <ShieldAlert className="w-4 h-4" />
-          <h3 className="text-sm font-semibold">Reset Music Vault</h3>
+          <h3 className="text-sm font-semibold">Reset Local Music Vault</h3>
         </div>
         <p className="text-xs text-slate-600 leading-relaxed">
-          Wipes the local Music Vault IndexedDB table. Does not affect Trip Vault expeditions or public records.
+          Wipes the local device IndexedDB database. Your online database copy remains intact so you can restore or re-add tracks anytime.
         </p>
         <button
           onClick={handleResetDatabase}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-rose-100 hover:bg-rose-200 border border-rose-300 text-rose-800 text-xs font-semibold tracking-wide transition-all cursor-pointer active:scale-95"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          <span>Wipe & Reset Music Database</span>
+          <span>Wipe Local Music Storage</span>
         </button>
       </div>
     </div>

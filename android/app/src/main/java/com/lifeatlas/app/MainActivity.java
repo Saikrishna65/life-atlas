@@ -1,5 +1,6 @@
 package com.lifeatlas.app;
 
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,6 +16,8 @@ import com.getcapacitor.WebViewListener;
 public class MainActivity extends BridgeActivity {
     private final Handler timeoutHandler = new Handler(Looper.getMainLooper());
     private boolean pageLoaded = false;
+    private String pendingShareUrl = null;
+
     private final Runnable slowNetworkWatchdog = new Runnable() {
         @Override
         public void run() {
@@ -30,6 +33,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        handleSendIntent(getIntent());
 
         // Append custom User-Agent so backend middleware strictly routes native app to private atlas
         if (getBridge() != null && getBridge().getWebView() != null) {
@@ -54,10 +58,6 @@ public class MainActivity extends BridgeActivity {
         WindowInsetsControllerCompat windowInsetsController =
                 WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
         if (windowInsetsController != null) {
-            // CRITICAL: Do NOT hide navigation bars and do NOT use BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE!
-            // When navigation bars are hidden, Android requires TWO swipes: first to reveal system bars,
-            // second to navigate back. By keeping navigation bars unhidden (and transparent), Android's
-            // edge gesture navigation triggers on the VERY FIRST single swipe!
             windowInsetsController.show(WindowInsetsCompat.Type.navigationBars());
             windowInsetsController.setAppearanceLightStatusBars(false);
             windowInsetsController.setAppearanceLightNavigationBars(false);
@@ -70,7 +70,6 @@ public class MainActivity extends BridgeActivity {
                 public void onPageStarted(WebView webView) {
                     pageLoaded = false;
                     timeoutHandler.removeCallbacks(slowNetworkWatchdog);
-                    // If network is crawling and hasn't loaded in 4.5 seconds, auto-load offline sanctuary
                     timeoutHandler.postDelayed(slowNetworkWatchdog, 4500);
                 }
 
@@ -78,6 +77,7 @@ public class MainActivity extends BridgeActivity {
                 public void onPageLoaded(WebView webView) {
                     pageLoaded = true;
                     timeoutHandler.removeCallbacks(slowNetworkWatchdog);
+                    dispatchPendingShareUrl();
                 }
 
                 @Override
@@ -85,6 +85,42 @@ public class MainActivity extends BridgeActivity {
                     timeoutHandler.removeCallbacks(slowNetworkWatchdog);
                 }
             });
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleSendIntent(intent);
+    }
+
+    private void handleSendIntent(Intent intent) {
+        if (intent == null) return;
+        String action = intent.getAction();
+        String type = intent.getType();
+
+        if (Intent.ACTION_SEND.equals(action) && type != null && "text/plain".equals(type)) {
+            String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
+            if (sharedText != null && (sharedText.contains("youtube.com") || sharedText.contains("youtu.be"))) {
+                pendingShareUrl = sharedText;
+                dispatchPendingShareUrl();
+            }
+        }
+    }
+
+    private void dispatchPendingShareUrl() {
+        if (pendingShareUrl != null && pageLoaded && getBridge() != null && getBridge().getWebView() != null) {
+            try {
+                final String safeUrl = pendingShareUrl.replace("'", "\\'");
+                getBridge().getWebView().evaluateJavascript(
+                    "window.dispatchEvent(new CustomEvent('lifeatlas_youtube_share', { detail: { url: '" + safeUrl + "' } }));",
+                    null
+                );
+                pendingShareUrl = null;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 

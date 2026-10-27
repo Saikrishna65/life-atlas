@@ -37,6 +37,7 @@ import {
   getStorageReport,
   exportPlaylistM3U,
   exportLibraryJSON,
+  purgeDefaultSampleTracks,
 } from "@/lib/music/storage";
 import { MusicTrack, MusicPlaylist } from "@/lib/music/types";
 import {
@@ -494,6 +495,115 @@ describe("Phase 16: Life Atlas Music Vault Engine", () => {
 
       // Clean up trip vault test record
       await deleteVaultDB();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 8. SAMPLE PURGE & CLOUD DUAL PERSISTENCE
+  // ---------------------------------------------------------------------------
+  describe("8. Sample Purge & Cloud Dual Persistence Operations", () => {
+    test("permanently purges default nature and adventure sample tracks", async () => {
+      // 1. Manually insert the default sample tracks
+      const sample1: MusicTrack = {
+        id: "sample_01",
+        title: "Mountain Pass Horizon",
+        artist: "Himalayan Wind Ensemble",
+        album: "Altitude Whispers",
+        genre: "Ambient Expedition",
+        duration: 372,
+        format: "audio/mpeg",
+        size: 5952000,
+        source: "STREAM",
+        streamUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+        isFavorite: true,
+        playCount: 12,
+        addedAt: Date.now(),
+      };
+
+      const sample2: MusicTrack = {
+        id: "sample_02",
+        title: "Desert Twilight Roadtrip",
+        artist: "Thar Dune Collective",
+        album: "Golden Sands",
+        genre: "Desert Folk / Cinematic",
+        duration: 345,
+        format: "audio/mpeg",
+        size: 5520000,
+        source: "STREAM",
+        streamUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+        isFavorite: false,
+        playCount: 5,
+        addedAt: Date.now(),
+      };
+
+      const userTrack: MusicTrack = {
+        id: "user_custom_01",
+        title: "Real Personal Track",
+        artist: "My Artist",
+        album: "My Album",
+        genre: "Rock",
+        duration: 210,
+        format: "audio/mpeg",
+        size: 4000000,
+        source: "IMPORTED",
+        isFavorite: true,
+        playCount: 1,
+        addedAt: Date.now(),
+      };
+
+      await saveTrack(sample1);
+      await saveTrack(sample2);
+      await saveTrack(userTrack);
+
+      // Verify that getAllTracks automatically purges and excludes sample songs
+      const all = await getAllTracks();
+      assert.equal(all.length, 1);
+      assert.equal(all[0].id, "user_custom_01");
+      assert.equal(all[0].title, "Real Personal Track");
+
+      // Verify sample songs are deleted from the underlying database
+      const checkSample1 = await getTrack("sample_01");
+      assert.equal(checkSample1, null);
+      const checkSample2 = await getTrack("sample_02");
+      assert.equal(checkSample2, null);
+    });
+
+    test("handles cloud audio URL dual persistence and local storage re-addition", async () => {
+      // Track with online cloud database storage URL
+      const cloudTrack: MusicTrack = {
+        id: "trk_cloud_01",
+        title: "Cloud Synced Track",
+        artist: "Neon Artist",
+        album: "Postgres Vault",
+        genre: "Electronic",
+        duration: 180,
+        format: "audio/mpeg",
+        size: 3000000,
+        source: "STREAM",
+        audioUrl: "https://storage.neon.tech/music/trk_cloud_01.mp3",
+        syncedToCloud: true,
+        isFavorite: false,
+        playCount: 0,
+        addedAt: Date.now(),
+      };
+
+      await saveTrack(cloudTrack);
+      const retrieved = await getTrack("trk_cloud_01");
+      assert.ok(retrieved);
+      assert.equal(retrieved.audioUrl, "https://storage.neon.tech/music/trk_cloud_01.mp3");
+      assert.equal(retrieved.syncedToCloud, true);
+
+      // Simulate re-adding / downloading audio blob back to local storage
+      const mockBlob = new Blob(["fake-audio-bytes"], { type: "audio/mpeg" });
+      retrieved.audioBlob = mockBlob;
+      retrieved.source = "DOWNLOADED";
+      retrieved.downloadStatus = "DOWNLOADED";
+      await saveTrack(retrieved);
+
+      const afterDownload = await getTrack("trk_cloud_01");
+      assert.ok(afterDownload);
+      assert.equal(afterDownload.source, "DOWNLOADED");
+      assert.ok(afterDownload.audioBlob);
     });
   });
 });

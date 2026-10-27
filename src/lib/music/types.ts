@@ -20,6 +20,7 @@ export interface MusicTrack {
   artworkUrl?: string; // base64 or blob URL or remote URL
   audioBlob?: Blob | null; // stored in IndexedDB for local/downloaded tracks
   streamUrl?: string; // for remote streams
+  audioUrl?: string; // Online cloud storage URL
   source: AudioSourceType;
   downloadStatus?: DownloadStatus;
   downloadProgress?: number; // 0 to 100
@@ -31,6 +32,7 @@ export interface MusicTrack {
   year?: string;
   lyrics?: string;
   tripId?: string; // Optional direct expedition association
+  syncedToCloud?: boolean; // Cloud sync state
 }
 
 export interface MusicPlaylist {
