@@ -23,7 +23,6 @@ import { saveTrack, getAllTracks } from "@/lib/music/storage";
 import { uploadTrackToCloud } from "@/lib/music/cloudSync";
 import { MusicTrack } from "@/lib/music/types";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
-import YouTubeShareModal from "./YouTubeShareModal";
 
 export default function MusicNav({ onTrackImported }: { onTrackImported?: () => void }) {
   const pathname = usePathname();
@@ -32,35 +31,14 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
-  // YouTube modal states
-  const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState(false);
-  const [youtubeInitialUrl, setYoutubeInitialUrl] = useState("");
-
-  // Listen for native Android YouTube share event and URL query params
+  // Listen for track updates to refresh list
   useEffect(() => {
-    const handleShare = (e: Event) => {
-      const customEvent = e as CustomEvent<{ url?: string }>;
-      const sharedUrl = customEvent?.detail?.url;
-      if (sharedUrl) {
-        setYoutubeInitialUrl(sharedUrl);
-        setIsYouTubeModalOpen(true);
-      }
+    const handleTracksUpdated = () => {
+      if (onTrackImported) onTrackImported();
     };
-
-    window.addEventListener("lifeatlas_youtube_share", handleShare);
-
-    // Also check query parameter (e.g. /secret/music?youtube_url=...)
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const ytUrl = params.get("youtube_url") || params.get("share_url") || params.get("yt");
-      if (ytUrl) {
-        setYoutubeInitialUrl(ytUrl);
-        setIsYouTubeModalOpen(true);
-      }
-    }
-
-    return () => window.removeEventListener("lifeatlas_youtube_share", handleShare);
-  }, []);
+    window.addEventListener("lifeatlas_tracks_updated", handleTracksUpdated);
+    return () => window.removeEventListener("lifeatlas_tracks_updated", handleTracksUpdated);
+  }, [onTrackImported]);
 
   const handleLockVault = () => {
     revokeSecretAccess();
@@ -193,8 +171,7 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
           {/* YouTube Video / Shorts Direct Extractor Button */}
           <button
             onClick={() => {
-              setYoutubeInitialUrl("");
-              setIsYouTubeModalOpen(true);
+              window.dispatchEvent(new CustomEvent("lifeatlas_youtube_share", { detail: { url: "" } }));
             }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold tracking-wide transition-all shadow-xs active:scale-95 cursor-pointer"
             title="Extract & Import Audio from YouTube Link or Share"
@@ -265,16 +242,6 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
           );
         })}
       </div>
-
-      {/* YouTube Direct Share & Audio Extractor Modal */}
-      <YouTubeShareModal
-        isOpen={isYouTubeModalOpen}
-        onClose={() => setIsYouTubeModalOpen(false)}
-        initialUrl={youtubeInitialUrl}
-        onSuccess={() => {
-          if (onTrackImported) onTrackImported();
-        }}
-      />
     </div>
   );
 }

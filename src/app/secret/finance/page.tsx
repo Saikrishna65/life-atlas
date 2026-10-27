@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Cloud,
   CloudOff,
+  BellRing,
 } from "lucide-react";
 import {
   IndexedDBUnitOfWork,
@@ -41,6 +42,7 @@ import {
   BudgetProjectionService,
   SyncOutboxService,
   UnconfiguredCloudSyncAdapter,
+  NotificationTrackingService,
   FinanceAccount,
   Transaction,
   FinanceCategory,
@@ -65,6 +67,7 @@ import StatementImportModal from "@/components/finance/StatementImportModal";
 import BankIntegrationModal from "@/components/finance/BankIntegrationModal";
 import ForecastViewModal from "@/components/finance/ForecastViewModal";
 import SyncSettingsModal from "@/components/finance/SyncSettingsModal";
+import KotakTrackingModal from "@/components/finance/KotakTrackingModal";
 import CashFlowChart from "@/components/finance/CashFlowChart";
 import CategorySpendingChart from "@/components/finance/CategorySpendingChart";
 
@@ -124,6 +127,11 @@ export default function FinanceDashboardPage() {
   const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
   const [hasLowBalanceWarning, setHasLowBalanceWarning] = useState(false);
 
+  // Kotak 811 Native Notification Tracking State
+  const [isKotakModalOpen, setIsKotakModalOpen] = useState(false);
+  const [kotakReviewCount, setKotakReviewCount] = useState(0);
+  const [kotakTrackingActive, setKotakTrackingActive] = useState(false);
+
   // Transactions Filter State
   const [txnSearchQuery, setTxnSearchQuery] = useState("");
   const [txnAccountFilter, setTxnAccountFilter] = useState("ALL");
@@ -146,6 +154,10 @@ export default function FinanceDashboardPage() {
   const budgetProjectionService = useMemo(() => new BudgetProjectionService(uow), [uow]);
   const cloudSyncAdapter = useMemo(() => new UnconfiguredCloudSyncAdapter(), []);
   const syncOutboxService = useMemo(() => new SyncOutboxService(uow, cloudSyncAdapter), [uow, cloudSyncAdapter]);
+  const notificationTrackingService = useMemo(
+    () => new NotificationTrackingService(uow, transactionService, categorizationService),
+    [uow, transactionService, categorizationService]
+  );
   const secureAdapter = useMemo(() => new WebIndexedDBSecureStorageAdapter(), []);
 
   // Compute date boundaries based on period preset
@@ -250,12 +262,27 @@ export default function FinanceDashboardPage() {
       } catch {
         setHasLowBalanceWarning(false);
       }
+
+      // Kotak Notification Tracking status
+      try {
+        const trackingStatus = await notificationTrackingService.getStatus();
+        setKotakTrackingActive(trackingStatus.enabled && trackingStatus.permissionGranted);
+        setKotakReviewCount(trackingStatus.pendingReviewCount);
+      } catch {
+        // Ignored
+      }
     } catch (err) {
       console.error("Failed to load finance data:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [uow, balanceService, budgetService, savingsGoalService, categorizationService, recurringService, runwayService, startDate, endDate]);
+  }, [uow, balanceService, budgetService, savingsGoalService, categorizationService, recurringService, runwayService, notificationTrackingService, startDate, endDate]);
+
+  useEffect(() => {
+    notificationTrackingService.initialize().catch((err) => {
+      console.warn("Kotak tracking initialization:", err);
+    });
+  }, [notificationTrackingService]);
 
   useEffect(() => {
     refreshAll();
@@ -427,6 +454,23 @@ export default function FinanceDashboardPage() {
           {detectedRecurringCount > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500 text-white font-bold">
               {detectedRecurringCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setIsKotakModalOpen(true)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap ${
+            kotakTrackingActive
+              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+              : "border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
+          }`}
+        >
+          <BellRing className="w-3.5 h-3.5" />
+          <span>Kotak 811 Tracking</span>
+          {kotakReviewCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-black font-bold">
+              {kotakReviewCount}
             </span>
           )}
         </button>
@@ -1428,6 +1472,15 @@ export default function FinanceDashboardPage() {
         onClose={() => setIsSyncModalOpen(false)}
         uow={uow}
         syncOutboxService={syncOutboxService}
+      />
+
+      <KotakTrackingModal
+        isOpen={isKotakModalOpen}
+        onClose={() => setIsKotakModalOpen(false)}
+        trackingService={notificationTrackingService}
+        accounts={accounts}
+        categories={categories}
+        onTransactionsUpdated={refreshAll}
       />
     </div>
   );

@@ -5,6 +5,7 @@ import { Fingerprint } from "lucide-react";
 import {
   isSecretAccessGranted,
   grantSecretAccess,
+  revokeSecretAccess,
   authenticateWithDevice,
 } from "@/lib/deviceAuth";
 
@@ -17,7 +18,22 @@ const emptySubscribe = () => () => {};
 export default function SecretAppGuard({ children }: SecretAppGuardProps) {
   const isClient = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [isUnlocked, setIsUnlocked] = useState(() => {
-    return typeof window !== "undefined" && isSecretAccessGranted();
+    if (typeof window === "undefined") return false;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const isShareOrForcedAuth =
+        params.get("require_auth") === "true" ||
+        Boolean(params.get("youtube_url")) ||
+        Boolean(localStorage.getItem("pending_youtube_share_url"));
+
+      if (isShareOrForcedAuth) {
+        revokeSecretAccess();
+        return false;
+      }
+    } catch {
+      // Ignore storage/url parse issues
+    }
+    return isSecretAccessGranted();
   });
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const authInProgressRef = useRef(false);
@@ -46,6 +62,11 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
   useEffect(() => {
     const handleVaultLocked = () => {
       setIsUnlocked(false);
+      setTimeout(() => {
+        if (!authInProgressRef.current) {
+          handleVerifyBiometric();
+        }
+      }, 50);
     };
 
     const handleVaultUnlocked = () => {
@@ -59,7 +80,7 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
       window.removeEventListener("vault-locked", handleVaultLocked);
       window.removeEventListener("vault-unlocked", handleVaultUnlocked);
     };
-  }, []);
+  }, [handleVerifyBiometric]);
 
   // AUTO-TRIGGER NATIVE FINGERPRINT IMMEDIATELY ON COLD START OR LOCK
   useEffect(() => {

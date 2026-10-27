@@ -4,6 +4,7 @@
 
 // Domain models & types
 export * from "./domain/models";
+export * from "./domain/notificationModels";
 export * from "./domain/errors";
 export * from "./domain/money";
 export * from "./domain/validation";
@@ -39,9 +40,11 @@ export * from "./application/forecastService";
 export * from "./application/runwayService";
 export * from "./application/budgetProjectionService";
 export * from "./application/syncOutboxService";
+export * from "./application/notificationTrackingService";
 
 // Infrastructure interfaces & parsers
 export * from "./infrastructure/interfaces";
 export * from "./infrastructure/statementParser";
 export * from "./infrastructure/syncProtocol";
+export * from "./infrastructure/kotakNotificationParser";
 

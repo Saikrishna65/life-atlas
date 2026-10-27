@@ -4,6 +4,7 @@ import SecretAppGuard from "@/components/secret/SecretAppGuard";
 import { MusicPlayerProvider } from "@/lib/music/MusicPlayerContext";
 import MiniPlayer from "@/components/music/MiniPlayer";
 import NowPlayingModal from "@/components/music/NowPlayingModal";
+import GlobalYouTubeShareHandler from "@/components/secret/GlobalYouTubeShareHandler";
 
 export const metadata: Metadata = {
   title: "Private Atlas | Life Atlas",
@@ -31,6 +32,7 @@ export default function SecretLayout({ children }: { children: ReactNode }) {
 
           <MiniPlayer />
           <NowPlayingModal />
+          <GlobalYouTubeShareHandler />
         </div>
       </MusicPlayerProvider>
     </SecretAppGuard>

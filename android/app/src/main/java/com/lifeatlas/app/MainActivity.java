@@ -71,6 +71,21 @@ public class MainActivity extends BridgeActivity {
                     pageLoaded = false;
                     timeoutHandler.removeCallbacks(slowNetworkWatchdog);
                     timeoutHandler.postDelayed(slowNetworkWatchdog, 4500);
+
+                    if (pendingShareUrl != null && webView != null) {
+                        try {
+                            final String safeUrl = pendingShareUrl.replace("'", "\\'");
+                            webView.evaluateJavascript(
+                                "try {" +
+                                "  window.sessionStorage.removeItem('life_atlas_secret_unlocked');" +
+                                "  window.localStorage.removeItem('life_atlas_secret_unlocked');" +
+                                "  window.localStorage.setItem('pending_youtube_share_url', '" + safeUrl + "');" +
+                                "} catch (e) {}",
+                                null
+                            );
+                        } catch (Exception ignored) {
+                        }
+                    }
                 }
 
                 @Override
@@ -103,20 +118,40 @@ public class MainActivity extends BridgeActivity {
         if (Intent.ACTION_SEND.equals(action) && type != null && "text/plain".equals(type)) {
             String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
             if (sharedText != null && (sharedText.contains("youtube.com") || sharedText.contains("youtu.be"))) {
-                pendingShareUrl = sharedText;
+                pendingShareUrl = extractYouTubeUrl(sharedText);
                 dispatchPendingShareUrl();
             }
         }
+    }
+
+    private String extractYouTubeUrl(String text) {
+        if (text == null) return null;
+        try {
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                "https?://(?:www\\.)?(?:youtube\\.com/(?:watch\\?v=[a-zA-Z0-9_-]+|shorts/[a-zA-Z0-9_-]+|embed/[a-zA-Z0-9_-]+)|youtu\\.be/[a-zA-Z0-9_-]+)[^\\s]*"
+            );
+            java.util.regex.Matcher matcher = pattern.matcher(text);
+            if (matcher.find()) {
+                return matcher.group(0);
+            }
+        } catch (Exception ignored) {
+        }
+        return text.trim();
     }
 
     private void dispatchPendingShareUrl() {
         if (pendingShareUrl != null && pageLoaded && getBridge() != null && getBridge().getWebView() != null) {
             try {
                 final String safeUrl = pendingShareUrl.replace("'", "\\'");
-                getBridge().getWebView().evaluateJavascript(
-                    "window.dispatchEvent(new CustomEvent('lifeatlas_youtube_share', { detail: { url: '" + safeUrl + "' } }));",
-                    null
-                );
+                String script =
+                    "try {" +
+                    "  window.sessionStorage.removeItem('life_atlas_secret_unlocked');" +
+                    "  window.localStorage.removeItem('life_atlas_secret_unlocked');" +
+                    "  window.localStorage.setItem('pending_youtube_share_url', '" + safeUrl + "');" +
+                    "  window.dispatchEvent(new Event('vault-locked'));" +
+                    "  window.dispatchEvent(new CustomEvent('lifeatlas_youtube_share', { detail: { url: '" + safeUrl + "', requireAuth: true } }));" +
+                    "} catch (e) { console.error('Share dispatch error', e); }";
+                getBridge().getWebView().evaluateJavascript(script, null);
                 pendingShareUrl = null;
             } catch (Exception e) {
                 e.printStackTrace();
