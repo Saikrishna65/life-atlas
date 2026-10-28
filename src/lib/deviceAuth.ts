@@ -413,7 +413,7 @@ export function grantSecretAccess(): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.setItem(SESSION_AUTH_KEY, "true");
-    localStorage.setItem(SESSION_AUTH_KEY, "true");
+    localStorage.removeItem(SESSION_AUTH_KEY); // purge any legacy persistent storage key
     window.dispatchEvent(new Event("vault-unlocked"));
   } catch {
     // Ignore storage quota/security issues
@@ -440,10 +440,7 @@ export function revokeSecretAccess(): void {
 export function isSecretAccessGranted(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return (
-      sessionStorage.getItem(SESSION_AUTH_KEY) === "true" ||
-      localStorage.getItem(SESSION_AUTH_KEY) === "true"
-    );
+    return sessionStorage.getItem(SESSION_AUTH_KEY) === "true";
   } catch {
     return false;
   }

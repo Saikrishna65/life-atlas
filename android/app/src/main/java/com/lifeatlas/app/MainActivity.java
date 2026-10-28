@@ -33,7 +33,6 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        registerPlugin(KotakNotificationTrackerPlugin.class);
         handleSendIntent(getIntent());
 
         // Append custom User-Agent so backend middleware strictly routes native app to private atlas
@@ -150,7 +149,11 @@ public class MainActivity extends BridgeActivity {
                     "  window.localStorage.removeItem('life_atlas_secret_unlocked');" +
                     "  window.localStorage.setItem('pending_youtube_share_url', '" + safeUrl + "');" +
                     "  window.dispatchEvent(new Event('vault-locked'));" +
-                    "  window.dispatchEvent(new CustomEvent('lifeatlas_youtube_share', { detail: { url: '" + safeUrl + "', requireAuth: true } }));" +
+                    "  if (!window.location.pathname.startsWith('/secret/music')) {" +
+                    "    window.location.href = '/secret/music?youtube_url=' + encodeURIComponent('" + safeUrl + "');" +
+                    "  } else {" +
+                    "    window.dispatchEvent(new CustomEvent('lifeatlas_youtube_share', { detail: { url: '" + safeUrl + "', requireAuth: true } }));" +
+                    "  }" +
                     "} catch (e) { console.error('Share dispatch error', e); }";
                 getBridge().getWebView().evaluateJavascript(script, null);
                 pendingShareUrl = null;

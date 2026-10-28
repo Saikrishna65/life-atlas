@@ -460,14 +460,10 @@ export default function FinanceDashboardPage() {
 
         <button
           onClick={() => setIsKotakModalOpen(true)}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap ${
-            kotakTrackingActive
-              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-              : "border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-          }`}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap"
         >
-          <BellRing className="w-3.5 h-3.5" />
-          <span>Kotak 811 Tracking</span>
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Kotak Assistant</span>
           {kotakReviewCount > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-black font-bold">
               {kotakReviewCount}
@@ -605,6 +601,160 @@ export default function FinanceDashboardPage() {
                   {formatPaise(periodNetCashFlowPaise)}
                 </span>
               </div>
+            </div>
+          </div>
+
+          {/* B. Redesigned Take Action Command Card */}
+          <div className="p-4 sm:p-5 rounded-2xl border border-border bg-gradient-to-b from-surface/90 to-surface/40 backdrop-blur-sm space-y-4 shadow-sm">
+            {/* Header & Live Status Indicators */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1 border-b border-border/50">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                    Take Action
+                  </span>
+                  <h3 className="text-sm font-semibold text-foreground">Financial Command</h3>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Record, parse, or import transactions directly into your private offline ledger
+                </p>
+              </div>
+
+              {/* Live Status Indicators */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                {uncategorizedCount > 0 && (
+                  <button
+                    onClick={() => setIsCategorizationModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                    title="Review uncategorized transactions"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>{uncategorizedCount} Uncategorized</span>
+                  </button>
+                )}
+
+                {hasLowBalanceWarning && (
+                  <button
+                    onClick={() => setIsForecastModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 transition-colors cursor-pointer animate-pulse"
+                    title="Low cash runway alert"
+                  >
+                    <TrendingUp className="w-3 h-3" />
+                    <span>Runway Alert</span>
+                  </button>
+                )}
+
+                {kotakReviewCount > 0 && (
+                  <button
+                    onClick={() => setIsKotakModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                    title="Kotak items needing review"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>{kotakReviewCount} Kotak Review</span>
+                  </button>
+                )}
+
+                {pendingOutboxCount > 0 && (
+                  <button
+                    onClick={() => setIsSyncModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"
+                    title="Outbox sync items pending"
+                  >
+                    <Cloud className="w-3 h-3" />
+                    <span>{pendingOutboxCount} Outbox</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Action Grid: Primary Featured + Secondary Actions */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* 1. PRIMARY PROMINENT ACTION: Paste Kotak Alert */}
+              <button
+                type="button"
+                onClick={() => setIsKotakModalOpen(true)}
+                className="group relative p-3.5 rounded-xl border border-red-500/40 bg-gradient-to-br from-red-500/10 via-surface to-surface hover:from-red-500/20 hover:border-red-500/60 text-left transition-all cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="w-9 h-9 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <span className="text-[9px] font-mono uppercase tracking-wider text-red-400 font-semibold px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20">
+                    Smart Assistant
+                  </span>
+                </div>
+                <div className="mt-3 space-y-0.5">
+                  <div className="text-xs font-bold text-foreground group-hover:text-red-300 transition-colors">
+                    Paste Kotak Alert
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Parse SMS or notification & record with duplicate defense
+                  </p>
+                </div>
+              </button>
+
+              {/* 2. SECONDARY: Add Transaction */}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingTransaction(null);
+                  setIsTransactionModalOpen(true);
+                }}
+                disabled={accounts.length === 0}
+                className="group p-3.5 rounded-xl border border-border bg-surface hover:border-emerald-500/40 hover:bg-surface/80 text-left transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
+              >
+                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <div className="mt-3 space-y-0.5">
+                  <div className="text-xs font-semibold text-foreground group-hover:text-emerald-400 transition-colors">
+                    Record Transaction
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Manual debit or credit entry with category assignment
+                  </p>
+                </div>
+              </button>
+
+              {/* 3. SECONDARY: Import Statement */}
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(true)}
+                className="group p-3.5 rounded-xl border border-border bg-surface hover:border-blue-500/40 hover:bg-surface/80 text-left transition-all cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
+              >
+                <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <FileUp className="w-4 h-4" />
+                </div>
+                <div className="mt-3 space-y-0.5">
+                  <div className="text-xs font-semibold text-foreground group-hover:text-blue-400 transition-colors">
+                    Import Statement
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Ingest offline bank statements (CSV, OFX, QIF)
+                  </p>
+                </div>
+              </button>
+
+              {/* 4. SECONDARY: Account Transfer */}
+              <button
+                type="button"
+                onClick={() => setIsTransferModalOpen(true)}
+                disabled={accounts.length < 2}
+                className="group p-3.5 rounded-xl border border-border bg-surface hover:border-purple-500/40 hover:bg-surface/80 text-left transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
+              >
+                <div className="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <ArrowRightLeft className="w-4 h-4" />
+                </div>
+                <div className="mt-3 space-y-0.5">
+                  <div className="text-xs font-semibold text-foreground group-hover:text-purple-400 transition-colors">
+                    Account Transfer
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    Move funds with balanced double-entry ledger guarantee
+                  </p>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -1481,6 +1631,7 @@ export default function FinanceDashboardPage() {
         accounts={accounts}
         categories={categories}
         onTransactionsUpdated={refreshAll}
+        onOpenStatementImport={() => setIsImportModalOpen(true)}
       />
     </div>
   );

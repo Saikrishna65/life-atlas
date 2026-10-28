@@ -21,7 +21,17 @@ import {
   NotificationTrackingStatus,
 } from "../domain/notificationModels";
 import { KotakNotificationParser } from "../infrastructure/kotakNotificationParser";
-import { ID, FinanceAccount } from "../domain/models";
+import { ID, FinanceAccount, Transaction } from "../domain/models";
+
+export interface ParseAlertResult {
+  success: boolean;
+  parsed?: ParsedNotificationTransaction;
+  matchedAccount?: FinanceAccount | null;
+  suggestedCategory?: { categoryId: string; categoryName: string } | null;
+  isDuplicate?: boolean;
+  duplicateReason?: string;
+  error?: string;
+}
 
 // Capacitor Plugin Interface Contract
 interface IKotakNativePlugin {
@@ -117,6 +127,108 @@ export class NotificationTrackingService {
     } finally {
       this.isProcessing = false;
     }
+  }
+
+  /**
+   * Deterministically parses a pasted Kotak SMS or notification alert text,
+   * performs duplicate detection, matches accounts, and suggests categories.
+   */
+  async parseAlertText(text: string): Promise<ParseAlertResult> {
+    if (!text || !text.trim()) {
+      return {
+        success: false,
+        error: "Please enter or paste a valid Kotak transaction alert message.",
+      };
+    }
+
+    const raw: RawNotificationEvent = {
+      id: `manual_paste_${Date.now()}`,
+      packageName: "com.msf.kbank.mobile",
+      sender: "Kotak Bank",
+      title: "Kotak Alert",
+      text: text.trim(),
+      postTime: Date.now(),
+      postTimeIso: new Date().toISOString(),
+    };
+
+    const parseResult = KotakNotificationParser.parse(raw);
+    if (!parseResult.success || !parseResult.transaction) {
+      return {
+        success: false,
+        error:
+          parseResult.rejectedReason ||
+          "Could not detect transaction details. Please check the text format and ensure amounts and debit/credit are present.",
+      };
+    }
+
+    const parsed = parseResult.transaction;
+    const isDuplicate = await this.checkExistingLedgerDuplicate(parsed);
+    const matchedAccount = await this.matchKotakAccount(parsed.accountMask);
+
+    let suggestedCategory: { categoryId: string; categoryName: string } | null = null;
+    try {
+      const catResult = await this.categorizationService.suggestCategory({
+        description: parsed.merchantOrBeneficiary,
+        merchant: parsed.merchantOrBeneficiary,
+        amountPaise: parsed.amountPaise,
+        direction: parsed.direction,
+      });
+      if (catResult) {
+        const allCats = await this.uow.categories.getAll();
+        const catObj = allCats.find((c) => c.id === catResult.categoryId);
+        suggestedCategory = {
+          categoryId: catResult.categoryId,
+          categoryName: catObj?.name || "Auto-categorized",
+        };
+      }
+    } catch {
+      // Categorization suggestion failure should not abort parsing
+    }
+
+    return {
+      success: true,
+      parsed,
+      matchedAccount,
+      suggestedCategory,
+      isDuplicate,
+      duplicateReason: isDuplicate
+        ? parsed.referenceNumber
+          ? `Transaction with reference "${parsed.referenceNumber}" is already recorded in the ledger.`
+          : `A matching transaction with the same amount and merchant already exists on this date.`
+        : undefined,
+    };
+  }
+
+  /**
+   * Commits a parsed and user-reviewed transaction into the official ledger
+   */
+  async confirmParsedTransaction(options: {
+    parsed: ParsedNotificationTransaction;
+    accountId: string;
+    categoryId?: string;
+    description?: string;
+  }): Promise<Transaction> {
+    const { parsed, accountId, categoryId, description } = options;
+
+    const recorded = await this.transactionService.recordTransaction({
+      accountId,
+      amountPaise: parsed.amountPaise,
+      direction: parsed.direction,
+      description: description?.trim() || parsed.merchantOrBeneficiary,
+      merchant: parsed.merchantOrBeneficiary,
+      categoryId,
+      source: "manual",
+      externalId: parsed.referenceNumber ? `kotak_notif_${parsed.referenceNumber}` : undefined,
+      occurredAt: parsed.occurredAt,
+      status: "posted",
+      reviewRequired: parsed.isAmbiguous,
+      notes: `[Kotak Smart Assistant] ${
+        parsed.referenceNumber ? `Ref: ${parsed.referenceNumber}` : ""
+      }`,
+    });
+
+    this.processedFingerprints.add(parsed.normalizedFingerprint);
+    return recorded;
   }
 
   /**
