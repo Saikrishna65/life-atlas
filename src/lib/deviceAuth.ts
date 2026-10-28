@@ -426,6 +426,7 @@ export function grantSecretAccess(): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.setItem(SESSION_AUTH_KEY, "true");
+    sessionStorage.setItem("life_atlas_auth_timestamp", Date.now().toString());
     localStorage.removeItem(SESSION_AUTH_KEY); // purge any legacy persistent storage key
     window.dispatchEvent(new Event("vault-unlocked"));
   } catch {
@@ -441,11 +442,17 @@ export function revokeSecretAccess(): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.removeItem(SESSION_AUTH_KEY);
+    sessionStorage.removeItem("life_atlas_auth_timestamp");
     localStorage.removeItem(SESSION_AUTH_KEY);
     window.dispatchEvent(new Event("vault-locked"));
   } catch {
     // Ignore storage issues
   }
+}
+
+// Expose revoke function globally on window for native Android BridgeActivity hooks
+if (typeof window !== "undefined") {
+  (window as unknown as { __revokeLifeAtlasSecretAccess?: () => void }).__revokeLifeAtlasSecretAccess = revokeSecretAccess;
 }
 
 /**

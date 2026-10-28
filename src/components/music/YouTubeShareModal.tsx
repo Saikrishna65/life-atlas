@@ -21,6 +21,7 @@ import { saveTrack, getAllPlaylists, savePlaylist, addTrackToPlaylist } from "@/
 import { downloadTrackToLocalStorage } from "@/lib/music/cloudSync";
 import { MusicTrack, MusicPlaylist } from "@/lib/music/types";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
+import { triggerHaptic } from "@/lib/deviceAuth";
 
 interface YouTubeShareModalProps {
   isOpen: boolean;
@@ -109,14 +110,26 @@ export default function YouTubeShareModal({
   }, []);
 
   useEffect(() => {
-    if (initialUrl) {
-      handleUrlChange(initialUrl);
+    if (isOpen) {
+      if (initialUrl && initialUrl.trim().length > 0) {
+        handleUrlChange(initialUrl);
+      } else {
+        setUrl("");
+        setVideoId(null);
+        setTitle("");
+        setArtist("");
+        setThumbnailUrl(null);
+        setExtractedTrack(null);
+        setErrorMessage(null);
+        setIsExtracting(false);
+      }
     }
-  }, [initialUrl, handleUrlChange]);
+  }, [isOpen, initialUrl, handleUrlChange]);
 
   // Extract Audio & Save
   const handleExtractAndSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    triggerHaptic("tap");
     if (!videoId) {
       setErrorMessage("Please provide a valid YouTube link or video ID.");
       return;
@@ -180,6 +193,7 @@ export default function YouTubeShareModal({
 
       setExtractedTrack(serverTrack);
       setExtractionStep("Complete!");
+      triggerHaptic("success");
 
       if (onSuccess) {
         onSuccess(serverTrack, data.playlist);
@@ -187,12 +201,14 @@ export default function YouTubeShareModal({
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Audio extraction failed";
       setErrorMessage(msg);
+      triggerHaptic("error");
     } finally {
       setIsExtracting(false);
     }
   };
 
   const handlePlayNow = () => {
+    triggerHaptic("tap");
     if (extractedTrack) {
       playTrack(extractedTrack, [extractedTrack], {
         type: "LIBRARY",
@@ -218,15 +234,22 @@ export default function YouTubeShareModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 select-none animate-fade-in overflow-y-auto"
+      className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 select-none animate-fade-in overflow-x-hidden"
       role="dialog"
       aria-modal="true"
       aria-labelledby="yt-modal-title"
+      onClick={() => {
+        handleReset();
+        onClose();
+      }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-3xl bg-white border border-slate-200/90 shadow-2xl p-6 sm:p-7 space-y-5 animate-scale-up relative overflow-hidden"
+        className="w-full max-w-lg rounded-t-[32px] sm:rounded-3xl bg-white border-t sm:border border-slate-200 shadow-2xl p-5 sm:p-7 space-y-4 relative overflow-x-hidden max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-300"
       >
+        {/* Native Mobile Bottom Sheet Handle */}
+        <div className="w-12 h-1.5 rounded-full bg-slate-300 mx-auto -mt-1 mb-2 sm:hidden shrink-0" aria-hidden="true" />
+
         {/* Ambient Top Radiant Wash */}
         <div
           className="absolute -top-20 -right-20 w-56 h-56 bg-red-500/10 rounded-full blur-3xl pointer-events-none"
@@ -240,21 +263,22 @@ export default function YouTubeShareModal({
               <YoutubeIcon className="w-6 h-6 fill-current" />
             </div>
             <div>
-              <h3 id="yt-modal-title" className="font-display text-xl sm:text-2xl text-slate-900 font-normal">
+              <h3 id="yt-modal-title" className="font-display text-lg sm:text-2xl text-slate-900 font-normal">
                 Import from YouTube
               </h3>
-              <p className="text-xs text-slate-500">
-                Extract high-fidelity audio from any YouTube video into your private vault.
+              <p className="text-[11px] sm:text-xs text-slate-500">
+                Extract high-fidelity audio into your private vault.
               </p>
             </div>
           </div>
 
           <button
             onClick={() => {
+              triggerHaptic("tap");
               handleReset();
               onClose();
             }}
-            className="w-8 h-8 rounded-full glass-card-subtle hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-800 transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full glass-card-subtle hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-800 transition-colors cursor-pointer shrink-0"
             aria-label="Close modal"
           >
             <X className="w-4 h-4" />
@@ -263,24 +287,24 @@ export default function YouTubeShareModal({
 
         {/* Success View */}
         {extractedTrack ? (
-          <div className="space-y-5 py-2 animate-fade-in relative z-10 text-center">
-            <div className="w-16 h-16 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto shadow-sm">
-              <CheckCircle2 className="w-8 h-8" />
+          <div className="space-y-4 py-2 animate-fade-in relative z-10 text-center">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto shadow-sm">
+              <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8" />
             </div>
 
             <div className="space-y-1">
-              <h4 className="font-display text-xl text-slate-900 font-normal">
+              <h4 className="font-display text-lg sm:text-xl text-slate-900 font-normal">
                 Audio Extracted Successfully!
               </h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              <p className="text-xs text-slate-500 max-w-sm mx-auto px-2">
                 <span className="font-semibold text-slate-800">{extractedTrack.title}</span> by{" "}
-                <span className="font-semibold text-slate-800">{extractedTrack.artist}</span> has been saved in both your local offline storage and online database.
+                <span className="font-semibold text-slate-800">{extractedTrack.artist}</span> is now saved in local offline storage and synced to cloud.
               </p>
             </div>
 
             {/* Artwork Card */}
             {thumbnailUrl && (
-              <div className="relative w-44 aspect-video rounded-2xl overflow-hidden mx-auto border border-slate-200 shadow-md">
+              <div className="relative w-40 sm:w-48 aspect-video rounded-2xl overflow-hidden mx-auto border border-slate-200 shadow-md">
                 <Image
                   src={thumbnailUrl}
                   alt={extractedTrack.title}
@@ -291,51 +315,51 @@ export default function YouTubeShareModal({
               </div>
             )}
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-              <button
-                onClick={handlePlayNow}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-white font-sans text-xs font-bold uppercase tracking-wider transition-all neon-glow-amber active:scale-95 cursor-pointer shadow-lg"
-              >
-                <Play className="w-4 h-4 fill-current stroke-[2.5]" />
-                <span>Play Now</span>
-              </button>
-
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-center gap-2.5 pt-2 w-full">
               <button
                 onClick={() => {
+                  triggerHaptic("tap");
                   handleReset();
                   onClose();
                 }}
-                className="w-full sm:w-auto px-5 py-3 rounded-2xl glass-card-subtle hover:bg-slate-100 text-xs font-sans text-slate-700 hover:text-slate-950 border border-slate-200 transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-5 py-3 rounded-2xl glass-card-subtle hover:bg-slate-100 text-xs font-sans text-slate-700 hover:text-slate-950 border border-slate-200 transition-colors cursor-pointer active:scale-95 text-center"
               >
                 Close & View Vault
+              </button>
+
+              <button
+                onClick={handlePlayNow}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-white font-sans text-xs font-bold uppercase tracking-wider transition-all neon-glow-amber active:scale-95 cursor-pointer shadow-lg"
+              >
+                <Play className="w-4 h-4 fill-current stroke-[2.5]" />
+                <span>Play Now</span>
               </button>
             </div>
           </div>
         ) : (
           /* Input & Extraction Form */
-          <form onSubmit={handleExtractAndSave} className="space-y-4 relative z-10">
+          <form onSubmit={handleExtractAndSave} className="space-y-4 relative z-10 w-full overflow-hidden">
             {errorMessage && (
-              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-sans text-rose-800 flex items-center gap-2.5 shadow-xs">
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-sans text-rose-800 flex items-center gap-2.5 shadow-xs">
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
-            {/* YouTube Link Input */}
-            <div className="space-y-1.5">
+            {/* YouTube Link Input - Without autoFocus to eliminate mobile horizontal pan */}
+            <div className="space-y-1.5 w-full">
               <label htmlFor="yt-url-input" className="text-xs font-semibold text-slate-700 block">
                 YouTube Video or Shorts Link:
               </label>
-              <div className="relative">
+              <div className="relative w-full">
                 <input
                   id="yt-url-input"
                   type="text"
-                  placeholder="https://youtu.be/... or https://www.youtube.com/watch?v=..."
+                  placeholder="Paste YouTube link here..."
                   value={url}
                   onChange={(e) => handleUrlChange(e.target.value)}
                   disabled={isExtracting}
-                  className="w-full px-4 py-2.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20 transition-all font-mono"
-                  autoFocus
+                  className="w-full px-3.5 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20 transition-all font-mono"
                 />
                 {isLoadingPreview && (
                   <Loader2 className="w-4 h-4 text-red-500 absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin" />
@@ -345,7 +369,7 @@ export default function YouTubeShareModal({
 
             {/* Video Preview Stage (if recognized) */}
             {videoId && (
-              <div className="p-3 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-3">
+              <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200 space-y-2.5 w-full overflow-hidden animate-fade-in">
                 <div className="flex items-center gap-3">
                   {thumbnailUrl && (
                     <div className="relative w-20 h-14 rounded-xl overflow-hidden bg-slate-200 shrink-0 border border-slate-300 shadow-xs">
@@ -358,14 +382,14 @@ export default function YouTubeShareModal({
                       />
                     </div>
                   )}
-                  <div className="min-w-0 flex-1 space-y-1">
+                  <div className="min-w-0 flex-1 space-y-1.5">
                     <input
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
                       placeholder="Track Title"
                       disabled={isExtracting}
-                      className="w-full px-2 py-1 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-amber-400"
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-amber-400 truncate"
                     />
                     <input
                       type="text"
@@ -373,7 +397,7 @@ export default function YouTubeShareModal({
                       onChange={(e) => setArtist(e.target.value)}
                       placeholder="Artist Name"
                       disabled={isExtracting}
-                      className="w-full px-2 py-1 rounded-lg bg-white border border-slate-200 text-[11px] text-slate-600 focus:outline-none focus:border-amber-400"
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] text-slate-600 focus:outline-none focus:border-amber-400 truncate"
                     />
                   </div>
                 </div>
@@ -387,11 +411,14 @@ export default function YouTubeShareModal({
                 <span className="text-[10px] font-normal text-slate-400">Optional</span>
               </label>
 
-              <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs">
                 <button
                   type="button"
-                  onClick={() => setPlaylistMode("NONE")}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer font-sans ${
+                  onClick={() => {
+                    triggerHaptic("tap");
+                    setPlaylistMode("NONE");
+                  }}
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer font-sans text-[11px] sm:text-xs font-medium ${
                     playlistMode === "NONE"
                       ? "bg-amber-500/15 border-amber-400 text-amber-900 font-bold shadow-xs"
                       : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
@@ -402,9 +429,12 @@ export default function YouTubeShareModal({
 
                 <button
                   type="button"
-                  onClick={() => setPlaylistMode("EXISTING")}
+                  onClick={() => {
+                    triggerHaptic("tap");
+                    setPlaylistMode("EXISTING");
+                  }}
                   disabled={playlists.length === 0}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer font-sans disabled:opacity-40 ${
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer font-sans text-[11px] sm:text-xs font-medium disabled:opacity-40 ${
                     playlistMode === "EXISTING"
                       ? "bg-amber-500/15 border-amber-400 text-amber-900 font-bold shadow-xs"
                       : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
@@ -415,8 +445,11 @@ export default function YouTubeShareModal({
 
                 <button
                   type="button"
-                  onClick={() => setPlaylistMode("NEW")}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer font-sans ${
+                  onClick={() => {
+                    triggerHaptic("tap");
+                    setPlaylistMode("NEW");
+                  }}
+                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer font-sans text-[11px] sm:text-xs font-medium ${
                     playlistMode === "NEW"
                       ? "bg-amber-500/15 border-amber-400 text-amber-900 font-bold shadow-xs"
                       : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
@@ -428,7 +461,7 @@ export default function YouTubeShareModal({
 
               {/* Existing Playlist Dropdown */}
               {playlistMode === "EXISTING" && (
-                <div className="pt-1.5 animate-fade-in">
+                <div className="pt-1 animate-fade-in">
                   <select
                     value={selectedPlaylistId}
                     onChange={(e) => setSelectedPlaylistId(e.target.value)}
@@ -446,10 +479,10 @@ export default function YouTubeShareModal({
 
               {/* New Playlist Title Input */}
               {playlistMode === "NEW" && (
-                <div className="pt-1.5 animate-fade-in">
+                <div className="pt-1 animate-fade-in">
                   <input
                     type="text"
-                    placeholder="Enter new playlist name (e.g. Desert Highway Tunes)..."
+                    placeholder="Enter playlist name..."
                     value={newPlaylistTitle}
                     onChange={(e) => setNewPlaylistTitle(e.target.value)}
                     disabled={isExtracting}
@@ -461,7 +494,7 @@ export default function YouTubeShareModal({
 
             {/* Live Progress Info */}
             {isExtracting && (
-              <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs font-mono text-amber-900 space-y-1.5 animate-fade-in">
+              <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs font-mono text-amber-900 space-y-1.5 animate-fade-in">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
                   <span className="font-semibold">{extractionStep}</span>
@@ -472,16 +505,17 @@ export default function YouTubeShareModal({
               </div>
             )}
 
-            {/* Submit Action Button */}
-            <div className="pt-2 flex items-center justify-end gap-3">
+            {/* One-Handed Action Buttons Stack */}
+            <div className="pt-2 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 w-full">
               <button
                 type="button"
                 onClick={() => {
+                  triggerHaptic("tap");
                   handleReset();
                   onClose();
                 }}
                 disabled={isExtracting}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-sans text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                className="w-full sm:w-auto px-5 py-3 rounded-2xl border border-slate-200 text-xs font-semibold font-sans text-slate-600 hover:bg-slate-50 transition-colors text-center cursor-pointer active:scale-95 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -489,9 +523,9 @@ export default function YouTubeShareModal({
               <button
                 type="submit"
                 disabled={!videoId || isExtracting}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 active:scale-95 text-white font-sans text-xs font-bold tracking-wide transition-all shadow-md disabled:opacity-40 cursor-pointer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 active:scale-95 text-white font-sans text-xs font-bold tracking-wide transition-all shadow-md disabled:opacity-40 cursor-pointer"
               >
-                <DownloadCloud className="w-4 h-4" />
+                <DownloadCloud className="w-4 h-4 shrink-0" />
                 <span>{isExtracting ? "Extracting..." : "Extract Audio & Add to Vault"}</span>
               </button>
             </div>

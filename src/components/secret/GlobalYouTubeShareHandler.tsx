@@ -11,14 +11,23 @@ export default function GlobalYouTubeShareHandler() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetUrl, setTargetUrl] = useState("");
 
-  const handleOpenShare = useCallback((url: string) => {
+  const handleOpenShare = useCallback((url: string = "") => {
     setTargetUrl(url);
-    setIsModalOpen(true);
+    setIsModalOpen(false);
+    setTimeout(() => {
+      setIsModalOpen(true);
+    }, 10);
     // Navigate to Music Vault if not already on /secret/music
     if (pathname && !pathname.startsWith("/secret/music")) {
       router.push("/secret/music");
     }
   }, [pathname, router]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as unknown as { __openYouTubeModal?: (url?: string) => void }).__openYouTubeModal = handleOpenShare;
+    }
+  }, [handleOpenShare]);
 
   const checkPendingShare = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -67,12 +76,11 @@ export default function GlobalYouTubeShareHandler() {
     const handleCustomShareEvent = (e: Event) => {
       const customEvent = e as CustomEvent<{ url?: string; requireAuth?: boolean }>;
       const sharedUrl = customEvent?.detail?.url;
-      if (sharedUrl) {
-        // If biometric auth is pending or required, queue in localStorage until unlock
-        if (customEvent.detail.requireAuth || !isSecretAccessGranted()) {
-          localStorage.setItem("pending_youtube_share_url", sharedUrl);
+      if (typeof sharedUrl === "string" && sharedUrl.trim().length > 0) {
+        if (!isSecretAccessGranted()) {
+          localStorage.setItem("pending_youtube_share_url", sharedUrl.trim());
         } else {
-          handleOpenShare(sharedUrl);
+          handleOpenShare(sharedUrl.trim());
         }
       } else {
         // Open blank modal for manual input

@@ -72,6 +72,12 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
 
   // 1. AUTO-LOCK on App Background & AUTO-PROMPT on Resume
   useEffect(() => {
+    // Expose explicit lock trigger on window for native Android BridgeActivity
+    (window as unknown as { __lockVault?: () => void }).__lockVault = () => {
+      revokeSecretAccess();
+      setIsUnlocked(false);
+    };
+
     let appStateSub: { remove: () => void } | null = null;
 
     // Capacitor Native App Lifecycle
@@ -84,12 +90,12 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
               revokeSecretAccess();
               setIsUnlocked(false);
             } else {
-              // App returned to foreground -> Prompt fingerprint immediately
+              // App returned to foreground -> Wait 300ms for Android window focus before presenting biometric prompt
               setTimeout(() => {
                 if (!authInProgressRef.current) {
                   handleVerifyBiometric();
                 }
-              }, 100);
+              }, 300);
             }
           }).then((sub) => {
             appStateSub = sub;
@@ -108,12 +114,13 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
           if (!authInProgressRef.current) {
             handleVerifyBiometric();
           }
-        }, 100);
+        }, 300);
       }
     };
 
     // Native Bridge Events from MainActivity
     const handleVaultLocked = () => {
+      revokeSecretAccess();
       setIsUnlocked(false);
     };
 
@@ -122,15 +129,22 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
     };
 
     const handleAppResumed = () => {
+      revokeSecretAccess();
       setIsUnlocked(false);
       setTimeout(() => {
         if (!authInProgressRef.current) {
           handleVerifyBiometric();
         }
-      }, 50);
+      }, 300);
+    };
+
+    const handlePageHide = () => {
+      revokeSecretAccess();
+      setIsUnlocked(false);
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
     window.addEventListener("vault-locked", handleVaultLocked);
     window.addEventListener("vault-unlocked", handleVaultUnlocked);
     window.addEventListener("app-resumed", handleAppResumed);
@@ -138,6 +152,7 @@ export default function SecretAppGuard({ children }: SecretAppGuardProps) {
     return () => {
       appStateSub?.remove();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
       window.removeEventListener("vault-locked", handleVaultLocked);
       window.removeEventListener("vault-unlocked", handleVaultUnlocked);
       window.removeEventListener("app-resumed", handleAppResumed);

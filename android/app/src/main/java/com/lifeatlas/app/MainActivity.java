@@ -145,10 +145,9 @@ public class MainActivity extends BridgeActivity {
                 final String safeUrl = pendingShareUrl.replace("'", "\\'");
                 String script =
                     "try {" +
-                    "  window.sessionStorage.removeItem('life_atlas_secret_unlocked');" +
-                    "  window.localStorage.removeItem('life_atlas_secret_unlocked');" +
+                    "  if (window.__lockVault) { window.__lockVault(); }" +
+                    "  if (window.__revokeLifeAtlasSecretAccess) { window.__revokeLifeAtlasSecretAccess(); }" +
                     "  window.localStorage.setItem('pending_youtube_share_url', '" + safeUrl + "');" +
-                    "  window.dispatchEvent(new Event('vault-locked'));" +
                     "  if (!window.location.pathname.startsWith('/secret/music')) {" +
                     "    window.location.href = '/secret/music?youtube_url=' + encodeURIComponent('" + safeUrl + "');" +
                     "  } else {" +
@@ -169,7 +168,27 @@ public class MainActivity extends BridgeActivity {
         if (getBridge() != null && getBridge().getWebView() != null) {
             getBridge().getWebView().evaluateJavascript(
                 "try {" +
+                "  if (window.__lockVault) { window.__lockVault(); }" +
+                "  if (window.__revokeLifeAtlasSecretAccess) { window.__revokeLifeAtlasSecretAccess(); }" +
                 "  window.sessionStorage.removeItem('life_atlas_secret_unlocked');" +
+                "  window.sessionStorage.removeItem('life_atlas_auth_timestamp');" +
+                "  window.dispatchEvent(new Event('vault-locked'));" +
+                "} catch (e) {}",
+                null
+            );
+        }
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().evaluateJavascript(
+                "try {" +
+                "  if (window.__lockVault) { window.__lockVault(); }" +
+                "  if (window.__revokeLifeAtlasSecretAccess) { window.__revokeLifeAtlasSecretAccess(); }" +
+                "  window.sessionStorage.removeItem('life_atlas_secret_unlocked');" +
+                "  window.sessionStorage.removeItem('life_atlas_auth_timestamp');" +
                 "  window.dispatchEvent(new Event('vault-locked'));" +
                 "} catch (e) {}",
                 null

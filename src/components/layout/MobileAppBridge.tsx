@@ -30,6 +30,13 @@ export default function MobileAppBridge() {
     const backButtonListener = CapApp.addListener("backButton", () => {
       const path = window.location.pathname;
       if (path === "/" || path === "/secret") {
+        try {
+          // Explicitly lock vault before exiting process
+          const win = window as unknown as { __revokeLifeAtlasSecretAccess?: () => void; __lockVault?: () => void };
+          if (win.__lockVault) win.__lockVault();
+          if (win.__revokeLifeAtlasSecretAccess) win.__revokeLifeAtlasSecretAccess();
+          window.sessionStorage.clear();
+        } catch {}
         CapApp.exitApp();
       } else {
         window.history.back();

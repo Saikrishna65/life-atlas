@@ -22,7 +22,7 @@ import { parseAudioFile } from "@/lib/music/metadataParser";
 import { saveTrack, getAllTracks } from "@/lib/music/storage";
 import { uploadTrackToCloud } from "@/lib/music/cloudSync";
 import { MusicTrack } from "@/lib/music/types";
-import { revokeSecretAccess } from "@/lib/deviceAuth";
+import { revokeSecretAccess, triggerHaptic } from "@/lib/deviceAuth";
 
 export default function MusicNav({ onTrackImported }: { onTrackImported?: () => void }) {
   const pathname = usePathname();
@@ -172,7 +172,13 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
           {/* YouTube Video / Shorts Direct Extractor Button */}
           <button
             onClick={() => {
-              window.dispatchEvent(new CustomEvent("lifeatlas_youtube_share", { detail: { url: "" } }));
+              triggerHaptic("tap");
+              const win = window as unknown as { __openYouTubeModal?: (u?: string) => void };
+              if (typeof win.__openYouTubeModal === "function") {
+                win.__openYouTubeModal("");
+              } else {
+                window.dispatchEvent(new CustomEvent("lifeatlas_youtube_share", { detail: { url: "" } }));
+              }
             }}
             className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold tracking-wide transition-all shadow-xs active:scale-95 cursor-pointer"
             title="Extract & Import Audio from YouTube Link or Share"
