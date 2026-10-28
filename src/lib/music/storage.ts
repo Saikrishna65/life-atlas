@@ -521,14 +521,17 @@ export async function getStorageReport(): Promise<MusicStorageReport> {
     else if (t.source === "DOWNLOADED") downloadedCount++;
     else streamCount++;
 
-    if (t.size) {
-      totalBytes += t.size;
+    const byteSize = t.audioBlob?.size || t.size || 0;
+    if (byteSize > 0) {
+      totalBytes += byteSize;
     }
   }
 
   let formattedSize = "0 MB";
   if (totalBytes > 1024 * 1024 * 1024) {
     formattedSize = `${(totalBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  } else if (totalBytes > 0 && totalBytes < 100 * 1024) {
+    formattedSize = `${(totalBytes / 1024).toFixed(1)} KB`;
   } else {
     formattedSize = `${(totalBytes / (1024 * 1024)).toFixed(1)} MB`;
   }

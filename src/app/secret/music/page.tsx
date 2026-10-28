@@ -34,7 +34,7 @@ import {
 import { MusicTrack, MusicPlaylist } from "@/lib/music/types";
 import { fetchCloudTracks, downloadTrackToLocalStorage, syncCloudToLocalStorage, uploadTrackToCloud } from "@/lib/music/cloudSync";
 import { parseAudioFile } from "@/lib/music/metadataParser";
-import { triggerHaptic } from "@/lib/deviceAuth";
+import { triggerHaptic, setSystemPickerActive } from "@/lib/deviceAuth";
 
 export default function MusicHomePage() {
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setIsNowPlayingOpen } = useMusicPlayer();
@@ -184,26 +184,33 @@ export default function MusicHomePage() {
   };
 
   const handleLocalFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    setSystemPickerActive(false);
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    const selectedFiles = Array.from(fileList);
 
     setIsSyncing(true);
-    setSyncStatus(`Importing ${files.length} audio file(s)...`);
+    setSyncStatus(`Importing ${selectedFiles.length} audio file(s)...`);
     triggerHaptic("tap");
 
     try {
       const existing = await getAllTracks();
       let imported = 0;
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const arrayBuffer = await file.arrayBuffer();
+        const mimeType = file.type || "audio/mpeg";
+        const memoryBlob = new Blob([arrayBuffer], { type: mimeType });
+
         const parsed = await parseAudioFile(file);
 
         const isDup = existing.some(
           (t) =>
             (t.title.toLowerCase() === parsed.title.toLowerCase() &&
               t.artist.toLowerCase() === parsed.artist.toLowerCase()) ||
-            (t.fileName === file.name && t.size === file.size)
+            (t.fileName === file.name && t.size === memoryBlob.size)
         );
 
         if (isDup) continue;
@@ -216,10 +223,10 @@ export default function MusicHomePage() {
           genre: parsed.genre,
           year: parsed.year,
           duration: parsed.duration || 0,
-          format: file.type || "audio/mpeg",
-          size: file.size,
+          format: mimeType,
+          size: memoryBlob.size,
           artworkUrl: parsed.artworkUrl,
-          audioBlob: file,
+          audioBlob: memoryBlob,
           source: "IMPORTED",
           isFavorite: false,
           playCount: 0,
@@ -231,9 +238,10 @@ export default function MusicHomePage() {
         existing.push(newTrack);
         imported++;
 
-        uploadTrackToCloud(newTrack, file).catch(() => {});
+        uploadTrackToCloud(newTrack, memoryBlob).catch(() => {});
       }
 
+      window.dispatchEvent(new Event("lifeatlas_tracks_updated"));
       await loadData();
       setSyncStatus(`Imported ${imported} song(s) successfully.`);
       triggerHaptic("success");
@@ -257,7 +265,7 @@ export default function MusicHomePage() {
         type="file"
         ref={fileInputRef}
         onChange={handleLocalFileChange}
-        accept="audio/*"
+        accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.aac,.opus,.mp4"
         multiple
         className="hidden"
       />
@@ -679,7 +687,9 @@ export default function MusicHomePage() {
 
       {/* FLOATING ONE-HAND QUICK ACTION THUMB DOCK */}
       <aside
-        className="fixed bottom-[4.75rem] inset-x-3 sm:inset-x-auto sm:right-6 sm:w-auto max-w-md mx-auto z-30 pointer-events-auto select-none"
+        className={`fixed ${
+          currentTrack ? "bottom-[5.75rem]" : "bottom-4"
+        } inset-x-3 sm:inset-x-auto sm:right-6 sm:w-auto max-w-md mx-auto z-30 pointer-events-auto select-none transition-all duration-300`}
         aria-label="One Hand Quick Actions"
       >
         <div className="rounded-2xl sm:rounded-full p-1.5 sm:px-3 sm:py-2 border border-slate-200 shadow-[0_12px_32px_rgba(15,23,42,0.15)] flex items-center justify-between sm:justify-center gap-2 backdrop-blur-xl bg-white/95">
@@ -708,6 +718,7 @@ export default function MusicHomePage() {
           <button
             onClick={() => {
               triggerHaptic("tap");
+              setSystemPickerActive(true);
               fileInputRef.current?.click();
             }}
             disabled={isSyncing}

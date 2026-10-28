@@ -145,14 +145,13 @@ public class MainActivity extends BridgeActivity {
                 final String safeUrl = pendingShareUrl.replace("'", "\\'");
                 String script =
                     "try {" +
+                    "  window.__isBiometricPromptActive = false;" +
+                    "  window.__isSystemPickerActive = false;" +
+                    "  window.__lastUnlockTimestamp = 0;" +
                     "  if (window.__lockVault) { window.__lockVault(); }" +
                     "  if (window.__revokeLifeAtlasSecretAccess) { window.__revokeLifeAtlasSecretAccess(); }" +
                     "  window.localStorage.setItem('pending_youtube_share_url', '" + safeUrl + "');" +
-                    "  if (!window.location.pathname.startsWith('/secret/music')) {" +
-                    "    window.location.href = '/secret/music?youtube_url=' + encodeURIComponent('" + safeUrl + "');" +
-                    "  } else {" +
-                    "    window.dispatchEvent(new CustomEvent('lifeatlas_youtube_share', { detail: { url: '" + safeUrl + "', requireAuth: true } }));" +
-                    "  }" +
+                    "  window.dispatchEvent(new CustomEvent('lifeatlas_youtube_share', { detail: { url: '" + safeUrl + "', requireAuth: true } }));" +
                     "} catch (e) { console.error('Share dispatch error', e); }";
                 getBridge().getWebView().evaluateJavascript(script, null);
                 pendingShareUrl = null;
@@ -163,33 +162,18 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    public void onPause() {
-        super.onPause();
-        if (getBridge() != null && getBridge().getWebView() != null) {
-            getBridge().getWebView().evaluateJavascript(
-                "try {" +
-                "  if (window.__lockVault) { window.__lockVault(); }" +
-                "  if (window.__revokeLifeAtlasSecretAccess) { window.__revokeLifeAtlasSecretAccess(); }" +
-                "  window.sessionStorage.removeItem('life_atlas_secret_unlocked');" +
-                "  window.sessionStorage.removeItem('life_atlas_auth_timestamp');" +
-                "  window.dispatchEvent(new Event('vault-locked'));" +
-                "} catch (e) {}",
-                null
-            );
-        }
-    }
-
-    @Override
     public void onStop() {
         super.onStop();
         if (getBridge() != null && getBridge().getWebView() != null) {
             getBridge().getWebView().evaluateJavascript(
                 "try {" +
-                "  if (window.__lockVault) { window.__lockVault(); }" +
-                "  if (window.__revokeLifeAtlasSecretAccess) { window.__revokeLifeAtlasSecretAccess(); }" +
-                "  window.sessionStorage.removeItem('life_atlas_secret_unlocked');" +
-                "  window.sessionStorage.removeItem('life_atlas_auth_timestamp');" +
-                "  window.dispatchEvent(new Event('vault-locked'));" +
+                "  if (!window.__isBiometricPromptActive && !window.__isSystemPickerActive) {" +
+                "    if (window.__lockVault) { window.__lockVault(); }" +
+                "    if (window.__revokeLifeAtlasSecretAccess) { window.__revokeLifeAtlasSecretAccess(); }" +
+                "    window.sessionStorage.removeItem('life_atlas_secret_unlocked');" +
+                "    window.sessionStorage.removeItem('life_atlas_auth_timestamp');" +
+                "    window.dispatchEvent(new Event('vault-locked'));" +
+                "  }" +
                 "} catch (e) {}",
                 null
             );
@@ -202,7 +186,11 @@ public class MainActivity extends BridgeActivity {
         if (getBridge() != null && getBridge().getWebView() != null) {
             getBridge().getWebView().evaluateJavascript(
                 "try {" +
-                "  window.dispatchEvent(new Event('app-resumed'));" +
+                "  if (window.__isSystemPickerActive) {" +
+                "    setTimeout(function() { window.__isSystemPickerActive = false; }, 1500);" +
+                "  } else if (!window.__isBiometricPromptActive) {" +
+                "    window.dispatchEvent(new Event('app-resumed'));" +
+                "  }" +
                 "} catch (e) {}",
                 null
             );

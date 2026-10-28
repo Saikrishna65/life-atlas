@@ -21,6 +21,39 @@ export const DEFAULT_GUARDIAN_PIN = "1984";
 
 let isSessionUnlockedInProcess = false;
 
+interface VaultWindow extends Window {
+  __isBiometricPromptActive?: boolean;
+  __isSystemPickerActive?: boolean;
+  __lastUnlockTimestamp?: number;
+  __revokeLifeAtlasSecretAccess?: () => void;
+  __lockVault?: () => void;
+}
+
+export function setSystemPickerActive(active: boolean): void {
+  if (typeof window === "undefined") return;
+  const win = window as VaultWindow;
+  win.__isSystemPickerActive = active;
+  if (active) {
+    // Safety auto-reset after 60s if user cancels file picker without firing change
+    setTimeout(() => {
+      win.__isSystemPickerActive = false;
+    }, 60000);
+  }
+}
+
+export function shouldSuppressAutoLock(): boolean {
+  if (typeof window === "undefined") return false;
+  const win = window as VaultWindow;
+  if (win.__isBiometricPromptActive || win.__isSystemPickerActive) {
+    return true;
+  }
+  const lastUnlock = win.__lastUnlockTimestamp || 0;
+  if (Date.now() - lastUnlock < 2500) {
+    return true;
+  }
+  return false;
+}
+
 // Ensure clean slate on fresh page evaluation so every cold launch strictly requires authentication
 if (typeof window !== "undefined") {
   try {
@@ -205,6 +238,8 @@ export async function authenticateWithDevice(): Promise<AuthResult> {
 
   // 1. Native Capacitor Biometrics (Android / iOS)
   if (Capacitor.isNativePlatform()) {
+    const win = window as VaultWindow;
+    win.__isBiometricPromptActive = true;
     try {
       const { BiometricAuth, AndroidBiometryStrength } = await import(
         "@aparajita/capacitor-biometric-auth"
@@ -221,6 +256,7 @@ export async function authenticateWithDevice(): Promise<AuthResult> {
         iosFallbackTitle: "",
       });
 
+      win.__lastUnlockTimestamp = Date.now();
       grantSecretAccess();
       triggerHaptic("success");
       return { success: true, method: "native-biometric" };
@@ -237,6 +273,10 @@ export async function authenticateWithDevice(): Promise<AuthResult> {
         success: false,
         error: errorObj?.message || "Native biometric authentication failed",
       };
+    } finally {
+      setTimeout(() => {
+        win.__isBiometricPromptActive = false;
+      }, 1500);
     }
   }
 
@@ -425,6 +465,7 @@ export function grantSecretAccess(): void {
   isSessionUnlockedInProcess = true;
   if (typeof window === "undefined") return;
   try {
+    (window as VaultWindow).__lastUnlockTimestamp = Date.now();
     sessionStorage.setItem(SESSION_AUTH_KEY, "true");
     sessionStorage.setItem("life_atlas_auth_timestamp", Date.now().toString());
     localStorage.removeItem(SESSION_AUTH_KEY); // purge any legacy persistent storage key

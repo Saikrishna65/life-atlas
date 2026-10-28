@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Plus,
   ListMusic,
@@ -12,10 +13,7 @@ import {
   CheckCircle2,
   Trash2,
   Copy,
-  ExternalLink,
-  Upload,
-  Download,
-  Sparkles,
+  Music,
 } from "lucide-react";
 import MusicNav from "@/components/music/MusicNav";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
@@ -25,17 +23,35 @@ import {
   deletePlaylist,
   getAllTracks,
   getSmartPlaylistTracks,
-  exportPlaylistM3U,
 } from "@/lib/music/storage";
 import { MusicPlaylist, MusicTrack } from "@/lib/music/types";
+import { formatDuration } from "@/lib/music/metadataParser";
 
-export default function PlaylistsPage() {
-  const { playTrack } = useMusicPlayer();
+type SmartCollectionKey = "FAVORITES" | "RECENT" | "MOST" | "OFFLINE";
+
+function PlaylistsContent() {
+  const { playTrack, currentTrack, isPlaying } = useMusicPlayer();
+  const searchParams = useSearchParams();
   const [playlists, setPlaylists] = useState<MusicPlaylist[]>([]);
-  const [tracks, setTracks] = useState<MusicTrack[]>([]);
+  const [, setTracks] = useState<MusicTrack[]>([]);
+  const [activeSmartType, setActiveSmartType] = useState<SmartCollectionKey | null>(null);
+  const [smartTracks, setSmartTracks] = useState<MusicTrack[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
+
+  const loadSmartCollection = useCallback(async (type: SmartCollectionKey) => {
+    setActiveSmartType(type);
+    if (type === "FAVORITES") {
+      setSmartTracks(await getSmartPlaylistTracks("FAVORITES"));
+    } else if (type === "RECENT") {
+      setSmartTracks(await getSmartPlaylistTracks("RECENTLY_PLAYED"));
+    } else if (type === "MOST") {
+      setSmartTracks(await getSmartPlaylistTracks("MOST_PLAYED"));
+    } else if (type === "OFFLINE") {
+      setSmartTracks(await getSmartPlaylistTracks("OFFLINE"));
+    }
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -43,14 +59,30 @@ export default function PlaylistsPage() {
       const allTrk = await getAllTracks();
       setPlaylists(pls);
       setTracks(allTrk);
+      if (activeSmartType) {
+        await loadSmartCollection(activeSmartType);
+      }
     } catch (err) {
       console.error("Failed loading playlists:", err);
     }
-  }, []);
+  }, [activeSmartType, loadSmartCollection]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    const paramType = searchParams.get("type")?.toLowerCase();
+    if (paramType === "favorites") {
+      loadSmartCollection("FAVORITES");
+    } else if (paramType === "recent") {
+      loadSmartCollection("RECENT");
+    } else if (paramType === "popular" || paramType === "most") {
+      loadSmartCollection("MOST");
+    } else if (paramType === "offline") {
+      loadSmartCollection("OFFLINE");
+    }
+  }, [searchParams, loadSmartCollection]);
 
   const handleCreatePlaylist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,26 +128,34 @@ export default function PlaylistsPage() {
     await loadData();
   };
 
-  const handlePlaySmart = async (type: "FAVORITES" | "RECENT" | "MOST" | "OFFLINE") => {
-    let smartTracks: MusicTrack[] = [];
+  const handlePlaySmart = async (type: SmartCollectionKey) => {
+    await loadSmartCollection(type);
+    let list: MusicTrack[] = [];
     let title = "Smart Collection";
     if (type === "FAVORITES") {
-      smartTracks = await getSmartPlaylistTracks("FAVORITES");
+      list = await getSmartPlaylistTracks("FAVORITES");
       title = "Favorites";
     } else if (type === "RECENT") {
-      smartTracks = await getSmartPlaylistTracks("RECENTLY_PLAYED");
+      list = await getSmartPlaylistTracks("RECENTLY_PLAYED");
       title = "Recently Played";
     } else if (type === "MOST") {
-      smartTracks = await getSmartPlaylistTracks("MOST_PLAYED");
-      title = "Most Played";
+      list = await getSmartPlaylistTracks("MOST_PLAYED");
+      title = "Top Rotation";
     } else if (type === "OFFLINE") {
-      smartTracks = await getSmartPlaylistTracks("OFFLINE");
+      list = await getSmartPlaylistTracks("OFFLINE");
       title = "Offline Sanctuary";
     }
 
-    if (smartTracks.length > 0) {
-      playTrack(smartTracks[0], smartTracks, { type: "SMART_PLAYLIST", title });
+    if (list.length > 0) {
+      playTrack(list[0], list, { type: "SMART_PLAYLIST", title });
     }
+  };
+
+  const smartTitleMap: Record<SmartCollectionKey, string> = {
+    FAVORITES: "Favorites",
+    RECENT: "Recently Played",
+    MOST: "Top Rotation",
+    OFFLINE: "Offline Sanctuary",
   };
 
   return (
@@ -145,8 +185,12 @@ export default function PlaylistsPage() {
       {/* Smart Collections Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <button
-          onClick={() => handlePlaySmart("FAVORITES")}
-          className="p-4 rounded-2xl bg-white/90 hover:bg-white border border-rose-200 hover:border-rose-300 text-left transition-all duration-200 group flex flex-col justify-between h-28 cursor-pointer active:scale-98 relative overflow-hidden shadow-xs hover:shadow-sm"
+          onClick={() => loadSmartCollection("FAVORITES")}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 group flex flex-col justify-between h-28 cursor-pointer active:scale-98 relative overflow-hidden shadow-xs hover:shadow-sm border ${
+            activeSmartType === "FAVORITES"
+              ? "bg-rose-50/70 border-rose-400 ring-2 ring-rose-400/20"
+              : "bg-white/90 hover:bg-white border-rose-200 hover:border-rose-300"
+          }`}
         >
           <div className="w-8 h-8 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 group-hover:scale-110 transition-transform shadow-xs">
             <Heart className="w-4 h-4 fill-current" />
@@ -160,8 +204,12 @@ export default function PlaylistsPage() {
         </button>
 
         <button
-          onClick={() => handlePlaySmart("RECENT")}
-          className="p-4 rounded-2xl bg-white/90 hover:bg-white border border-sky-200 hover:border-sky-300 text-left transition-all duration-200 group flex flex-col justify-between h-28 cursor-pointer active:scale-98 relative overflow-hidden shadow-xs hover:shadow-sm"
+          onClick={() => loadSmartCollection("RECENT")}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 group flex flex-col justify-between h-28 cursor-pointer active:scale-98 relative overflow-hidden shadow-xs hover:shadow-sm border ${
+            activeSmartType === "RECENT"
+              ? "bg-sky-50/70 border-sky-400 ring-2 ring-sky-400/20"
+              : "bg-white/90 hover:bg-white border-sky-200 hover:border-sky-300"
+          }`}
         >
           <div className="w-8 h-8 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-600 group-hover:scale-110 transition-transform shadow-xs">
             <Clock className="w-4 h-4" />
@@ -175,8 +223,12 @@ export default function PlaylistsPage() {
         </button>
 
         <button
-          onClick={() => handlePlaySmart("MOST")}
-          className="p-4 rounded-2xl bg-white/90 hover:bg-white border border-amber-200 hover:border-amber-300 text-left transition-all duration-200 group flex flex-col justify-between h-28 cursor-pointer active:scale-98 relative overflow-hidden shadow-xs hover:shadow-sm"
+          onClick={() => loadSmartCollection("MOST")}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 group flex flex-col justify-between h-28 cursor-pointer active:scale-98 relative overflow-hidden shadow-xs hover:shadow-sm border ${
+            activeSmartType === "MOST"
+              ? "bg-amber-50/70 border-amber-400 ring-2 ring-amber-400/20"
+              : "bg-white/90 hover:bg-white border-amber-200 hover:border-amber-300"
+          }`}
         >
           <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform shadow-xs">
             <Flame className="w-4 h-4" />
@@ -190,8 +242,12 @@ export default function PlaylistsPage() {
         </button>
 
         <button
-          onClick={() => handlePlaySmart("OFFLINE")}
-          className="p-4 rounded-2xl bg-white/90 hover:bg-white border border-emerald-200 hover:border-emerald-300 text-left transition-all duration-200 group flex flex-col justify-between h-28 cursor-pointer active:scale-98 relative overflow-hidden shadow-xs hover:shadow-sm"
+          onClick={() => loadSmartCollection("OFFLINE")}
+          className={`p-4 rounded-2xl text-left transition-all duration-200 group flex flex-col justify-between h-28 cursor-pointer active:scale-98 relative overflow-hidden shadow-xs hover:shadow-sm border ${
+            activeSmartType === "OFFLINE"
+              ? "bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-400/20"
+              : "bg-white/90 hover:bg-white border-emerald-200 hover:border-emerald-300"
+          }`}
         >
           <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform shadow-xs">
             <CheckCircle2 className="w-4 h-4" />
@@ -204,6 +260,73 @@ export default function PlaylistsPage() {
           </div>
         </button>
       </div>
+
+      {/* Active Smart Collection Tracklist */}
+      {activeSmartType && (
+        <div className="rounded-3xl bg-white border border-slate-200/90 p-5 space-y-4 shadow-sm animate-fade-in">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="font-display text-lg text-slate-900">
+                {smartTitleMap[activeSmartType]} ({smartTracks.length})
+              </h3>
+              <p className="text-xs text-slate-500">
+                Tap any song to start playing or play the entire smart collection.
+              </p>
+            </div>
+            {smartTracks.length > 0 && (
+              <button
+                onClick={() => handlePlaySmart(activeSmartType)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold active:scale-95 transition-all cursor-pointer shadow-xs"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Play All</span>
+              </button>
+            )}
+          </div>
+
+          {smartTracks.length === 0 ? (
+            <div className="py-6 text-center text-xs text-slate-500">
+              No tracks in {smartTitleMap[activeSmartType]} yet.
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+              {smartTracks.map((t, idx) => {
+                const isCurrent = currentTrack?.id === t.id;
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() =>
+                      playTrack(t, smartTracks, {
+                        type: "SMART_PLAYLIST",
+                        title: smartTitleMap[activeSmartType],
+                      })
+                    }
+                    className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                      isCurrent
+                        ? "bg-amber-50 border-amber-300"
+                        : "bg-slate-50/70 hover:bg-slate-100/80 border-slate-200/60"
+                    }`}
+                  >
+                    <span className="w-5 text-center text-[11px] font-mono text-slate-400">
+                      {isCurrent && isPlaying ? "▶" : idx + 1}
+                    </span>
+                    <div className="w-9 h-9 rounded-lg bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+                      <Music className="w-4 h-4 text-slate-500" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-slate-900 truncate">{t.title}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{t.artist}</p>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-500 shrink-0">
+                      {formatDuration(t.duration)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Custom Playlists */}
       <div className="space-y-3.5">
@@ -327,5 +450,13 @@ export default function PlaylistsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function PlaylistsPage() {
+  return (
+    <Suspense fallback={<div className="max-w-4xl mx-auto p-8 text-center text-xs text-slate-400">Loading playlists...</div>}>
+      <PlaylistsContent />
+    </Suspense>
   );
 }

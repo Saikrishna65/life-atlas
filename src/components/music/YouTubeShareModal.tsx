@@ -16,7 +16,8 @@ import {
   Loader2,
 } from "lucide-react";
 import { YoutubeIcon } from "./YoutubeIcon";
-import { extractYouTubeVideoId, parseYouTubeTitle } from "@/lib/music/youtubeExtractor";
+import { extractYouTubeVideoId } from "@/lib/music/youtubeExtractor";
+import { extractAudioDuration, formatDuration } from "@/lib/music/metadataParser";
 import { saveTrack, getAllPlaylists, savePlaylist, addTrackToPlaylist } from "@/lib/music/storage";
 import { downloadTrackToLocalStorage } from "@/lib/music/cloudSync";
 import { MusicTrack, MusicPlaylist } from "@/lib/music/types";
@@ -164,24 +165,55 @@ export default function YouTubeShareModal({
         throw new Error(data.error || "Failed extracting audio");
       }
 
+      setExtractionStep("Saving audio file to local device storage...");
+
+      let audioBlob: Blob | undefined;
+      if (data.audioBase64 && typeof data.audioBase64 === "string") {
+        const binaryStr = atob(data.audioBase64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        audioBlob = new Blob([bytes], {
+          type: data.mimeType || data.track.format || "audio/mp4",
+        });
+      }
+
+      let trackDuration = Number(data.duration || data.track.duration || 0);
+      if (audioBlob && (!trackDuration || trackDuration === 0)) {
+        const measured = await extractAudioDuration(audioBlob).catch(() => 0);
+        if (measured > 0) trackDuration = measured;
+      }
+
       const serverTrack: MusicTrack = {
         ...data.track,
+        duration: trackDuration,
+        size: audioBlob ? audioBlob.size : Number(data.size || data.track.size || 0),
+        format: data.mimeType || data.track.format || "audio/mp4",
+        audioBlob,
         source: "DOWNLOADED",
-        downloadStatus: "DOWNLOADING",
-        downloadProgress: 40,
+        downloadStatus: audioBlob ? "DOWNLOADED" : "DOWNLOADING",
+        downloadProgress: audioBlob ? 100 : 40,
         addedAt: Date.now(),
       };
 
-      setExtractionStep("Saving to local offline storage...");
-
-      // Dual persistence: save locally to IndexedDB
+      // Dual persistence: save locally to IndexedDB with full audioBlob
       await saveTrack(serverTrack);
 
-      // Download audio blob to local storage so it's instantly offline-ready
-      try {
+      // If audioBase64 wasn't returned, download from stream endpoint and verify
+      if (!serverTrack.audioBlob) {
         await downloadTrackToLocalStorage(serverTrack);
-      } catch (blobErr) {
-        console.warn("Local blob caching deferred:", blobErr);
+        if (serverTrack.audioBlob && (!serverTrack.duration || serverTrack.duration === 0)) {
+          const measured = await extractAudioDuration(serverTrack.audioBlob).catch(() => 0);
+          if (measured > 0) {
+            serverTrack.duration = measured;
+            await saveTrack(serverTrack);
+          }
+        }
+      }
+
+      if (!serverTrack.audioBlob || serverTrack.audioBlob.size < 1000) {
+        throw new Error("Downloaded audio stream was empty. Please try another YouTube link.");
       }
 
       // Handle local playlist association
@@ -191,6 +223,7 @@ export default function YouTubeShareModal({
         await addTrackToPlaylist(selectedPlaylistId, serverTrack.id);
       }
 
+      window.dispatchEvent(new Event("lifeatlas_tracks_updated"));
       setExtractedTrack(serverTrack);
       setExtractionStep("Complete!");
       triggerHaptic("success");
@@ -300,6 +333,11 @@ export default function YouTubeShareModal({
                 <span className="font-semibold text-slate-800">{extractedTrack.title}</span> by{" "}
                 <span className="font-semibold text-slate-800">{extractedTrack.artist}</span> is now saved in local offline storage and synced to cloud.
               </p>
+              <div className="inline-flex items-center gap-2 pt-1 text-[11px] font-mono text-emerald-700 font-semibold">
+                <span>Duration: {formatDuration(extractedTrack.duration || 0)}</span>
+                <span>•</span>
+                <span>Size: {((extractedTrack.size || 0) / (1024 * 1024)).toFixed(2)} MB</span>
+              </div>
             </div>
 
             {/* Artwork Card */}

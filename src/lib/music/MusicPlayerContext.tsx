@@ -70,10 +70,15 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   // Audio HTML element ref
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const currentTrackRef = useRef<MusicTrack | null>(null);
   const activeBlobUrlRef = useRef<string | null>(null);
   const hasIncrementedPlayCountRef = useRef(false);
 
-  // Initialize Audio element once
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
+
+  // Initialize Audio element once (never recreate on currentTrack change!)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -83,19 +88,34 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
+      const activeTrack = currentTrackRef.current;
       if (
         !hasIncrementedPlayCountRef.current &&
         audio.currentTime > 15 &&
-        currentTrack
+        activeTrack
       ) {
         hasIncrementedPlayCountRef.current = true;
-        incrementPlayCount(currentTrack.id).catch(() => {});
+        incrementPlayCount(activeTrack.id).catch(() => {});
       }
     };
 
     const handleDurationChange = () => {
       if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        const roundedDuration = Math.round(audio.duration);
         setDuration(audio.duration);
+        const activeTrack = currentTrackRef.current;
+        if (activeTrack && (!activeTrack.duration || activeTrack.duration === 0) && roundedDuration > 0) {
+          const updatedTrack = { ...activeTrack, duration: roundedDuration };
+          currentTrackRef.current = updatedTrack;
+          setCurrentTrack(updatedTrack);
+          getTrack(activeTrack.id)
+            .then((stored) => {
+              if (stored && (!stored.duration || stored.duration === 0)) {
+                return saveTrack({ ...stored, duration: roundedDuration });
+              }
+            })
+            .catch(() => {});
+        }
       }
     };
 
@@ -128,7 +148,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener("playing", handlePlaying);
       audio.removeEventListener("error", handleError);
     };
-  }, [currentTrack]);
+  }, []);
 
   // Audio focus / visibility change handling
   useEffect(() => {
@@ -330,20 +350,27 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     // 2. If track is remote stream, use streamUrl
     let audioSrc: string | null = null;
 
-    if (track.audioBlob) {
+    if (track.audioBlob && track.audioBlob.size > 2500) {
       audioSrc = URL.createObjectURL(track.audioBlob);
       activeBlobUrlRef.current = audioSrc;
     } else {
       // Check if blob is stored in IndexedDB
       try {
         const stored = await getTrack(track.id);
-        if (stored?.audioBlob) {
+        if (stored?.audioBlob && stored.audioBlob.size > 2500) {
           audioSrc = URL.createObjectURL(stored.audioBlob);
           activeBlobUrlRef.current = audioSrc;
         }
       } catch {
         // Fall back to stream
       }
+    }
+
+    // If this is a YouTube track missing a valid local blob, always use the live stream endpoint
+    // and heal local storage in the background
+    if (!audioSrc && track.id.startsWith("trk_yt_")) {
+      audioSrc = `/api/music/stream/${track.id}`;
+      downloadTrack(track).catch(() => {});
     }
 
     if (!audioSrc && track.audioUrl) {

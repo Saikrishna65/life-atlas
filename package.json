@@ -21,6 +21,7 @@
     "@capacitor/core": "^6.2.2",
     "@capacitor/local-notifications": "^6.1.3",
     "@capacitor/status-bar": "^6.0.3",
+    "@distube/ytdl-core": "^5.1.3",
     "@neon/config": "^1.8.2",
     "@neon/env": "^1.4.7",
     "@prisma/client": "^5.22.0",
@@ -37,7 +38,8 @@
     "react-dom": "19.2.8",
     "react-globe.gl": "^2.38.0",
     "react-leaflet": "^5.0.0",
-    "three": "^0.186.1"
+    "three": "^0.186.1",
+    "youtubei.js": "^18.3.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

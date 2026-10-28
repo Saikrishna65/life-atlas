@@ -22,7 +22,7 @@ import { parseAudioFile } from "@/lib/music/metadataParser";
 import { saveTrack, getAllTracks } from "@/lib/music/storage";
 import { uploadTrackToCloud } from "@/lib/music/cloudSync";
 import { MusicTrack } from "@/lib/music/types";
-import { revokeSecretAccess, triggerHaptic } from "@/lib/deviceAuth";
+import { revokeSecretAccess, triggerHaptic, setSystemPickerActive } from "@/lib/deviceAuth";
 
 export default function MusicNav({ onTrackImported }: { onTrackImported?: () => void }) {
   const pathname = usePathname();
@@ -46,19 +46,29 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    setSystemPickerActive(false);
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    // Copy File references into a stable array before any async work
+    const selectedFiles = Array.from(fileList);
 
     setIsImporting(true);
-    setImportStatus(`Importing ${files.length} track(s)...`);
+    setImportStatus(`Importing ${selectedFiles.length} track(s)...`);
 
     try {
       const existingTracks = await getAllTracks();
       let importedCount = 0;
       let duplicateCount = 0;
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+
+        // Read bytes immediately into memory so Android content:// URI descriptors never expire
+        const arrayBuffer = await file.arrayBuffer();
+        const mimeType = file.type || "audio/mpeg";
+        const memoryBlob = new Blob([arrayBuffer], { type: mimeType });
+
         const parsed = await parseAudioFile(file);
 
         // Duplicate detection: matching title + artist or matching file name + size
@@ -66,7 +76,7 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
           (t) =>
             (t.title.toLowerCase() === parsed.title.toLowerCase() &&
               t.artist.toLowerCase() === parsed.artist.toLowerCase()) ||
-            (t.fileName === file.name && t.size === file.size)
+            (t.fileName === file.name && t.size === memoryBlob.size)
         );
 
         if (isDuplicate) {
@@ -82,10 +92,10 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
           genre: parsed.genre,
           year: parsed.year,
           duration: parsed.duration || 0,
-          format: file.type || "audio/mpeg",
-          size: file.size,
+          format: mimeType,
+          size: memoryBlob.size,
           artworkUrl: parsed.artworkUrl,
-          audioBlob: file,
+          audioBlob: memoryBlob,
           source: "IMPORTED",
           isFavorite: false,
           playCount: 0,
@@ -98,7 +108,7 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
         importedCount++;
 
         // Dual persistence: upload audio & metadata to online database and Neon Object Storage
-        uploadTrackToCloud(newTrack, file)
+        uploadTrackToCloud(newTrack, memoryBlob)
           .then((res) => {
             if (res.success && res.audioUrl) {
               newTrack.audioUrl = res.audioUrl;
@@ -109,11 +119,12 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
       }
 
       setImportStatus(
-        `Imported ${importedCount} track(s) to local storage and synced with online database${
+        `Imported ${importedCount} track(s) to local storage${
           duplicateCount > 0 ? ` (${duplicateCount} duplicate(s) skipped)` : ""
         }`
       );
 
+      window.dispatchEvent(new Event("lifeatlas_tracks_updated"));
       if (onTrackImported) {
         onTrackImported();
       }
@@ -192,13 +203,16 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept="audio/*"
+            accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.aac,.opus,.mp4"
             multiple
             className="hidden"
           />
 
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => {
+              setSystemPickerActive(true);
+              fileInputRef.current?.click();
+            }}
             disabled={isImporting}
             className="relative group inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-slate-950 font-sans text-xs font-bold tracking-wide transition-all shadow-md disabled:opacity-50 cursor-pointer overflow-hidden"
           >

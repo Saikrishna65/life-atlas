@@ -5,6 +5,7 @@
 
 import { MusicTrack, MusicPlaylist } from './types';
 import { saveTrack, getTrack, getAllTracks } from './storage';
+import { extractAudioDuration } from './metadataParser';
 
 export interface CloudSyncResponse {
   success: boolean;
@@ -153,6 +154,16 @@ export async function downloadTrackToLocalStorage(
 
     if (onProgress) onProgress(60);
     const blob = await response.blob();
+    if (!blob || blob.size < 500) {
+      throw new Error('Downloaded audio file is empty or invalid');
+    }
+
+    if (!track.duration || track.duration === 0) {
+      const measuredDuration = await extractAudioDuration(blob).catch(() => 0);
+      if (measuredDuration > 0) {
+        track.duration = measuredDuration;
+      }
+    }
 
     track.audioBlob = blob;
     track.source = 'DOWNLOADED';
