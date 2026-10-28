@@ -274,42 +274,42 @@ export default function KotakTrackingModal({
   const isOutflow = parsedTxn?.direction === "outflow";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl max-h-[92vh] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+      <div className="relative w-full max-w-2xl max-h-[92vh] bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/60">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/80">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 border border-red-500/20">
-              <Sparkles className="w-5 h-5 text-red-400" />
+            <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-200">
+              <Sparkles className="w-5 h-5 text-red-600" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-foreground">Kotak 811 Smart Assistant</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <h2 className="text-base font-bold text-slate-900">Kotak 811 Smart Assistant</h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
                   100% OFFLINE
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-slate-500">
                 Instant on-device transaction parser, duplicate defense & statement ingestion
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 cursor-pointer transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-1 px-6 pt-3 pb-2 border-b border-border/70 bg-surface/40 text-xs overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1 px-6 pt-3 pb-2 border-b border-slate-200 bg-slate-50/50 text-xs overflow-x-auto no-scrollbar">
           <button
             onClick={() => setActiveTab("PASTE")}
             className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "PASTE"
-                ? "bg-card text-foreground shadow-xs font-semibold border border-border"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-white text-slate-900 shadow-xs font-semibold border border-slate-200"
+                : "text-slate-500 hover:text-slate-900"
             }`}
           >
             Paste & Record
@@ -318,8 +318,8 @@ export default function KotakTrackingModal({
             onClick={() => setActiveTab("IMPORT")}
             className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "IMPORT"
-                ? "bg-card text-foreground shadow-xs font-semibold border border-border"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-white text-slate-900 shadow-xs font-semibold border border-slate-200"
+                : "text-slate-500 hover:text-slate-900"
             }`}
           >
             Statement Import (CSV)
@@ -328,8 +328,8 @@ export default function KotakTrackingModal({
             onClick={() => setActiveTab("PRIVACY")}
             className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
               activeTab === "PRIVACY"
-                ? "bg-card text-foreground shadow-xs font-semibold border border-border"
-                : "text-muted-foreground hover:text-foreground"
+                ? "bg-white text-slate-900 shadow-xs font-semibold border border-slate-200"
+                : "text-slate-500 hover:text-slate-900"
             }`}
           >
             Privacy & Architecture
@@ -339,12 +339,12 @@ export default function KotakTrackingModal({
               onClick={() => setActiveTab("REVIEW")}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeTab === "REVIEW"
-                  ? "bg-amber-500/10 text-amber-400 border border-amber-500/30 font-semibold"
-                  : "text-amber-400 hover:text-amber-300"
+                  ? "bg-amber-50 text-amber-800 border border-amber-200 font-semibold"
+                  : "text-amber-700 hover:text-amber-800"
               }`}
             >
               <span>Review Queue</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-black font-bold">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-bold">
                 {reviewItems.length}
               </span>
             </button>
@@ -356,21 +356,21 @@ export default function KotakTrackingModal({
           <div
             className={`px-6 py-2.5 text-xs flex items-center justify-between border-b ${
               feedbackMessage.type === "success"
-                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                 : feedbackMessage.type === "error"
-                ? "bg-rose-500/10 border-rose-500/20 text-rose-400"
-                : "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                ? "bg-rose-50 border-rose-200 text-rose-800"
+                : "bg-blue-50 border-blue-200 text-blue-800"
             }`}
           >
             <div className="flex items-center gap-2">
-              {feedbackMessage.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0" />}
-              {feedbackMessage.type === "error" && <AlertTriangle className="w-4 h-4 shrink-0" />}
-              {feedbackMessage.type === "info" && <Info className="w-4 h-4 shrink-0" />}
-              <span>{feedbackMessage.text}</span>
+              {feedbackMessage.type === "success" && <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-700" />}
+              {feedbackMessage.type === "error" && <AlertTriangle className="w-4 h-4 shrink-0 text-rose-700" />}
+              {feedbackMessage.type === "info" && <Info className="w-4 h-4 shrink-0 text-blue-700" />}
+              <span className="font-medium">{feedbackMessage.text}</span>
             </div>
             <button
               onClick={() => setFeedbackMessage(null)}
-              className="text-xs hover:underline cursor-pointer opacity-80 hover:opacity-100"
+              className="text-xs hover:underline cursor-pointer opacity-80 hover:opacity-100 font-semibold"
             >
               Dismiss
             </button>
@@ -385,23 +385,23 @@ export default function KotakTrackingModal({
               {/* Text Input Box */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="font-semibold text-foreground flex items-center gap-1.5">
+                  <label className="font-semibold text-slate-900 flex items-center gap-1.5">
                     <span>Transaction SMS or Notification Text</span>
                   </label>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={handlePasteFromClipboard}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface border border-border hover:border-foreground/30 text-foreground transition-all cursor-pointer font-medium text-[11px]"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-800 transition-all cursor-pointer font-medium text-[11px]"
                     >
-                      <Clipboard className="w-3.5 h-3.5 text-emerald-400" />
+                      <Clipboard className="w-3.5 h-3.5 text-emerald-700" />
                       <span>Paste Clipboard</span>
                     </button>
                     {alertText && (
                       <button
                         type="button"
                         onClick={handleClear}
-                        className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                        className="text-[11px] text-slate-500 hover:text-slate-800 cursor-pointer"
                       >
                         Clear
                       </button>
@@ -417,30 +417,30 @@ export default function KotakTrackingModal({
                     if (parseResult) setParseResult(null);
                   }}
                   placeholder="Paste your Kotak Bank debit or credit notification text here...&#10;&#10;Example: Sent Rs. 380.00 from Kotak Bank AC X1234 to SWIGGY on 28/10/2026. UPI Ref 539201948123."
-                  className="w-full p-3 rounded-xl bg-surface border border-border text-foreground font-mono text-xs focus:outline-none focus:border-red-500/50 transition-colors placeholder:text-muted-foreground/60 resize-none"
+                  className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 font-mono text-xs focus:outline-none focus:border-red-500 focus:bg-white transition-colors placeholder:text-slate-400 resize-none"
                 />
 
                 {/* Sample helpers */}
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[11px] text-muted-foreground">Quick test samples:</span>
+                  <span className="text-[11px] text-slate-500">Quick test samples:</span>
                   <button
                     type="button"
                     onClick={() => handleLoadSample("swiggy")}
-                    className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-muted text-[10px] text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-700 cursor-pointer transition-colors font-medium"
                   >
                     + Swiggy ₹380
                   </button>
                   <button
                     type="button"
                     onClick={() => handleLoadSample("salary")}
-                    className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-muted text-[10px] text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-700 cursor-pointer transition-colors font-medium"
                   >
                     + Salary ₹45,000
                   </button>
                   <button
                     type="button"
                     onClick={() => handleLoadSample("zepto")}
-                    className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-muted text-[10px] text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-700 cursor-pointer transition-colors font-medium"
                   >
                     + Zepto ₹620
                   </button>
@@ -453,7 +453,7 @@ export default function KotakTrackingModal({
                   type="button"
                   onClick={() => handleParse()}
                   disabled={isParsing || !alertText.trim()}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-95"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>{isParsing ? "Parsing Alert..." : "Parse Transaction"}</span>
@@ -462,15 +462,15 @@ export default function KotakTrackingModal({
 
               {/* Parsed Result Preview Card */}
               {parsedTxn && (
-                <div className="p-4 rounded-xl border border-border bg-surface/70 space-y-4 animate-in fade-in duration-200">
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/80 space-y-4 animate-in fade-in duration-200">
                   {/* Header preview row */}
-                  <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-3">
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-3">
                     <div className="flex items-center gap-3">
                       <div
                         className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
                           isOutflow
-                            ? "bg-rose-500/10 border-rose-500/20 text-rose-400"
-                            : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                            ? "bg-rose-50 border-rose-200 text-rose-700"
+                            : "bg-emerald-50 border-emerald-200 text-emerald-700"
                         }`}
                       >
                         {isOutflow ? (
@@ -484,26 +484,26 @@ export default function KotakTrackingModal({
                           <span
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               isOutflow
-                                ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                                : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                ? "bg-rose-50 text-rose-800 border border-rose-200"
+                                : "bg-emerald-50 text-emerald-800 border border-emerald-200"
                             }`}
                           >
                             {isOutflow ? "OUTFLOW (DEBIT)" : "INFLOW (CREDIT)"}
                           </span>
                           {parsedTxn.referenceNumber && (
-                            <span className="font-mono text-[10px] text-muted-foreground">
+                            <span className="font-mono text-[10px] text-slate-500">
                               Ref: {parsedTxn.referenceNumber}
                             </span>
                           )}
                         </div>
-                        <div className="font-display text-2xl font-bold text-foreground mt-1">
+                        <div className="font-display text-2xl font-bold text-slate-900 mt-1">
                           {isOutflow ? "-" : "+"}
                           {formatPaise(parsedTxn.amountPaise)}
                         </div>
                       </div>
                     </div>
 
-                    <div className="text-right text-[10px] text-muted-foreground font-mono space-y-0.5">
+                    <div className="text-right text-[10px] text-slate-500 font-mono space-y-0.5">
                       {parsedTxn.accountMask && (
                         <div>Kotak *{parsedTxn.accountMask}</div>
                       )}
@@ -513,11 +513,11 @@ export default function KotakTrackingModal({
 
                   {/* Duplicate Detection Warning Banner */}
                   {parseResult?.isDuplicate && (
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2.5 text-amber-400">
-                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-amber-800">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-700" />
                       <div className="space-y-0.5">
-                        <div className="font-bold text-foreground text-xs">Duplicate Transaction Detected</div>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        <div className="font-bold text-slate-900 text-xs">Duplicate Transaction Detected</div>
+                        <p className="text-[11px] text-slate-600 leading-relaxed">
                           {parseResult.duplicateReason ||
                             "A transaction with matching reference or merchant/amount already exists in your ledger."}
                         </p>
@@ -527,30 +527,30 @@ export default function KotakTrackingModal({
 
                   {/* Editable Description / Payee */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-semibold text-muted-foreground">
+                    <label className="text-[11px] font-semibold text-slate-700">
                       Description / Payee
                     </label>
                     <input
                       type="text"
                       value={editableMerchant}
                       onChange={(e) => setEditableMerchant(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
                     />
                   </div>
 
                   {/* Account & Category Selection Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between">
+                      <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
                         <span>Target Account</span>
                         {parseResult?.matchedAccount && (
-                          <span className="text-[10px] text-emerald-400 font-mono">Matched by mask</span>
+                          <span className="text-[10px] text-emerald-700 font-mono font-semibold">Matched by mask</span>
                         )}
                       </label>
                       <select
                         value={selectedAccountId}
                         onChange={(e) => setSelectedAccountId(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
                       >
                         <option value="">Select Account (Required)...</option>
                         {accounts.map((acc) => (
@@ -562,16 +562,16 @@ export default function KotakTrackingModal({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="text-[11px] font-semibold text-muted-foreground flex items-center justify-between">
+                      <label className="text-[11px] font-semibold text-slate-700 flex items-center justify-between">
                         <span>Category</span>
                         {parseResult?.suggestedCategory && (
-                          <span className="text-[10px] text-emerald-400 font-mono">Smart suggested</span>
+                          <span className="text-[10px] text-emerald-700 font-mono font-semibold">Smart suggested</span>
                         )}
                       </label>
                       <select
                         value={selectedCategoryId}
                         onChange={(e) => setSelectedCategoryId(e.target.value)}
-                        className="w-full px-3 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground focus:outline-none focus:border-emerald-500"
+                        className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
                       >
                         <option value="">Uncategorized</option>
                         {categories
@@ -590,7 +590,7 @@ export default function KotakTrackingModal({
                     <button
                       type="button"
                       onClick={handleClear}
-                      className="px-3 py-2 rounded-xl border border-border hover:bg-muted text-muted-foreground hover:text-foreground text-xs font-medium transition-all cursor-pointer"
+                      className="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-medium transition-all cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -598,7 +598,7 @@ export default function KotakTrackingModal({
                       type="button"
                       onClick={handleConfirmRecord}
                       disabled={isRecording || parseResult?.isDuplicate || !selectedAccountId}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-black font-semibold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-semibold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
                     >
                       <Check className="w-4 h-4" />
                       <span>
@@ -618,46 +618,46 @@ export default function KotakTrackingModal({
           {/* TAB 2: STATEMENT IMPORT */}
           {activeTab === "IMPORT" && (
             <div className="space-y-4">
-              <div className="p-4 bg-surface border border-border rounded-xl space-y-3">
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-200">
                     <FileUp className="w-4 h-4" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm text-foreground">
+                    <h3 className="font-semibold text-sm text-slate-900">
                       Kotak Bank Statement Import
                     </h3>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[11px] text-slate-500">
                       Ingest months of transaction history with offline deduplication
                     </p>
                   </div>
                 </div>
 
-                <div className="p-3 bg-card border border-border/60 rounded-lg space-y-2 text-[11px] leading-relaxed">
-                  <div className="font-semibold text-foreground flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="p-3 bg-white border border-slate-200 rounded-lg space-y-2 text-[11px] leading-relaxed shadow-soft">
+                  <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
                     <span>Genuinely Supported Formats:</span>
                   </div>
-                  <ul className="list-disc list-inside space-y-0.5 text-muted-foreground pl-1">
+                  <ul className="list-disc list-inside space-y-0.5 text-slate-600 pl-1">
                     <li>
-                      <strong className="text-foreground">CSV:</strong> Standard comma-separated transaction exports from Kotak Net Banking.
+                      <strong className="text-slate-900">CSV:</strong> Standard comma-separated transaction exports from Kotak Net Banking.
                     </li>
                     <li>
-                      <strong className="text-foreground">OFX:</strong> Open Financial Exchange statement files.
+                      <strong className="text-slate-900">OFX:</strong> Open Financial Exchange statement files.
                     </li>
                     <li>
-                      <strong className="text-foreground">QIF:</strong> Quicken Interchange Format bank records.
+                      <strong className="text-slate-900">QIF:</strong> Quicken Interchange Format bank records.
                     </li>
                   </ul>
-                  <div className="pt-1 text-amber-400 text-[10px] flex items-center gap-1">
-                    <Info className="w-3.5 h-3.5 shrink-0" />
+                  <div className="pt-1 text-amber-800 text-[10px] flex items-center gap-1 font-medium">
+                    <Info className="w-3.5 h-3.5 shrink-0 text-amber-700" />
                     <span>PDF bank statements and binary Excel (.xlsx) are not directly supported yet. Export CSV from net banking.</span>
                   </div>
                 </div>
 
                 {/* Export guide */}
-                <div className="space-y-1.5 text-[11px] text-muted-foreground">
-                  <span className="font-semibold text-foreground block">
+                <div className="space-y-1.5 text-[11px] text-slate-600">
+                  <span className="font-semibold text-slate-900 block">
                     How to Export from Kotak Net Banking:
                   </span>
                   <ol className="list-decimal list-inside space-y-1 pl-1">
@@ -675,7 +675,7 @@ export default function KotakTrackingModal({
                       onClose();
                       onOpenStatementImport?.();
                     }}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-all cursor-pointer shadow-xs active:scale-95"
                   >
                     <FileUp className="w-4 h-4" />
                     <span>Open Statement Importer</span>
@@ -689,18 +689,18 @@ export default function KotakTrackingModal({
           {activeTab === "PRIVACY" && (
             <div className="space-y-4">
               {/* Play Protect Explanation */}
-              <div className="p-4 bg-surface border border-border rounded-xl space-y-2">
-                <div className="flex items-center gap-2 font-bold text-foreground">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                <div className="flex items-center gap-2 font-bold text-slate-900">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700" />
                   <span>Why Kotak Smart Assistant Instead of Background Notification Access?</span>
                 </div>
-                <p className="leading-relaxed text-muted-foreground text-[11px]">
+                <p className="leading-relaxed text-slate-600 text-[11px]">
                   Google Play Protect analyzes sideloaded APKs using automated static heuristics.
-                  Android&apos;s <code className="text-foreground font-mono text-[10px]">NotificationListenerService</code> grants
-                  system-wide notification access, which triggers Play Protect&apos;s <code className="text-amber-400 font-mono text-[10px]">PHA:SPYWARE</code> flag
+                  Android&apos;s <code className="text-slate-900 font-mono text-[10px] bg-slate-200 px-1 py-0.5 rounded">NotificationListenerService</code> grants
+                  system-wide notification access, which triggers Play Protect&apos;s <code className="text-amber-800 font-mono text-[10px] bg-amber-100 px-1 py-0.5 rounded">PHA:SPYWARE</code> flag
                   even on completely benign personal apps.
                 </p>
-                <p className="leading-relaxed text-muted-foreground text-[11px]">
+                <p className="leading-relaxed text-slate-600 text-[11px]">
                   By replacing background notification listening with explicit, user-initiated on-device parsing,
                   Life Atlas completely removes the system service heuristic trigger while preserving instant,
                   accurate transaction entry and full privacy.
@@ -708,12 +708,12 @@ export default function KotakTrackingModal({
               </div>
 
               {/* Zero Permissions Guarantee */}
-              <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
-                <div className="flex items-center gap-2 font-bold text-emerald-400">
-                  <CheckCircle2 className="w-4 h-4" />
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+                <div className="flex items-center gap-2 font-bold text-emerald-800">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
                   <span>Zero Sensitive Android Permissions</span>
                 </div>
-                <ul className="list-disc list-inside space-y-1 text-muted-foreground text-[11px] leading-relaxed pl-1">
+                <ul className="list-disc list-inside space-y-1 text-slate-700 text-[11px] leading-relaxed pl-1">
                   <li>
                     <strong>NO READ_SMS or RECEIVE_SMS:</strong> Life Atlas does not access your text message inbox.
                   </li>
@@ -732,8 +732,8 @@ export default function KotakTrackingModal({
           {activeTab === "REVIEW" && reviewItems.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-foreground">Pending Review Queue</span>
-                <span className="text-[10px] text-muted-foreground">Assign accounts or dismiss</span>
+                <span className="font-semibold text-slate-900">Pending Review Queue</span>
+                <span className="text-[10px] text-slate-500">Assign accounts or dismiss</span>
               </div>
 
               <div className="space-y-2.5">
@@ -743,15 +743,15 @@ export default function KotakTrackingModal({
                   return (
                     <div
                       key={item.id}
-                      className="p-3.5 bg-surface border border-amber-500/30 rounded-xl space-y-3"
+                      className="p-3.5 bg-slate-50 border border-amber-200 rounded-xl space-y-3"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-2.5">
                           <div
                             className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                               itemIsOutflow
-                                ? "bg-rose-500/10 text-rose-400"
-                                : "bg-emerald-500/10 text-emerald-400"
+                                ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                : "bg-emerald-50 text-emerald-700 border border-emerald-200"
                             }`}
                           >
                             {itemIsOutflow ? (
@@ -761,28 +761,28 @@ export default function KotakTrackingModal({
                             )}
                           </div>
                           <div>
-                            <div className="font-bold text-foreground text-xs">
+                            <div className="font-bold text-slate-900 text-xs">
                               {txn.merchantOrBeneficiary}
                             </div>
-                            <div className="text-[10px] text-muted-foreground">
+                            <div className="text-[10px] text-slate-500">
                               {new Date(txn.occurredAt).toLocaleString()}
                               {txn.referenceNumber ? ` • Ref: ${txn.referenceNumber}` : ""}
                             </div>
-                            <div className="text-[10px] text-amber-400 mt-0.5">{item.reason}</div>
+                            <div className="text-[10px] text-amber-800 font-semibold mt-0.5">{item.reason}</div>
                           </div>
                         </div>
 
                         <div className="text-right">
                           <div
                             className={`font-mono font-bold text-sm ${
-                              itemIsOutflow ? "text-rose-400" : "text-emerald-400"
+                              itemIsOutflow ? "text-rose-700" : "text-emerald-700"
                             }`}
                           >
                             {itemIsOutflow ? "-" : "+"}
                             {formatPaise(txn.amountPaise)}
                           </div>
                           {txn.accountMask && (
-                            <span className="text-[10px] text-muted-foreground font-mono">
+                            <span className="text-[10px] text-slate-500 font-mono">
                               Kotak *{txn.accountMask}
                             </span>
                           )}
@@ -790,14 +790,14 @@ export default function KotakTrackingModal({
                       </div>
 
                       {/* Assignment Row */}
-                      <div className="pt-2 border-t border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-1">
                           <select
                             value={reviewAccounts[item.id] || ""}
                             onChange={(e) =>
                               setReviewAccounts((prev) => ({ ...prev, [item.id]: e.target.value }))
                             }
-                            className="bg-card border border-border rounded-lg px-2 py-1 text-[11px] text-foreground flex-1 focus:outline-none"
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-900 flex-1 focus:outline-none focus:border-emerald-600"
                           >
                             <option value="">Select Account...</option>
                             {accounts.map((acc) => (
@@ -812,7 +812,7 @@ export default function KotakTrackingModal({
                             onChange={(e) =>
                               setReviewCategories((prev) => ({ ...prev, [item.id]: e.target.value }))
                             }
-                            className="bg-card border border-border rounded-lg px-2 py-1 text-[11px] text-foreground flex-1 focus:outline-none"
+                            className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-900 flex-1 focus:outline-none focus:border-emerald-600"
                           >
                             <option value="">Optional Category...</option>
                             {categories
@@ -828,14 +828,14 @@ export default function KotakTrackingModal({
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             onClick={() => handleResolveReviewItem(item.id)}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-semibold text-[11px] transition-all cursor-pointer flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                           >
                             <Check className="w-3.5 h-3.5" />
                             <span>Approve</span>
                           </button>
                           <button
                             onClick={() => handleDismissReviewItem(item.id)}
-                            className="px-2.5 py-1 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground text-[11px] transition-all cursor-pointer flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-[11px] transition-all cursor-pointer flex items-center gap-1"
                           >
                             <Ban className="w-3.5 h-3.5" />
                             <span>Dismiss</span>
@@ -851,14 +851,14 @@ export default function KotakTrackingModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-card/60">
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+        <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-slate-50/80">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
             <span>Zero cloud transmission · On-device parsing only</span>
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-semibold text-xs transition-all cursor-pointer"
+            className="px-4 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs transition-all cursor-pointer"
           >
             Close
           </button>

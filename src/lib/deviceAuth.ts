@@ -19,6 +19,18 @@ const CREDENTIAL_STORAGE_KEY = "life_atlas_passkey_cred_id";
 const PASSCODE_STORAGE_KEY = "life_atlas_guardian_pin";
 export const DEFAULT_GUARDIAN_PIN = "1984";
 
+let isSessionUnlockedInProcess = false;
+
+// Ensure clean slate on fresh page evaluation so every cold launch strictly requires authentication
+if (typeof window !== "undefined") {
+  try {
+    sessionStorage.removeItem(SESSION_AUTH_KEY);
+    localStorage.removeItem(SESSION_AUTH_KEY);
+  } catch {
+    // Ignore storage access issues
+  }
+}
+
 /**
  * Converts ArrayBuffer to Base64
  */
@@ -203,7 +215,7 @@ export async function authenticateWithDevice(): Promise<AuthResult> {
         androidSubtitle: "Touch fingerprint sensor",
         reason: "Scan fingerprint to access Private Vault",
         cancelTitle: "Cancel",
-        allowDeviceCredential: false, // Pure native biometric prompt (Fingerprint)
+        allowDeviceCredential: true, // Native biometric prompt with device credential fallback
         androidConfirmationRequired: false, // Instant unlock upon fingerprint touch - zero lag
         androidBiometryStrength: AndroidBiometryStrength.weak,
         iosFallbackTitle: "",
@@ -410,6 +422,7 @@ export function updateGuardianPasscode(newPin: string): boolean {
  * Grants session access to the private atlas
  */
 export function grantSecretAccess(): void {
+  isSessionUnlockedInProcess = true;
   if (typeof window === "undefined") return;
   try {
     sessionStorage.setItem(SESSION_AUTH_KEY, "true");
@@ -424,6 +437,7 @@ export function grantSecretAccess(): void {
  * Revokes session access
  */
 export function revokeSecretAccess(): void {
+  isSessionUnlockedInProcess = false;
   if (typeof window === "undefined") return;
   try {
     sessionStorage.removeItem(SESSION_AUTH_KEY);
@@ -440,8 +454,8 @@ export function revokeSecretAccess(): void {
 export function isSecretAccessGranted(): boolean {
   if (typeof window === "undefined") return false;
   try {
-    return sessionStorage.getItem(SESSION_AUTH_KEY) === "true";
+    return isSessionUnlockedInProcess || sessionStorage.getItem(SESSION_AUTH_KEY) === "true";
   } catch {
-    return false;
+    return isSessionUnlockedInProcess;
   }
 }

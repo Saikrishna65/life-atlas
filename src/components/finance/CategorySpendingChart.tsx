@@ -35,9 +35,9 @@ export default function CategorySpendingChart({
 }: CategorySpendingChartProps) {
   if (categories.length === 0 || totalExpensesPaise === 0) {
     return (
-      <div className="p-8 rounded-2xl border border-muted bg-surface/50 text-center space-y-2">
-        <PieChart className="w-8 h-8 text-muted-foreground/40 mx-auto" />
-        <p className="text-xs text-muted-foreground font-sans">
+      <div className="p-8 rounded-2xl border border-muted bg-white text-center space-y-2 shadow-soft">
+        <PieChart className="w-8 h-8 text-slate-400 mx-auto" />
+        <p className="text-xs text-slate-500 font-sans">
           No category expenses recorded for this period.
         </p>
       </div>
@@ -45,15 +45,15 @@ export default function CategorySpendingChart({
   }
 
   return (
-    <div className="p-4 sm:p-5 rounded-2xl border border-muted bg-surface space-y-4">
+    <div className="p-4 sm:p-5 rounded-2xl border border-muted bg-white space-y-4 shadow-soft">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <PieChart className="w-4 h-4 text-emerald-400" />
-          <h3 className="text-xs font-sans font-semibold uppercase tracking-wider text-foreground">
+          <PieChart className="w-4 h-4 text-emerald-700" />
+          <h3 className="text-xs font-sans font-semibold uppercase tracking-wider text-slate-900">
             Spending by Category
           </h3>
         </div>
-        <span className="text-[11px] font-mono font-semibold text-muted-foreground">
+        <span className="text-[11px] font-mono font-semibold text-slate-700">
           {formatPaise(totalExpensesPaise)}
         </span>
       </div>
@@ -73,17 +73,17 @@ export default function CategorySpendingChart({
                   >
                     <IconComponent className="w-3 h-3" />
                   </div>
-                  <span className="font-medium text-foreground truncate">{item.categoryName}</span>
+                  <span className="font-semibold text-slate-900 truncate">{item.categoryName}</span>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 font-mono text-[11px]">
-                  <span className="text-muted-foreground">{item.percentage}%</span>
-                  <span className="font-semibold text-foreground">{formatPaise(item.totalSpentPaise)}</span>
+                  <span className="text-slate-500 font-medium">{item.percentage}%</span>
+                  <span className="font-semibold text-slate-900">{formatPaise(item.totalSpentPaise)}</span>
                 </div>
               </div>
 
               {/* Progress track */}
-              <div className="h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{

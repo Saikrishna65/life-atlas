@@ -271,12 +271,12 @@ export default function MusicLibraryPage() {
           </div>
 
           {/* Sync Button & Sort Selector & Shuffle All */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             <button
               onClick={() => {
                 window.dispatchEvent(new CustomEvent("lifeatlas_youtube_share", { detail: { url: "" } }));
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 transition-all text-xs font-sans cursor-pointer active:scale-95 shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 transition-all text-xs font-sans cursor-pointer active:scale-95 shadow-xs"
               title="Import Audio directly from YouTube"
             >
               <YoutubeIcon className="w-3.5 h-3.5 fill-current text-red-600" />
@@ -286,7 +286,7 @@ export default function MusicLibraryPage() {
             <button
               onClick={handleSyncCloud}
               disabled={isSyncing}
-              className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 transition-all text-xs font-sans cursor-pointer active:scale-95 shadow-xs disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 transition-all text-xs font-sans cursor-pointer active:scale-95 shadow-xs disabled:opacity-50"
               title="Sync with online database"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-sky-600 ${isSyncing ? "animate-spin" : ""}`} />
@@ -299,7 +299,7 @@ export default function MusicLibraryPage() {
                   const shuffled = [...tracks].sort(() => Math.random() - 0.5);
                   playTrack(shuffled[0], shuffled, { type: "LIBRARY", title: "Shuffled Library" });
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl glass-card-subtle hover:bg-white text-xs font-sans text-amber-800 border border-amber-300 hover:border-amber-400 transition-all cursor-pointer shadow-xs active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl glass-card-subtle hover:bg-white text-xs font-sans text-amber-800 border border-amber-300 hover:border-amber-400 transition-all cursor-pointer shadow-xs active:scale-95"
                 title="Shuffle all library tracks"
               >
                 <Sparkles className="w-3.5 h-3.5 text-amber-600" />
@@ -325,7 +325,7 @@ export default function MusicLibraryPage() {
         </div>
 
         {/* Source Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden text-xs">
           {(["ALL", "FAVORITES", "OFFLINE", "CLOUD_ONLY"] as FilterSource[]).map((tab) => (
             <button
               key={tab}
@@ -445,7 +445,7 @@ export default function MusicLibraryPage() {
 
                 {/* Right metadata and actions */}
                 <div
-                  className="flex items-center gap-2.5 shrink-0"
+                  className="flex items-center gap-1.5 sm:gap-2.5 shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* If missing from local storage, offer Add to Local Storage button */}
@@ -454,7 +454,7 @@ export default function MusicLibraryPage() {
                       onClick={() => handleDownloadSingle(t)}
                       disabled={isDownloading}
                       title="Add to local storage for offline playback"
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-semibold transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-semibold transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                     >
                       <DownloadCloud className={`w-3.5 h-3.5 ${isDownloading ? "animate-bounce" : ""}`} />
                       <span className="hidden sm:inline">{isDownloading ? "Adding..." : "Add to Local"}</span>
@@ -473,7 +473,7 @@ export default function MusicLibraryPage() {
                     />
                   </button>
 
-                  <span className="text-[11px] font-mono text-slate-500 w-11 text-right">
+                  <span className="text-[11px] font-mono text-slate-500 w-10 text-right hidden sm:inline-block">
                     {Math.floor(t.duration / 60)}:
                     {(t.duration % 60).toString().padStart(2, "0")}
                   </span>

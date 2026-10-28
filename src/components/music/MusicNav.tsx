@@ -145,17 +145,18 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
   return (
     <div className="space-y-4 mb-6 select-none">
       {/* Top Header Bar */}
-      <nav className="flex items-center justify-between gap-2.5 pb-2">
+      <nav className="flex items-center justify-between gap-1.5 sm:gap-2.5 pb-2">
         <Link
           href="/secret"
-          className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass-card-subtle text-xs font-sans tracking-wide text-slate-700 hover:text-slate-950 transition-all border border-slate-200/80 hover:border-slate-300 active:scale-95 shadow-xs"
+          className="group inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-full glass-card-subtle text-xs font-sans tracking-wide text-slate-700 hover:text-slate-950 transition-all border border-slate-200/80 hover:border-slate-300 active:scale-95 shadow-xs shrink-0"
         >
-          <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1 text-slate-500 group-hover:text-amber-600" />
-          <span className="font-medium">Private Atlas</span>
+          <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1 text-slate-500 group-hover:text-amber-600 shrink-0" />
+          <span className="font-medium hidden sm:inline">Private Atlas</span>
+          <span className="font-medium inline sm:hidden">Atlas</span>
         </Link>
 
         {/* Center Audiophile Status Indicator */}
-        <div className="hidden sm:flex items-center gap-2 px-3.5 py-1 rounded-full glass-pill-luxury text-[10px] font-mono tracking-widest text-amber-800 font-semibold uppercase shadow-xs">
+        <div className="hidden md:flex items-center gap-2 px-3.5 py-1 rounded-full glass-pill-luxury text-[10px] font-mono tracking-widest text-amber-800 font-semibold uppercase shadow-xs">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 shadow-[0_0_6px_#f59e0b]" />
@@ -167,16 +168,16 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
           <span className="text-[9px] text-blue-700 font-mono font-bold">48kHz / 24-bit</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* YouTube Video / Shorts Direct Extractor Button */}
           <button
             onClick={() => {
               window.dispatchEvent(new CustomEvent("lifeatlas_youtube_share", { detail: { url: "" } }));
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold tracking-wide transition-all shadow-xs active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 text-xs font-bold tracking-wide transition-all shadow-xs active:scale-95 cursor-pointer"
             title="Extract & Import Audio from YouTube Link or Share"
           >
-            <YoutubeIcon className="w-3.5 h-3.5 fill-current" />
+            <YoutubeIcon className="w-3.5 h-3.5 fill-current shrink-0" />
             <span className="hidden sm:inline">YouTube</span>
           </button>
 
@@ -193,7 +194,7 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isImporting}
-            className="relative group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-slate-950 font-sans text-xs font-bold tracking-wide transition-all shadow-md disabled:opacity-50 cursor-pointer overflow-hidden"
+            className="relative group inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-slate-950 font-sans text-xs font-bold tracking-wide transition-all shadow-md disabled:opacity-50 cursor-pointer overflow-hidden"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>{isImporting ? "Importing..." : "Import"}</span>
@@ -201,7 +202,7 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
 
           <button
             onClick={handleLockVault}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-card-subtle hover:bg-slate-100 active:scale-95 border border-slate-200/80 text-xs font-sans text-slate-600 hover:text-slate-900 transition-all cursor-pointer shadow-xs"
+            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full glass-card-subtle hover:bg-slate-100 active:scale-95 border border-slate-200/80 text-xs font-sans text-slate-600 hover:text-slate-900 transition-all cursor-pointer shadow-xs"
             title="Lock Private Atlas"
           >
             <Lock className="w-3 h-3 text-amber-600" />
@@ -219,7 +220,7 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
       )}
 
       {/* Capsule Navigation Bar (Editorial Light Frosted Glass Deck) */}
-      <div className="glass-pill-nav rounded-2xl p-1.5 flex items-center gap-1 overflow-x-auto scrollbar-none border border-slate-200/80 shadow-xs">
+      <div className="glass-pill-nav rounded-2xl p-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar border border-slate-200/80 shadow-xs [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;

@@ -164,6 +164,33 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onPause() {
+        super.onPause();
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().evaluateJavascript(
+                "try {" +
+                "  window.sessionStorage.removeItem('life_atlas_secret_unlocked');" +
+                "  window.dispatchEvent(new Event('vault-locked'));" +
+                "} catch (e) {}",
+                null
+            );
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().evaluateJavascript(
+                "try {" +
+                "  window.dispatchEvent(new Event('app-resumed'));" +
+                "} catch (e) {}",
+                null
+            );
+        }
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
         timeoutHandler.removeCallbacks(slowNetworkWatchdog);

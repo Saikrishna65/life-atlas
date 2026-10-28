@@ -269,7 +269,7 @@ export default function MusicHomePage() {
           {/* Card 1: Favorites */}
           <Link
             href="/secret/music/playlists?type=favorites"
-            className="p-4 sm:p-5 rounded-2xl bg-white/90 hover:bg-white border border-rose-200 hover:border-rose-300 transition-all duration-300 group flex flex-col justify-between h-34 active:scale-[0.98] relative overflow-hidden shadow-sm hover:shadow-md"
+            className="p-4 sm:p-5 rounded-2xl bg-white hover:bg-slate-50 border border-rose-200 hover:border-rose-300 transition-all duration-300 group flex flex-col justify-between min-h-[120px] active:scale-[0.98] relative overflow-hidden shadow-xs hover:shadow-md"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-rose-500/20 transition-colors" />
             <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 group-hover:scale-110 transition-transform shadow-xs">
@@ -286,7 +286,7 @@ export default function MusicHomePage() {
           {/* Card 2: Offline Sanctuary */}
           <Link
             href="/secret/music/downloads"
-            className="p-4 sm:p-5 rounded-2xl bg-white/90 hover:bg-white border border-emerald-200 hover:border-emerald-300 transition-all duration-300 group flex flex-col justify-between h-34 active:scale-[0.98] relative overflow-hidden shadow-sm hover:shadow-md"
+            className="p-4 sm:p-5 rounded-2xl bg-white hover:bg-slate-50 border border-emerald-200 hover:border-emerald-300 transition-all duration-300 group flex flex-col justify-between min-h-[120px] active:scale-[0.98] relative overflow-hidden shadow-xs hover:shadow-md"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/20 transition-colors" />
             <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform shadow-xs">
@@ -303,7 +303,7 @@ export default function MusicHomePage() {
           {/* Card 3: Recent Listens */}
           <Link
             href="/secret/music/playlists?type=recent"
-            className="p-4 sm:p-5 rounded-2xl bg-white/90 hover:bg-white border border-sky-200 hover:border-sky-300 transition-all duration-300 group flex flex-col justify-between h-34 active:scale-[0.98] relative overflow-hidden shadow-sm hover:shadow-md"
+            className="p-4 sm:p-5 rounded-2xl bg-white hover:bg-slate-50 border border-sky-200 hover:border-sky-300 transition-all duration-300 group flex flex-col justify-between min-h-[120px] active:scale-[0.98] relative overflow-hidden shadow-xs hover:shadow-md"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-sky-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-sky-500/20 transition-colors" />
             <div className="w-9 h-9 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-600 group-hover:scale-110 transition-transform shadow-xs">
@@ -320,7 +320,7 @@ export default function MusicHomePage() {
           {/* Card 4: Most Played */}
           <Link
             href="/secret/music/playlists?type=popular"
-            className="p-4 sm:p-5 rounded-2xl bg-white/90 hover:bg-white border border-amber-200 hover:border-amber-300 transition-all duration-300 group flex flex-col justify-between h-34 active:scale-[0.98] relative overflow-hidden shadow-sm hover:shadow-md"
+            className="p-4 sm:p-5 rounded-2xl bg-white hover:bg-slate-50 border border-amber-200 hover:border-amber-300 transition-all duration-300 group flex flex-col justify-between min-h-[120px] active:scale-[0.98] relative overflow-hidden shadow-xs hover:shadow-md"
           >
             <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/20 transition-colors" />
             <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 group-hover:scale-110 transition-transform shadow-xs">

@@ -348,8 +348,8 @@ export default function FinanceDashboardPage() {
             <span>Sync {pendingOutboxCount > 0 ? `(${pendingOutboxCount})` : "Local"}</span>
           </button>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-mono tracking-wider text-emerald-400 font-semibold uppercase">
-            <ShieldCheck className="w-3.5 h-3.5" />
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-mono tracking-wider text-emerald-800 font-semibold uppercase">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <span>Vault (Offline)</span>
           </div>
         </div>
@@ -374,7 +374,7 @@ export default function FinanceDashboardPage() {
               setIsTransactionModalOpen(true);
             }}
             disabled={accounts.length === 0}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-500 transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-95"
             title={accounts.length === 0 ? "Create an account first" : "Record transaction"}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -384,7 +384,7 @@ export default function FinanceDashboardPage() {
           <button
             onClick={() => setIsTransferModalOpen(true)}
             disabled={accounts.length < 2}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-muted bg-surface hover:border-foreground/30 text-xs text-foreground transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-muted bg-white hover:bg-slate-50 hover:border-slate-300 text-xs text-foreground transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-95"
             title={accounts.length < 2 ? "Need at least 2 accounts for transfers" : "Transfer money"}
           >
             <ArrowRightLeft className="w-3.5 h-3.5 text-muted-foreground" />
@@ -396,29 +396,29 @@ export default function FinanceDashboardPage() {
               setEditingAccount(null);
               setIsAccountModalOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-muted bg-surface hover:border-foreground/30 text-xs text-foreground transition-all cursor-pointer shadow-xs active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-muted bg-white hover:bg-slate-50 hover:border-slate-300 text-xs text-foreground transition-all cursor-pointer shadow-xs active:scale-95"
             title="Add a new bank, cash, or credit account"
           >
-            <Landmark className="w-3.5 h-3.5 text-emerald-400" />
+            <Landmark className="w-3.5 h-3.5 text-emerald-600" />
             <span className="hidden sm:inline">Add Account</span>
           </button>
         </div>
       </div>
 
-      {/* 2b. Phase 3 & 4 Automation & Ingestion Action Bar */}
+      {/* 2b. Automation & Quick Links Strip */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 text-xs">
         <button
           onClick={() => setIsForecastModalOpen(true)}
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap ${
             hasLowBalanceWarning
-              ? "border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
-              : "border-purple-500/30 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20"
+              ? "border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100"
+              : "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100"
           }`}
         >
           <TrendingUp className="w-3.5 h-3.5" />
           <span>Forecast & Runway</span>
           {hasLowBalanceWarning && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500 text-white font-bold animate-pulse">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-600 text-white font-bold animate-pulse">
               Low Balance
             </span>
           )}
@@ -426,7 +426,7 @@ export default function FinanceDashboardPage() {
 
         <button
           onClick={() => setIsImportModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap"
         >
           <FileUp className="w-3.5 h-3.5" />
           <span>Import Statement</span>
@@ -434,12 +434,12 @@ export default function FinanceDashboardPage() {
 
         <button
           onClick={() => setIsCategorizationModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap"
         >
           <Sparkles className="w-3.5 h-3.5" />
           <span>Smart Rules</span>
           {uncategorizedCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-black font-bold">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-slate-950 font-bold">
               {uncategorizedCount}
             </span>
           )}
@@ -447,12 +447,12 @@ export default function FinanceDashboardPage() {
 
         <button
           onClick={() => setIsRecurringModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap"
         >
           <Repeat className="w-3.5 h-3.5" />
           <span>Recurring & Bills</span>
           {detectedRecurringCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500 text-white font-bold">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-600 text-white font-bold">
               {detectedRecurringCount}
             </span>
           )}
@@ -460,12 +460,12 @@ export default function FinanceDashboardPage() {
 
         <button
           onClick={() => setIsKotakModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-800 transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap"
         >
-          <Sparkles className="w-3.5 h-3.5" />
+          <Sparkles className="w-3.5 h-3.5 text-red-600" />
           <span>Kotak Assistant</span>
           {kotakReviewCount > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-black font-bold">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-slate-950 font-bold">
               {kotakReviewCount}
             </span>
           )}
@@ -473,7 +473,7 @@ export default function FinanceDashboardPage() {
 
         <button
           onClick={() => setIsBankModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-muted bg-surface hover:border-foreground/30 text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-xs whitespace-nowrap"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-muted bg-white hover:bg-slate-50 text-muted-foreground hover:text-foreground transition-all cursor-pointer shadow-xs whitespace-nowrap"
         >
           <Landmark className="w-3.5 h-3.5 text-muted-foreground" />
           <span>Bank Consent (AA)</span>
@@ -529,7 +529,7 @@ export default function FinanceDashboardPage() {
                   onClick={() => setPeriodPreset(preset.id)}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-sans font-medium transition-colors cursor-pointer ${
                     periodPreset === preset.id
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold"
                       : "text-muted-foreground hover:text-foreground border border-transparent"
                   }`}
                 >
@@ -551,14 +551,14 @@ export default function FinanceDashboardPage() {
           {/* A. Financial Overview Metrics Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {/* Net Worth Card */}
-            <div className="p-4 sm:p-5 rounded-2xl border border-emerald-500/30 bg-surface/80 relative overflow-hidden space-y-1">
+            <div className="p-4 sm:p-5 rounded-2xl border border-emerald-200 bg-white relative overflow-hidden space-y-1 shadow-soft">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
                   Total Net Worth
                 </span>
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
               </div>
-              <div className="font-display text-2xl sm:text-3xl font-semibold text-emerald-400">
+              <div className="font-display text-2xl sm:text-3xl font-semibold text-emerald-700">
                 {formatPaise(netWorthPaise)}
               </div>
               <div className="text-[10px] text-muted-foreground font-mono flex items-center justify-between pt-1">
@@ -568,14 +568,14 @@ export default function FinanceDashboardPage() {
             </div>
 
             {/* Income Card */}
-            <div className="p-4 sm:p-5 rounded-2xl border border-muted bg-surface space-y-1">
+            <div className="p-4 sm:p-5 rounded-2xl border border-muted bg-white space-y-1 shadow-soft">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
                   Income ({periodLabel.split(" ")[0]})
                 </span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-400" />
+                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600" />
               </div>
-              <div className="font-display text-xl sm:text-2xl font-semibold text-foreground">
+              <div className="font-display text-xl sm:text-2xl font-semibold text-slate-900">
                 {formatPaise(periodIncomePaise)}
               </div>
               <div className="text-[10px] text-muted-foreground font-sans pt-1">
@@ -584,19 +584,19 @@ export default function FinanceDashboardPage() {
             </div>
 
             {/* Expenses Card */}
-            <div className="p-4 sm:p-5 rounded-2xl border border-muted bg-surface space-y-1">
+            <div className="p-4 sm:p-5 rounded-2xl border border-muted bg-white space-y-1 shadow-soft">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
                   Expenses ({periodLabel.split(" ")[0]})
                 </span>
-                <ArrowDownRight className="w-3.5 h-3.5 text-rose-400" />
+                <ArrowDownRight className="w-3.5 h-3.5 text-rose-600" />
               </div>
-              <div className="font-display text-xl sm:text-2xl font-semibold text-foreground">
+              <div className="font-display text-xl sm:text-2xl font-semibold text-slate-900">
                 {formatPaise(periodExpensePaise)}
               </div>
               <div className="text-[10px] font-mono pt-1">
                 <span className="text-muted-foreground">Net Cash Flow: </span>
-                <span className={periodNetCashFlowPaise >= 0 ? "text-emerald-400" : "text-rose-400"}>
+                <span className={periodNetCashFlowPaise >= 0 ? "text-emerald-700 font-semibold" : "text-rose-700 font-semibold"}>
                   {periodNetCashFlowPaise >= 0 ? "+" : ""}
                   {formatPaise(periodNetCashFlowPaise)}
                 </span>
@@ -605,15 +605,15 @@ export default function FinanceDashboardPage() {
           </div>
 
           {/* B. Redesigned Take Action Command Card */}
-          <div className="p-4 sm:p-5 rounded-2xl border border-border bg-gradient-to-b from-surface/90 to-surface/40 backdrop-blur-sm space-y-4 shadow-sm">
+          <div className="p-4 sm:p-5 rounded-2xl border border-muted bg-white shadow-soft space-y-4">
             {/* Header & Live Status Indicators */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1 border-b border-border/50">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-muted">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-800 font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
                     Take Action
                   </span>
-                  <h3 className="text-sm font-semibold text-foreground">Financial Command</h3>
+                  <h3 className="text-sm font-bold text-slate-900">Financial Command</h3>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
                   Record, parse, or import transactions directly into your private offline ledger
@@ -625,10 +625,10 @@ export default function FinanceDashboardPage() {
                 {uncategorizedCount > 0 && (
                   <button
                     onClick={() => setIsCategorizationModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer font-medium"
                     title="Review uncategorized transactions"
                   >
-                    <Sparkles className="w-3 h-3" />
+                    <Sparkles className="w-3 h-3 text-amber-600" />
                     <span>{uncategorizedCount} Uncategorized</span>
                   </button>
                 )}
@@ -636,10 +636,10 @@ export default function FinanceDashboardPage() {
                 {hasLowBalanceWarning && (
                   <button
                     onClick={() => setIsForecastModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 hover:bg-rose-500/20 transition-colors cursor-pointer animate-pulse"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-100 transition-colors cursor-pointer font-medium animate-pulse"
                     title="Low cash runway alert"
                   >
-                    <TrendingUp className="w-3 h-3" />
+                    <TrendingUp className="w-3 h-3 text-rose-600" />
                     <span>Runway Alert</span>
                   </button>
                 )}
@@ -647,10 +647,10 @@ export default function FinanceDashboardPage() {
                 {kotakReviewCount > 0 && (
                   <button
                     onClick={() => setIsKotakModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer font-medium"
                     title="Kotak items needing review"
                   >
-                    <Sparkles className="w-3 h-3" />
+                    <Sparkles className="w-3 h-3 text-amber-600" />
                     <span>{kotakReviewCount} Kotak Review</span>
                   </button>
                 )}
@@ -658,10 +658,10 @@ export default function FinanceDashboardPage() {
                 {pendingOutboxCount > 0 && (
                   <button
                     onClick={() => setIsSyncModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-500/20 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 hover:bg-blue-100 transition-colors cursor-pointer font-medium"
                     title="Outbox sync items pending"
                   >
-                    <Cloud className="w-3 h-3" />
+                    <Cloud className="w-3 h-3 text-blue-600" />
                     <span>{pendingOutboxCount} Outbox</span>
                   </button>
                 )}
@@ -674,21 +674,21 @@ export default function FinanceDashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsKotakModalOpen(true)}
-                className="group relative p-3.5 rounded-xl border border-red-500/40 bg-gradient-to-br from-red-500/10 via-surface to-surface hover:from-red-500/20 hover:border-red-500/60 text-left transition-all cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
+                className="group relative p-3.5 rounded-xl border-2 border-red-500/30 bg-red-50/40 hover:bg-red-50 hover:border-red-500/60 text-left transition-all cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
               >
                 <div className="flex items-start justify-between">
-                  <div className="w-9 h-9 rounded-lg bg-red-500/15 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <div className="w-9 h-9 rounded-lg bg-red-100 border border-red-200 text-red-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                     <Sparkles className="w-4 h-4" />
                   </div>
-                  <span className="text-[9px] font-mono uppercase tracking-wider text-red-400 font-semibold px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20">
+                  <span className="text-[9px] font-mono uppercase tracking-wider text-red-800 font-bold px-1.5 py-0.5 rounded bg-red-100 border border-red-200">
                     Smart Assistant
                   </span>
                 </div>
                 <div className="mt-3 space-y-0.5">
-                  <div className="text-xs font-bold text-foreground group-hover:text-red-300 transition-colors">
+                  <div className="text-xs font-bold text-slate-950 group-hover:text-red-700 transition-colors">
                     Paste Kotak Alert
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
+                  <p className="text-[11px] text-slate-600 leading-snug">
                     Parse SMS or notification & record with duplicate defense
                   </p>
                 </div>
@@ -702,16 +702,16 @@ export default function FinanceDashboardPage() {
                   setIsTransactionModalOpen(true);
                 }}
                 disabled={accounts.length === 0}
-                className="group p-3.5 rounded-xl border border-border bg-surface hover:border-emerald-500/40 hover:bg-surface/80 text-left transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
+                className="group p-3.5 rounded-xl border border-muted bg-white hover:border-emerald-300 hover:bg-emerald-50/20 text-left transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
               >
-                <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                   <Plus className="w-4 h-4" />
                 </div>
                 <div className="mt-3 space-y-0.5">
-                  <div className="text-xs font-semibold text-foreground group-hover:text-emerald-400 transition-colors">
+                  <div className="text-xs font-semibold text-slate-950 group-hover:text-emerald-700 transition-colors">
                     Record Transaction
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
+                  <p className="text-[11px] text-slate-600 leading-snug">
                     Manual debit or credit entry with category assignment
                   </p>
                 </div>
@@ -721,16 +721,16 @@ export default function FinanceDashboardPage() {
               <button
                 type="button"
                 onClick={() => setIsImportModalOpen(true)}
-                className="group p-3.5 rounded-xl border border-border bg-surface hover:border-blue-500/40 hover:bg-surface/80 text-left transition-all cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
+                className="group p-3.5 rounded-xl border border-muted bg-white hover:border-blue-300 hover:bg-blue-50/20 text-left transition-all cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
               >
-                <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                   <FileUp className="w-4 h-4" />
                 </div>
                 <div className="mt-3 space-y-0.5">
-                  <div className="text-xs font-semibold text-foreground group-hover:text-blue-400 transition-colors">
+                  <div className="text-xs font-semibold text-slate-950 group-hover:text-blue-700 transition-colors">
                     Import Statement
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
+                  <p className="text-[11px] text-slate-600 leading-snug">
                     Ingest offline bank statements (CSV, OFX, QIF)
                   </p>
                 </div>
@@ -741,16 +741,16 @@ export default function FinanceDashboardPage() {
                 type="button"
                 onClick={() => setIsTransferModalOpen(true)}
                 disabled={accounts.length < 2}
-                className="group p-3.5 rounded-xl border border-border bg-surface hover:border-purple-500/40 hover:bg-surface/80 text-left transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
+                className="group p-3.5 rounded-xl border border-muted bg-white hover:border-purple-300 hover:bg-purple-50/20 text-left transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
               >
-                <div className="w-9 h-9 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <div className="w-9 h-9 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
                   <ArrowRightLeft className="w-4 h-4" />
                 </div>
                 <div className="mt-3 space-y-0.5">
-                  <div className="text-xs font-semibold text-foreground group-hover:text-purple-400 transition-colors">
+                  <div className="text-xs font-semibold text-slate-950 group-hover:text-purple-700 transition-colors">
                     Account Transfer
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
+                  <p className="text-[11px] text-slate-600 leading-snug">
                     Move funds with balanced double-entry ledger guarantee
                   </p>
                 </div>
@@ -760,13 +760,13 @@ export default function FinanceDashboardPage() {
 
           {/* B. Empty State when 0 accounts exist */}
           {accounts.length === 0 && (
-            <div className="p-8 sm:p-10 rounded-2xl border border-dashed border-muted text-center space-y-3 bg-surface/30">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+            <div className="p-8 sm:p-10 rounded-2xl border border-dashed border-muted text-center space-y-3 bg-white shadow-soft">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center mx-auto">
                 <Wallet className="w-6 h-6" />
               </div>
               <div className="space-y-1 max-w-sm mx-auto">
-                <h3 className="font-display text-lg text-foreground font-normal">Welcome to Life Atlas Finance</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <h3 className="font-display text-lg text-slate-900 font-normal">Welcome to Life Atlas Finance</h3>
+                <p className="text-xs text-slate-600 leading-relaxed">
                   Start by adding your first account (Primary Bank, Savings, Cash, or Credit Card) to begin tracking your net worth and cash flow offline.
                 </p>
               </div>
@@ -775,7 +775,7 @@ export default function FinanceDashboardPage() {
                   setEditingAccount(null);
                   setIsAccountModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Create Your First Account</span>
@@ -787,12 +787,12 @@ export default function FinanceDashboardPage() {
           {accounts.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
+                <h3 className="text-xs font-sans font-semibold uppercase tracking-wider text-slate-600">
                   Accounts Overview
                 </h3>
                 <button
                   onClick={() => setActiveTab("ACCOUNTS")}
-                  className="text-xs text-emerald-400 hover:text-emerald-300 font-sans flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-emerald-700 hover:text-emerald-800 font-sans font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <span>Manage</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -809,33 +809,33 @@ export default function FinanceDashboardPage() {
                         setTxnAccountFilter(acc.id);
                         setActiveTab("TRANSACTIONS");
                       }}
-                      className="p-4 rounded-xl border border-muted bg-surface hover:border-foreground/30 transition-all cursor-pointer group space-y-2"
+                      className="p-4 rounded-xl border border-muted bg-white hover:border-slate-300 transition-all cursor-pointer group space-y-2 shadow-soft"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 truncate pr-2">
-                          <div className="w-7 h-7 rounded-lg bg-background border border-muted/80 flex items-center justify-center shrink-0">
+                          <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
                             {isCredit ? (
-                              <CreditCard className="w-3.5 h-3.5 text-amber-400" />
+                              <CreditCard className="w-3.5 h-3.5 text-amber-700" />
                             ) : (
-                              <Landmark className="w-3.5 h-3.5 text-emerald-400" />
+                              <Landmark className="w-3.5 h-3.5 text-emerald-700" />
                             )}
                           </div>
-                          <span className="font-semibold text-xs text-foreground truncate group-hover:text-emerald-400 transition-colors">
+                          <span className="font-semibold text-xs text-slate-900 truncate group-hover:text-emerald-700 transition-colors">
                             {acc.name}
                           </span>
                         </div>
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground uppercase">
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 uppercase font-semibold">
                           {acc.accountType}
                         </span>
                       </div>
 
                       <div>
-                        <div className="text-[10px] text-muted-foreground font-mono">
+                        <div className="text-[10px] text-slate-500 font-mono">
                           {isCredit ? "Outstanding Balance (Debt)" : "Available Balance"}
                         </div>
                         <div
                           className={`font-display text-lg font-semibold ${
-                            isCredit ? "text-amber-400" : "text-emerald-400"
+                            isCredit ? "text-amber-800" : "text-emerald-700"
                           }`}
                         >
                           {formatPaise(acc.currentBalancePaise)}
@@ -864,13 +864,13 @@ export default function FinanceDashboardPage() {
           {/* E. Recent Transactions Snapshot */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-sans font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="text-xs font-sans font-semibold uppercase tracking-wider text-slate-600">
                 Recent Activity
               </h3>
               {transactions.length > 0 && (
                 <button
                   onClick={() => setActiveTab("TRANSACTIONS")}
-                  className="text-xs text-emerald-400 hover:text-emerald-300 font-sans flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-emerald-700 hover:text-emerald-800 font-sans font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <span>View All ({transactions.length})</span>
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -879,15 +879,15 @@ export default function FinanceDashboardPage() {
             </div>
 
             {transactions.length === 0 ? (
-              <div className="p-6 rounded-xl border border-muted bg-surface/50 text-center space-y-1">
-                <p className="text-xs text-muted-foreground">No transactions recorded yet.</p>
+              <div className="p-6 rounded-xl border border-muted bg-white text-center space-y-1 shadow-soft">
+                <p className="text-xs text-slate-600">No transactions recorded yet.</p>
                 {accounts.length > 0 && (
                   <button
                     onClick={() => {
                       setEditingTransaction(null);
                       setIsTransactionModalOpen(true);
                     }}
-                    className="text-xs text-emerald-400 hover:underline font-semibold cursor-pointer"
+                    className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold hover:underline cursor-pointer"
                   >
                     + Record your first transaction
                   </button>
@@ -904,41 +904,41 @@ export default function FinanceDashboardPage() {
                     <div
                       key={t.id}
                       onClick={() => setSelectedTxnForDetail(t)}
-                      className="p-3 rounded-xl border border-muted bg-surface hover:border-foreground/30 transition-all flex items-center justify-between text-xs cursor-pointer group"
+                      className="p-3 rounded-xl border border-muted bg-white hover:border-slate-300 transition-all flex items-center justify-between text-xs cursor-pointer group shadow-soft"
                     >
                       <div className="flex items-center gap-3 truncate pr-2">
                         <div
                           className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
                             isTransfer
-                              ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                              ? "bg-blue-50 border-blue-200 text-blue-700"
                               : t.direction === "inflow"
-                              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                              : "bg-surface border-muted text-muted-foreground"
+                              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                              : "bg-slate-50 border-slate-200 text-slate-700"
                           }`}
                         >
                           {isTransfer ? (
                             <ArrowRightLeft className="w-3.5 h-3.5" />
                           ) : t.direction === "inflow" ? (
-                            <ArrowUpRight className="w-4 h-4 text-emerald-400" />
+                            <ArrowUpRight className="w-4 h-4 text-emerald-700" />
                           ) : (
-                            <ArrowDownRight className="w-4 h-4 text-rose-400" />
+                            <ArrowDownRight className="w-4 h-4 text-rose-700" />
                           )}
                         </div>
 
                         <div className="truncate space-y-0.5">
                           <div
-                            className={`font-medium truncate group-hover:text-emerald-400 transition-colors ${
-                              isReversed ? "line-through text-muted-foreground" : "text-foreground"
+                            className={`font-medium truncate group-hover:text-emerald-700 transition-colors ${
+                              isReversed ? "line-through text-slate-400" : "text-slate-900"
                             }`}
                           >
                             {t.description}
                           </div>
-                          <div className="text-[10px] text-muted-foreground font-mono flex items-center gap-2">
+                          <div className="text-[10px] text-slate-500 font-mono flex items-center gap-2">
                             <span>{acc?.name || "Account"}</span>
                             <span>·</span>
                             <span>{t.occurredAt.split("T")[0]}</span>
                             {t.status !== "posted" && (
-                              <span className="text-[9px] px-1 py-0.2 rounded bg-muted/60 uppercase">
+                              <span className="text-[9px] px-1 py-0.2 rounded bg-slate-100 text-slate-700 uppercase font-semibold">
                                 {t.status}
                               </span>
                             )}
@@ -950,12 +950,12 @@ export default function FinanceDashboardPage() {
                         <div
                           className={`font-mono font-semibold ${
                             isReversed
-                              ? "line-through text-muted-foreground opacity-60"
+                              ? "line-through text-slate-400 opacity-60"
                               : isTransfer
-                              ? "text-blue-400"
+                              ? "text-blue-700"
                               : t.direction === "inflow"
-                              ? "text-emerald-400"
-                              : "text-foreground"
+                              ? "text-emerald-700"
+                              : "text-slate-900"
                           }`}
                         >
                           {t.direction === "inflow" ? "+" : "-"}
@@ -977,17 +977,17 @@ export default function FinanceDashboardPage() {
       {activeTab === "TRANSACTIONS" && (
         <div className="space-y-4">
           {/* Search & Filter Bar */}
-          <div className="p-4 rounded-2xl border border-muted bg-surface space-y-3">
+          <div className="p-4 rounded-2xl border border-muted bg-white space-y-3 shadow-soft">
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               {/* Search */}
               <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-muted-foreground" />
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search descriptions, merchants, memos..."
                   value={txnSearchQuery}
                   onChange={(e) => setTxnSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-background border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
+                  className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
                 />
               </div>
 
@@ -995,7 +995,7 @@ export default function FinanceDashboardPage() {
               <select
                 value={txnAccountFilter}
                 onChange={(e) => setTxnAccountFilter(e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg bg-background border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
+                className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
               >
                 <option value="ALL">All Accounts</option>
                 {accounts.map((a) => (
@@ -1009,7 +1009,7 @@ export default function FinanceDashboardPage() {
               <select
                 value={txnCategoryFilter}
                 onChange={(e) => setTxnCategoryFilter(e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg bg-background border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
+                className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
               >
                 <option value="ALL">All Categories</option>
                 {categories.map((c) => (
@@ -1023,7 +1023,7 @@ export default function FinanceDashboardPage() {
               <select
                 value={txnStatusFilter}
                 onChange={(e) => setTxnStatusFilter(e.target.value)}
-                className="px-2.5 py-1.5 rounded-lg bg-background border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
+                className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
               >
                 <option value="ALL">All Status</option>
                 <option value="posted">Posted</option>
@@ -1033,14 +1033,14 @@ export default function FinanceDashboardPage() {
             </div>
 
             {/* Sort & Count Bar */}
-            <div className="flex items-center justify-between text-[11px] font-sans text-muted-foreground pt-1 border-t border-muted/50">
+            <div className="flex items-center justify-between text-[11px] font-sans text-slate-500 pt-1 border-t border-slate-100">
               <span>Showing {filteredTransactions.length} of {transactions.length} records</span>
               <div className="flex items-center gap-1.5">
                 <span>Sort by:</span>
                 <select
                   value={txnSortOrder}
                   onChange={(e) => setTxnSortOrder(e.target.value as "date_desc" | "date_asc" | "amount_desc" | "amount_asc")}
-                  className="bg-transparent text-foreground border-none font-medium focus:outline-none cursor-pointer"
+                  className="bg-transparent text-slate-900 border-none font-semibold focus:outline-none cursor-pointer"
                 >
                   <option value="date_desc">Newest First</option>
                   <option value="date_asc">Oldest First</option>
@@ -1053,8 +1053,8 @@ export default function FinanceDashboardPage() {
 
           {/* Transactions List */}
           {filteredTransactions.length === 0 ? (
-            <div className="p-8 rounded-2xl border border-muted bg-surface/50 text-center space-y-2">
-              <p className="text-xs text-muted-foreground">No matching transactions found.</p>
+            <div className="p-8 rounded-2xl border border-muted bg-white text-center space-y-2 shadow-soft">
+              <p className="text-xs text-slate-500">No matching transactions found.</p>
               {(txnSearchQuery || txnAccountFilter !== "ALL" || txnCategoryFilter !== "ALL") && (
                 <button
                   onClick={() => {
@@ -1063,7 +1063,7 @@ export default function FinanceDashboardPage() {
                     setTxnCategoryFilter("ALL");
                     setTxnStatusFilter("ALL");
                   }}
-                  className="text-xs text-emerald-400 hover:underline cursor-pointer"
+                  className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold hover:underline cursor-pointer"
                 >
                   Clear all filters
                 </button>
@@ -1081,37 +1081,37 @@ export default function FinanceDashboardPage() {
                   <div
                     key={t.id}
                     onClick={() => setSelectedTxnForDetail(t)}
-                    className="p-3.5 rounded-xl border border-muted bg-surface hover:border-foreground/30 transition-all flex items-center justify-between text-xs cursor-pointer group"
+                    className="p-3.5 rounded-xl border border-muted bg-white hover:border-slate-300 transition-all flex items-center justify-between text-xs cursor-pointer group shadow-soft"
                   >
                     <div className="flex items-center gap-3 truncate pr-3">
                       <div
                         className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
                           isTransfer
-                            ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                            ? "bg-blue-50 border-blue-200 text-blue-700"
                             : t.direction === "inflow"
-                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                            : "bg-surface border-muted text-muted-foreground"
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                            : "bg-slate-50 border-slate-200 text-slate-700"
                         }`}
                       >
                         {isTransfer ? (
                           <ArrowRightLeft className="w-4 h-4" />
                         ) : t.direction === "inflow" ? (
-                          <ArrowUpRight className="w-4 h-4 text-emerald-400" />
+                          <ArrowUpRight className="w-4 h-4 text-emerald-700" />
                         ) : (
-                          <ArrowDownRight className="w-4 h-4 text-rose-400" />
+                          <ArrowDownRight className="w-4 h-4 text-rose-700" />
                         )}
                       </div>
 
                       <div className="truncate space-y-0.5">
                         <div
-                          className={`font-semibold text-sm truncate group-hover:text-emerald-400 transition-colors ${
-                            isReversed ? "line-through text-muted-foreground" : "text-foreground"
+                          className={`font-semibold text-sm truncate group-hover:text-emerald-700 transition-colors ${
+                            isReversed ? "line-through text-slate-400" : "text-slate-900"
                           }`}
                         >
                           {t.description}
                         </div>
-                        <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-2 flex-wrap">
-                          <span className="font-sans text-foreground/80">{acc?.name}</span>
+                        <div className="text-[11px] text-slate-500 font-mono flex items-center gap-2 flex-wrap">
+                          <span className="font-sans text-slate-800 font-medium">{acc?.name}</span>
                           <span>·</span>
                           <span>{cat?.name || "Uncategorized"}</span>
                           <span>·</span>
@@ -1120,8 +1120,8 @@ export default function FinanceDashboardPage() {
                             <span
                               className={`text-[9px] px-1.5 py-0.2 rounded font-semibold uppercase ${
                                 isReversed
-                                  ? "bg-rose-500/20 text-rose-400"
-                                  : "bg-amber-500/20 text-amber-400"
+                                  ? "bg-rose-50 text-rose-800 border border-rose-200"
+                                  : "bg-amber-50 text-amber-800 border border-amber-200"
                               }`}
                             >
                               {t.status}
@@ -1135,18 +1135,18 @@ export default function FinanceDashboardPage() {
                       <div
                         className={`font-mono font-semibold text-sm ${
                           isReversed
-                            ? "line-through text-muted-foreground opacity-60"
+                            ? "line-through text-slate-400 opacity-60"
                             : isTransfer
-                            ? "text-blue-400"
+                            ? "text-blue-700"
                             : t.direction === "inflow"
-                            ? "text-emerald-400"
-                            : "text-foreground"
+                            ? "text-emerald-700"
+                            : "text-slate-900"
                         }`}
                       >
                         {t.direction === "inflow" ? "+" : "-"}
                         {formatPaise(t.amountPaise)}
                       </div>
-                      <div className="text-[10px] text-muted-foreground font-mono">v{t.version || 1}</div>
+                      <div className="text-[10px] text-slate-400 font-mono">v{t.version || 1}</div>
                     </div>
                   </div>
                 );
@@ -1163,8 +1163,8 @@ export default function FinanceDashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-display text-lg text-foreground font-normal">Monthly Category Budgets</h3>
-              <p className="text-xs text-muted-foreground">Track expense limits for {periodLabel}.</p>
+              <h3 className="font-display text-lg text-slate-900 font-normal">Monthly Category Budgets</h3>
+              <p className="text-xs text-slate-600">Track expense limits for {periodLabel}.</p>
             </div>
 
             <button
@@ -1172,7 +1172,7 @@ export default function FinanceDashboardPage() {
                 setEditingBudgetId(undefined);
                 setIsBudgetModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Set Category Budget</span>
@@ -1180,11 +1180,11 @@ export default function FinanceDashboardPage() {
           </div>
 
           {budgets.length === 0 ? (
-            <div className="p-8 rounded-2xl border border-dashed border-muted text-center space-y-3 bg-surface/30">
-              <Tag className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+            <div className="p-8 rounded-2xl border border-dashed border-muted text-center space-y-3 bg-white shadow-soft">
+              <Tag className="w-8 h-8 text-slate-400 mx-auto" />
               <div className="space-y-1 max-w-sm mx-auto">
-                <h4 className="font-sans font-semibold text-sm text-foreground">No Budgets Set Yet</h4>
-                <p className="text-xs text-muted-foreground">
+                <h4 className="font-sans font-semibold text-sm text-slate-900">No Budgets Set Yet</h4>
+                <p className="text-xs text-slate-600">
                   Set target monthly spending limits for categories like Food, Utilities, Transport, or Shopping.
                 </p>
               </div>
@@ -1193,7 +1193,7 @@ export default function FinanceDashboardPage() {
                   setEditingBudgetId(undefined);
                   setIsBudgetModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Create Your First Budget</span>
@@ -1208,18 +1208,18 @@ export default function FinanceDashboardPage() {
                 return (
                   <div
                     key={b.categoryId}
-                    className="p-4 rounded-xl border border-muted bg-surface space-y-3"
+                    className="p-4 rounded-xl border border-muted bg-white space-y-3 shadow-soft"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 truncate pr-2">
-                        <span className="font-semibold text-xs text-foreground truncate">{b.categoryName}</span>
+                        <span className="font-semibold text-xs text-slate-900 truncate">{b.categoryName}</span>
                         {isOver && (
-                          <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                          <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded bg-rose-50 text-rose-800 border border-rose-200">
                             Over Limit
                           </span>
                         )}
                         {isNear && (
-                          <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                          <span className="text-[9px] font-mono font-semibold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
                             {b.percentageUsed}%
                           </span>
                         )}
@@ -1230,7 +1230,7 @@ export default function FinanceDashboardPage() {
                           setEditingBudgetId(b.categoryId);
                           setIsBudgetModalOpen(true);
                         }}
-                        className="text-[11px] text-muted-foreground hover:text-emerald-400 font-sans cursor-pointer"
+                        className="text-[11px] text-slate-500 hover:text-emerald-700 font-sans cursor-pointer font-medium"
                       >
                         Edit
                       </button>
@@ -1238,24 +1238,24 @@ export default function FinanceDashboardPage() {
 
                     {/* Progress Bar */}
                     <div className="space-y-1">
-                      <div className="h-2 w-full bg-surface-hover rounded-full overflow-hidden">
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
-                            isOver ? "bg-rose-500" : isNear ? "bg-amber-500" : "bg-emerald-400"
+                            isOver ? "bg-rose-600" : isNear ? "bg-amber-500" : "bg-emerald-600"
                           }`}
                           style={{ width: `${Math.min(100, Math.max(2, b.percentageUsed))}%` }}
                         />
                       </div>
 
-                      <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground pt-0.5">
+                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 pt-0.5">
                         <span>Spent: {formatPaise(b.spentPaise)}</span>
                         <span>Limit: {formatPaise(b.allocatedPaise)}</span>
                       </div>
                     </div>
 
-                    <div className="text-[11px] font-sans text-muted-foreground">
+                    <div className="text-[11px] font-sans text-slate-600">
                       {isOver ? (
-                        <span className="text-rose-400 font-semibold">
+                        <span className="text-rose-700 font-semibold">
                           Exceeded by {formatPaise(Math.abs(b.remainingPaise))}
                         </span>
                       ) : (
@@ -1277,8 +1277,8 @@ export default function FinanceDashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-display text-lg text-foreground font-normal">Savings Goals</h3>
-              <p className="text-xs text-muted-foreground">Track progress toward specific financial horizons.</p>
+              <h3 className="font-display text-lg text-slate-900 font-normal">Savings Goals</h3>
+              <p className="text-xs text-slate-600">Track progress toward specific financial horizons.</p>
             </div>
 
             <button
@@ -1287,7 +1287,7 @@ export default function FinanceDashboardPage() {
                 setSavingsGoalMode("create_or_edit");
                 setIsSavingsGoalModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New Goal</span>
@@ -1295,11 +1295,11 @@ export default function FinanceDashboardPage() {
           </div>
 
           {savingsGoals.length === 0 ? (
-            <div className="p-8 rounded-2xl border border-dashed border-muted text-center space-y-3 bg-surface/30">
-              <Target className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+            <div className="p-8 rounded-2xl border border-dashed border-muted text-center space-y-3 bg-white shadow-soft">
+              <Target className="w-8 h-8 text-slate-400 mx-auto" />
               <div className="space-y-1 max-w-sm mx-auto">
-                <h4 className="font-sans font-semibold text-sm text-foreground">No Goals Created</h4>
-                <p className="text-xs text-muted-foreground">
+                <h4 className="font-sans font-semibold text-sm text-slate-900">No Goals Created</h4>
+                <p className="text-xs text-slate-600">
                   Set targets for travel expeditions, equipment purchases, or an emergency safety buffer.
                 </p>
               </div>
@@ -1309,7 +1309,7 @@ export default function FinanceDashboardPage() {
                   setSavingsGoalMode("create_or_edit");
                   setIsSavingsGoalModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Create Your First Goal</span>
@@ -1321,24 +1321,24 @@ export default function FinanceDashboardPage() {
                 return (
                   <div
                     key={g.id}
-                    className="p-4 sm:p-5 rounded-2xl border border-muted bg-surface space-y-3 relative overflow-hidden"
+                    className="p-4 sm:p-5 rounded-2xl border border-muted bg-white space-y-3 relative overflow-hidden shadow-soft"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 truncate pr-2">
                         <div
                           className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: g.color || "#10B981" }}
+                          style={{ backgroundColor: g.color || "#059669" }}
                         />
-                        <span className="font-semibold text-sm text-foreground truncate">{g.name}</span>
+                        <span className="font-semibold text-sm text-slate-900 truncate">{g.name}</span>
                       </div>
 
                       {g.isCompleted ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold uppercase">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold uppercase">
                           <CheckCircle2 className="w-3 h-3" />
                           <span>Reached</span>
                         </span>
                       ) : (
-                        <span className="text-[11px] font-mono font-semibold text-emerald-400">
+                        <span className="text-[11px] font-mono font-semibold text-emerald-700">
                           {g.percentComplete}%
                         </span>
                       )}
@@ -1346,24 +1346,24 @@ export default function FinanceDashboardPage() {
 
                     {/* Progress Bar */}
                     <div className="space-y-1">
-                      <div className="h-2 w-full bg-surface-hover rounded-full overflow-hidden">
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div
                           className="h-full rounded-full transition-all duration-500"
                           style={{
                             width: `${Math.min(100, Math.max(3, g.percentComplete))}%`,
-                            backgroundColor: g.color || "#10B981",
+                            backgroundColor: g.color || "#059669",
                           }}
                         />
                       </div>
 
-                      <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground pt-0.5">
+                      <div className="flex items-center justify-between text-[11px] font-mono text-slate-500 pt-0.5">
                         <span>Saved: {formatPaise(g.currentAmountPaise)}</span>
                         <span>Target: {formatPaise(g.targetAmountPaise)}</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs pt-1 border-t border-muted/50">
-                      <span className="text-muted-foreground text-[11px]">
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                      <span className="text-slate-500 text-[11px]">
                         {g.daysRemaining !== undefined ? `${g.daysRemaining} days left` : "No deadline"}
                       </span>
 
@@ -1374,7 +1374,7 @@ export default function FinanceDashboardPage() {
                             setSavingsGoalMode("contribute");
                             setIsSavingsGoalModalOpen(true);
                           }}
-                          className="text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer"
+                          className="text-emerald-700 hover:text-emerald-800 font-semibold cursor-pointer"
                         >
                           + Add Progress
                         </button>
@@ -1385,7 +1385,7 @@ export default function FinanceDashboardPage() {
                             setSavingsGoalMode("create_or_edit");
                             setIsSavingsGoalModalOpen(true);
                           }}
-                          className="text-muted-foreground hover:text-foreground cursor-pointer"
+                          className="text-slate-500 hover:text-slate-800 cursor-pointer"
                         >
                           Edit
                         </button>
@@ -1406,8 +1406,8 @@ export default function FinanceDashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-display text-lg text-foreground font-normal">All Tracked Accounts</h3>
-              <p className="text-xs text-muted-foreground">Assets and liabilities kept strictly in balance.</p>
+              <h3 className="font-display text-lg text-slate-900 font-normal">All Tracked Accounts</h3>
+              <p className="text-xs text-slate-600">Assets and liabilities kept strictly in balance.</p>
             </div>
 
             <button
@@ -1415,7 +1415,7 @@ export default function FinanceDashboardPage() {
                 setEditingAccount(null);
                 setIsAccountModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 text-black text-xs font-semibold hover:bg-emerald-400 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Account</span>
@@ -1430,35 +1430,35 @@ export default function FinanceDashboardPage() {
               return (
                 <div
                   key={acc.id}
-                  className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                  className={`p-4 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft ${
                     isArchived
-                      ? "border-muted/50 bg-surface/30 opacity-60"
-                      : "border-muted bg-surface hover:border-foreground/30"
+                      ? "border-muted/50 bg-slate-50 opacity-60"
+                      : "border-muted bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-background border border-muted flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
                       {isCredit ? (
-                        <CreditCard className="w-5 h-5 text-amber-400" />
+                        <CreditCard className="w-5 h-5 text-amber-700" />
                       ) : (
-                        <Landmark className="w-5 h-5 text-emerald-400" />
+                        <Landmark className="w-5 h-5 text-emerald-700" />
                       )}
                     </div>
 
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-foreground">{acc.name}</span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-muted/60 text-muted-foreground uppercase">
+                        <span className="font-semibold text-sm text-slate-900">{acc.name}</span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700 uppercase font-semibold">
                           {acc.accountType}
                         </span>
                         {isArchived && (
-                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-400 uppercase">
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-50 text-rose-800 border border-rose-200 uppercase font-semibold">
                             Archived
                           </span>
                         )}
                       </div>
 
-                      <div className="text-[11px] text-muted-foreground font-mono flex items-center gap-2">
+                      <div className="text-[11px] text-slate-500 font-mono flex items-center gap-2">
                         {acc.metadata?.institutionName && (
                           <span>{acc.metadata.institutionName}</span>
                         )}
@@ -1470,14 +1470,14 @@ export default function FinanceDashboardPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-muted/50">
+                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
                     <div className="text-left sm:text-right">
-                      <div className="text-[10px] text-muted-foreground font-mono">
+                      <div className="text-[10px] text-slate-500 font-mono">
                         {isCredit ? "Debt Owed" : "Current Balance"}
                       </div>
                       <div
                         className={`font-display text-lg font-semibold ${
-                          isCredit ? "text-amber-400" : "text-emerald-400"
+                          isCredit ? "text-amber-800" : "text-emerald-700"
                         }`}
                       >
                         {formatPaise(acc.currentBalancePaise)}
@@ -1490,7 +1490,7 @@ export default function FinanceDashboardPage() {
                           setEditingAccount(acc);
                           setIsAccountModalOpen(true);
                         }}
-                        className="p-1.5 rounded-lg border border-muted hover:border-foreground/30 text-muted-foreground hover:text-foreground cursor-pointer"
+                        className="p-1.5 rounded-lg border border-slate-200 hover:border-slate-400 text-slate-600 hover:text-slate-900 cursor-pointer transition-colors"
                         title="Edit account details"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
@@ -1504,7 +1504,7 @@ export default function FinanceDashboardPage() {
                               refreshAll();
                             }
                           }}
-                          className="p-1.5 rounded-lg border border-muted hover:border-rose-500/30 text-muted-foreground hover:text-rose-400 cursor-pointer"
+                          className="p-1.5 rounded-lg border border-slate-200 hover:border-rose-300 text-slate-500 hover:text-rose-700 cursor-pointer transition-colors"
                           title="Archive account"
                         >
                           <Archive className="w-3.5 h-3.5" />
