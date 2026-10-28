@@ -22,7 +22,7 @@ import { parseAudioFile } from "@/lib/music/metadataParser";
 import { saveTrack, getAllTracks } from "@/lib/music/storage";
 import { uploadTrackToCloud } from "@/lib/music/cloudSync";
 import { MusicTrack } from "@/lib/music/types";
-import { revokeSecretAccess, triggerHaptic, setSystemPickerActive } from "@/lib/deviceAuth";
+import { revokeSecretAccess, triggerHaptic, openFilePicker, markPickerGotFile } from "@/lib/deviceAuth";
 
 export default function MusicNav({ onTrackImported }: { onTrackImported?: () => void }) {
   const pathname = usePathname();
@@ -46,7 +46,7 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSystemPickerActive(false);
+    markPickerGotFile();
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
 
@@ -203,15 +203,17 @@ export default function MusicNav({ onTrackImported }: { onTrackImported?: () => 
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.aac,.opus,.mp4"
+            accept="audio/*"
             multiple
             className="hidden"
           />
 
           <button
             onClick={() => {
-              setSystemPickerActive(true);
-              fileInputRef.current?.click();
+              openFilePicker(fileInputRef.current, () => {
+                setImportStatus("No song was received from the Android file picker. Tap Import, then choose Audio or Files from the picker menu and select your song.");
+                setTimeout(() => setImportStatus(null), 6000);
+              });
             }}
             disabled={isImporting}
             className="relative group inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-slate-950 font-sans text-xs font-bold tracking-wide transition-all shadow-md disabled:opacity-50 cursor-pointer overflow-hidden"

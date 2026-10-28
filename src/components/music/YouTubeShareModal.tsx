@@ -19,7 +19,8 @@ import { YoutubeIcon } from "./YoutubeIcon";
 import { extractYouTubeVideoId } from "@/lib/music/youtubeExtractor";
 import { extractAudioDuration, formatDuration } from "@/lib/music/metadataParser";
 import { saveTrack, getAllPlaylists, savePlaylist, addTrackToPlaylist } from "@/lib/music/storage";
-import { downloadTrackToLocalStorage } from "@/lib/music/cloudSync";
+import { downloadTrackToLocalStorage, uploadTrackToCloud } from "@/lib/music/cloudSync";
+import { canExtractOnDevice, extractAudioOnDevice } from "@/lib/music/clientYouTube";
 import { MusicTrack, MusicPlaylist } from "@/lib/music/types";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
 import { triggerHaptic } from "@/lib/deviceAuth";
@@ -141,6 +142,64 @@ export default function YouTubeShareModal({
     setExtractionStep("Connecting to YouTube audio engine...");
 
     try {
+      // PREFERRED: on-device extraction (YouTube blocks the cloud server's IP address)
+      if (canExtractOnDevice()) {
+        setExtractionStep("Downloading audio directly to your phone...");
+        const result = await extractAudioOnDevice(videoId, (pct) =>
+          setExtractionStep(`Downloading audio... ${pct}%`)
+        );
+
+        setExtractionStep("Saving to local storage...");
+        let duration = result.duration;
+        if (!duration) duration = await extractAudioDuration(result.blob).catch(() => 0);
+
+        const trackId = `trk_yt_${videoId}_${Date.now()}`;
+        const localTrack: MusicTrack = {
+          id: trackId,
+          title: title.trim() || result.title || `YouTube Audio (${videoId})`,
+          artist: artist.trim() || result.author || "YouTube",
+          album: "YouTube Audio",
+          genre: "YouTube",
+          duration,
+          format: result.mimeType,
+          size: result.blob.size,
+          artworkUrl: thumbnailUrl || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+          audioBlob: result.blob,
+          source: "DOWNLOADED",
+          downloadStatus: "DOWNLOADED",
+          downloadProgress: 100,
+          isFavorite: false,
+          playCount: 0,
+          addedAt: Date.now(),
+          fileName: `${trackId}.m4a`,
+        };
+        await saveTrack(localTrack);
+
+        if (playlistMode === "NEW" && newPlaylistTitle.trim()) {
+          const pl: MusicPlaylist = {
+            id: `pl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            title: newPlaylistTitle.trim(),
+            description: `Created from YouTube: ${localTrack.title}`,
+            trackIds: [trackId],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          await savePlaylist(pl);
+        } else if (playlistMode === "EXISTING" && selectedPlaylistId) {
+          await addTrackToPlaylist(selectedPlaylistId, trackId);
+        }
+
+        // Optional cloud backup in the background (never blocks or fails the import)
+        uploadTrackToCloud(localTrack, result.blob).catch(() => {});
+
+        window.dispatchEvent(new Event("lifeatlas_tracks_updated"));
+        setExtractedTrack(localTrack);
+        setExtractionStep("Complete!");
+        triggerHaptic("success");
+        if (onSuccess) onSuccess(localTrack, null);
+        return;
+      }
+
       setExtractionStep("Extracting audio stream & uploading to cloud...");
 
       const res = await fetch("/api/music/youtube", {

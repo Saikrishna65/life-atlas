@@ -35,7 +35,7 @@ import { MusicTrack, MusicPlaylist } from "@/lib/music/types";
 import {
   fetchCloudTracks,
   downloadTrackToLocalStorage,
-  syncCloudToLocalStorage,
+  syncCloudToLocalStorage, deleteTrackFromCloud,
 } from "@/lib/music/cloudSync";
 
 type SortField = "RECENT" | "TITLE" | "ARTIST" | "DURATION" | "PLAY_COUNT";
@@ -151,6 +151,31 @@ export default function MusicLibraryPage() {
       setActiveMenuTrackId(null);
       await loadData();
     }
+  };
+
+  const handleDeleteCloudOnly = async (trackId: string) => {
+    const trk = tracks.find((t) => t.id === trackId);
+    const hasLocal = !!trk?.audioBlob;
+    const msg = hasLocal
+      ? "Delete this song from the online cloud database? Your copy on this phone stays."
+      : "Delete this song from the online cloud database? It is not saved on this phone, so it will be removed completely.";
+    if (!confirm(msg)) return;
+    setActiveMenuTrackId(null);
+    const ok = await deleteTrackFromCloud(trackId);
+    if (!ok) {
+      alert("Could not delete from the cloud. Check your internet connection and try again.");
+      return;
+    }
+    if (trk) {
+      if (hasLocal) {
+        trk.syncedToCloud = false;
+        delete trk.audioUrl;
+        await saveTrack(trk);
+      } else {
+        await deleteTrack(trackId, false);
+      }
+    }
+    await loadData();
   };
 
   const handleAddToPlaylist = async (playlistId: string) => {
@@ -553,6 +578,17 @@ export default function MusicLibraryPage() {
                     )}
 
                     <div className="h-[1px] bg-slate-200 my-1" />
+
+                    {(t.syncedToCloud || t.audioUrl || !hasLocalBlob) && (
+                      <button
+                        onClick={() => handleDeleteCloudOnly(t.id)}
+                        className="w-full px-3 py-2 rounded-xl hover:bg-amber-50 text-left text-amber-700 transition-colors flex items-center gap-2.5 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete from Cloud</span>
+                      </button>
+                    )}
+
 
                     <button
                       onClick={() => handleDelete(t.id, true)}

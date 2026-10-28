@@ -41,6 +41,34 @@ export function setSystemPickerActive(active: boolean): void {
   }
 }
 
+/**
+ * Opens a hidden <input type="file"> while keeping the vault from auto-locking,
+ * and reports if Android returned no file (cancelled or picker failure).
+ */
+export function openFilePicker(input: HTMLInputElement | null, onNoResult: () => void): void {
+  if (typeof window === "undefined" || !input) return;
+  const win = window as VaultWindow & { __pickerGotFile?: boolean };
+  win.__pickerGotFile = false;
+  setSystemPickerActive(true);
+  const onFocus = () => {
+    window.removeEventListener("focus", onFocus);
+    setTimeout(() => {
+      if (!win.__pickerGotFile) {
+        setSystemPickerActive(false);
+        onNoResult();
+      }
+    }, 2500);
+  };
+  window.addEventListener("focus", onFocus);
+  input.click();
+}
+
+export function markPickerGotFile(): void {
+  if (typeof window === "undefined") return;
+  (window as VaultWindow & { __pickerGotFile?: boolean }).__pickerGotFile = true;
+  setSystemPickerActive(false);
+}
+
 export function shouldSuppressAutoLock(): boolean {
   if (typeof window === "undefined") return false;
   const win = window as VaultWindow;

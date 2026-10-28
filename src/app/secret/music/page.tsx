@@ -34,7 +34,7 @@ import {
 import { MusicTrack, MusicPlaylist } from "@/lib/music/types";
 import { fetchCloudTracks, downloadTrackToLocalStorage, syncCloudToLocalStorage, uploadTrackToCloud } from "@/lib/music/cloudSync";
 import { parseAudioFile } from "@/lib/music/metadataParser";
-import { triggerHaptic, setSystemPickerActive } from "@/lib/deviceAuth";
+import { triggerHaptic, openFilePicker, markPickerGotFile } from "@/lib/deviceAuth";
 
 export default function MusicHomePage() {
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setIsNowPlayingOpen } = useMusicPlayer();
@@ -184,7 +184,7 @@ export default function MusicHomePage() {
   };
 
   const handleLocalFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSystemPickerActive(false);
+    markPickerGotFile();
     const fileList = e.target.files;
     if (!fileList || fileList.length === 0) return;
 
@@ -265,7 +265,7 @@ export default function MusicHomePage() {
         type="file"
         ref={fileInputRef}
         onChange={handleLocalFileChange}
-        accept="audio/*,.mp3,.m4a,.wav,.flac,.ogg,.aac,.opus,.mp4"
+        accept="audio/*"
         multiple
         className="hidden"
       />
@@ -718,8 +718,10 @@ export default function MusicHomePage() {
           <button
             onClick={() => {
               triggerHaptic("tap");
-              setSystemPickerActive(true);
-              fileInputRef.current?.click();
+              openFilePicker(fileInputRef.current, () => {
+                setSyncStatus("No song was received from the Android file picker. Tap Import, then choose Audio or Files from the picker menu and select your song.");
+                setTimeout(() => setSyncStatus(null), 6000);
+              });
             }}
             disabled={isSyncing}
             className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-bold active:scale-95 transition-all shadow-xs disabled:opacity-40 cursor-pointer"
