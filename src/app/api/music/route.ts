@@ -4,9 +4,17 @@ import { getMusicFiles } from '@/lib/music/cloudFiles';
 
 export async function GET() {
   try {
-    const tracks = await prisma.musicTrack.findMany({
+    const rawTracks = await prisma.musicTrack.findMany({
       orderBy: { createdAt: 'desc' },
     });
+    const tracks = rawTracks.map((t) => ({
+      ...t,
+      // Always serve a permanent stream URL instead of 1-hour expiring S3 presigned URLs
+      audioUrl:
+        t.audioUrl && t.audioUrl.includes('X-Amz-Expires=')
+          ? `/api/music/stream/${encodeURIComponent(t.id)}`
+          : t.audioUrl || `/api/music/stream/${encodeURIComponent(t.id)}`,
+    }));
     const playlists = await prisma.musicPlaylist.findMany({
       orderBy: { updatedAt: 'desc' },
     });
@@ -44,10 +52,12 @@ export async function POST(request: Request) {
 
       const meta = JSON.parse(metadataStr);
       let audioUrl = meta.audioUrl || meta.streamUrl || null;
+      let storedFileName: string | null = meta.fileName || (file ? file.name : null);
 
       if (file) {
         // Upload audio file buffer to Neon Object Storage
-        const fileExt = file.name.split('.').pop() || 'mp3';
+        const fileExt =
+          (file.name.split('.').pop() || 'mp3').toLowerCase().replace(/[^a-z0-9]/g, '') || 'mp3';
         const sanitizedTrackId = (meta.id || `trk_${Date.now()}`).replace(/[^a-zA-Z0-9_-]/g, '_');
         const filename = `${sanitizedTrackId}.${fileExt}`;
         const buffer = Buffer.from(await file.arrayBuffer());
@@ -56,7 +66,8 @@ export async function POST(request: Request) {
           contentType: file.type || 'audio/mpeg',
         });
 
-        audioUrl = await getMusicFiles().url(filename);
+        storedFileName = filename;
+        audioUrl = `/api/music/stream/${encodeURIComponent(meta.id || sanitizedTrackId)}`;
       }
 
       // Upsert into Prisma Postgres MusicTrack
@@ -73,7 +84,7 @@ export async function POST(request: Request) {
           bitrate: meta.bitrate ? Number(meta.bitrate) : null,
           artworkUrl: meta.artworkUrl || null,
           audioUrl: audioUrl || null,
-          fileName: meta.fileName || (file ? file.name : null),
+          fileName: storedFileName,
           year: meta.year || null,
           lyrics: meta.lyrics || null,
           source: 'IMPORTED',
@@ -93,7 +104,7 @@ export async function POST(request: Request) {
           bitrate: meta.bitrate ? Number(meta.bitrate) : null,
           artworkUrl: meta.artworkUrl || null,
           audioUrl: audioUrl || null,
-          fileName: meta.fileName || (file ? file.name : null),
+          fileName: storedFileName,
           year: meta.year || null,
           lyrics: meta.lyrics || null,
           source: 'IMPORTED',

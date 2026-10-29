@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import Image from "next/image";
+import React, { useEffect, useState } from "react";
 import {
   ChevronDown,
   Play,
@@ -13,390 +12,408 @@ import {
   Repeat1,
   Heart,
   ListMusic,
-  Download,
-  CheckCircle2,
-  Volume2,
-  VolumeX,
-  Info,
-  Clock,
-  Sparkles,
-  Music,
-  Radio,
-  Disc3,
+  X,
+  Loader2,
+  DownloadCloud,
+  Moon,
+  Gauge,
 } from "lucide-react";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
+import {
+  Artwork,
+  Equalizer,
+  SpectrumBars,
+  formatTime,
+  gradientFor,
+  hasLocalAudio,
+  hasCloudCopy,
+} from "@/components/music/ui";
+import { triggerHaptic } from "@/lib/deviceAuth";
 
-function formatSeconds(secs: number): string {
-  if (!Number.isFinite(secs) || secs < 0) return "0:00";
-  const m = Math.floor(secs / 60);
-  const s = Math.floor(secs % 60);
-  return `${m}:${s < 10 ? "0" : ""}${s}`;
-}
+const SLEEP_OPTIONS = [0, 15, 30, 45, 60] as const;
 
 export default function NowPlayingModal() {
   const {
     currentTrack,
     isPlaying,
+    isBuffering,
     currentTime,
     duration,
-    volume,
     playbackRate,
     repeatMode,
     isShuffle,
     isNowPlayingOpen,
     sourceContext,
+    queue,
+    queueIndex,
+    error,
     setIsNowPlayingOpen,
     togglePlayPause,
     nextTrack,
     previousTrack,
     seek,
-    setVolume,
     setPlaybackRate,
     toggleShuffle,
     cycleRepeatMode,
     toggleFavorite,
     downloadTrack,
+    playTrack,
+    removeFromQueue,
   } = useMusicPlayer();
 
-  const [showInfo, setShowInfo] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
+  const [sleepEndsAt, setSleepEndsAt] = useState<number | null>(null);
+  const [sleepLabel, setSleepLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!sleepEndsAt) {
+      setSleepLabel(null);
+      return;
+    }
+    const tick = () => {
+      const remMs = sleepEndsAt - Date.now();
+      if (remMs <= 0) {
+        setSleepEndsAt(null);
+        setSleepLabel(null);
+        if (isPlaying) togglePlayPause();
+      } else {
+        setSleepLabel(`${Math.ceil(remMs / 60000)}m`);
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 10000);
+    return () => window.clearInterval(id);
+  }, [sleepEndsAt, isPlaying, togglePlayPause]);
 
   if (!isNowPlayingOpen || !currentTrack) return null;
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-
-  const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    seek(val);
-  };
+  const total = duration || currentTrack.duration || 0;
+  const pct = total > 0 ? Math.min(100, (currentTime / total) * 100) : 0;
+  const local = hasLocalAudio(currentTrack);
+  const canSave = !local && hasCloudCopy(currentTrack);
 
   const cycleSpeed = () => {
-    const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
-    const currentIdx = speeds.indexOf(playbackRate);
-    const nextIdx = (currentIdx + 1) % speeds.length;
-    setPlaybackRate(speeds[nextIdx]);
+    triggerHaptic("tap");
+    const speeds = [0.75, 1, 1.25, 1.5, 2];
+    const i = speeds.indexOf(playbackRate);
+    setPlaybackRate(speeds[(i + 1) % speeds.length]);
+  };
+
+  const cycleSleepTimer = () => {
+    triggerHaptic("tap");
+    if (!sleepEndsAt) {
+      setSleepEndsAt(Date.now() + 15 * 60000);
+      return;
+    }
+    const remMin = Math.round((sleepEndsAt - Date.now()) / 60000);
+    const next = SLEEP_OPTIONS.find((m) => m > remMin + 2) ?? 0;
+    setSleepEndsAt(next > 0 ? Date.now() + next * 60000 : null);
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-[#f8fafc] text-slate-900 flex flex-col justify-between animate-fade-in select-none overflow-y-auto"
+      className="sonic-dark fixed inset-0 z-50 bg-[#05050a] text-white flex flex-col select-none overflow-hidden animate-fade-in"
       role="dialog"
       aria-modal="true"
-      aria-label="Now Playing Full View"
+      aria-label="Now playing"
     >
-      {/* Subtle Dynamic Ambient Artwork Glow */}
-      <div
-        className="fixed inset-0 pointer-events-none opacity-20 blur-3xl scale-150 z-0 transition-all duration-1000"
-        style={{
-          backgroundImage: currentTrack.artworkUrl
-            ? `radial-gradient(circle at 50% 30%, ${currentTrack.artworkUrl ? 'transparent' : '#f59e0b'}, #f8fafc), url(${currentTrack.artworkUrl})`
-            : "radial-gradient(circle at 50% 25%, rgba(245,158,11,0.2) 0%, rgba(37,99,235,0.1) 45%, #f8fafc 80%)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-        aria-hidden="true"
-      />
+      {/* Artwork-reactive blurred aurora */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        {currentTrack.artworkUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={currentTrack.artworkUrl}
+            alt=""
+            className="w-full h-full object-cover scale-125 blur-[80px] opacity-50"
+          />
+        ) : (
+          <div
+            className={`w-full h-full bg-gradient-to-br ${gradientFor(
+              currentTrack.id
+            )} opacity-40 blur-3xl scale-125`}
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#05050a]/75 to-[#05050a]" />
+      </div>
 
-      {/* Porcelain Overlay Gradient */}
-      <div
-        className="fixed inset-0 pointer-events-none bg-gradient-to-b from-[#f8fafc]/85 via-white/60 to-[#f8fafc] z-0"
-        aria-hidden="true"
-      />
-
-      {/* Top Header */}
-      <header className="relative z-10 px-5 pt-[max(env(safe-area-inset-top),1.25rem)] pb-2 flex items-center justify-between">
+      {/* Top bar */}
+      <header className="relative z-10 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),1rem)]">
         <button
           onClick={() => setIsNowPlayingOpen(false)}
-          className="w-10 h-10 rounded-full glass-card-subtle hover:bg-slate-100 active:scale-95 flex items-center justify-center text-slate-700 hover:text-slate-950 transition-all border border-slate-200/80 cursor-pointer shadow-xs"
-          aria-label="Minimize now playing"
+          className="w-11 h-11 rounded-full bg-white/10 border border-white/10 flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+          aria-label="Minimize"
         >
-          <ChevronDown className="w-5 h-5" />
+          <ChevronDown className="w-6 h-6" />
         </button>
-
-        <div className="text-center px-4 min-w-0 flex flex-col items-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full glass-pill-luxury text-[9px] font-mono tracking-widest text-amber-800 uppercase mb-0.5 shadow-xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shadow-[0_0_6px_#f59e0b]" />
-            <span>{sourceContext?.title || "EXPEDITION HI-FI"}</span>
-          </div>
-          <span className="text-xs text-slate-500 font-sans truncate max-w-[220px]">
-            {currentTrack.album || "Master Recording"}
-          </span>
+        <div className="text-center min-w-0 px-3">
+          <p className="text-[10px] tracking-[0.22em] uppercase text-white/45 font-semibold">
+            Playing from
+          </p>
+          <p className="text-sm font-semibold text-white truncate max-w-[200px]">
+            {sourceContext?.title || "Your library"}
+          </p>
         </div>
-
         <button
-          onClick={() => setShowInfo((prev) => !prev)}
-          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border cursor-pointer shadow-xs ${
-            showInfo
-              ? "bg-amber-100 text-amber-900 border-amber-300 font-bold"
-              : "glass-card-subtle hover:bg-slate-100 text-slate-600 border-slate-200/80"
+          onClick={() => {
+            triggerHaptic("tap");
+            setShowQueue((v) => !v);
+          }}
+          className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-90 transition-all cursor-pointer ${
+            showQueue
+              ? "bg-white text-black border-white"
+              : "bg-white/10 border-white/10 text-white"
           }`}
-          aria-label="Track information"
+          aria-label="Queue"
         >
-          <Info className="w-4 h-4" />
+          <ListMusic className="w-5 h-5" />
         </button>
       </header>
 
-      {/* Main Center Stage */}
-      <div className="relative z-10 flex-1 flex flex-col justify-center items-center px-6 py-2 max-w-sm sm:max-w-md mx-auto w-full">
-        {/* Vinyl & Artwork Stage */}
-        <div className="relative mb-5 flex items-center justify-center w-full max-w-[280px] sm:max-w-[320px] aspect-square">
-          {/* Peeking Vinyl Record when playing */}
-          <div
-            className={`absolute w-[92%] h-[92%] rounded-full vinyl-grooves border-2 border-neutral-800 shadow-[0_16px_35px_rgba(15,23,42,0.35)] flex items-center justify-center z-0 transition-transform duration-700 ${
-              isPlaying
-                ? "translate-x-10 sm:translate-x-14 rotate-45 animate-vinyl"
-                : "translate-x-0"
-            }`}
-            aria-hidden="true"
-          >
-            {/* Center Vinyl Label */}
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 via-amber-600 to-orange-700 border-2 border-neutral-900 flex items-center justify-center shadow-inner">
-              <div className="w-5 h-5 rounded-full bg-neutral-900 border border-neutral-700" />
-            </div>
+      {showQueue ? (
+        /* Integrated Up-Next Queue */
+        <div className="relative z-10 flex-1 overflow-y-auto px-4 pt-5 pb-8">
+          <div className="flex items-baseline justify-between px-1 mb-3">
+            <h3 className="font-display text-2xl text-white">Up next</h3>
+            <span className="text-xs font-mono text-white/45">{queue.length} songs</span>
           </div>
-
-          {/* Front Album Jacket Squircle */}
-          <div className="relative w-full h-full rounded-[28px] sm:rounded-[36px] overflow-hidden shadow-[0_20px_45px_rgba(15,23,42,0.18)] border border-slate-200/90 bg-white flex items-center justify-center z-10 group">
-            {currentTrack.artworkUrl ? (
-              <Image
-                src={currentTrack.artworkUrl}
-                alt={currentTrack.title}
-                fill
-                priority
-                sizes="(max-width: 640px) 280px, 320px"
-                className="object-cover"
-                unoptimized
-              />
-            ) : (
-              <div className="flex flex-col items-center gap-3 text-slate-400 p-6 text-center">
-                <div className="w-20 h-20 rounded-3xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-600 shadow-sm">
-                  <Music className="w-10 h-10" />
-                </div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-amber-800 font-bold">
-                  Atlas Audio Vault
-                </span>
-              </div>
-            )}
-
-            {/* Specular Holographic Sheen Lines */}
-            <div className="absolute inset-0 bg-gradient-to-tr from-black/5 via-transparent to-white/40 pointer-events-none" />
-            <div className="absolute inset-0 ring-1 ring-inset ring-black/5 pointer-events-none rounded-[28px] sm:rounded-[36px]" />
-          </div>
-        </div>
-
-        {/* Live Audio Visualizer Equalizer Bar (8 Frequencies) */}
-        {isPlaying && (
-          <div className="flex items-center gap-1.5 h-4 mb-4" aria-label="Audio Visualizer">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 3, 5, 2, 6].map((bar, i) => (
-              <span
-                key={i}
-                className={`w-1 rounded-full bg-gradient-to-t from-amber-500 via-amber-400 to-blue-600 animate-eq-${bar}`}
-                style={{ animationDelay: `${i * 0.05}s` }}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Track Title & Artist & Favorite */}
-        <div className="w-full flex items-start justify-between gap-4 mb-3">
-          <div className="min-w-0 flex-1">
-            <h2 className="font-display text-2xl sm:text-3xl text-slate-900 font-normal tracking-tight truncate">
-              {currentTrack.title}
-            </h2>
-            <p className="font-sans text-sm sm:text-base text-slate-600 truncate mt-0.5 font-medium">
-              {currentTrack.artist || "Unknown Artist"}
-            </p>
-
-            {/* Source & Audiophile Format Badge */}
-            <div className="mt-2 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-[9px] font-mono uppercase tracking-widest text-blue-700 font-bold shadow-2xs">
-                <span>HI-RES 24-BIT</span>
-              </span>
-
-              {currentTrack.source === "IMPORTED" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[9px] font-mono uppercase tracking-wider text-emerald-800 font-semibold shadow-2xs">
-                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
-                  <span>Local Master</span>
-                </span>
-              )}
-
-              {currentTrack.source === "DOWNLOADED" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[9px] font-mono uppercase tracking-wider text-emerald-800 font-semibold shadow-2xs">
-                  <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
-                  <span>Offline Stored</span>
-                </span>
-              )}
-
-              {currentTrack.source === "STREAM" && (
-                <button
-                  onClick={() => downloadTrack(currentTrack)}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[9px] font-sans text-slate-700 hover:text-slate-950 transition-all cursor-pointer shadow-2xs active:scale-95"
-                  title="Download track for offline playback"
+          <div className="space-y-1">
+            {queue.map((t, i) => {
+              const active = i === queueIndex;
+              return (
+                <div
+                  key={`${t.id}-${i}`}
+                  className={`flex items-center gap-3 pl-2 pr-1 py-2 rounded-2xl ${
+                    active ? "bg-white/12 border border-white/10" : ""
+                  }`}
                 >
-                  <Download className="w-2.5 h-2.5 text-blue-600" />
-                  <span>Download Offline</span>
-                </button>
-              )}
-            </div>
+                  <button
+                    onClick={() => playTrack(t, queue, sourceContext)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer"
+                  >
+                    <Artwork
+                      track={t}
+                      className="w-11 h-11 rounded-xl shrink-0"
+                      iconClass="w-4 h-4"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={`block text-sm font-semibold truncate ${
+                          active ? "text-fuchsia-300" : "text-white"
+                        }`}
+                      >
+                        {t.title}
+                      </span>
+                      <span className="block text-xs text-white/45 truncate">{t.artist}</span>
+                    </span>
+                    {active && isPlaying && <Equalizer className="mr-2" />}
+                  </button>
+                  {!active && (
+                    <button
+                      onClick={() => removeFromQueue(i)}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-white/35 active:bg-white/10 cursor-pointer"
+                      aria-label="Remove from queue"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {queue.length === 0 && (
+              <p className="text-sm text-white/40 p-4 text-center">The queue is empty.</p>
+            )}
           </div>
-
-          <button
-            onClick={() => toggleFavorite(currentTrack.id)}
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer shrink-0 mt-0.5 border ${
-              currentTrack.isFavorite
-                ? "bg-rose-50 border-rose-300 text-rose-600 scale-105 shadow-xs"
-                : "glass-card-subtle border-slate-200/80 text-slate-400 hover:text-rose-500 hover:bg-rose-50/50"
-            }`}
-            aria-label={currentTrack.isFavorite ? "Remove favorite" : "Add favorite"}
-          >
-            <Heart
-              className={`w-5 h-5 transition-transform ${
-                currentTrack.isFavorite ? "fill-rose-500 scale-110" : ""
+        </div>
+      ) : (
+        <div className="relative z-10 flex-1 flex flex-col justify-end px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+          {/* Hero Artwork + Vinyl Disc Halo */}
+          <div className="flex-1 flex items-center justify-center py-4 min-h-0">
+            <div
+              className={`relative aspect-square w-full max-w-[300px] sm:max-w-[330px] transition-transform duration-700 ${
+                isPlaying ? "scale-100" : "scale-[0.92]"
               }`}
-            />
-          </button>
-        </div>
+            >
+              <div
+                className={`absolute inset-3 rounded-[40px] bg-gradient-to-br ${gradientFor(
+                  currentTrack.id
+                )} blur-2xl opacity-60`}
+                aria-hidden="true"
+              />
+              {/* Subtle vinyl disc peeking from top-right when playing */}
+              <div
+                className={`pointer-events-none absolute -right-4 top-5 bottom-5 aspect-square rounded-full vinyl-grooves border border-white/15 shadow-2xl transition-transform duration-700 flex items-center justify-center ${
+                  isPlaying ? "translate-x-2 animate-vinyl opacity-90" : "-translate-x-6 opacity-0"
+                }`}
+                aria-hidden="true"
+              >
+                <div
+                  className={`w-16 h-16 rounded-full bg-gradient-to-br ${gradientFor(
+                    currentTrack.id
+                  )} border-4 border-[#090910]`}
+                />
+              </div>
 
-        {/* Track Info Drawer (Collapsible) */}
-        {showInfo && (
-          <div className="w-full p-4 rounded-2xl glass-card-premium mb-4 text-xs space-y-2 animate-fade-in border border-slate-200/90 shadow-sm">
-            <div className="flex justify-between text-slate-500">
-              <span>Encoding / Format:</span>
-              <span className="font-mono text-blue-700 font-bold">{currentTrack.format}</span>
-            </div>
-            <div className="flex justify-between text-slate-500">
-              <span>File Storage Size:</span>
-              <span className="font-mono text-slate-800">
-                {(currentTrack.size / (1024 * 1024)).toFixed(2)} MB
-              </span>
-            </div>
-            <div className="flex justify-between text-slate-500">
-              <span>Genre / Atmosphere:</span>
-              <span className="text-slate-800">{currentTrack.genre || "Expedition Soundtrack"}</span>
-            </div>
-            <div className="flex justify-between text-slate-500">
-              <span>Vault Play Count:</span>
-              <span className="font-mono text-amber-600 font-bold">{currentTrack.playCount || 0}</span>
+              <Artwork
+                track={currentTrack}
+                className="relative z-10 w-full h-full rounded-[36px] shadow-[0_32px_75px_rgba(0,0,0,0.75)]"
+                iconClass="w-1/4 h-1/4"
+              />
             </div>
           </div>
-        )}
 
-        {/* Progress Scrubber with Amber-Cobalt Line */}
-        <div className="w-full space-y-1.5 mb-5">
-          <div className="relative w-full flex items-center">
+          {/* Quality badge + Live Spectrum */}
+          <div className="flex items-center justify-between mb-3">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/10 text-[10px] font-mono uppercase tracking-[0.16em] text-white/75">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  local ? "bg-emerald-400" : "bg-sky-400"
+                }`}
+              />
+              {local ? "Offline · Hi-Fi" : "Cloud Stream"}
+            </span>
+            <SpectrumBars playing={isPlaying} />
+          </div>
+
+          {/* Title + Actions */}
+          <div className="flex items-center gap-3 mb-4">
+            <div className="min-w-0 flex-1">
+              <h2 className="font-display text-[26px] text-white leading-tight truncate">
+                {currentTrack.title}
+              </h2>
+              <p className="text-white/60 truncate mt-0.5">
+                {currentTrack.artist || "Unknown Artist"}
+              </p>
+            </div>
+            {canSave && (
+              <button
+                onClick={() => downloadTrack(currentTrack)}
+                className="w-11 h-11 rounded-full bg-white/10 border border-white/10 flex items-center justify-center active:scale-90 cursor-pointer"
+                aria-label="Save to phone"
+              >
+                <DownloadCloud className="w-5 h-5" />
+              </button>
+            )}
+            <button
+              onClick={() => toggleFavorite(currentTrack.id)}
+              className="w-11 h-11 rounded-full bg-white/10 border border-white/10 flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+              aria-label={currentTrack.isFavorite ? "Unlike" : "Like"}
+            >
+              <Heart
+                className={`w-5 h-5 ${
+                  currentTrack.isFavorite ? "fill-fuchsia-400 text-fuchsia-400" : ""
+                }`}
+              />
+            </button>
+          </div>
+
+          {error && <p className="text-xs text-rose-300 mb-2">{error}</p>}
+
+          {/* Tactile Scrubber */}
+          <div className="mb-4">
             <input
               type="range"
               min={0}
-              max={duration || 100}
-              value={currentTime}
-              onChange={handleSeekChange}
-              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500 hover:accent-amber-600 transition-all"
-              aria-label="Seek time slider"
+              max={total || 100}
+              step={0.1}
+              value={Math.min(currentTime, total || 100)}
+              onChange={(e) => seek(parseFloat(e.target.value))}
+              aria-label="Seek"
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-white"
+              style={{
+                background: `linear-gradient(to right, #e879f9 0%, #a855f7 ${pct}%, rgba(255,255,255,0.18) ${pct}%)`,
+              }}
             />
+            <div className="flex justify-between text-[11px] font-mono text-white/45 mt-1.5">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(total)}</span>
+            </div>
           </div>
 
-          <div className="flex justify-between text-[11px] font-mono text-slate-500 px-0.5">
-            <span>{formatSeconds(currentTime)}</span>
-            <span>-{formatSeconds(Math.max(0, duration - currentTime))}</span>
-          </div>
-        </div>
-
-        {/* Primary Master Controls */}
-        <div className="w-full flex items-center justify-between mb-5 px-1">
-          {/* Shuffle Toggle */}
-          <button
-            onClick={toggleShuffle}
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer border ${
-              isShuffle
-                ? "text-amber-800 bg-amber-100 border-amber-300 shadow-xs"
-                : "glass-card-subtle text-slate-500 hover:text-slate-800 border-slate-200/80"
-            }`}
-            aria-label="Toggle shuffle"
-          >
-            <Shuffle className="w-4 h-4" />
-          </button>
-
-          {/* Previous Track */}
-          <button
-            onClick={previousTrack}
-            className="w-13 h-13 rounded-2xl glass-card-subtle hover:bg-slate-100 active:scale-95 border border-slate-200/80 flex items-center justify-center text-slate-800 transition-all cursor-pointer shadow-xs"
-            aria-label="Previous track"
-          >
-            <SkipBack className="w-5 h-5 fill-current" />
-          </button>
-
-          {/* Master Radiant Play/Pause Button */}
-          <button
-            onClick={togglePlayPause}
-            className="w-18 h-18 rounded-full bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 hover:from-amber-300 hover:to-amber-500 active:scale-90 text-slate-950 flex items-center justify-center neon-glow-amber transition-all cursor-pointer shadow-lg relative"
-            aria-label={isPlaying ? "Pause" : "Play"}
-          >
-            {isPlaying ? (
-              <Pause className="w-8 h-8 fill-current stroke-[2.5]" />
-            ) : (
-              <Play className="w-8 h-8 fill-current stroke-[2.5] ml-1" />
-            )}
-          </button>
-
-          {/* Next Track */}
-          <button
-            onClick={nextTrack}
-            className="w-13 h-13 rounded-2xl glass-card-subtle hover:bg-slate-100 active:scale-95 border border-slate-200/80 flex items-center justify-center text-slate-800 transition-all cursor-pointer shadow-xs"
-            aria-label="Next track"
-          >
-            <SkipForward className="w-5 h-5 fill-current" />
-          </button>
-
-          {/* Repeat Mode Toggle */}
-          <button
-            onClick={cycleRepeatMode}
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all cursor-pointer border ${
-              repeatMode !== "OFF"
-                ? "text-amber-800 bg-amber-100 border-amber-300 shadow-xs"
-                : "glass-card-subtle text-slate-500 hover:text-slate-800 border-slate-200/80"
-            }`}
-            aria-label={`Cycle repeat mode, currently ${repeatMode}`}
-          >
-            {repeatMode === "ONE" ? (
-              <Repeat1 className="w-4 h-4" />
-            ) : (
-              <Repeat className="w-4 h-4" />
-            )}
-          </button>
-        </div>
-
-        {/* Bottom Deck: Speed, Volume, and Close */}
-        <div className="w-full flex items-center justify-between pt-3 border-t border-slate-200/80">
-          <button
-            onClick={cycleSpeed}
-            className="px-3 py-1.5 rounded-xl glass-card-subtle hover:bg-slate-100 border border-slate-200/80 text-xs font-mono font-bold text-amber-800 transition-all cursor-pointer active:scale-95 shadow-2xs"
-            title="Playback speed"
-          >
-            {playbackRate}x
-          </button>
-
-          <div className="flex items-center gap-2 max-w-[130px] w-full px-2">
-            <Volume2 className="w-4 h-4 text-slate-500 shrink-0" />
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
-              aria-label="Volume slider"
-            />
+          {/* Primary Transport Controls */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={toggleShuffle}
+              className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-colors ${
+                isShuffle ? "text-fuchsia-300 bg-fuchsia-500/15" : "text-white/45"
+              }`}
+              aria-label="Shuffle"
+            >
+              <Shuffle className="w-5 h-5" />
+            </button>
+            <button
+              onClick={previousTrack}
+              className="w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+              aria-label="Previous"
+            >
+              <SkipBack className="w-7 h-7 fill-current" />
+            </button>
+            <button
+              onClick={togglePlayPause}
+              className="w-[76px] h-[76px] rounded-full bg-white text-[#05050a] flex items-center justify-center shadow-[0_12px_45px_rgba(232,121,249,0.35)] active:scale-90 transition-transform cursor-pointer"
+              aria-label={isPlaying ? "Pause" : "Play"}
+            >
+              {isBuffering ? (
+                <Loader2 className="w-8 h-8 animate-spin" />
+              ) : isPlaying ? (
+                <Pause className="w-9 h-9 fill-current" />
+              ) : (
+                <Play className="w-9 h-9 fill-current ml-1" />
+              )}
+            </button>
+            <button
+              onClick={nextTrack}
+              className="w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+              aria-label="Next"
+            >
+              <SkipForward className="w-7 h-7 fill-current" />
+            </button>
+            <button
+              onClick={cycleRepeatMode}
+              className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-colors ${
+                repeatMode !== "OFF" ? "text-fuchsia-300 bg-fuchsia-500/15" : "text-white/45"
+              }`}
+              aria-label="Repeat"
+            >
+              {repeatMode === "ONE" ? (
+                <Repeat1 className="w-5 h-5" />
+              ) : (
+                <Repeat className="w-5 h-5" />
+              )}
+            </button>
           </div>
 
-          <button
-            onClick={() => setIsNowPlayingOpen(false)}
-            className="px-3 py-1.5 rounded-xl glass-card-subtle hover:bg-slate-100 border border-slate-200/80 text-xs font-sans text-slate-700 hover:text-slate-950 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-2xs"
-          >
-            <ListMusic className="w-3.5 h-3.5 text-amber-600" />
-            <span>Library</span>
-          </button>
+          {/* Utility Pills: Speed + Sleep Timer + Queue */}
+          <div className="flex items-center justify-center gap-2.5 mt-5">
+            <button
+              onClick={cycleSpeed}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-mono font-semibold text-white/75 active:scale-95 cursor-pointer"
+            >
+              <Gauge className="w-3.5 h-3.5 text-fuchsia-300" />
+              {playbackRate}×
+            </button>
+
+            <button
+              onClick={cycleSleepTimer}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-mono font-semibold active:scale-95 cursor-pointer ${
+                sleepLabel
+                  ? "bg-fuchsia-500/20 border-fuchsia-400/40 text-fuchsia-200"
+                  : "bg-white/10 border-white/10 text-white/75"
+              }`}
+            >
+              <Moon className="w-3.5 h-3.5 text-cyan-300" />
+              {sleepLabel ? `Sleep ${sleepLabel}` : "Sleep"}
+            </button>
+
+            <button
+              onClick={() => setShowQueue(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-mono font-semibold text-white/75 active:scale-95 cursor-pointer"
+            >
+              <ListMusic className="w-3.5 h-3.5 text-purple-300" />
+              Queue ({queue.length})
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

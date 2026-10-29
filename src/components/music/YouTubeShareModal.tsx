@@ -1,29 +1,30 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import {
   X,
-  Sparkles,
-  DownloadCloud,
-  CheckCircle2,
-  Plus,
-  Play,
-  ListMusic,
-  ArrowRight,
-  Music,
-  AlertCircle,
   Loader2,
+  CheckCircle2,
+  AlertCircle,
+  Play,
+  ClipboardPaste,
+  DownloadCloud,
+  ListMusic,
+  Plus,
 } from "lucide-react";
-import { YoutubeIcon } from "./YoutubeIcon";
 import { extractYouTubeVideoId } from "@/lib/music/youtubeExtractor";
 import { extractAudioDuration, formatDuration } from "@/lib/music/metadataParser";
 import { saveTrack, getAllPlaylists, savePlaylist, addTrackToPlaylist } from "@/lib/music/storage";
 import { downloadTrackToLocalStorage, uploadTrackToCloud } from "@/lib/music/cloudSync";
-import { canExtractOnDevice, extractAudioOnDevice } from "@/lib/music/clientYouTube";
+import {
+  canExtractOnDevice,
+  extractAudioOnDevice,
+  fetchYouTubePreviewOnDevice,
+} from "@/lib/music/clientYouTube";
 import { MusicTrack, MusicPlaylist } from "@/lib/music/types";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
 import { triggerHaptic } from "@/lib/deviceAuth";
+import { Artwork } from "@/components/music/ui";
 
 interface YouTubeShareModalProps {
   isOpen: boolean;
@@ -31,6 +32,8 @@ interface YouTubeShareModalProps {
   initialUrl?: string;
   onSuccess?: (track: MusicTrack, playlist?: MusicPlaylist | null) => void;
 }
+
+type Dest = "NONE" | "EXISTING" | "NEW";
 
 export default function YouTubeShareModal({
   isOpen,
@@ -44,126 +47,150 @@ export default function YouTubeShareModal({
   const [videoId, setVideoId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [thumb, setThumb] = useState<string | null>(null);
 
   const [playlists, setPlaylists] = useState<MusicPlaylist[]>([]);
-  const [playlistMode, setPlaylistMode] = useState<"NONE" | "EXISTING" | "NEW">("NONE");
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState<string>("");
-  const [newPlaylistTitle, setNewPlaylistTitle] = useState("");
+  const [dest, setDest] = useState<Dest>("NONE");
+  const [selectedPl, setSelectedPl] = useState("");
+  const [newPlTitle, setNewPlTitle] = useState("");
 
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [extractionStep, setExtractionStep] = useState<string>("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [extractedTrack, setExtractedTrack] = useState<MusicTrack | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [working, setWorking] = useState(false);
+  const [step, setStep] = useState("");
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<MusicTrack | null>(null);
 
-  // Load user playlists
   useEffect(() => {
     if (isOpen) {
       getAllPlaylists()
         .then((pls) => {
           setPlaylists(pls);
-          if (pls.length > 0 && !selectedPlaylistId) {
-            setSelectedPlaylistId(pls[0].id);
-          }
+          setSelectedPl((cur) => cur || pls[0]?.id || "");
         })
-        .catch(console.error);
+        .catch(() => {});
     }
-  }, [isOpen, selectedPlaylistId]);
+  }, [isOpen]);
 
-  // Handle URL change & auto-preview
-  const handleUrlChange = useCallback(async (newUrl: string) => {
-    setUrl(newUrl);
-    setErrorMessage(null);
-    setExtractedTrack(null);
-
-    const vid = extractYouTubeVideoId(newUrl);
+  const handleUrl = useCallback(async (value: string) => {
+    setUrl(value);
+    setError(null);
+    setDone(null);
+    const vid = extractYouTubeVideoId(value);
     setVideoId(vid);
-
     if (!vid) {
       setTitle("");
       setArtist("");
-      setThumbnailUrl(null);
+      setThumb(null);
       return;
     }
-
-    setIsLoadingPreview(true);
-    setThumbnailUrl(`https://img.youtube.com/vi/${vid}/hqdefault.jpg`);
-
+    setThumb(`https://img.youtube.com/vi/${vid}/hqdefault.jpg`);
+    setLoadingPreview(true);
     try {
-      const res = await fetch(`/api/music/youtube?url=${encodeURIComponent(newUrl)}`);
+      // Fast on-device preview first (zero server roundtrip on Android)
+      const localPreview = await fetchYouTubePreviewOnDevice(vid);
+      if (localPreview) {
+        setTitle(localPreview.title);
+        setArtist(localPreview.artist);
+        setThumb(localPreview.thumbnailUrl);
+        return;
+      }
+
+      const res = await fetch(`/api/music/youtube?url=${encodeURIComponent(value)}`);
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.metadata) {
           setTitle(data.metadata.title);
           setArtist(data.metadata.artist);
-          if (data.metadata.thumbnailUrl) {
-            setThumbnailUrl(data.metadata.thumbnailUrl);
-          }
+          if (data.metadata.thumbnailUrl) setThumb(data.metadata.thumbnailUrl);
         }
       }
     } catch {
-      // Fallback to parsed defaults
-      setTitle("YouTube Audio");
-      setArtist("YouTube");
+      /* preview is optional */
     } finally {
-      setIsLoadingPreview(false);
+      setLoadingPreview(false);
     }
   }, []);
 
   useEffect(() => {
-    if (isOpen) {
-      if (initialUrl && initialUrl.trim().length > 0) {
-        handleUrlChange(initialUrl);
-      } else {
-        setUrl("");
-        setVideoId(null);
-        setTitle("");
-        setArtist("");
-        setThumbnailUrl(null);
-        setExtractedTrack(null);
-        setErrorMessage(null);
-        setIsExtracting(false);
-      }
+    if (!isOpen) return;
+    if (initialUrl.trim()) handleUrl(initialUrl);
+    else {
+      setUrl("");
+      setVideoId(null);
+      setTitle("");
+      setArtist("");
+      setThumb(null);
+      setDone(null);
+      setError(null);
+      setWorking(false);
+      setProgress(0);
     }
-  }, [isOpen, initialUrl, handleUrlChange]);
+  }, [isOpen, initialUrl, handleUrl]);
 
-  // Extract Audio & Save
-  const handleExtractAndSave = async (e: React.FormEvent) => {
+  const reset = () => {
+    setUrl("");
+    setVideoId(null);
+    setTitle("");
+    setArtist("");
+    setThumb(null);
+    setDone(null);
+    setError(null);
+    setNewPlTitle("");
+    setDest("NONE");
+    setProgress(0);
+  };
+  const close = () => {
+    if (working) return;
+    reset();
+    onClose();
+  };
+
+  const paste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) handleUrl(text);
+    } catch {
+      setError("Clipboard access was blocked. Long-press the box and choose Paste.");
+    }
+  };
+
+  const extract = async (e: React.FormEvent) => {
     e.preventDefault();
     triggerHaptic("tap");
     if (!videoId) {
-      setErrorMessage("Please provide a valid YouTube link or video ID.");
+      setError("Paste a valid YouTube link first.");
       return;
     }
-
-    setIsExtracting(true);
-    setErrorMessage(null);
-    setExtractionStep("Connecting to YouTube audio engine...");
+    setWorking(true);
+    setError(null);
+    setProgress(5);
+    setStep("Connecting to YouTube…");
 
     try {
-      // PREFERRED: on-device extraction (YouTube blocks the cloud server's IP address)
       if (canExtractOnDevice()) {
-        setExtractionStep("Downloading audio directly to your phone...");
-        const result = await extractAudioOnDevice(videoId, (pct) =>
-          setExtractionStep(`Downloading audio... ${pct}%`)
-        );
-
-        setExtractionStep("Saving to local storage...");
+        setStep("Downloading high-fidelity audio…");
+        const result = await extractAudioOnDevice(videoId, (p) => {
+          setProgress(Math.max(8, p));
+          setStep(`Downloading audio… ${p}%`);
+        });
+        setProgress(99);
+        setStep("Saving to offline vault…");
         let duration = result.duration;
         if (!duration) duration = await extractAudioDuration(result.blob).catch(() => 0);
 
-        const trackId = `trk_yt_${videoId}_${Date.now()}`;
-        const localTrack: MusicTrack = {
-          id: trackId,
+        const ext = result.mimeType.includes("webm") ? "webm" : "m4a";
+        const id = `trk_yt_${videoId}_${Date.now()}`;
+        const track: MusicTrack = {
+          id,
           title: title.trim() || result.title || `YouTube Audio (${videoId})`,
           artist: artist.trim() || result.author || "YouTube",
-          album: "YouTube Audio",
+          album: "YouTube",
           genre: "YouTube",
           duration,
           format: result.mimeType,
           size: result.blob.size,
-          artworkUrl: thumbnailUrl || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+          artworkUrl: thumb || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
           audioBlob: result.blob,
           source: "DOWNLOADED",
           downloadStatus: "DOWNLOADED",
@@ -171,37 +198,34 @@ export default function YouTubeShareModal({
           isFavorite: false,
           playCount: 0,
           addedAt: Date.now(),
-          fileName: `${trackId}.m4a`,
+          fileName: `${id}.${ext}`,
         };
-        await saveTrack(localTrack);
+        await saveTrack(track);
 
-        if (playlistMode === "NEW" && newPlaylistTitle.trim()) {
-          const pl: MusicPlaylist = {
+        if (dest === "NEW" && newPlTitle.trim()) {
+          await savePlaylist({
             id: `pl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            title: newPlaylistTitle.trim(),
-            description: `Created from YouTube: ${localTrack.title}`,
-            trackIds: [trackId],
+            title: newPlTitle.trim(),
+            trackIds: [id],
             createdAt: Date.now(),
             updatedAt: Date.now(),
-          };
-          await savePlaylist(pl);
-        } else if (playlistMode === "EXISTING" && selectedPlaylistId) {
-          await addTrackToPlaylist(selectedPlaylistId, trackId);
+          });
+        } else if (dest === "EXISTING" && selectedPl) {
+          await addTrackToPlaylist(selectedPl, id);
         }
 
-        // Optional cloud backup in the background (never blocks or fails the import)
-        uploadTrackToCloud(localTrack, result.blob).catch(() => {});
-
+        uploadTrackToCloud(track, result.blob).catch(() => {});
         window.dispatchEvent(new Event("lifeatlas_tracks_updated"));
-        setExtractedTrack(localTrack);
-        setExtractionStep("Complete!");
+        setProgress(100);
+        setDone(track);
         triggerHaptic("success");
-        if (onSuccess) onSuccess(localTrack, null);
+        onSuccess?.(track, null);
         return;
       }
 
-      setExtractionStep("Extracting audio stream & uploading to cloud...");
-
+      // Browser fallback (desktop testing): server-side extraction
+      setStep("Extracting audio stream…");
+      setProgress(25);
       const res = await fetch("/api/music/youtube", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -209,423 +233,270 @@ export default function YouTubeShareModal({
           url,
           customTitle: title,
           customArtist: artist,
-          playlistId: playlistMode === "EXISTING" ? selectedPlaylistId : undefined,
-          newPlaylistTitle: playlistMode === "NEW" ? newPlaylistTitle : undefined,
+          playlistId: dest === "EXISTING" ? selectedPl : undefined,
+          newPlaylistTitle: dest === "NEW" ? newPlTitle : undefined,
         }),
       });
-
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || `Server responded with ${res.status}`);
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Server responded with ${res.status}`);
       }
-
       const data = await res.json();
-      if (!data.success || !data.track) {
-        throw new Error(data.error || "Failed extracting audio");
+      if (!data.success || !data.track) throw new Error(data.error || "Extraction failed");
+
+      setProgress(85);
+      let blob: Blob | undefined;
+      if (typeof data.audioBase64 === "string") {
+        const bin = atob(data.audioBase64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        blob = new Blob([bytes], { type: data.mimeType || "audio/mp4" });
       }
+      let duration = Number(data.duration || data.track.duration || 0);
+      if (blob && !duration) duration = await extractAudioDuration(blob).catch(() => 0);
 
-      setExtractionStep("Saving audio file to local device storage...");
-
-      let audioBlob: Blob | undefined;
-      if (data.audioBase64 && typeof data.audioBase64 === "string") {
-        const binaryStr = atob(data.audioBase64);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-          bytes[i] = binaryStr.charCodeAt(i);
-        }
-        audioBlob = new Blob([bytes], {
-          type: data.mimeType || data.track.format || "audio/mp4",
-        });
-      }
-
-      let trackDuration = Number(data.duration || data.track.duration || 0);
-      if (audioBlob && (!trackDuration || trackDuration === 0)) {
-        const measured = await extractAudioDuration(audioBlob).catch(() => 0);
-        if (measured > 0) trackDuration = measured;
-      }
-
-      const serverTrack: MusicTrack = {
+      const track: MusicTrack = {
         ...data.track,
-        duration: trackDuration,
-        size: audioBlob ? audioBlob.size : Number(data.size || data.track.size || 0),
+        duration,
+        size: blob ? blob.size : Number(data.size || 0),
         format: data.mimeType || data.track.format || "audio/mp4",
-        audioBlob,
+        audioBlob: blob,
         source: "DOWNLOADED",
-        downloadStatus: audioBlob ? "DOWNLOADED" : "DOWNLOADING",
-        downloadProgress: audioBlob ? 100 : 40,
+        downloadStatus: blob ? "DOWNLOADED" : "DOWNLOADING",
         addedAt: Date.now(),
       };
-
-      // Dual persistence: save locally to IndexedDB with full audioBlob
-      await saveTrack(serverTrack);
-
-      // If audioBase64 wasn't returned, download from stream endpoint and verify
-      if (!serverTrack.audioBlob) {
-        await downloadTrackToLocalStorage(serverTrack);
-        if (serverTrack.audioBlob && (!serverTrack.duration || serverTrack.duration === 0)) {
-          const measured = await extractAudioDuration(serverTrack.audioBlob).catch(() => 0);
-          if (measured > 0) {
-            serverTrack.duration = measured;
-            await saveTrack(serverTrack);
-          }
-        }
-      }
-
-      if (!serverTrack.audioBlob || serverTrack.audioBlob.size < 1000) {
-        throw new Error("Downloaded audio stream was empty. Please try another YouTube link.");
-      }
-
-      // Handle local playlist association
-      if (data.playlist) {
-        await savePlaylist(data.playlist, false);
-      } else if (playlistMode === "EXISTING" && selectedPlaylistId) {
-        await addTrackToPlaylist(selectedPlaylistId, serverTrack.id);
-      }
+      await saveTrack(track);
+      if (!track.audioBlob) await downloadTrackToLocalStorage(track);
+      if (!track.audioBlob || track.audioBlob.size < 1000) throw new Error("Downloaded audio was empty.");
+      if (data.playlist) await savePlaylist(data.playlist, false);
+      else if (dest === "EXISTING" && selectedPl) await addTrackToPlaylist(selectedPl, track.id);
 
       window.dispatchEvent(new Event("lifeatlas_tracks_updated"));
-      setExtractedTrack(serverTrack);
-      setExtractionStep("Complete!");
+      setProgress(100);
+      setDone(track);
       triggerHaptic("success");
-
-      if (onSuccess) {
-        onSuccess(serverTrack, data.playlist);
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Audio extraction failed";
-      setErrorMessage(msg);
+      onSuccess?.(track, data.playlist);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Audio extraction failed");
       triggerHaptic("error");
     } finally {
-      setIsExtracting(false);
+      setWorking(false);
     }
-  };
-
-  const handlePlayNow = () => {
-    triggerHaptic("tap");
-    if (extractedTrack) {
-      playTrack(extractedTrack, [extractedTrack], {
-        type: "LIBRARY",
-        title: "YouTube Extracted",
-      });
-      onClose();
-    }
-  };
-
-  const handleReset = () => {
-    setUrl("");
-    setVideoId(null);
-    setTitle("");
-    setArtist("");
-    setThumbnailUrl(null);
-    setExtractedTrack(null);
-    setErrorMessage(null);
-    setNewPlaylistTitle("");
-    setPlaylistMode("NONE");
   };
 
   if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-950/65 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 select-none animate-fade-in overflow-x-hidden"
+      className="sonic-dark fixed inset-0 z-[55] bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center animate-fade-in"
+      onClick={close}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="yt-modal-title"
-      onClick={() => {
-        handleReset();
-        onClose();
-      }}
+      aria-label="Import from YouTube"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-t-[32px] sm:rounded-3xl bg-white border-t sm:border border-slate-200 shadow-2xl p-5 sm:p-7 space-y-4 relative overflow-x-hidden max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom duration-300"
+        className="w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] bg-[#12121b]/98 backdrop-blur-2xl text-white border border-white/15 shadow-2xl pt-3 pb-[max(env(safe-area-inset-bottom),1.25rem)] px-5 max-h-[92vh] overflow-y-auto animate-sheet-up"
       >
-        {/* Native Mobile Bottom Sheet Handle */}
-        <div className="w-12 h-1.5 rounded-full bg-slate-300 mx-auto -mt-1 mb-2 sm:hidden shrink-0" aria-hidden="true" />
+        <div className="w-10 h-1 rounded-full bg-white/25 mx-auto mb-4 sm:hidden" />
 
-        {/* Ambient Top Radiant Wash */}
-        <div
-          className="absolute -top-20 -right-20 w-56 h-56 bg-red-500/10 rounded-full blur-3xl pointer-events-none"
-          aria-hidden="true"
-        />
-
-        {/* Modal Header */}
-        <div className="flex items-start justify-between gap-3 relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shadow-xs shrink-0">
-              <YoutubeIcon className="w-6 h-6 fill-current" />
-            </div>
-            <div>
-              <h3 id="yt-modal-title" className="font-display text-lg sm:text-2xl text-slate-900 font-normal">
-                Import from YouTube
-              </h3>
-              <p className="text-[11px] sm:text-xs text-slate-500">
-                Extract high-fidelity audio into your private vault.
-              </p>
-            </div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-[10px] tracking-[0.22em] uppercase text-fuchsia-300/80 font-semibold">
+              YouTube Extractor
+            </p>
+            <h3 className="font-display text-2xl text-white mt-0.5">Save audio offline</h3>
           </div>
-
           <button
-            onClick={() => {
-              triggerHaptic("tap");
-              handleReset();
-              onClose();
-            }}
-            className="w-8 h-8 rounded-full glass-card-subtle hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-800 transition-colors cursor-pointer shrink-0"
-            aria-label="Close modal"
+            onClick={close}
+            disabled={working}
+            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center disabled:opacity-40 cursor-pointer"
+            aria-label="Close"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Success View */}
-        {extractedTrack ? (
-          <div className="space-y-4 py-2 animate-fade-in relative z-10 text-center">
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto shadow-sm">
-              <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8" />
-            </div>
-
-            <div className="space-y-1">
-              <h4 className="font-display text-lg sm:text-xl text-slate-900 font-normal">
-                Audio Extracted Successfully!
-              </h4>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto px-2">
-                <span className="font-semibold text-slate-800">{extractedTrack.title}</span> by{" "}
-                <span className="font-semibold text-slate-800">{extractedTrack.artist}</span> is now saved in local offline storage and synced to cloud.
+        {done ? (
+          <div className="text-center py-4 space-y-5">
+            <Artwork
+              track={done}
+              className="w-40 h-40 rounded-[28px] mx-auto shadow-2xl"
+              iconClass="w-10 h-10"
+            />
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-emerald-400 text-sm font-semibold mb-1.5">
+                <CheckCircle2 className="w-4 h-4" /> Saved to your vault
+              </div>
+              <p className="font-display text-xl text-white truncate">{done.title}</p>
+              <p className="text-sm text-white/55 truncate">{done.artist}</p>
+              <p className="text-xs font-mono text-white/40 mt-1.5">
+                {formatDuration(done.duration || 0)} · {((done.size || 0) / (1024 * 1024)).toFixed(1)} MB
               </p>
-              <div className="inline-flex items-center gap-2 pt-1 text-[11px] font-mono text-emerald-700 font-semibold">
-                <span>Duration: {formatDuration(extractedTrack.duration || 0)}</span>
-                <span>•</span>
-                <span>Size: {((extractedTrack.size || 0) / (1024 * 1024)).toFixed(2)} MB</span>
-              </div>
             </div>
-
-            {/* Artwork Card */}
-            {thumbnailUrl && (
-              <div className="relative w-40 sm:w-48 aspect-video rounded-2xl overflow-hidden mx-auto border border-slate-200 shadow-md">
-                <Image
-                  src={thumbnailUrl}
-                  alt={extractedTrack.title}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
-              </div>
-            )}
-
-            <div className="flex flex-col-reverse sm:flex-row items-center justify-center gap-2.5 pt-2 w-full">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => {
-                  triggerHaptic("tap");
-                  handleReset();
+                  reset();
                   onClose();
                 }}
-                className="w-full sm:w-auto px-5 py-3 rounded-2xl glass-card-subtle hover:bg-slate-100 text-xs font-sans text-slate-700 hover:text-slate-950 border border-slate-200 transition-colors cursor-pointer active:scale-95 text-center"
+                className="h-14 rounded-2xl bg-white/10 font-semibold cursor-pointer"
               >
-                Close & View Vault
+                Done
               </button>
-
               <button
-                onClick={handlePlayNow}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-white font-sans text-xs font-bold uppercase tracking-wider transition-all neon-glow-amber active:scale-95 cursor-pointer shadow-lg"
+                onClick={() => {
+                  playTrack(done, [done], { type: "LIBRARY", title: "YouTube" });
+                  reset();
+                  onClose();
+                }}
+                className="h-14 rounded-2xl bg-white text-[#05050a] font-bold flex items-center justify-center gap-2 cursor-pointer"
               >
-                <Play className="w-4 h-4 fill-current stroke-[2.5]" />
-                <span>Play Now</span>
+                <Play className="w-5 h-5 fill-current" /> Play now
               </button>
             </div>
           </div>
         ) : (
-          /* Input & Extraction Form */
-          <form onSubmit={handleExtractAndSave} className="space-y-4 relative z-10 w-full overflow-hidden">
-            {errorMessage && (
-              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-sans text-rose-800 flex items-center gap-2.5 shadow-xs">
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span>{errorMessage}</span>
+          <form onSubmit={extract} className="space-y-4">
+            {error && (
+              <div className="flex gap-2.5 p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-sm text-rose-200">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
-            {/* YouTube Link Input - Without autoFocus to eliminate mobile horizontal pan */}
-            <div className="space-y-1.5 w-full">
-              <label htmlFor="yt-url-input" className="text-xs font-semibold text-slate-700 block">
-                YouTube Video or Shorts Link:
-              </label>
-              <div className="relative w-full">
-                <input
-                  id="yt-url-input"
-                  type="text"
-                  placeholder="Paste YouTube link here..."
-                  value={url}
-                  onChange={(e) => handleUrlChange(e.target.value)}
-                  disabled={isExtracting}
-                  className="w-full px-3.5 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20 transition-all font-mono"
-                />
-                {isLoadingPreview && (
-                  <Loader2 className="w-4 h-4 text-red-500 absolute right-3.5 top-1/2 -translate-y-1/2 animate-spin" />
-                )}
-              </div>
-            </div>
-
-            {/* Video Preview Stage (if recognized) */}
-            {videoId && (
-              <div className="p-3 rounded-2xl bg-slate-50/90 border border-slate-200 space-y-2.5 w-full overflow-hidden animate-fade-in">
-                <div className="flex items-center gap-3">
-                  {thumbnailUrl && (
-                    <div className="relative w-20 h-14 rounded-xl overflow-hidden bg-slate-200 shrink-0 border border-slate-300 shadow-xs">
-                      <Image
-                        src={thumbnailUrl}
-                        alt="Preview"
-                        fill
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Track Title"
-                      disabled={isExtracting}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-900 focus:outline-none focus:border-amber-400 truncate"
-                    />
-                    <input
-                      type="text"
-                      value={artist}
-                      onChange={(e) => setArtist(e.target.value)}
-                      placeholder="Artist Name"
-                      disabled={isExtracting}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] text-slate-600 focus:outline-none focus:border-amber-400 truncate"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Playlist Destination Selector */}
-            <div className="space-y-2 pt-1 border-t border-slate-200">
-              <label className="text-xs font-semibold text-slate-800 flex items-center justify-between">
-                <span>In which playlist do you want to add this song?</span>
-                <span className="text-[10px] font-normal text-slate-400">Optional</span>
-              </label>
-
-              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("tap");
-                    setPlaylistMode("NONE");
-                  }}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer font-sans text-[11px] sm:text-xs font-medium ${
-                    playlistMode === "NONE"
-                      ? "bg-amber-500/15 border-amber-400 text-amber-900 font-bold shadow-xs"
-                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  Library Only
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("tap");
-                    setPlaylistMode("EXISTING");
-                  }}
-                  disabled={playlists.length === 0}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer font-sans text-[11px] sm:text-xs font-medium disabled:opacity-40 ${
-                    playlistMode === "EXISTING"
-                      ? "bg-amber-500/15 border-amber-400 text-amber-900 font-bold shadow-xs"
-                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  Existing ({playlists.length})
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    triggerHaptic("tap");
-                    setPlaylistMode("NEW");
-                  }}
-                  className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer font-sans text-[11px] sm:text-xs font-medium ${
-                    playlistMode === "NEW"
-                      ? "bg-amber-500/15 border-amber-400 text-amber-900 font-bold shadow-xs"
-                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                  }`}
-                >
-                  + New Playlist
-                </button>
-              </div>
-
-              {/* Existing Playlist Dropdown */}
-              {playlistMode === "EXISTING" && (
-                <div className="pt-1 animate-fade-in">
-                  <select
-                    value={selectedPlaylistId}
-                    onChange={(e) => setSelectedPlaylistId(e.target.value)}
-                    disabled={isExtracting}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-amber-400"
-                  >
-                    {playlists.map((pl) => (
-                      <option key={pl.id} value={pl.id}>
-                        {pl.title} ({pl.trackIds.length} tracks)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* New Playlist Title Input */}
-              {playlistMode === "NEW" && (
-                <div className="pt-1 animate-fade-in">
-                  <input
-                    type="text"
-                    placeholder="Enter playlist name..."
-                    value={newPlaylistTitle}
-                    onChange={(e) => setNewPlaylistTitle(e.target.value)}
-                    disabled={isExtracting}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-amber-400 placeholder:text-slate-400"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Live Progress Info */}
-            {isExtracting && (
-              <div className="p-3 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs font-mono text-amber-900 space-y-1.5 animate-fade-in">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                  <span className="font-semibold">{extractionStep}</span>
-                </div>
-                <div className="w-full h-1 bg-amber-200 rounded-full overflow-hidden">
-                  <div className="h-full bg-amber-500 animate-pulse w-3/4 rounded-full" />
-                </div>
-              </div>
-            )}
-
-            {/* One-Handed Action Buttons Stack */}
-            <div className="pt-2 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2.5 w-full">
+            <div className="relative">
+              <input
+                value={url}
+                onChange={(e) => handleUrl(e.target.value)}
+                disabled={working}
+                placeholder="Paste YouTube video or Shorts link"
+                inputMode="url"
+                className="w-full h-14 pl-5 pr-28 rounded-2xl bg-white/[0.07] border border-white/10 text-[15px] text-white placeholder:text-white/30 focus:outline-none focus:border-fuchsia-400/60"
+              />
               <button
                 type="button"
-                onClick={() => {
-                  triggerHaptic("tap");
-                  handleReset();
-                  onClose();
-                }}
-                disabled={isExtracting}
-                className="w-full sm:w-auto px-5 py-3 rounded-2xl border border-slate-200 text-xs font-semibold font-sans text-slate-600 hover:bg-slate-50 transition-colors text-center cursor-pointer active:scale-95 disabled:opacity-50"
+                onClick={paste}
+                disabled={working}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-3.5 rounded-xl bg-white/12 text-xs font-bold text-white flex items-center gap-1.5 active:scale-95 cursor-pointer"
               >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                disabled={!videoId || isExtracting}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 hover:from-red-500 hover:to-amber-500 active:scale-95 text-white font-sans text-xs font-bold tracking-wide transition-all shadow-md disabled:opacity-40 cursor-pointer"
-              >
-                <DownloadCloud className="w-4 h-4 shrink-0" />
-                <span>{isExtracting ? "Extracting..." : "Extract Audio & Add to Vault"}</span>
+                {loadingPreview ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ClipboardPaste className="w-4 h-4" />
+                )}
+                Paste
               </button>
             </div>
+
+            {videoId && (
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.05] border border-white/10">
+                <div className="w-20 h-16 rounded-xl overflow-hidden bg-white/10 shrink-0">
+                  {thumb && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={thumb} alt="" className="w-full h-full object-cover" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    disabled={working}
+                    placeholder="Song title"
+                    className="w-full h-9 px-3 rounded-lg bg-black/35 border border-white/10 text-sm font-semibold text-white focus:outline-none focus:border-fuchsia-400/60"
+                  />
+                  <input
+                    value={artist}
+                    onChange={(e) => setArtist(e.target.value)}
+                    disabled={working}
+                    placeholder="Artist"
+                    className="w-full h-9 px-3 rounded-lg bg-black/35 border border-white/10 text-xs text-white/75 focus:outline-none focus:border-fuchsia-400/60"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Optional playlist */}
+            <div>
+              <p className="text-xs font-semibold text-white/45 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <ListMusic className="w-3.5 h-3.5" /> Add to playlist{" "}
+                <span className="normal-case tracking-normal font-normal">(optional)</span>
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {(
+                  [
+                    ["NONE", "None"],
+                    ["EXISTING", "Existing"],
+                    ["NEW", "New"],
+                  ] as [Dest, string][]
+                ).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    disabled={working || (key === "EXISTING" && playlists.length === 0)}
+                    onClick={() => setDest(key)}
+                    className={`h-11 rounded-xl text-sm font-semibold border transition-colors disabled:opacity-30 cursor-pointer ${
+                      dest === key
+                        ? "bg-fuchsia-500 border-fuchsia-400 text-white"
+                        : "bg-white/[0.06] border-white/10 text-white/60"
+                    }`}
+                  >
+                    {key === "NEW" && <Plus className="w-3.5 h-3.5 inline -mt-0.5 mr-0.5" />}
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {dest === "EXISTING" && (
+                <select
+                  value={selectedPl}
+                  onChange={(e) => setSelectedPl(e.target.value)}
+                  disabled={working}
+                  className="mt-2 w-full h-12 px-4 rounded-xl bg-[#1d1d28] border border-white/10 text-sm text-white"
+                >
+                  {playlists.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title} ({p.trackIds.length})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {dest === "NEW" && (
+                <input
+                  value={newPlTitle}
+                  onChange={(e) => setNewPlTitle(e.target.value)}
+                  disabled={working}
+                  placeholder="Playlist name"
+                  className="mt-2 w-full h-12 px-4 rounded-xl bg-white/[0.07] border border-white/10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-fuchsia-400/60"
+                />
+              )}
+            </div>
+
+            {working && (
+              <div className="p-3.5 rounded-2xl bg-fuchsia-500/12 border border-fuchsia-400/25 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="flex items-center gap-2 font-medium text-white">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-fuchsia-300 shrink-0" />
+                    {step}
+                  </span>
+                  <span className="font-mono text-fuchsia-200">{progress}%</span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-fuchsia-400 via-purple-400 to-cyan-300 transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={!videoId || working}
+              className="w-full h-14 rounded-2xl bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500 text-white font-bold flex items-center justify-center gap-2 shadow-[0_12px_30px_rgba(168,85,247,0.35)] disabled:opacity-40 active:scale-[0.98] transition-transform cursor-pointer"
+            >
+              <DownloadCloud className="w-5 h-5" />
+              {working ? "Extracting audio…" : "Extract & save to vault"}
+            </button>
           </form>
         )}
       </div>

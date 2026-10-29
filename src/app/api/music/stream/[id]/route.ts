@@ -4,7 +4,7 @@ import { getMusicFiles } from '@/lib/music/cloudFiles';
 import { extractAudioFromYouTube } from '@/lib/music/youtubeExtractor';
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -19,31 +19,52 @@ export async function GET(
       })
       .catch(() => null);
 
-    // 1. Only redirect if track.audioUrl is an external absolute HTTP(S) URL
+    // 1. Only redirect if track.audioUrl is an external non-expiring HTTP(S) URL
     if (
       track?.audioUrl &&
-      (track.audioUrl.startsWith('http://') || track.audioUrl.startsWith('https://'))
+      (track.audioUrl.startsWith('http://') || track.audioUrl.startsWith('https://')) &&
+      !track.audioUrl.includes('X-Amz-Expires=')
     ) {
       return NextResponse.redirect(track.audioUrl, { status: 302 });
     }
 
-    // 2. Attempt download via Neon Object Storage (files-sdk)
-    try {
-      const fileExt = (track?.fileName || 'track.mp3').split('.').pop() || 'mp3';
-      const filename = track?.fileName || `${id}.${fileExt}`;
-      const fileData = await getMusicFiles().download(filename);
-      const arrayBuffer = await fileData.arrayBuffer();
+    // 2. Attempt download via Neon Object Storage trying exact storage keys
+    const sanitizedId = id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const extFromFileName = (track?.fileName || '').split('.').pop()?.toLowerCase();
+    const candidateKeys = Array.from(
+      new Set(
+        [
+          extFromFileName ? `${sanitizedId}.${extFromFileName}` : null,
+          track?.fileName || null,
+          `${sanitizedId}.mp3`,
+          `${sanitizedId}.m4a`,
+          `${sanitizedId}.webm`,
+          `${sanitizedId}.wav`,
+          `${sanitizedId}.ogg`,
+          `${sanitizedId}.aac`,
+          `${sanitizedId}.flac`,
+        ].filter((k): k is string => Boolean(k))
+      )
+    );
 
-      return new Response(arrayBuffer, {
-        status: 200,
-        headers: {
-          'Content-Type': track?.format || 'audio/mpeg',
-          'Content-Disposition': `inline; filename="${filename}"`,
-          'Cache-Control': 'public, max-age=31536000, immutable',
-        },
-      });
-    } catch {
-      // Fall through to on-demand YouTube stream extraction if applicable
+    for (const key of candidateKeys) {
+      try {
+        const fileData = await getMusicFiles().download(key);
+        const arrayBuffer = await fileData.arrayBuffer();
+        if (arrayBuffer.byteLength > 0) {
+          return new Response(arrayBuffer, {
+            status: 200,
+            headers: {
+              'Content-Type': track?.format || 'audio/mpeg',
+              'Content-Length': String(arrayBuffer.byteLength),
+              'Content-Disposition': `inline; filename="${key}"`,
+              'Cache-Control': 'public, max-age=31536000, immutable',
+            },
+          });
+        }
+      } catch {
+        // Try next candidate key
+      }
     }
 
     // 3. If this is a YouTube track (id pattern: trk_yt_<11-char-videoId>_<timestamp>),
@@ -53,7 +74,6 @@ export async function GET(
       const videoId = ytMatch[1];
       const extracted = await extractAudioFromYouTube(videoId);
 
-      // Update duration/size in DB if previously saved as 0
       if (track && (!track.duration || track.duration === 0 || !track.size)) {
         prisma.musicTrack
           .update({

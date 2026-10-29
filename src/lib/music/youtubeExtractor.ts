@@ -20,37 +20,29 @@ export interface ExtractedAudioResult {
 
 /**
  * Extracts the 11-character YouTube video ID from various URL formats
- * (standard watch URLs, short URLs, Shorts, embed URLs, and shared text strings)
+ * (standard watch URLs, short URLs, Shorts, Live, YouTube Music, embed URLs, and shared text strings)
  */
 export function extractYouTubeVideoId(input: string): string | null {
   if (!input) return null;
   const str = input.trim();
 
   // Pattern 1: youtu.be/<id>
-  const shortMatch = str.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  const shortMatch = str.match(/youtu\.be\/([a-zA-Z0-9_-]{11})(?![a-zA-Z0-9_-])/);
   if (shortMatch) return shortMatch[1];
 
-  // Pattern 2: youtube.com/watch?v=<id>
-  const watchMatch = str.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  // Pattern 2: youtube.com/watch?v=<id> (including music.youtube.com & m.youtube.com)
+  const watchMatch = str.match(/[?&]v=([a-zA-Z0-9_-]{11})(?![a-zA-Z0-9_-])/);
   if (watchMatch) return watchMatch[1];
 
-  // Pattern 3: youtube.com/shorts/<id>
-  const shortsMatch = str.match(/shorts\/([a-zA-Z0-9_-]{11})/);
-  if (shortsMatch) return shortsMatch[1];
+  // Pattern 3: youtube.com/shorts/<id>, /live/<id>, /embed/<id>, /v/<id>
+  const pathMatch = str.match(
+    /(?:shorts|live|embed|v)\/([a-zA-Z0-9_-]{11})(?![a-zA-Z0-9_-])/
+  );
+  if (pathMatch) return pathMatch[1];
 
-  // Pattern 4: youtube.com/embed/<id>
-  const embedMatch = str.match(/embed\/([a-zA-Z0-9_-]{11})/);
-  if (embedMatch) return embedMatch[1];
-
-  // Pattern 5: raw 11-character ID (exact match without slashes or url elements)
+  // Pattern 4: raw 11-character ID (exact match without slashes or url elements)
   if (/^[a-zA-Z0-9_-]{11}$/.test(str)) {
     return str;
-  }
-
-  // Pattern 6: general match only if string actually references YouTube
-  if (str.includes("youtube.com") || str.includes("youtu.be")) {
-    const generalMatch = str.match(/([a-zA-Z0-9_-]{11})/);
-    if (generalMatch) return generalMatch[1];
   }
 
   return null;
@@ -173,10 +165,7 @@ async function loadServerPackage<T>(pkgName: string): Promise<T> {
 }
 
 /**
- * High-reliability multi-engine audio stream resolver
- * Engine 1: @distube/ytdl-core (prefers itag 140 audio/mp4 AAC for universal mobile playback)
- * Engine 2: youtubei.js InnerTube local session downloader
- * Engine 3: Piped API instances fallback
+ * High-reliability multi-engine audio stream resolver (server-side fallback)
  */
 export async function extractAudioFromYouTube(
   videoId: string
@@ -192,6 +181,99 @@ export async function extractAudioFromYouTube(
     };
   }
 
+  // Engine 0: Direct InnerTube ANDROID / IOS with visitorData
+  try {
+    let visitorData: string | undefined;
+    try {
+      const vdRes = await fetch("https://www.youtube.com/sw.js_data", {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (vdRes.ok) {
+        const raw = await vdRes.text();
+        const m = raw.match(/"(Cgt[a-zA-Z0-9_%=-]{12,})"/);
+        if (m?.[1]) visitorData = decodeURIComponent(m[1]);
+      }
+    } catch {
+      // Optional
+    }
+
+    const ua = "com.google.android.youtube/20.10.38 (Linux; U; Android 14) gzip";
+    const pRes = await fetch(
+      "https://youtubei.googleapis.com/youtubei/v1/player?prettyPrint=false",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": ua,
+          "X-YouTube-Client-Name": "3",
+          "X-YouTube-Client-Version": "20.10.38",
+          "X-Goog-Api-Format-Version": "2",
+          ...(visitorData ? { "X-Goog-Visitor-Id": visitorData } : {}),
+        },
+        body: JSON.stringify({
+          videoId,
+          contentCheckOk: true,
+          racyCheckOk: true,
+          context: {
+            client: {
+              clientName: "ANDROID",
+              clientVersion: "20.10.38",
+              androidSdkVersion: 34,
+              osName: "Android",
+              osVersion: "14",
+              hl: "en",
+              gl: "US",
+              ...(visitorData ? { visitorData } : {}),
+            },
+          },
+          playbackContext: { contentPlaybackContext: { html5Preference: "HTML5_PREF_WANTS" } },
+        }),
+        signal: AbortSignal.timeout(10000),
+      }
+    );
+
+    if (pRes.ok) {
+      const player = await pRes.json();
+      if (player?.playabilityStatus?.status === "OK") {
+        const formats: Array<{ itag: number; url?: string; mimeType?: string; contentLength?: string; bitrate?: number }> =
+          (player?.streamingData?.adaptiveFormats || []).filter(
+            (f: { mimeType?: string; url?: string }) => f.mimeType?.startsWith("audio/") && f.url
+          );
+        const chosen =
+          formats.find((f) => f.itag === 140) ||
+          formats.find((f) => f.mimeType?.includes("audio/mp4")) ||
+          formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+
+        const total = Number(chosen?.contentLength || 0);
+        if (chosen?.url && total > 0) {
+          const chunks: Buffer[] = [];
+          const step = 1024 * 1024;
+          for (let start = 0; start < total; start += step) {
+            const end = Math.min(start + step - 1, total - 1);
+            const cRes = await fetch(`${chosen.url}&range=${start}-${end}`, {
+              headers: { "User-Agent": ua },
+              signal: AbortSignal.timeout(20000),
+            });
+            if (!cRes.ok) throw new Error(`HTTP ${cRes.status}`);
+            chunks.push(Buffer.from(await cRes.arrayBuffer()));
+          }
+          const buffer = Buffer.concat(chunks);
+          if (buffer.length > 10000) {
+            const duration = parseInt(String(player?.videoDetails?.lengthSeconds || "0"), 10) || 0;
+            return {
+              buffer,
+              format: (chosen.mimeType || "audio/mp4").split(";")[0].trim(),
+              size: buffer.length,
+              duration: duration > 0 ? duration : undefined,
+            };
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Engine 0 (Direct InnerTube) failed:", err instanceof Error ? err.message : err);
+  }
+
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
   // Engine 1: @distube/ytdl-core
@@ -203,7 +285,6 @@ export async function extractAudioFromYouTube(
     const info = await ytdl.getInfo(videoUrl);
     const duration = parseInt(String(info.videoDetails?.lengthSeconds || "0"), 10) || 0;
 
-    // Prefer audio/mp4 (itag 140 = 130kbps AAC) for universal Android/iOS compatibility
     const audioOnlyFormats = (info.formats || []).filter(
       (f) => f.hasAudio && !f.hasVideo
     );

@@ -6,6 +6,7 @@
 import { MusicTrack, MusicPlaylist } from './types';
 import { saveTrack, getTrack, getAllTracks } from './storage';
 import { extractAudioDuration } from './metadataParser';
+import { canExtractOnDevice, extractAudioOnDevice } from './clientYouTube';
 
 export interface CloudSyncResponse {
   success: boolean;
@@ -145,15 +146,41 @@ export async function downloadTrackToLocalStorage(
   track: MusicTrack,
   onProgress?: (progress: number) => void
 ): Promise<MusicTrack> {
-  const downloadUrl = track.audioUrl || `/api/music/stream/${track.id}`;
+  const streamEndpoint = `/api/music/stream/${encodeURIComponent(track.id)}`;
+  const primaryUrl =
+    track.audioUrl && !track.audioUrl.includes('X-Amz-Expires=')
+      ? track.audioUrl
+      : streamEndpoint;
 
   try {
     if (onProgress) onProgress(10);
-    const response = await fetch(downloadUrl);
-    if (!response.ok) throw new Error(`Download failed with HTTP ${response.status}`);
+    let blob: Blob | null = null;
 
-    if (onProgress) onProgress(60);
-    const blob = await response.blob();
+    let response = await fetch(primaryUrl).catch(() => null);
+    if ((!response || !response.ok) && primaryUrl !== streamEndpoint) {
+      response = await fetch(streamEndpoint).catch(() => null);
+    }
+
+    if (response && response.ok) {
+      if (onProgress) onProgress(60);
+      blob = await response.blob();
+    } else {
+      // On Android, if a YouTube cloud track has no stored binary yet (404/500),
+      // extract it directly on-device from YouTube!
+      const ytMatch = track.id.match(/^trk_yt_([a-zA-Z0-9_-]{11})(?:_|$)/);
+      if (ytMatch?.[1] && canExtractOnDevice()) {
+        const extracted = await extractAudioOnDevice(ytMatch[1], onProgress);
+        blob = extracted.blob;
+        track.format = extracted.mimeType;
+        if (!track.duration && extracted.duration) {
+          track.duration = extracted.duration;
+        }
+        uploadTrackToCloud(track, blob).catch(() => {});
+      } else {
+        throw new Error(`Download failed with HTTP ${response?.status || 'network error'}`);
+      }
+    }
+
     if (!blob || blob.size < 500) {
       throw new Error('Downloaded audio file is empty or invalid');
     }

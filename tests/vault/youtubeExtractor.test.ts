@@ -1,7 +1,7 @@
 /**
  * Life Atlas: YouTube Audio Extractor Automated Test Suite
- * Validates YouTube URL parsing, title cleaning, audio buffer generation,
- * dual-persistence metadata creation, and playlist linking.
+ * Validates YouTube URL parsing, title cleaning, on-device 404 stream failover,
+ * audio buffer generation, dual-persistence metadata creation, and playlist linking.
  */
 
 import "fake-indexeddb/auto";
@@ -12,6 +12,7 @@ import {
   parseYouTubeTitle,
   extractAudioFromYouTube,
 } from "@/lib/music/youtubeExtractor";
+import { extractAudioOnDevice, HttpAdapter } from "@/lib/music/clientYouTube";
 import {
   deleteMusicDB,
   saveTrack,
@@ -39,6 +40,12 @@ describe("YouTube Audio Extractor & Playlist Integration", () => {
         "dQw4w9WgXcQ"
       );
 
+      // Bare domain watch URL with ?si= share token (as shared from Android YouTube app)
+      assert.equal(
+        extractYouTubeVideoId("https://youtube.com/watch?v=x_MXZBmKJ4Y&si=UD8Qh8_6fbmw6"),
+        "x_MXZBmKJ4Y"
+      );
+
       // Short URL
       assert.equal(
         extractYouTubeVideoId("https://youtu.be/dQw4w9WgXcQ"),
@@ -51,9 +58,19 @@ describe("YouTube Audio Extractor & Playlist Integration", () => {
         "dQw4w9WgXcQ"
       );
 
-      // YouTube Shorts URL
+      // YouTube Music URL
+      assert.equal(
+        extractYouTubeVideoId("https://music.youtube.com/watch?v=RLzC55ai0eo&feature=shared"),
+        "RLzC55ai0eo"
+      );
+
+      // YouTube Shorts & Live URLs
       assert.equal(
         extractYouTubeVideoId("https://www.youtube.com/shorts/dQw4w9WgXcQ"),
+        "dQw4w9WgXcQ"
+      );
+      assert.equal(
+        extractYouTubeVideoId("https://www.youtube.com/live/dQw4w9WgXcQ?si=test"),
         "dQw4w9WgXcQ"
       );
 
@@ -71,7 +88,15 @@ describe("YouTube Audio Extractor & Playlist Integration", () => {
       // Raw video ID
       assert.equal(extractYouTubeVideoId("dQw4w9WgXcQ"), "dQw4w9WgXcQ");
 
-      // Invalid input returns null
+      // Non-video YouTube URLs & invalid input return null without false 11-char matches
+      assert.equal(
+        extractYouTubeVideoId("https://www.youtube.com/channel/UC1234567890123456"),
+        null
+      );
+      assert.equal(
+        extractYouTubeVideoId("https://www.youtube.com/@IndiaMarvelOfficial"),
+        null
+      );
       assert.equal(extractYouTubeVideoId("https://example.com/not-youtube"), null);
       assert.equal(extractYouTubeVideoId(""), null);
     });
@@ -99,7 +124,91 @@ describe("YouTube Audio Extractor & Playlist Integration", () => {
     });
   });
 
-  describe("3. Audio Extraction & Storage Persistence", () => {
+  describe("3. On-Device 404 / FileNotFoundException Failover", () => {
+    test("recovers from 404 / FileNotFoundException on primary stream and downloads fallback stream with visitorData", async () => {
+      const audioPayload = Buffer.alloc(16384, 0x61).toString("base64");
+      let sawVisitorIdHeader = false;
+
+      const mockHttp: HttpAdapter = {
+        get: (async (opts: { url: string }) => {
+          if (opts.url.includes("sw.js_data")) {
+            return {
+              status: 200,
+              data: ')]}\'\n[["CgtTestVisitorToken12345"]]',
+              headers: {},
+              url: opts.url,
+            };
+          }
+          if (opts.url.includes("dead-stream.googlevideo.com")) {
+            // Simulate Android HttpURLConnection throwing FileNotFoundException on empty 404 body
+            throw new Error("java.io.FileNotFoundException: https://dead-stream.googlevideo.com/videoplayback");
+          }
+          if (opts.url.includes("live-stream.googlevideo.com")) {
+            return {
+              status: 200,
+              data: audioPayload,
+              headers: { "Content-Length": "16384" },
+              url: opts.url,
+            };
+          }
+          return { status: 404, data: "", headers: {}, url: opts.url };
+        }) as HttpAdapter["get"],
+        post: (async (opts: { url: string; headers?: Record<string, string> }) => {
+          if (opts.headers?.["X-Goog-Visitor-Id"] === "CgtTestVisitorToken12345") {
+            sawVisitorIdHeader = true;
+          }
+          return {
+            status: 200,
+            headers: {},
+            url: opts.url,
+            data: {
+              playabilityStatus: { status: "OK" },
+              videoDetails: {
+                title: "Avengers: Doomsday - Main Theme (Official Audio)",
+                author: "IndiaMarvel",
+                lengthSeconds: "162",
+              },
+              streamingData: {
+                adaptiveFormats: [
+                  {
+                    itag: 140,
+                    mimeType: 'audio/mp4; codecs="mp4a.40.2"',
+                    contentLength: "16384",
+                    bitrate: 128000,
+                    url: "https://dead-stream.googlevideo.com/videoplayback?itag=140",
+                  },
+                  {
+                    itag: 251,
+                    mimeType: 'audio/webm; codecs="opus"',
+                    contentLength: "16384",
+                    bitrate: 160000,
+                    url: "https://live-stream.googlevideo.com/videoplayback?itag=251",
+                  },
+                ],
+              },
+            },
+          };
+        }) as HttpAdapter["post"],
+      };
+
+      const progressUpdates: number[] = [];
+      const result = await extractAudioOnDevice(
+        "x_MXZBmKJ4Y",
+        (p) => progressUpdates.push(p),
+        mockHttp
+      );
+
+      assert.equal(sawVisitorIdHeader, true);
+      assert.equal(result.mimeType, "audio/webm");
+      assert.equal(result.blob.size, 16384);
+      assert.equal(result.duration, 162);
+      assert.equal(result.title, "Main Theme");
+      assert.equal(result.author, "Avengers: Doomsday");
+      assert.ok(progressUpdates.length > 0);
+    });
+  });
+
+  describe("4. Audio Extraction & Storage Persistence", () => {
     test("extracts audio buffer and saves YouTube track into Music Vault", async () => {
       const videoId = "test_vid_01";
       const audioResult = await extractAudioFromYouTube(videoId);
@@ -118,7 +227,7 @@ describe("YouTube Audio Extractor & Playlist Integration", () => {
         format: audioResult.format,
         size: audioResult.size,
         artworkUrl: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-        audioUrl: `https://storage.neon.tech/music/trk_yt_${videoId}.mp3`,
+        audioUrl: `/api/music/stream/trk_yt_${videoId}`,
         source: "DOWNLOADED",
         downloadStatus: "DOWNLOADED",
         downloadProgress: 100,
@@ -137,7 +246,7 @@ describe("YouTube Audio Extractor & Playlist Integration", () => {
     });
   });
 
-  describe("4. Target Playlist Association Flow", () => {
+  describe("5. Target Playlist Association Flow", () => {
     test("prompts and adds extracted YouTube track into an existing playlist", async () => {
       // 1. Create target playlist
       const playlist: MusicPlaylist = {
@@ -211,4 +320,3 @@ describe("YouTube Audio Extractor & Playlist Integration", () => {
     });
   });
 });
-
