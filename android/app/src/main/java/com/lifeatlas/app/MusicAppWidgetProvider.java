@@ -104,17 +104,6 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
     ) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_music_vault);
 
-        // Titles and artist
-        String displayTitle = (title != null && !title.isEmpty()) ? title : "Music Sanctuary";
-        String displayArtist = (artist != null && !artist.isEmpty()) ? artist : "Life Atlas Audio Vault";
-
-        views.setTextViewText(R.id.widget_title, displayTitle);
-        views.setTextViewText(R.id.widget_artist, displayArtist);
-        views.setTextViewText(
-            R.id.widget_badge,
-            isPlaying ? "● PLAYING · HI-FI" : "✦ MUSIC VAULT · READY"
-        );
-
         // Play/Pause icon
         if (isPlaying) {
             views.setImageViewResource(R.id.widget_btn_play, R.drawable.ic_media_pause);
@@ -122,10 +111,10 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
             views.setImageViewResource(R.id.widget_btn_play, R.drawable.ic_media_play);
         }
 
-        // Artwork
+        // Artwork (high resolution rounded square)
         if (artwork != null) {
             try {
-                Bitmap rounded = getRoundedCornerBitmap(artwork, 24);
+                Bitmap rounded = getRoundedCornerBitmap(artwork, 32);
                 views.setImageViewBitmap(R.id.widget_artwork, rounded);
             } catch (Exception e) {
                 views.setImageViewResource(R.id.widget_artwork, R.drawable.ic_stat_music);
@@ -134,7 +123,7 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
             views.setImageViewResource(R.id.widget_artwork, R.drawable.ic_stat_music);
         }
 
-        // Tap widget or Vault button -> open Music Vault directly
+        // Tap widget or artwork -> open Music Vault directly
         Intent openAppIntent = new Intent(context, MainActivity.class);
         openAppIntent.setAction("com.lifeatlas.app.ACTION_OPEN_MUSIC_VAULT");
         openAppIntent.putExtra("target_route", "/secret/music");
@@ -146,8 +135,7 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
         views.setOnClickPendingIntent(R.id.widget_container, openAppPending);
-        views.setOnClickPendingIntent(R.id.widget_btn_vault, openAppPending);
-        views.setOnClickPendingIntent(R.id.widget_turntable_frame, openAppPending);
+        views.setOnClickPendingIntent(R.id.widget_artwork, openAppPending);
 
         // Play/Pause button
         Intent playPauseIntent = new Intent(context, MusicAppWidgetProvider.class);
