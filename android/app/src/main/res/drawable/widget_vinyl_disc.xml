@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Outer Vinyl Rim -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#0D0E12" />
+            <stroke
+                android:width="1dp"
+                android:color="#2A2F3D" />
+        </shape>
+    </item>
+    <!-- Vinyl Groove Ring 1 -->
+    <item
+        android:top="5dp"
+        android:bottom="5dp"
+        android:left="5dp"
+        android:right="5dp">
+        <shape android:shape="oval">
+            <solid android:color="#14171E" />
+            <stroke
+                android:width="1dp"
+                android:color="#232733" />
+        </shape>
+    </item>
+    <!-- Vinyl Groove Ring 2 -->
+    <item
+        android:top="11dp"
+        android:bottom="11dp"
+        android:left="11dp"
+        android:right="11dp">
+        <shape android:shape="oval">
+            <solid android:color="#0B0D11" />
+            <stroke
+                android:width="1dp"
+                android:color="#1D212B" />
+        </shape>
+    </item>
+    <!-- Center Label Ring (Champagne Gold) -->
+    <item
+        android:top="18dp"
+        android:bottom="18dp"
+        android:left="18dp"
+        android:right="18dp">
+        <shape android:shape="oval">
+            <gradient
+                android:angle="45"
+                android:startColor="#E5B869"
+                android:endColor="#B38938"
+                android:type="linear" />
+            <stroke
+                android:width="1dp"
+                android:color="#FFE8B0" />
+        </shape>
+    </item>
+    <!-- Center Spindle Hole -->
+    <item
+        android:top="27dp"
+        android:bottom="27dp"
+        android:left="27dp"
+        android:right="27dp">
+        <shape android:shape="oval">
+            <solid android:color="#0A0B0E" />
+        </shape>
+    </item>
+</layer-list>

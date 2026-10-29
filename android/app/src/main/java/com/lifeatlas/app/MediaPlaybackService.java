@@ -697,9 +697,15 @@ public class MediaPlaybackService extends Service {
 
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        // User explicitly swiped the app away from Recent Apps -> stop playback cleanly
-        MediaPlaybackPlugin.dispatchMediaAction("stop", -1L);
-        stopSessionAndService();
+        if (!isPlaying) {
+            // Playback is paused or idle: clean up service when app is swiped away
+            MediaPlaybackPlugin.dispatchMediaAction("stop", -1L);
+            stopSessionAndService();
+        } else {
+            // Song is actively playing: keep foreground service, lock screen notification,
+            // and background audio alive even when swiped away from Recent Apps
+            publishSessionAndNotification();
+        }
         super.onTaskRemoved(rootIntent);
     }
 

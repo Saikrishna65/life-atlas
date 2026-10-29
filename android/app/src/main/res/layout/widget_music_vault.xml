@@ -4,107 +4,162 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg"
-    android:padding="12dp">
+    android:padding="13dp">
 
-    <!-- Artwork thumbnail -->
-    <ImageView
-        android:id="@+id/widget_artwork"
-        android:layout_width="72dp"
-        android:layout_height="72dp"
-        android:layout_alignParentStart="true"
-        android:layout_centerVertical="true"
-        android:background="@drawable/widget_artwork_bg"
-        android:scaleType="centerCrop"
-        android:src="@drawable/ic_stat_music"
-        android:contentDescription="@string/app_name" />
-
-    <!-- Info & Controls Container -->
-    <LinearLayout
-        android:id="@+id/widget_info_layout"
+    <!-- Top Utility Header Row -->
+    <RelativeLayout
+        android:id="@+id/widget_top_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_toEndOf="@id/widget_artwork"
-        android:layout_centerVertical="true"
-        android:layout_marginStart="12dp"
-        android:orientation="vertical">
+        android:layout_alignParentTop="true">
 
-        <!-- Badge & Status -->
+        <!-- Eyebrow Badge -->
         <TextView
             android:id="@+id/widget_badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="MUSIC VAULT · HI-FI"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            android:text="✦ ATLAS SOUND SANCTUARY"
             android:textColor="#E5B869"
             android:textSize="9sp"
             android:textStyle="bold"
             android:letterSpacing="0.08"
             android:singleLine="true" />
 
-        <!-- Track Title -->
+        <!-- 1-Tap Direct Vault Shortcut Pill -->
         <TextView
-            android:id="@+id/widget_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:text="Music Sanctuary"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:singleLine="true"
-            android:ellipsize="end" />
-
-        <!-- Artist / Subtitle -->
-        <TextView
-            android:id="@+id/widget_artist"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Life Atlas Audio Vault"
-            android:textColor="#94A3B8"
-            android:textSize="11sp"
-            android:singleLine="true"
-            android:ellipsize="end" />
-
-        <!-- Playback Controls -->
-        <LinearLayout
+            android:id="@+id/widget_btn_vault"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal">
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/widget_vault_pill_bg"
+            android:paddingStart="10dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="3dp"
+            android:text="VAULT ↗"
+            android:textColor="#E2E8F0"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05" />
+    </RelativeLayout>
 
-            <ImageButton
-                android:id="@+id/widget_btn_prev"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="@drawable/widget_button_bg"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_media_prev"
-                android:tint="#FFFFFF"
-                android:contentDescription="Previous Track" />
+    <!-- Center Player Content -->
+    <RelativeLayout
+        android:id="@+id/widget_player_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/widget_top_row"
+        android:layout_centerVertical="true"
+        android:layout_marginTop="8dp">
 
-            <ImageButton
-                android:id="@+id/widget_btn_play"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginStart="10dp"
-                android:layout_marginEnd="10dp"
-                android:background="@drawable/widget_play_bg"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_media_play"
-                android:tint="#090B0F"
-                android:contentDescription="Play or Pause" />
+        <!-- Turntable Vinyl & Artwork Stack -->
+        <FrameLayout
+            android:id="@+id/widget_turntable_frame"
+            android:layout_width="82dp"
+            android:layout_height="76dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true">
 
-            <ImageButton
-                android:id="@+id/widget_btn_next"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="@drawable/widget_button_bg"
-                android:scaleType="centerInside"
-                android:src="@drawable/ic_media_next"
-                android:tint="#FFFFFF"
-                android:contentDescription="Next Track" />
+            <!-- Vinyl Disc peeking out behind jacket -->
+            <ImageView
+                android:id="@+id/widget_vinyl"
+                android:layout_width="66dp"
+                android:layout_height="66dp"
+                android:layout_gravity="end|center_vertical"
+                android:scaleType="fitCenter"
+                android:src="@drawable/widget_vinyl_disc"
+                android:contentDescription="Vinyl Disc" />
+
+            <!-- Album Cover Artwork Jacket -->
+            <ImageView
+                android:id="@+id/widget_artwork"
+                android:layout_width="66dp"
+                android:layout_height="66dp"
+                android:layout_gravity="start|center_vertical"
+                android:background="@drawable/widget_artwork_bg"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_stat_music"
+                android:contentDescription="@string/app_name" />
+        </FrameLayout>
+
+        <!-- Song Metadata & Controls -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@id/widget_turntable_frame"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <!-- Track Title -->
+            <TextView
+                android:id="@+id/widget_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Music Sanctuary"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <!-- Artist / Status -->
+            <TextView
+                android:id="@+id/widget_artist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:text="Life Atlas Audio Vault"
+                android:textColor="#94A3B8"
+                android:textSize="11sp"
+                android:singleLine="true"
+                android:ellipsize="end" />
+
+            <!-- Audiophile Playback Controls -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageButton
+                    android:id="@+id/widget_btn_prev"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/widget_button_bg"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_media_prev"
+                    android:tint="#FFFFFF"
+                    android:contentDescription="Previous Track" />
+
+                <ImageButton
+                    android:id="@+id/widget_btn_play"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:layout_marginStart="10dp"
+                    android:layout_marginEnd="10dp"
+                    android:background="@drawable/widget_play_bg"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_media_play"
+                    android:tint="#090B0F"
+                    android:contentDescription="Play or Pause" />
+
+                <ImageButton
+                    android:id="@+id/widget_btn_next"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@drawable/widget_button_bg"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_media_next"
+                    android:tint="#FFFFFF"
+                    android:contentDescription="Next Track" />
+            </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
+
+    </RelativeLayout>
 
 </RelativeLayout>
-

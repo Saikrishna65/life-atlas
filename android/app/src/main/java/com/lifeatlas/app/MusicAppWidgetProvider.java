@@ -112,7 +112,7 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_artist, displayArtist);
         views.setTextViewText(
             R.id.widget_badge,
-            isPlaying ? "NOW PLAYING · HI-FI" : "MUSIC VAULT · READY"
+            isPlaying ? "● PLAYING · HI-FI" : "✦ MUSIC VAULT · READY"
         );
 
         // Play/Pause icon
@@ -134,8 +134,10 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
             views.setImageViewResource(R.id.widget_artwork, R.drawable.ic_stat_music);
         }
 
-        // Tap entire widget -> open app directly
+        // Tap widget or Vault button -> open Music Vault directly
         Intent openAppIntent = new Intent(context, MainActivity.class);
+        openAppIntent.setAction("com.lifeatlas.app.ACTION_OPEN_MUSIC_VAULT");
+        openAppIntent.putExtra("target_route", "/secret/music");
         openAppIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent openAppPending = PendingIntent.getActivity(
             context,
@@ -144,6 +146,8 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
         views.setOnClickPendingIntent(R.id.widget_container, openAppPending);
+        views.setOnClickPendingIntent(R.id.widget_btn_vault, openAppPending);
+        views.setOnClickPendingIntent(R.id.widget_turntable_frame, openAppPending);
 
         // Play/Pause button
         Intent playPauseIntent = new Intent(context, MusicAppWidgetProvider.class);

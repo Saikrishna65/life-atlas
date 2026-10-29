@@ -17,6 +17,7 @@ public class MainActivity extends BridgeActivity {
     private final Handler timeoutHandler = new Handler(Looper.getMainLooper());
     private boolean pageLoaded = false;
     private String pendingShareUrl = null;
+    private String pendingTargetRoute = null;
 
     private final Runnable slowNetworkWatchdog = new Runnable() {
         @Override
@@ -97,6 +98,7 @@ public class MainActivity extends BridgeActivity {
                     pageLoaded = true;
                     timeoutHandler.removeCallbacks(slowNetworkWatchdog);
                     dispatchPendingShareUrl();
+                    dispatchPendingRoute();
                 }
 
                 @Override
@@ -118,6 +120,14 @@ public class MainActivity extends BridgeActivity {
         if (intent == null) return;
         String action = intent.getAction();
         String type = intent.getType();
+
+        // Check if intent was triggered by Music Vault Home Screen Widget
+        if ("com.lifeatlas.app.ACTION_OPEN_MUSIC_VAULT".equals(action)
+            || (intent.hasExtra("target_route") && "/secret/music".equals(intent.getStringExtra("target_route")))) {
+            pendingTargetRoute = "/secret/music";
+            dispatchPendingRoute();
+            return;
+        }
 
         if (Intent.ACTION_SEND.equals(action) && type != null && "text/plain".equals(type)) {
             String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
@@ -161,6 +171,23 @@ public class MainActivity extends BridgeActivity {
                 pendingShareUrl = null;
             } catch (Exception e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    private void dispatchPendingRoute() {
+        if (pendingTargetRoute != null && pageLoaded && getBridge() != null && getBridge().getWebView() != null) {
+            try {
+                final String route = pendingTargetRoute;
+                String script =
+                    "try {" +
+                    "  if (window.location.pathname !== '" + route + "') {" +
+                    "    window.location.href = '" + route + "';" +
+                    "  }" +
+                    "} catch (e) { console.error('Route dispatch error', e); }";
+                getBridge().getWebView().evaluateJavascript(script, null);
+                pendingTargetRoute = null;
+            } catch (Exception ignored) {
             }
         }
     }
