@@ -207,3 +207,4 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
         return output;
     }
 }
+
