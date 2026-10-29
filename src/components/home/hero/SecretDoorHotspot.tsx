@@ -4,10 +4,8 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Capacitor } from "@capacitor/core";
 import {
-  authenticateWithDevice,
   triggerHaptic,
   grantSecretAccess,
-  revokeSecretAccess,
 } from "@/lib/deviceAuth";
 
 interface SecretDoorHotspotProps {
@@ -119,11 +117,6 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
     };
   }, [progressRef]);
 
-  // Always revoke previous secret access on home mount so returning to door locks it immediately
-  useEffect(() => {
-    revokeSecretAccess();
-  }, []);
-
   // Successfully verified door sequence transition - ZERO artificial delay
   const executeUnlockNavigation = useCallback(() => {
     grantSecretAccess();
@@ -132,8 +125,8 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
     router.push("/secret");
   }, [router]);
 
-  // Triggered when door is double-clicked or double-tapped
-  const triggerDoorAuthentication = useCallback(async () => {
+  // Triggered when door is double-clicked or double-tapped - direct instant navigation without authentication
+  const triggerDoorAuthentication = useCallback(() => {
     if (isTriggeringRef.current) return;
 
     // Verify user is at the initial hero stage where the door is visible in front
@@ -142,31 +135,10 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
     }
 
     isTriggeringRef.current = true;
-    setIsAuthenticating(true);
     triggerHaptic("tap");
-
-    try {
-      // Direct native biometric prompt (native Android BiometricPrompt bottom sheet)
-      const authResult = await authenticateWithDevice();
-
-      if (authResult.success) {
-        // Biometric matched! Open immediately with zero delay
-        executeUnlockNavigation();
-        return;
-      }
-
-      // If user cancelled or failed native verification, simply reset state.
-      setIsAuthenticating(false);
-      isTriggeringRef.current = false;
-      if (!authResult.cancelled) {
-        triggerHaptic("error");
-      }
-    } catch (err) {
-      console.warn("Authentication error:", err);
-      setIsAuthenticating(false);
-      isTriggeringRef.current = false;
-    }
-  }, [progressRef, executeUnlockNavigation]);
+    grantSecretAccess();
+    router.push("/secret");
+  }, [progressRef, router]);
 
   // Robust double-click and double-tap detection:
   // Detects two taps/clicks within 550ms anywhere on the door hotspot

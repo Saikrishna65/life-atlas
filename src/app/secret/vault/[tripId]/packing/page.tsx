@@ -11,7 +11,6 @@ import {
   Trash2,
   Edit3,
   AlertTriangle,
-  Lock,
   Search,
   X,
   FileText,
@@ -35,7 +34,6 @@ import {
   PackingPresetId,
 } from "@/lib/vault/usePackingList";
 import { PackingCategory, PackingItemRecord } from "@/lib/vault/types";
-import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { Select } from "@/components/ui/Select";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 
@@ -139,11 +137,6 @@ export default function PackingPage() {
   const [formIsEssential, setFormIsEssential] = useState<boolean>(false);
   const [formNotes, setFormNotes] = useState<string>("");
   const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
-
-  const handleLockVault = () => {
-    revokeSecretAccess();
-    router.push("/secret/vault");
-  };
 
   // Open Add Modal
   const handleOpenAddModal = (defaultCategory?: PackingCategory) => {
@@ -318,14 +311,6 @@ export default function PackingPage() {
           >
             <Plus className="w-4 h-4" />
             <span>Add Item</span>
-          </button>
-
-          <button
-            onClick={handleLockVault}
-            className="p-2 rounded-xl bg-surface border border-muted text-muted-foreground hover:text-foreground transition-colors"
-            title="Lock Vault"
-          >
-            <Lock className="w-3.5 h-3.5 text-amber-600" />
           </button>
         </div>
       </div>

@@ -7,7 +7,6 @@ import {
   Compass,
   ArrowLeft,
   Plus,
-  Lock,
   Calendar,
   MapPin,
   Clock,
@@ -25,7 +24,6 @@ import {
 } from "lucide-react";
 import { useTripVault } from "@/lib/vault/useTripVault";
 import { TripRecord, TravelStyle } from "@/lib/vault/types";
-import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 import { computeTripDuration, getTripDayCount } from "@/lib/vault/tripDuration";
 
@@ -39,11 +37,6 @@ export default function TripVaultDashboard() {
   const [menuOpenTripId, setMenuOpenTripId] = useState<string | null>(null);
   const [deleteCandidate, setDeleteCandidate] = useState<TripRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleLockVault = () => {
-    revokeSecretAccess();
-    router.push("/secret/vault");
-  };
 
   const filteredTrips = useMemo(() => {
     if (activeTab === "ALL") return trips;
@@ -115,15 +108,6 @@ export default function TripVaultDashboard() {
             <ShieldCheck className="w-3.5 h-3.5 text-accent" />
             <span>Trip Vault</span>
           </div>
-
-          <button
-            onClick={handleLockVault}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors"
-            title="Lock Private Atlas"
-          >
-            <Lock className="w-3 h-3 text-accent" />
-            <span>Lock</span>
-          </button>
         </div>
       </nav>
 

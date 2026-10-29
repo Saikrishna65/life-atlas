@@ -1,20 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  HardDrive,
-  Cloud,
-  DownloadCloud,
-  UploadCloud,
-  RefreshCw,
-  FileDown,
-  FileUp,
-  ShieldAlert,
-  Loader2,
-  Lock,
-  Palette,
-  Check,
-} from "lucide-react";
+import { HardDrive, Cloud, DownloadCloud, UploadCloud, RefreshCw, FileDown, FileUp, ShieldAlert, Loader2, Palette, Check } from "lucide-react";
 import Link from "next/link";
 import {
   getStorageReport,
@@ -28,7 +15,7 @@ import { MusicStorageReport, MusicTrack, MusicPlaylist } from "@/lib/music/types
 import { syncCloudToLocalStorage, downloadTrackToLocalStorage, uploadTrackToCloud } from "@/lib/music/cloudSync";
 import { Sheet, notifyLibraryChanged, hasLocalAudio, hasCloudCopy } from "@/components/music/ui";
 import { MUSIC_THEMES, useMusicTheme } from "@/lib/music/theme";
-import { revokeSecretAccess, triggerHaptic } from "@/lib/deviceAuth";
+import { triggerHaptic } from "@/lib/deviceAuth";
 
 function Row({
   icon: Icon,
@@ -285,22 +272,9 @@ export default function MusicVaultSettingsPage() {
         <input ref={importRef} type="file" accept=".json,application/json" className="hidden" onChange={importJSON} />
       </section>
 
-      {/* Security & danger */}
+      {/* Danger zone */}
       <section className="space-y-2.5">
-        <h2 className="px-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--mv-text-muted)]">Security</h2>
-        <Link
-          href="/secret"
-          onClick={() => revokeSecretAccess()}
-          className="w-full flex items-center gap-4 p-3.5 rounded-3xl sonic-glass active:scale-[0.98] transition-all"
-        >
-          <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center shrink-0">
-            <Lock className="w-5 h-5 text-white" />
-          </span>
-          <span>
-            <span className="block text-[15px] font-semibold text-[var(--mv-text)]">Lock vault</span>
-            <span className="block text-xs text-[var(--mv-text-muted)] mt-0.5">Ask for fingerprint next time</span>
-          </span>
-        </Link>
+        <h2 className="px-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--mv-text-muted)]">Danger Zone</h2>
         <button
           onClick={() => setWipeOpen(true)}
           className="w-full flex items-center gap-4 p-3.5 rounded-3xl bg-rose-500/10 border border-rose-500/25 text-left active:scale-[0.98] cursor-pointer"

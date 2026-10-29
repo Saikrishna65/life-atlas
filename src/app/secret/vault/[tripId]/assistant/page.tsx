@@ -13,7 +13,6 @@ import {
   Check,
   Copy,
   Plus,
-  Lock,
   ChevronRight,
   ShieldCheck,
   Zap,
@@ -42,7 +41,6 @@ import {
   SAMPLE_CONFIRMATION_TEXTS,
 } from "@/lib/vault/pnrParser";
 import { notifyVaultChange } from "@/lib/vault/useTripVault";
-import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { Select } from "@/components/ui/Select";
 import { getTripDayCount } from "@/lib/vault/tripDuration";
 
@@ -104,12 +102,6 @@ export default function AssistantPage() {
       mounted = false;
     };
   }, [tripId]);
-
-  const handleLockVault = () => {
-    revokeSecretAccess();
-
-    router.push("/secret/vault");
-  };
 
   // Generate Itinerary Action (REQ-AIX-01)
   const handleGenerateItinerary = async (e: React.FormEvent) => {
@@ -268,16 +260,6 @@ export default function AssistantPage() {
           <p className="font-body text-xs text-muted-foreground mt-0.5">
             Neon AI Gateway powered itinerary generator & offline PNR confirmation ticket extractor.
           </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleLockVault}
-            className="p-2 rounded-xl bg-background border border-muted text-muted-foreground hover:text-foreground transition-colors"
-            title="Lock Vault"
-          >
-            <Lock className="w-3.5 h-3.5" />
-          </button>
         </div>
       </div>
 

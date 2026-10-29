@@ -20,7 +20,6 @@ import {
   Sunrise,
   Sparkles,
   ExternalLink,
-  Lock,
   Search,
   X,
   ChefHat,
@@ -36,7 +35,6 @@ import {
   MealSlot,
   DietaryTag,
 } from "@/lib/vault/types";
-import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 import { Select } from "@/components/ui/Select";
 
@@ -119,12 +117,6 @@ export default function TripFoodPlannerPage() {
       mounted = false;
     };
   }, [tripId]);
-
-  // Lock vault session
-  const handleLockVault = () => {
-    revokeSecretAccess();
-    router.push("/secret/vault");
-  };
 
   // Open Add modal with defaults
   const handleOpenAddModal = (presetType: FoodType = "SPECIALTY_DISH") => {
@@ -372,15 +364,6 @@ export default function TripFoodPlannerPage() {
             <Utensils className="w-3 h-3 text-orange-500" />
             <span>Pillar 05 • Food</span>
           </div>
-
-          <button
-            onClick={handleLockVault}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors"
-            title="Lock Private Atlas"
-          >
-            <Lock className="w-3 h-3 text-amber-500" />
-            <span>Lock</span>
-          </button>
         </div>
       </nav>
 

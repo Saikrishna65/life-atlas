@@ -10,7 +10,6 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
-  Lock,
   Search,
   X,
   Ticket,
@@ -21,7 +20,6 @@ import {
 } from "lucide-react";
 import { useReminders } from "@/lib/vault/useReminders";
 import { ReminderRecord, BookingRecord } from "@/lib/vault/types";
-import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 
 export default function RemindersPage() {
@@ -59,11 +57,6 @@ export default function RemindersPage() {
 
   // Lock body scroll when modals are open
   useLockBodyScroll(showAddModal || !!reminderToDelete);
-
-  const handleLockVault = () => {
-    revokeSecretAccess();
-    router.push("/secret/vault");
-  };
 
   const showSuccess = (msg: string) => {
     setActionSuccessMsg(msg);
@@ -203,15 +196,6 @@ export default function RemindersPage() {
           >
             <Plus className="w-4 h-4" />
             <span>Add Reminder</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLockVault}
-            className="p-2 rounded-xl bg-surface border border-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            title="Lock Vault"
-          >
-            <Lock className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>

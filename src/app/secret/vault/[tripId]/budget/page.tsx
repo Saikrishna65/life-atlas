@@ -9,7 +9,6 @@ import {
   Trash2,
   Edit3,
   AlertTriangle,
-  Lock,
   Search,
   X,
   PieChart,
@@ -33,7 +32,6 @@ import {
   PaymentMode,
   DepositRefundStatus,
 } from "@/lib/vault/types";
-import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { Select } from "@/components/ui/Select";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 
@@ -93,12 +91,6 @@ export default function TripBudgetPage() {
   const handleOpenAllocationModal = () => {
     setAllocations(trip?.categoryBudgets || {});
     setShowAllocationModal(true);
-  };
-
-  // Lock vault session
-  const handleLockVault = () => {
-    revokeSecretAccess();
-    router.push("/secret/vault");
   };
 
   // Open Add modal with smart defaults
@@ -307,15 +299,6 @@ export default function TripBudgetPage() {
             <CreditCard className="w-3 h-3 text-rose-600" />
             <span>Budget & Expenses</span>
           </div>
-
-          <button
-            onClick={handleLockVault}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors"
-            title="Lock Private Atlas"
-          >
-            <Lock className="w-3 h-3 text-amber-600" />
-            <span>Lock</span>
-          </button>
         </div>
       </nav>
 

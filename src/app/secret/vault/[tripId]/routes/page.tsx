@@ -11,7 +11,6 @@ import {
   Edit3,
   ExternalLink,
   Navigation,
-  Lock,
   Search,
   X,
   Car,
@@ -23,7 +22,6 @@ import {
 import { getTrip } from "@/lib/vault/storage";
 import { useRoutesAndWaypoints } from "@/lib/vault/useRoutesAndWaypoints";
 import { TripRecord, RouteSegment } from "@/lib/vault/types";
-import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 import { Select } from "@/components/ui/Select";
 
@@ -91,12 +89,6 @@ export default function TripRoutesPage() {
       mounted = false;
     };
   }, [tripId]);
-
-  // Lock vault session
-  const handleLockVault = () => {
-    revokeSecretAccess();
-    router.push("/secret/vault");
-  };
 
   // Open Segment Modal
   const handleOpenAddSegment = () => {
@@ -288,15 +280,6 @@ export default function TripRoutesPage() {
             <Compass className="w-3.5 h-3.5 text-teal-400" />
             <span>Pillar 07 • Routes</span>
           </div>
-
-          <button
-            onClick={handleLockVault}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            title="Lock Private Atlas"
-          >
-            <Lock className="w-3 h-3 text-amber-500" />
-            <span>Lock</span>
-          </button>
         </div>
       </nav>
 

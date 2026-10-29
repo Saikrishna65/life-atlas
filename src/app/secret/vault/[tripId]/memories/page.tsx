@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Lock,
   Trophy,
   Camera,
   Star,
@@ -26,7 +25,6 @@ import {
 } from "lucide-react";
 import { useMemories } from "@/lib/vault/useMemories";
 import { TripMemoryRecord } from "@/lib/vault/types";
-import { revokeSecretAccess } from "@/lib/deviceAuth";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 
 export default function MemoriesPage() {
@@ -83,11 +81,6 @@ export default function MemoriesPage() {
 
   // Export selection state
   const [selectedMemoryIds, setSelectedMemoryIds] = useState<string[]>([]);
-
-  const handleLockVault = () => {
-    revokeSecretAccess();
-    router.push("/secret/vault");
-  };
 
   const showToast = (msg: string) => {
     setSuccessToast(msg);
@@ -257,14 +250,6 @@ export default function MemoriesPage() {
           >
             <Camera className="w-4 h-4" />
             <span>Add Memory</span>
-          </button>
-
-          <button
-            onClick={handleLockVault}
-            className="p-2 rounded-xl bg-surface border border-muted text-muted-foreground hover:text-foreground transition-colors"
-            title="Lock Vault"
-          >
-            <Lock className="w-3.5 h-3.5 text-amber-600" />
           </button>
         </div>
       </div>

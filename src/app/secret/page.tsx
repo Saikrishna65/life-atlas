@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, ArrowUpRight, Lock, Compass, Music, Wallet } from "lucide-react";
+import { ArrowLeft, BookOpen, ArrowUpRight, Compass, Music, Wallet } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
-import { revokeSecretAccess } from "@/lib/deviceAuth";
 import MusicDashboardWidget from "@/components/music/MusicDashboardWidget";
 
 export default function SecretDashboard() {
@@ -17,17 +16,11 @@ export default function SecretDashboard() {
   }, []);
 
   const handleBackToPublic = () => {
-    revokeSecretAccess();
     if (Capacitor.isNativePlatform()) {
       router.push("/secret");
     } else {
       router.push("/");
     }
-  };
-
-  const handleLockVault = () => {
-    revokeSecretAccess();
-    router.push("/secret");
   };
 
   return (
@@ -53,14 +46,6 @@ export default function SecretDashboard() {
           <span className="text-[10px] font-sans tracking-[0.2em] uppercase text-muted-foreground/80 select-none">
             Private Journal
           </span>
-          <button
-            onClick={handleLockVault}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-muted hover:border-foreground/30 text-[11px] font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            title="Lock Private Atlas and revoke session"
-          >
-            <Lock className="w-3 h-3 text-amber-500" />
-            <span>Lock</span>
-          </button>
         </div>
       </nav>
 
