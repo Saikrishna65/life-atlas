@@ -423,6 +423,11 @@ public class MediaPlaybackService extends Service {
                 notificationManager.notify(NOTIFICATION_ID, notification);
             }
         }
+
+        try {
+            MusicAppWidgetProvider.updateAllWidgets(this, currentTitle, currentArtist, art, isPlaying);
+        } catch (Exception ignored) {
+        }
     }
 
     private Notification buildMediaNotification(Bitmap art) {
@@ -681,6 +686,12 @@ public class MediaPlaybackService extends Service {
         if (notificationManager != null) {
             notificationManager.cancel(NOTIFICATION_ID);
         }
+
+        try {
+            MusicAppWidgetProvider.updateAllWidgets(this, currentTitle, currentArtist, null, false);
+        } catch (Exception ignored) {
+        }
+
         stopSelf();
     }
 

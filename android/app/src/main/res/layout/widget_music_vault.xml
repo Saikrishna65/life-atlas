@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:padding="12dp">
+
+    <!-- Artwork thumbnail -->
+    <ImageView
+        android:id="@+id/widget_artwork"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:background="@drawable/widget_artwork_bg"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_stat_music"
+        android:contentDescription="@string/app_name" />
+
+    <!-- Info & Controls Container -->
+    <LinearLayout
+        android:id="@+id/widget_info_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_toEndOf="@id/widget_artwork"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="12dp"
+        android:orientation="vertical">
+
+        <!-- Badge & Status -->
+        <TextView
+            android:id="@+id/widget_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MUSIC VAULT · HI-FI"
+            android:textColor="#E5B869"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:singleLine="true" />
+
+        <!-- Track Title -->
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Music Sanctuary"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <!-- Artist / Subtitle -->
+        <TextView
+            android:id="@+id/widget_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Life Atlas Audio Vault"
+            android:textColor="#94A3B8"
+            android:textSize="11sp"
+            android:singleLine="true"
+            android:ellipsize="end" />
+
+        <!-- Playback Controls -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageButton
+                android:id="@+id/widget_btn_prev"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/widget_button_bg"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_media_prev"
+                android:tint="#FFFFFF"
+                android:contentDescription="Previous Track" />
+
+            <ImageButton
+                android:id="@+id/widget_btn_play"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"
+                android:background="@drawable/widget_play_bg"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_media_play"
+                android:tint="#090B0F"
+                android:contentDescription="Play or Pause" />
+
+            <ImageButton
+                android:id="@+id/widget_btn_next"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="@drawable/widget_button_bg"
+                android:scaleType="centerInside"
+                android:src="@drawable/ic_media_next"
+                android:tint="#FFFFFF"
+                android:contentDescription="Next Track" />
+        </LinearLayout>
+    </LinearLayout>
+
+</RelativeLayout>

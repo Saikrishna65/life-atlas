@@ -4,4 +4,6 @@
     <string name="title_activity_main">Atlas Vault</string>
     <string name="package_name">com.lifeatlas.app</string>
     <string name="custom_url_scheme">com.lifeatlas.app</string>
+    <string name="widget_music_name">Music Vault</string>
+    <string name="widget_music_description">Control Life Atlas background playback and view live track artwork directly from your home screen.</string>
 </resources>

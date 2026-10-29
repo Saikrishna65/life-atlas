@@ -37,6 +37,22 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
 
+        <!-- Music Vault Android Home Screen Widget Provider -->
+        <receiver
+            android:name=".MusicAppWidgetProvider"
+            android:label="@string/widget_music_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.lifeatlas.app.ACTION_WIDGET_PLAY_PAUSE" />
+                <action android:name="com.lifeatlas.app.ACTION_WIDGET_NEXT" />
+                <action android:name="com.lifeatlas.app.ACTION_WIDGET_PREV" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_music_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
