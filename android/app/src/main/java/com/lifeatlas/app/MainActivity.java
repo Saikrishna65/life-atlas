@@ -32,6 +32,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(MediaPlaybackPlugin.class);
         super.onCreate(savedInstanceState);
         handleSendIntent(getIntent());
 
@@ -158,6 +159,15 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (MediaPlaybackService.shouldKeepWebViewAwake() && getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().onResume();
+            getBridge().getWebView().resumeTimers();
         }
     }
 

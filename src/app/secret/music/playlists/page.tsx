@@ -48,13 +48,13 @@ export default function PlaylistsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex items-end justify-between px-1 pt-1">
-        <h1 className="font-display text-[34px] leading-none">Playlists</h1>
+        <h1 className="font-display text-[34px] leading-none text-[var(--mv-text)]">Playlists</h1>
         <button
           onClick={() => {
             triggerHaptic("tap");
             setCreating(true);
           }}
-          className="h-11 px-4 rounded-full bg-white text-black text-sm font-bold flex items-center gap-1.5 active:scale-95 cursor-pointer"
+          className="h-11 px-4 rounded-full bg-[var(--mv-primary-bg)] text-[var(--mv-primary-fg)] text-sm font-bold flex items-center gap-1.5 active:scale-95 cursor-pointer"
         >
           <Plus className="w-4 h-4 stroke-[3]" /> New
         </button>
@@ -79,10 +79,10 @@ export default function PlaylistsPage() {
               <PlaylistCover playlist={pl} tracksById={tracksById} className="w-full aspect-square rounded-3xl shadow-xl" />
               <div className="flex items-center gap-1 mt-2.5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold truncate">{pl.title}</p>
-                  <p className="text-xs text-white/45">{pl.trackIds.length} songs</p>
+                  <p className="text-sm font-semibold text-[var(--mv-text)] truncate">{pl.title}</p>
+                  <p className="text-xs text-[var(--mv-text-muted)]">{pl.trackIds.length} songs</p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-white/30 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-[var(--mv-text-subtle)] shrink-0" />
               </div>
             </Link>
           ))}
@@ -91,18 +91,18 @@ export default function PlaylistsPage() {
 
       <Sheet open={creating} onClose={() => setCreating(false)}>
         <form onSubmit={create} className="space-y-4">
-          <h3 className="font-display text-2xl px-1">New playlist</h3>
+          <h3 className="font-display text-2xl text-[var(--mv-text)] px-1">New playlist</h3>
           <input
             autoFocus
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Name your playlist"
-            className="w-full h-14 px-5 rounded-2xl bg-white/[0.07] border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-fuchsia-400/60"
+            className="w-full h-14 px-5 rounded-2xl bg-[var(--mv-input)] border border-[var(--mv-border)] text-[var(--mv-text)] placeholder:text-[var(--mv-text-subtle)] focus:outline-none focus:border-[var(--mv-accent)]"
           />
           <button
             type="submit"
             disabled={!title.trim()}
-            className="w-full h-14 rounded-2xl bg-white text-black font-bold disabled:opacity-40 active:scale-[0.98] cursor-pointer"
+            className="w-full h-14 rounded-2xl bg-[var(--mv-primary-bg)] text-[var(--mv-primary-fg)] font-bold disabled:opacity-40 active:scale-[0.98] cursor-pointer"
           >
             Create
           </button>

@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ArrowLeft,
   Disc3,
+  Palette,
 } from "lucide-react";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
 import { getAllTracks } from "@/lib/music/storage";
@@ -33,19 +34,21 @@ import {
   useLibraryRefresh,
 } from "@/components/music/ui";
 import { triggerHaptic } from "@/lib/deviceAuth";
+import { MUSIC_THEMES, useMusicTheme } from "@/lib/music/theme";
 
 function getSonicSessionLabel(): { eyebrow: string; accent: string } {
   const hr = new Date().getHours();
   if (hr < 5) return { eyebrow: "Late Night Session", accent: "nocturne" };
   if (hr < 12) return { eyebrow: "Morning Frequencies", accent: "soundtrack" };
   if (hr < 17) return { eyebrow: "Afternoon Resonance", accent: "wavelength" };
-  if (hr < 22) return { eyebrow: "Evening Sonic", accent: "atmosphere" };
+  if (hr < 22) return { eyebrow: "Evening Lounge", accent: "atmosphere" };
   return { eyebrow: "Midnight Sanctuary", accent: "nocturne" };
 }
 
 export default function MusicHomePage() {
   const router = useRouter();
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setIsNowPlayingOpen } = useMusicPlayer();
+  const { theme, setTheme, currentOption } = useMusicTheme();
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [sheetTrack, setSheetTrack] = useState<MusicTrack | null>(null);
@@ -63,6 +66,13 @@ export default function MusicHomePage() {
     load();
   }, [load]);
   useLibraryRefresh(load);
+
+  const cyclePalette = () => {
+    triggerHaptic("tap");
+    const idx = MUSIC_THEMES.findIndex((t) => t.id === theme);
+    const next = MUSIC_THEMES[(idx + 1) % MUSIC_THEMES.length];
+    setTheme(next.id);
+  };
 
   const sorted = useMemo(() => [...tracks].sort((a, b) => b.addedAt - a.addedAt), [tracks]);
   const counts = useMemo(
@@ -98,88 +108,114 @@ export default function MusicHomePage() {
       label: "Liked",
       sub: counts.liked === 1 ? "1 favorite" : `${counts.liked} favorites`,
       icon: Heart,
-      tint: "from-rose-500 via-pink-500 to-fuchsia-600",
-      glow: "hover:border-rose-400/35",
+      tint: "from-rose-500 to-red-600",
     },
     {
       key: "offline",
       label: "On phone",
       sub: counts.offline === 1 ? "1 offline" : `${counts.offline} offline`,
       icon: HardDriveDownload,
-      tint: "from-emerald-400 via-teal-500 to-cyan-600",
-      glow: "hover:border-emerald-400/35",
+      tint: "from-emerald-500 to-teal-600",
     },
     {
       key: "recent",
       label: "Recent",
       sub: counts.recent === 1 ? "1 played" : `${counts.recent} played`,
       icon: Clock,
-      tint: "from-sky-400 via-blue-500 to-indigo-600",
-      glow: "hover:border-sky-400/35",
+      tint: "from-sky-500 to-cyan-600",
     },
     {
       key: "top",
       label: "Heavy rotation",
       sub: counts.top === 1 ? "1 top track" : `${counts.top} top tracks`,
       icon: Flame,
-      tint: "from-amber-400 via-orange-500 to-rose-600",
-      glow: "hover:border-amber-400/35",
+      tint: "from-amber-500 to-orange-600",
     },
   ];
 
   return (
     <div className="space-y-7 animate-fade-in">
-      {/* Top utility row: effortless return to Private Atlas + live Sonic badge */}
-      <div className="flex items-center justify-between pt-0.5">
+      {/* Top utility row: effortless return to Private Atlas + 1-tap theme pill + live playback status */}
+      <div className="flex items-center justify-between pt-0.5 gap-2">
         <Link
           href="/secret"
           onClick={() => triggerHaptic("tap")}
-          className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-white/[0.06] border border-white/10 text-xs font-semibold text-white/75 active:scale-95 transition-all"
+          className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full sonic-glass text-xs font-semibold text-[var(--mv-text-muted)] active:scale-95 transition-all"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Atlas
         </Link>
 
-        <button
-          onClick={() => {
-            if (currentTrack) {
-              triggerHaptic("tap");
-              setIsNowPlayingOpen(true);
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={cyclePalette}
+            title={`Theme: ${currentOption.name} (tap to switch)`}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full sonic-glass text-[11px] font-semibold text-[var(--mv-text-muted)] active:scale-95 transition-all cursor-pointer"
+          >
+            <Palette className="w-3.5 h-3.5 text-[var(--mv-accent)]" />
+            <span className="hidden sm:inline">{currentOption.name}</span>
+            <span
+              className="w-2.5 h-2.5 rounded-full ring-1 ring-black/15"
+              style={{ background: currentOption.swatches[2] }}
+            />
+          </button>
+
+          <button
+            onClick={() => {
+              if (currentTrack) {
+                triggerHaptic("tap");
+                setIsNowPlayingOpen(true);
+              }
+            }}
+            style={
+              currentTrack && isPlaying
+                ? {
+                    background: "var(--mv-accent-soft)",
+                    borderColor: "var(--mv-border-strong)",
+                    color: "var(--mv-accent)",
+                  }
+                : undefined
             }
-          }}
-          className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-full border text-[11px] font-mono uppercase tracking-[0.18em] transition-all ${
-            currentTrack && isPlaying
-              ? "bg-fuchsia-500/15 border-fuchsia-400/35 text-fuchsia-200 cursor-pointer"
-              : "bg-white/[0.04] border-white/10 text-white/50 cursor-default"
-          }`}
-        >
-          {currentTrack && isPlaying ? (
-            <>
-              <Equalizer />
-              <span>Live</span>
-            </>
-          ) : (
-            <>
-              <Disc3 className="w-3.5 h-3.5 text-fuchsia-300" />
-              <span>Atlas Sonic</span>
-            </>
-          )}
-        </button>
+            className={`inline-flex items-center gap-2 h-9 px-3.5 rounded-full border text-[11px] font-mono uppercase tracking-[0.18em] transition-all ${
+              currentTrack && isPlaying
+                ? "cursor-pointer"
+                : "sonic-glass text-[var(--mv-text-subtle)] cursor-default"
+            }`}
+          >
+            {currentTrack && isPlaying ? (
+              <>
+                <Equalizer />
+                <span>Live</span>
+              </>
+            ) : (
+              <>
+                <Disc3 className="w-3.5 h-3.5 text-[var(--mv-accent)]" />
+                <span>Sonic</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Editorial Hero Title */}
       <header className="px-0.5">
-        <p className="text-[11px] tracking-[0.26em] uppercase text-fuchsia-300/80 font-semibold">
+        <p className="text-[11px] tracking-[0.26em] uppercase text-[var(--mv-accent)] font-semibold">
           {session.eyebrow}
         </p>
-        <h1 className="font-display text-[38px] sm:text-[44px] text-white leading-[1.05] mt-1.5">
+        <h1 className="font-display text-[38px] sm:text-[44px] text-[var(--mv-text)] leading-[1.05] mt-1.5">
           Your{" "}
-          <span className="bg-gradient-to-r from-fuchsia-300 via-purple-200 to-cyan-300 bg-clip-text text-transparent">
+          <span
+            style={{
+              backgroundImage: "linear-gradient(135deg, var(--mv-accent), var(--mv-accent-2))",
+            }}
+            className="bg-clip-text text-transparent"
+          >
             {session.accent}
           </span>
         </h1>
         {tracks.length > 0 && (
-          <p className="text-xs text-white/45 mt-2 font-mono tracking-wide">
+          <p className="text-xs text-[var(--mv-text-muted)] mt-2 font-mono tracking-wide">
             {tracks.length} {tracks.length === 1 ? "SONG" : "SONGS"} · {totalMinutes} MIN ·{" "}
             {counts.offline} OFFLINE
           </p>
@@ -190,7 +226,7 @@ export default function MusicHomePage() {
         <div className="sonic-glass rounded-[32px] p-2">
           <EmptyState
             title="Your sonic vault awaits"
-            body="Tap the glowing + button below to pull audio from YouTube, import songs from your phone, or restore your cloud library."
+            body="Tap the + button below to pull audio from YouTube, import songs from your phone, or restore your cloud library."
             cta="Add your first song"
             onCta={openAddSheet}
           />
@@ -210,22 +246,19 @@ export default function MusicHomePage() {
                 currentTrack ? "cursor-pointer active:scale-[0.99]" : ""
               }`}
             >
-              <div
-                className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${gradientFor(
-                  featured.id
-                )} opacity-30`}
-                aria-hidden="true"
-              />
               {featured.artworkUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={featured.artworkUrl}
                   alt=""
-                  className="pointer-events-none absolute inset-0 w-full h-full object-cover opacity-30 blur-2xl scale-125"
+                  className="pointer-events-none absolute inset-0 w-full h-full object-cover opacity-20 blur-2xl scale-125"
                 />
               )}
               <div
-                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#05050a]/85 via-[#05050a]/35 to-transparent"
+                style={{
+                  background: "linear-gradient(135deg, var(--mv-accent-soft) 0%, transparent 70%)",
+                }}
+                className="pointer-events-none absolute inset-0"
                 aria-hidden="true"
               />
 
@@ -239,6 +272,7 @@ export default function MusicHomePage() {
                     aria-hidden="true"
                   >
                     <div
+                      style={{ background: "var(--mv-accent)" }}
                       className={`w-7 h-7 rounded-full bg-gradient-to-br ${gradientFor(
                         featured.id
                       )} border-2 border-[#090910]`}
@@ -246,14 +280,21 @@ export default function MusicHomePage() {
                   </div>
                   <Artwork
                     track={featured}
-                    className="relative z-10 w-24 h-24 rounded-[22px] shadow-[0_16px_35px_rgba(0,0,0,0.65)]"
+                    className="relative z-10 w-24 h-24 rounded-[22px] shadow-[0_16px_35px_rgba(0,0,0,0.45)]"
                     iconClass="w-8 h-8"
                   />
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 border border-white/10 text-[10px] tracking-[0.18em] uppercase text-white/80 font-semibold">
+                    <span
+                      style={{
+                        background: "var(--mv-accent-soft)",
+                        borderColor: "var(--mv-border-strong)",
+                        color: "var(--mv-accent)",
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[10px] tracking-[0.18em] uppercase font-semibold"
+                    >
                       {featuredActive
                         ? isPlaying
                           ? "Now playing"
@@ -261,20 +302,22 @@ export default function MusicHomePage() {
                         : "Spotlight"}
                     </span>
                     {hasLocalAudio(featured) && (
-                      <span className="text-[10px] font-mono text-emerald-300/90 uppercase tracking-wider">
+                      <span className="text-[10px] font-mono text-emerald-500 uppercase tracking-wider font-semibold">
                         Hi-Fi
                       </span>
                     )}
                   </div>
 
-                  <h2 className="font-display text-2xl text-white leading-tight truncate mt-2">
+                  <h2 className="font-display text-2xl text-[var(--mv-text)] leading-tight truncate mt-2">
                     {featured.title}
                   </h2>
-                  <p className="text-sm text-white/65 truncate">{featured.artist || "Unknown Artist"}</p>
+                  <p className="text-sm text-[var(--mv-text-muted)] truncate">
+                    {featured.artist || "Unknown Artist"}
+                  </p>
 
                   <div className="flex items-center gap-3 mt-2">
                     <SpectrumBars playing={Boolean(featuredActive && isPlaying)} />
-                    <span className="text-[11px] font-mono text-white/45">
+                    <span className="text-[11px] font-mono text-[var(--mv-text-subtle)]">
                       {formatTime(featured.duration)}
                     </span>
                   </div>
@@ -291,7 +334,11 @@ export default function MusicHomePage() {
                     if (featuredActive) togglePlayPause();
                     else playTrack(featured, sorted, { type: "LIBRARY", title: "All songs" });
                   }}
-                  className="h-13 rounded-2xl bg-white text-[#05050a] font-bold text-sm flex items-center justify-center gap-2 shadow-[0_10px_28px_rgba(255,255,255,0.2)] active:scale-95 transition-transform cursor-pointer"
+                  style={{
+                    background: "var(--mv-primary-bg)",
+                    color: "var(--mv-primary-fg)",
+                  }}
+                  className="h-13 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform cursor-pointer"
                 >
                   {featuredActive && isPlaying ? (
                     <>
@@ -307,9 +354,9 @@ export default function MusicHomePage() {
                 </button>
                 <button
                   onClick={() => playAll(true)}
-                  className="h-13 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-md text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform cursor-pointer"
+                  className="h-13 rounded-2xl sonic-glass text-[var(--mv-text)] font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform cursor-pointer"
                 >
-                  <Shuffle className="w-4 h-4 text-fuchsia-300" />
+                  <Shuffle className="w-4 h-4 text-[var(--mv-accent)]" />
                   Shuffle
                 </button>
               </div>
@@ -329,18 +376,18 @@ export default function MusicHomePage() {
                       triggerHaptic("tap");
                       router.push(`/secret/music/library?filter=${c.key}`);
                     }}
-                    className={`group flex items-center gap-3.5 p-3.5 rounded-3xl sonic-glass ${c.glow} active:scale-[0.97] transition-all text-left cursor-pointer`}
+                    className="group flex items-center gap-3.5 p-3.5 rounded-3xl sonic-glass hover:border-[var(--mv-border-strong)] active:scale-[0.97] transition-all text-left cursor-pointer"
                   >
                     <span
-                      className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${c.tint} flex items-center justify-center shrink-0 shadow-lg ring-1 ring-inset ring-white/25`}
+                      className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${c.tint} flex items-center justify-center shrink-0 shadow-md ring-1 ring-inset ring-white/25`}
                     >
                       <Icon className="w-5 h-5 text-white" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-white truncate">
+                      <span className="block text-sm font-semibold text-[var(--mv-text)] truncate">
                         {c.label}
                       </span>
-                      <span className="block text-[11px] text-white/45 font-mono truncate mt-0.5">
+                      <span className="block text-[11px] text-[var(--mv-text-muted)] font-mono truncate mt-0.5">
                         {c.sub}
                       </span>
                     </span>
@@ -370,11 +417,13 @@ export default function MusicHomePage() {
                   >
                     <Artwork
                       track={t}
-                      className="w-36 h-36 rounded-3xl shadow-[0_14px_32px_rgba(0,0,0,0.55)]"
+                      className="w-36 h-36 rounded-3xl shadow-xl"
                       iconClass="w-8 h-8"
                     />
-                    <p className="text-sm font-semibold text-white truncate mt-2.5">{t.title}</p>
-                    <p className="text-xs text-white/45 truncate">{t.artist}</p>
+                    <p className="text-sm font-semibold text-[var(--mv-text)] truncate mt-2.5">
+                      {t.title}
+                    </p>
+                    <p className="text-xs text-[var(--mv-text-muted)] truncate">{t.artist}</p>
                   </button>
                 ))}
               </div>
@@ -402,7 +451,7 @@ export default function MusicHomePage() {
             {tracks.length > 6 && (
               <button
                 onClick={() => router.push("/secret/music/library")}
-                className="w-full mt-3 py-3.5 rounded-2xl bg-white/[0.06] border border-white/10 text-sm font-semibold text-white flex items-center justify-center gap-1.5 active:scale-[0.98] cursor-pointer"
+                className="w-full mt-3 py-3.5 rounded-2xl sonic-glass text-sm font-semibold text-[var(--mv-text)] flex items-center justify-center gap-1.5 active:scale-[0.98] cursor-pointer"
               >
                 Explore full library <ChevronRight className="w-4 h-4" />
               </button>

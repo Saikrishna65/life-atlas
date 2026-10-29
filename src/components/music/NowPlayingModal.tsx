@@ -29,10 +29,12 @@ import {
   hasCloudCopy,
 } from "@/components/music/ui";
 import { triggerHaptic } from "@/lib/deviceAuth";
+import { useMusicTheme } from "@/lib/music/theme";
 
 const SLEEP_OPTIONS = [0, 15, 30, 45, 60] as const;
 
 export default function NowPlayingModal() {
+  useMusicTheme();
   const {
     currentTrack,
     isPlaying,
@@ -112,44 +114,49 @@ export default function NowPlayingModal() {
 
   return (
     <div
-      className="sonic-dark fixed inset-0 z-50 bg-[#05050a] text-white flex flex-col select-none overflow-hidden animate-fade-in"
+      style={{ background: "var(--mv-bg)", color: "var(--mv-text)" }}
+      className="music-theme fixed inset-0 z-50 flex flex-col select-none overflow-hidden animate-fade-in"
       role="dialog"
       aria-modal="true"
       aria-label="Now playing"
     >
-      {/* Artwork-reactive blurred aurora */}
+      {/* Artwork-reactive blurred aura */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         {currentTrack.artworkUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={currentTrack.artworkUrl}
             alt=""
-            className="w-full h-full object-cover scale-125 blur-[80px] opacity-50"
+            className="w-full h-full object-cover scale-125 blur-[85px] opacity-30"
           />
         ) : (
           <div
-            className={`w-full h-full bg-gradient-to-br ${gradientFor(
-              currentTrack.id
-            )} opacity-40 blur-3xl scale-125`}
+            style={{ background: "var(--mv-aura-1)" }}
+            className="w-full h-full blur-3xl scale-125"
           />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-[#05050a]/75 to-[#05050a]" />
+        <div
+          style={{
+            background: "linear-gradient(to bottom, transparent 0%, var(--mv-bg) 82%)",
+          }}
+          className="absolute inset-0"
+        />
       </div>
 
       {/* Top bar */}
       <header className="relative z-10 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),1rem)]">
         <button
           onClick={() => setIsNowPlayingOpen(false)}
-          className="w-11 h-11 rounded-full bg-white/10 border border-white/10 flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+          className="w-11 h-11 rounded-full sonic-glass flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
           aria-label="Minimize"
         >
-          <ChevronDown className="w-6 h-6" />
+          <ChevronDown className="w-6 h-6 text-[var(--mv-text)]" />
         </button>
         <div className="text-center min-w-0 px-3">
-          <p className="text-[10px] tracking-[0.22em] uppercase text-white/45 font-semibold">
+          <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--mv-text-subtle)] font-semibold">
             Playing from
           </p>
-          <p className="text-sm font-semibold text-white truncate max-w-[200px]">
+          <p className="text-sm font-semibold text-[var(--mv-text)] truncate max-w-[200px]">
             {sourceContext?.title || "Your library"}
           </p>
         </div>
@@ -158,10 +165,16 @@ export default function NowPlayingModal() {
             triggerHaptic("tap");
             setShowQueue((v) => !v);
           }}
-          className={`w-11 h-11 rounded-full border flex items-center justify-center active:scale-90 transition-all cursor-pointer ${
+          style={
             showQueue
-              ? "bg-white text-black border-white"
-              : "bg-white/10 border-white/10 text-white"
+              ? {
+                  background: "var(--mv-primary-bg)",
+                  color: "var(--mv-primary-fg)",
+                }
+              : undefined
+          }
+          className={`w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer ${
+            showQueue ? "shadow-md" : "sonic-glass text-[var(--mv-text)]"
           }`}
           aria-label="Queue"
         >
@@ -173,8 +186,8 @@ export default function NowPlayingModal() {
         /* Integrated Up-Next Queue */
         <div className="relative z-10 flex-1 overflow-y-auto px-4 pt-5 pb-8">
           <div className="flex items-baseline justify-between px-1 mb-3">
-            <h3 className="font-display text-2xl text-white">Up next</h3>
-            <span className="text-xs font-mono text-white/45">{queue.length} songs</span>
+            <h3 className="font-display text-2xl text-[var(--mv-text)]">Up next</h3>
+            <span className="text-xs font-mono text-[var(--mv-text-muted)]">{queue.length} songs</span>
           </div>
           <div className="space-y-1">
             {queue.map((t, i) => {
@@ -183,7 +196,7 @@ export default function NowPlayingModal() {
                 <div
                   key={`${t.id}-${i}`}
                   className={`flex items-center gap-3 pl-2 pr-1 py-2 rounded-2xl ${
-                    active ? "bg-white/12 border border-white/10" : ""
+                    active ? "bg-[var(--mv-accent-soft)] border border-[var(--mv-border-strong)]" : ""
                   }`}
                 >
                   <button
@@ -198,19 +211,19 @@ export default function NowPlayingModal() {
                     <span className="min-w-0 flex-1">
                       <span
                         className={`block text-sm font-semibold truncate ${
-                          active ? "text-fuchsia-300" : "text-white"
+                          active ? "text-[var(--mv-accent)]" : "text-[var(--mv-text)]"
                         }`}
                       >
                         {t.title}
                       </span>
-                      <span className="block text-xs text-white/45 truncate">{t.artist}</span>
+                      <span className="block text-xs text-[var(--mv-text-muted)] truncate">{t.artist}</span>
                     </span>
                     {active && isPlaying && <Equalizer className="mr-2" />}
                   </button>
                   {!active && (
                     <button
                       onClick={() => removeFromQueue(i)}
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-white/35 active:bg-white/10 cursor-pointer"
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--mv-text-subtle)] active:bg-[var(--mv-card-hover)] cursor-pointer"
                       aria-label="Remove from queue"
                     >
                       <X className="w-4 h-4" />
@@ -220,7 +233,7 @@ export default function NowPlayingModal() {
               );
             })}
             {queue.length === 0 && (
-              <p className="text-sm text-white/40 p-4 text-center">The queue is empty.</p>
+              <p className="text-sm text-[var(--mv-text-muted)] p-4 text-center">The queue is empty.</p>
             )}
           </div>
         </div>
@@ -234,12 +247,11 @@ export default function NowPlayingModal() {
               }`}
             >
               <div
-                className={`absolute inset-3 rounded-[40px] bg-gradient-to-br ${gradientFor(
-                  currentTrack.id
-                )} blur-2xl opacity-60`}
+                style={{ background: "var(--mv-aura-1)" }}
+                className="absolute inset-3 rounded-[40px] blur-2xl opacity-75"
                 aria-hidden="true"
               />
-              {/* Subtle vinyl disc peeking from top-right when playing */}
+              {/* Subtle vinyl disc peeking from right when playing */}
               <div
                 className={`pointer-events-none absolute -right-4 top-5 bottom-5 aspect-square rounded-full vinyl-grooves border border-white/15 shadow-2xl transition-transform duration-700 flex items-center justify-center ${
                   isPlaying ? "translate-x-2 animate-vinyl opacity-90" : "-translate-x-6 opacity-0"
@@ -255,7 +267,7 @@ export default function NowPlayingModal() {
 
               <Artwork
                 track={currentTrack}
-                className="relative z-10 w-full h-full rounded-[36px] shadow-[0_32px_75px_rgba(0,0,0,0.75)]"
+                className="relative z-10 w-full h-full rounded-[36px] shadow-[0_28px_65px_rgba(0,0,0,0.48)]"
                 iconClass="w-1/4 h-1/4"
               />
             </div>
@@ -263,10 +275,10 @@ export default function NowPlayingModal() {
 
           {/* Quality badge + Live Spectrum */}
           <div className="flex items-center justify-between mb-3">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/10 text-[10px] font-mono uppercase tracking-[0.16em] text-white/75">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full sonic-glass text-[10px] font-mono uppercase tracking-[0.16em] text-[var(--mv-text-muted)]">
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
-                  local ? "bg-emerald-400" : "bg-sky-400"
+                  local ? "bg-emerald-500" : "bg-sky-500"
                 }`}
               />
               {local ? "Offline · Hi-Fi" : "Cloud Stream"}
@@ -277,36 +289,38 @@ export default function NowPlayingModal() {
           {/* Title + Actions */}
           <div className="flex items-center gap-3 mb-4">
             <div className="min-w-0 flex-1">
-              <h2 className="font-display text-[26px] text-white leading-tight truncate">
+              <h2 className="font-display text-[26px] text-[var(--mv-text)] leading-tight truncate">
                 {currentTrack.title}
               </h2>
-              <p className="text-white/60 truncate mt-0.5">
+              <p className="text-[var(--mv-text-muted)] truncate mt-0.5">
                 {currentTrack.artist || "Unknown Artist"}
               </p>
             </div>
             {canSave && (
               <button
                 onClick={() => downloadTrack(currentTrack)}
-                className="w-11 h-11 rounded-full bg-white/10 border border-white/10 flex items-center justify-center active:scale-90 cursor-pointer"
+                className="w-11 h-11 rounded-full sonic-glass flex items-center justify-center active:scale-90 cursor-pointer"
                 aria-label="Save to phone"
               >
-                <DownloadCloud className="w-5 h-5" />
+                <DownloadCloud className="w-5 h-5 text-[var(--mv-text)]" />
               </button>
             )}
             <button
               onClick={() => toggleFavorite(currentTrack.id)}
-              className="w-11 h-11 rounded-full bg-white/10 border border-white/10 flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+              className="w-11 h-11 rounded-full sonic-glass flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
               aria-label={currentTrack.isFavorite ? "Unlike" : "Like"}
             >
               <Heart
                 className={`w-5 h-5 ${
-                  currentTrack.isFavorite ? "fill-fuchsia-400 text-fuchsia-400" : ""
+                  currentTrack.isFavorite
+                    ? "fill-[var(--mv-accent)] text-[var(--mv-accent)]"
+                    : "text-[var(--mv-text)]"
                 }`}
               />
             </button>
           </div>
 
-          {error && <p className="text-xs text-rose-300 mb-2">{error}</p>}
+          {error && <p className="text-xs text-rose-500 mb-2">{error}</p>}
 
           {/* Tactile Scrubber */}
           <div className="mb-4">
@@ -318,12 +332,13 @@ export default function NowPlayingModal() {
               value={Math.min(currentTime, total || 100)}
               onChange={(e) => seek(parseFloat(e.target.value))}
               aria-label="Seek"
-              className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-white"
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, #e879f9 0%, #a855f7 ${pct}%, rgba(255,255,255,0.18) ${pct}%)`,
+                accentColor: "var(--mv-accent)",
+                background: `linear-gradient(to right, var(--mv-accent) 0%, var(--mv-accent-2) ${pct}%, var(--mv-track) ${pct}%)`,
               }}
             />
-            <div className="flex justify-between text-[11px] font-mono text-white/45 mt-1.5">
+            <div className="flex justify-between text-[11px] font-mono text-[var(--mv-text-subtle)] mt-1.5">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(total)}</span>
             </div>
@@ -334,7 +349,9 @@ export default function NowPlayingModal() {
             <button
               onClick={toggleShuffle}
               className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-colors ${
-                isShuffle ? "text-fuchsia-300 bg-fuchsia-500/15" : "text-white/45"
+                isShuffle
+                  ? "text-[var(--mv-accent)] bg-[var(--mv-accent-soft)]"
+                  : "text-[var(--mv-text-subtle)]"
               }`}
               aria-label="Shuffle"
             >
@@ -342,14 +359,19 @@ export default function NowPlayingModal() {
             </button>
             <button
               onClick={previousTrack}
-              className="w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+              className="w-14 h-14 rounded-full flex items-center justify-center text-[var(--mv-text)] active:scale-90 transition-transform cursor-pointer"
               aria-label="Previous"
             >
               <SkipBack className="w-7 h-7 fill-current" />
             </button>
             <button
               onClick={togglePlayPause}
-              className="w-[76px] h-[76px] rounded-full bg-white text-[#05050a] flex items-center justify-center shadow-[0_12px_45px_rgba(232,121,249,0.35)] active:scale-90 transition-transform cursor-pointer"
+              style={{
+                background: "var(--mv-primary-bg)",
+                color: "var(--mv-primary-fg)",
+                boxShadow: "0 14px 40px -6px var(--mv-glow)",
+              }}
+              className="w-[76px] h-[76px] rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
               aria-label={isPlaying ? "Pause" : "Play"}
             >
               {isBuffering ? (
@@ -362,7 +384,7 @@ export default function NowPlayingModal() {
             </button>
             <button
               onClick={nextTrack}
-              className="w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
+              className="w-14 h-14 rounded-full flex items-center justify-center text-[var(--mv-text)] active:scale-90 transition-transform cursor-pointer"
               aria-label="Next"
             >
               <SkipForward className="w-7 h-7 fill-current" />
@@ -370,7 +392,9 @@ export default function NowPlayingModal() {
             <button
               onClick={cycleRepeatMode}
               className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-colors ${
-                repeatMode !== "OFF" ? "text-fuchsia-300 bg-fuchsia-500/15" : "text-white/45"
+                repeatMode !== "OFF"
+                  ? "text-[var(--mv-accent)] bg-[var(--mv-accent-soft)]"
+                  : "text-[var(--mv-text-subtle)]"
               }`}
               aria-label="Repeat"
             >
@@ -386,29 +410,36 @@ export default function NowPlayingModal() {
           <div className="flex items-center justify-center gap-2.5 mt-5">
             <button
               onClick={cycleSpeed}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-mono font-semibold text-white/75 active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full sonic-glass text-xs font-mono font-semibold text-[var(--mv-text-muted)] active:scale-95 cursor-pointer"
             >
-              <Gauge className="w-3.5 h-3.5 text-fuchsia-300" />
+              <Gauge className="w-3.5 h-3.5 text-[var(--mv-accent)]" />
               {playbackRate}×
             </button>
 
             <button
               onClick={cycleSleepTimer}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-mono font-semibold active:scale-95 cursor-pointer ${
+              style={
                 sleepLabel
-                  ? "bg-fuchsia-500/20 border-fuchsia-400/40 text-fuchsia-200"
-                  : "bg-white/10 border-white/10 text-white/75"
+                  ? {
+                      background: "var(--mv-accent-soft)",
+                      borderColor: "var(--mv-border-strong)",
+                      color: "var(--mv-accent)",
+                    }
+                  : undefined
+              }
+              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-mono font-semibold active:scale-95 cursor-pointer ${
+                sleepLabel ? "" : "sonic-glass text-[var(--mv-text-muted)]"
               }`}
             >
-              <Moon className="w-3.5 h-3.5 text-cyan-300" />
+              <Moon className="w-3.5 h-3.5 text-[var(--mv-accent)]" />
               {sleepLabel ? `Sleep ${sleepLabel}` : "Sleep"}
             </button>
 
             <button
               onClick={() => setShowQueue(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/10 text-xs font-mono font-semibold text-white/75 active:scale-95 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full sonic-glass text-xs font-mono font-semibold text-[var(--mv-text-muted)] active:scale-95 cursor-pointer"
             >
-              <ListMusic className="w-3.5 h-3.5 text-purple-300" />
+              <ListMusic className="w-3.5 h-3.5 text-[var(--mv-accent)]" />
               Queue ({queue.length})
             </button>
           </div>

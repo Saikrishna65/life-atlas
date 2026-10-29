@@ -119,24 +119,26 @@ function LibraryContent() {
         {group && (
           <button
             onClick={() => setGroup(null)}
-            className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center active:bg-white/10 cursor-pointer"
+            className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-[var(--mv-text)] active:bg-[var(--mv-card-hover)] cursor-pointer"
             aria-label="Back"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
         )}
-        <h1 className="font-display text-[34px] leading-none truncate">{title}</h1>
+        <h1 className="font-display text-[34px] leading-none text-[var(--mv-text)] truncate">{title}</h1>
       </header>
 
       {/* Segmented control */}
       {!group && (
-        <div className="grid grid-cols-3 p-1 rounded-2xl bg-white/[0.07] border border-white/10">
+        <div className="grid grid-cols-3 p-1 rounded-2xl bg-[var(--mv-input)] border border-[var(--mv-border)]">
           {(["songs", "albums", "artists"] as View[]).map((v) => (
             <button
               key={v}
               onClick={() => setParam("view", v)}
               className={`py-2.5 rounded-xl text-sm font-semibold capitalize transition-all cursor-pointer ${
-                view === v ? "bg-white text-black shadow" : "text-white/55"
+                view === v
+                  ? "bg-[var(--mv-primary-bg)] text-[var(--mv-primary-fg)] shadow"
+                  : "text-[var(--mv-text-muted)]"
               }`}
             >
               {v}
@@ -147,17 +149,17 @@ function LibraryContent() {
 
       {/* Search */}
       <div className="relative">
-        <Search className="w-4 h-4 text-white/35 absolute left-4 top-1/2 -translate-y-1/2" />
+        <Search className="w-4 h-4 text-[var(--mv-text-subtle)] absolute left-4 top-1/2 -translate-y-1/2" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={`Search ${showSongList ? "songs" : view}`}
-          className="w-full h-12 pl-11 pr-11 rounded-2xl bg-white/[0.07] border border-white/10 text-[15px] text-white placeholder:text-white/30 focus:outline-none focus:border-fuchsia-400/60"
+          className="w-full h-12 pl-11 pr-11 rounded-2xl bg-[var(--mv-input)] border border-[var(--mv-border)] text-[15px] text-[var(--mv-text)] placeholder:text-[var(--mv-text-subtle)] focus:outline-none focus:border-[var(--mv-accent)]"
         />
         {query && (
           <button
             onClick={() => setQuery("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-white/40 cursor-pointer"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center text-[var(--mv-text-muted)] cursor-pointer"
             aria-label="Clear search"
           >
             <X className="w-4 h-4" />
@@ -174,8 +176,8 @@ function LibraryContent() {
               onClick={() => setParam("filter", f.key)}
               className={`shrink-0 px-4 py-2 rounded-full text-[13px] font-semibold border transition-colors cursor-pointer ${
                 filter === f.key
-                  ? "bg-fuchsia-500 border-fuchsia-400 text-white"
-                  : "bg-white/[0.06] border-white/10 text-white/60"
+                  ? "bg-[var(--mv-accent)] border-[var(--mv-accent)] text-[var(--mv-accent-fg)]"
+                  : "bg-[var(--mv-input)] border-[var(--mv-border)] text-[var(--mv-text-muted)]"
               }`}
             >
               {f.label}
@@ -192,15 +194,15 @@ function LibraryContent() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => playList(false)}
-                className="h-12 rounded-2xl bg-white text-black font-bold text-sm flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                className="h-12 rounded-2xl bg-[var(--mv-primary-bg)] text-[var(--mv-primary-fg)] font-bold text-sm flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-current" /> Play {songs.length}
               </button>
               <button
                 onClick={() => playList(true)}
-                className="h-12 rounded-2xl bg-white/10 border border-white/10 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                className="h-12 rounded-2xl sonic-glass text-[var(--mv-text)] font-bold text-sm flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
               >
-                <Shuffle className="w-4 h-4" /> Shuffle
+                <Shuffle className="w-4 h-4 text-[var(--mv-accent)]" /> Shuffle
               </button>
             </div>
           )}
@@ -214,7 +216,7 @@ function LibraryContent() {
                 onMore={() => setSheetTrack(t)}
               />
             ))}
-            {songs.length === 0 && <p className="text-center text-sm text-white/40 py-12">No songs match.</p>}
+            {songs.length === 0 && <p className="text-center text-sm text-[var(--mv-text-subtle)] py-12">No songs match.</p>}
           </div>
         </>
       ) : (
@@ -234,13 +236,13 @@ function LibraryContent() {
                 className={`w-full aspect-square shadow-xl ${view === "artists" ? "rounded-full" : "rounded-3xl"}`}
                 iconClass="w-1/4 h-1/4"
               />
-              <p className={`text-sm font-semibold truncate mt-2.5 ${view === "artists" ? "text-center" : ""}`}>{name}</p>
-              <p className={`text-xs text-white/45 ${view === "artists" ? "text-center" : ""}`}>
+              <p className={`text-sm font-semibold text-[var(--mv-text)] truncate mt-2.5 ${view === "artists" ? "text-center" : ""}`}>{name}</p>
+              <p className={`text-xs text-[var(--mv-text-muted)] ${view === "artists" ? "text-center" : ""}`}>
                 {list.length} song{list.length === 1 ? "" : "s"}
               </p>
             </button>
           ))}
-          {grouped.length === 0 && <p className="col-span-2 text-center text-sm text-white/40 py-12">Nothing found.</p>}
+          {grouped.length === 0 && <p className="col-span-2 text-center text-sm text-[var(--mv-text-subtle)] py-12">Nothing found.</p>}
         </div>
       )}
 
@@ -251,7 +253,7 @@ function LibraryContent() {
 
 export default function LibraryPage() {
   return (
-    <Suspense fallback={<div className="py-20 text-center text-white/40 text-sm">Loading…</div>}>
+    <Suspense fallback={<div className="py-20 text-center text-[var(--mv-text-subtle)] text-sm">Loading…</div>}>
       <LibraryContent />
     </Suspense>
   );

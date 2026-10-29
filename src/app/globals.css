@@ -78,25 +78,129 @@
   }
 }
 
-/* Standalone Obsidian Aurora dark scope for Atlas Sonic (Music Vault) */
-.sonic-dark {
+/* ============================================================================
+   Music Vault Multi-Palette Theme Scope (.music-theme)
+   1. Champagne Gold (Default — Midnight Slate & Brushed Warm Gold)
+   2. Deep Emerald (Matte Graphite & Studio Mint)
+   3. Arctic Cyan (Abyssal Navy & Electric Ice-Blue)
+   4. Alabaster Glass (Frosted Ivory & Crimson Coral Light Mode)
+   ============================================================================ */
+
+.music-theme {
   color-scheme: dark;
-  --background: #06060b;
-  --foreground: #f8fafc;
-  --surface: #101019;
-  --surface-hover: #181826;
-  --muted: rgba(255, 255, 255, 0.1);
-  --muted-foreground: rgba(248, 250, 252, 0.55);
-  color: #f8fafc;
+  --mv-bg: #0b0d12;
+  --mv-bg-elevated: rgba(20, 23, 31, 0.97);
+  --mv-dock: rgba(17, 20, 27, 0.94);
+  --mv-card: rgba(255, 250, 240, 0.055);
+  --mv-card-hover: rgba(255, 250, 240, 0.095);
+  --mv-input: rgba(255, 255, 255, 0.065);
+  --mv-border: rgba(235, 214, 178, 0.13);
+  --mv-border-strong: rgba(229, 184, 105, 0.38);
+  --mv-text: #f8f6f1;
+  --mv-text-muted: rgba(248, 246, 241, 0.6);
+  --mv-text-subtle: rgba(248, 246, 241, 0.4);
+  --mv-accent: #e5b869;
+  --mv-accent-2: #c9963b;
+  --mv-accent-soft: rgba(229, 184, 105, 0.15);
+  --mv-accent-fg: #0b0d12;
+  --mv-primary-bg: #f5efe4;
+  --mv-primary-fg: #0b0d12;
+  --mv-aura-1: rgba(229, 184, 105, 0.22);
+  --mv-aura-2: rgba(148, 163, 184, 0.14);
+  --mv-glow: rgba(229, 184, 105, 0.4);
+  --mv-track: rgba(255, 255, 255, 0.16);
+  --mv-shadow: rgba(0, 0, 0, 0.65);
+
+  --background: var(--mv-bg);
+  --foreground: var(--mv-text);
+  color: var(--mv-text);
 }
 
-.sonic-dark h1,
-.sonic-dark h2,
-.sonic-dark h3,
-.sonic-dark h4,
-.sonic-dark h5,
-.sonic-dark h6 {
-  color: #f8fafc;
+html[data-music-theme="emerald"] .music-theme {
+  color-scheme: dark;
+  --mv-bg: #090d0b;
+  --mv-bg-elevated: rgba(15, 22, 18, 0.97);
+  --mv-dock: rgba(13, 19, 16, 0.94);
+  --mv-card: rgba(240, 255, 246, 0.055);
+  --mv-card-hover: rgba(240, 255, 246, 0.095);
+  --mv-input: rgba(255, 255, 255, 0.065);
+  --mv-border: rgba(167, 243, 208, 0.13);
+  --mv-border-strong: rgba(30, 215, 96, 0.38);
+  --mv-text: #f2fbf6;
+  --mv-text-muted: rgba(242, 251, 246, 0.58);
+  --mv-text-subtle: rgba(242, 251, 246, 0.38);
+  --mv-accent: #1ed760;
+  --mv-accent-2: #10b981;
+  --mv-accent-soft: rgba(30, 215, 96, 0.15);
+  --mv-accent-fg: #05130a;
+  --mv-primary-bg: #1ed760;
+  --mv-primary-fg: #05130a;
+  --mv-aura-1: rgba(30, 215, 96, 0.2);
+  --mv-aura-2: rgba(20, 184, 166, 0.14);
+  --mv-glow: rgba(30, 215, 96, 0.38);
+  --mv-track: rgba(255, 255, 255, 0.16);
+  --mv-shadow: rgba(0, 0, 0, 0.65);
+}
+
+html[data-music-theme="cyan"] .music-theme {
+  color-scheme: dark;
+  --mv-bg: #070c14;
+  --mv-bg-elevated: rgba(13, 21, 34, 0.97);
+  --mv-dock: rgba(11, 18, 30, 0.94);
+  --mv-card: rgba(235, 248, 255, 0.055);
+  --mv-card-hover: rgba(235, 248, 255, 0.095);
+  --mv-input: rgba(255, 255, 255, 0.065);
+  --mv-border: rgba(186, 230, 253, 0.13);
+  --mv-border-strong: rgba(56, 189, 248, 0.38);
+  --mv-text: #f0f9ff;
+  --mv-text-muted: rgba(240, 249, 255, 0.58);
+  --mv-text-subtle: rgba(240, 249, 255, 0.38);
+  --mv-accent: #38bdf8;
+  --mv-accent-2: #06b6d4;
+  --mv-accent-soft: rgba(56, 189, 248, 0.15);
+  --mv-accent-fg: #04111d;
+  --mv-primary-bg: #38bdf8;
+  --mv-primary-fg: #04111d;
+  --mv-aura-1: rgba(56, 189, 248, 0.22);
+  --mv-aura-2: rgba(59, 130, 246, 0.15);
+  --mv-glow: rgba(56, 189, 248, 0.4);
+  --mv-track: rgba(255, 255, 255, 0.16);
+  --mv-shadow: rgba(0, 0, 0, 0.65);
+}
+
+html[data-music-theme="alabaster"] .music-theme {
+  color-scheme: light;
+  --mv-bg: #f6f6f9;
+  --mv-bg-elevated: rgba(255, 255, 255, 0.98);
+  --mv-dock: rgba(255, 255, 255, 0.94);
+  --mv-card: rgba(255, 255, 255, 0.85);
+  --mv-card-hover: rgba(255, 255, 255, 0.98);
+  --mv-input: rgba(15, 23, 42, 0.05);
+  --mv-border: rgba(15, 23, 42, 0.09);
+  --mv-border-strong: rgba(244, 63, 94, 0.34);
+  --mv-text: #0f172a;
+  --mv-text-muted: #526075;
+  --mv-text-subtle: #8b97ab;
+  --mv-accent: #f43f5e;
+  --mv-accent-2: #e11d48;
+  --mv-accent-soft: rgba(244, 63, 94, 0.11);
+  --mv-accent-fg: #ffffff;
+  --mv-primary-bg: #0f172a;
+  --mv-primary-fg: #ffffff;
+  --mv-aura-1: rgba(244, 63, 94, 0.15);
+  --mv-aura-2: rgba(251, 146, 60, 0.11);
+  --mv-glow: rgba(244, 63, 94, 0.28);
+  --mv-track: rgba(15, 23, 42, 0.13);
+  --mv-shadow: rgba(15, 23, 42, 0.12);
+}
+
+.music-theme h1,
+.music-theme h2,
+.music-theme h3,
+.music-theme h4,
+.music-theme h5,
+.music-theme h6 {
+  color: var(--mv-text);
 }
 
 @layer utilities {
@@ -169,11 +273,11 @@
   }
 
   .sonic-glass {
-    background: linear-gradient(165deg, rgba(255, 255, 255, 0.085) 0%, rgba(255, 255, 255, 0.03) 100%);
+    background: var(--mv-card);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.65), inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--mv-border);
+    box-shadow: 0 16px 38px -14px var(--mv-shadow);
   }
 
   .vinyl-grooves {

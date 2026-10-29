@@ -23,6 +23,7 @@ import {
 } from "@/lib/music/clientYouTube";
 import { MusicTrack, MusicPlaylist } from "@/lib/music/types";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
+import { useMusicTheme } from "@/lib/music/theme";
 import { triggerHaptic } from "@/lib/deviceAuth";
 import { Artwork } from "@/components/music/ui";
 
@@ -42,6 +43,7 @@ export default function YouTubeShareModal({
   onSuccess,
 }: YouTubeShareModalProps) {
   const { playTrack } = useMusicPlayer();
+  useMusicTheme();
 
   const [url, setUrl] = useState(initialUrl);
   const [videoId, setVideoId] = useState<string | null>(null);
@@ -288,7 +290,7 @@ export default function YouTubeShareModal({
 
   return (
     <div
-      className="sonic-dark fixed inset-0 z-[55] bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center animate-fade-in"
+      className="music-theme fixed inset-0 z-[55] bg-black/75 backdrop-blur-md flex items-end sm:items-center justify-center animate-fade-in"
       onClick={close}
       role="dialog"
       aria-modal="true"
@@ -296,21 +298,21 @@ export default function YouTubeShareModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] bg-[#12121b]/98 backdrop-blur-2xl text-white border border-white/15 shadow-2xl pt-3 pb-[max(env(safe-area-inset-bottom),1.25rem)] px-5 max-h-[92vh] overflow-y-auto animate-sheet-up"
+        className="w-full max-w-lg rounded-t-[32px] sm:rounded-[32px] bg-[var(--mv-bg-elevated)] backdrop-blur-2xl text-[var(--mv-text)] border border-[var(--mv-border)] shadow-[0_24px_60px_var(--mv-shadow)] pt-3 pb-[max(env(safe-area-inset-bottom),1.25rem)] px-5 max-h-[92vh] overflow-y-auto animate-sheet-up"
       >
-        <div className="w-10 h-1 rounded-full bg-white/25 mx-auto mb-4 sm:hidden" />
+        <div className="w-10 h-1 rounded-full bg-[var(--mv-track)] mx-auto mb-4 sm:hidden" />
 
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-[10px] tracking-[0.22em] uppercase text-fuchsia-300/80 font-semibold">
+            <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--mv-accent)] font-semibold">
               YouTube Extractor
             </p>
-            <h3 className="font-display text-2xl text-white mt-0.5">Save audio offline</h3>
+            <h3 className="font-display text-2xl text-[var(--mv-text)] mt-0.5">Save audio offline</h3>
           </div>
           <button
             onClick={close}
             disabled={working}
-            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center disabled:opacity-40 cursor-pointer"
+            className="w-10 h-10 rounded-full bg-[var(--mv-input)] border border-[var(--mv-border)] text-[var(--mv-text)] flex items-center justify-center disabled:opacity-40 cursor-pointer"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -325,12 +327,12 @@ export default function YouTubeShareModal({
               iconClass="w-10 h-10"
             />
             <div>
-              <div className="inline-flex items-center gap-1.5 text-emerald-400 text-sm font-semibold mb-1.5">
+              <div className="inline-flex items-center gap-1.5 text-emerald-500 text-sm font-semibold mb-1.5">
                 <CheckCircle2 className="w-4 h-4" /> Saved to your vault
               </div>
-              <p className="font-display text-xl text-white truncate">{done.title}</p>
-              <p className="text-sm text-white/55 truncate">{done.artist}</p>
-              <p className="text-xs font-mono text-white/40 mt-1.5">
+              <p className="font-display text-xl text-[var(--mv-text)] truncate">{done.title}</p>
+              <p className="text-sm text-[var(--mv-text-muted)] truncate">{done.artist}</p>
+              <p className="text-xs font-mono text-[var(--mv-text-subtle)] mt-1.5">
                 {formatDuration(done.duration || 0)} · {((done.size || 0) / (1024 * 1024)).toFixed(1)} MB
               </p>
             </div>
@@ -340,7 +342,7 @@ export default function YouTubeShareModal({
                   reset();
                   onClose();
                 }}
-                className="h-14 rounded-2xl bg-white/10 font-semibold cursor-pointer"
+                className="h-14 rounded-2xl bg-[var(--mv-input)] border border-[var(--mv-border)] text-[var(--mv-text)] font-semibold cursor-pointer"
               >
                 Done
               </button>
@@ -350,7 +352,7 @@ export default function YouTubeShareModal({
                   reset();
                   onClose();
                 }}
-                className="h-14 rounded-2xl bg-white text-[#05050a] font-bold flex items-center justify-center gap-2 cursor-pointer"
+                className="h-14 rounded-2xl bg-[var(--mv-primary-bg)] text-[var(--mv-primary-fg)] font-bold flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Play className="w-5 h-5 fill-current" /> Play now
               </button>
@@ -359,7 +361,7 @@ export default function YouTubeShareModal({
         ) : (
           <form onSubmit={extract} className="space-y-4">
             {error && (
-              <div className="flex gap-2.5 p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-sm text-rose-200">
+              <div className="flex gap-2.5 p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-sm text-rose-500">
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -372,13 +374,13 @@ export default function YouTubeShareModal({
                 disabled={working}
                 placeholder="Paste YouTube video or Shorts link"
                 inputMode="url"
-                className="w-full h-14 pl-5 pr-28 rounded-2xl bg-white/[0.07] border border-white/10 text-[15px] text-white placeholder:text-white/30 focus:outline-none focus:border-fuchsia-400/60"
+                className="w-full h-14 pl-5 pr-28 rounded-2xl bg-[var(--mv-input)] border border-[var(--mv-border)] text-[15px] text-[var(--mv-text)] placeholder:text-[var(--mv-text-subtle)] focus:outline-none focus:border-[var(--mv-accent)]"
               />
               <button
                 type="button"
                 onClick={paste}
                 disabled={working}
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-3.5 rounded-xl bg-white/12 text-xs font-bold text-white flex items-center gap-1.5 active:scale-95 cursor-pointer"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 px-3.5 rounded-xl bg-[var(--mv-card)] border border-[var(--mv-border)] text-xs font-bold text-[var(--mv-text)] flex items-center gap-1.5 active:scale-95 cursor-pointer"
               >
                 {loadingPreview ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -390,8 +392,8 @@ export default function YouTubeShareModal({
             </div>
 
             {videoId && (
-              <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.05] border border-white/10">
-                <div className="w-20 h-16 rounded-xl overflow-hidden bg-white/10 shrink-0">
+              <div className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--mv-card)] border border-[var(--mv-border)]">
+                <div className="w-20 h-16 rounded-xl overflow-hidden bg-[var(--mv-input)] shrink-0">
                   {thumb && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={thumb} alt="" className="w-full h-full object-cover" />
@@ -403,14 +405,14 @@ export default function YouTubeShareModal({
                     onChange={(e) => setTitle(e.target.value)}
                     disabled={working}
                     placeholder="Song title"
-                    className="w-full h-9 px-3 rounded-lg bg-black/35 border border-white/10 text-sm font-semibold text-white focus:outline-none focus:border-fuchsia-400/60"
+                    className="w-full h-9 px-3 rounded-lg bg-[var(--mv-input)] border border-[var(--mv-border)] text-sm font-semibold text-[var(--mv-text)] focus:outline-none focus:border-[var(--mv-accent)]"
                   />
                   <input
                     value={artist}
                     onChange={(e) => setArtist(e.target.value)}
                     disabled={working}
                     placeholder="Artist"
-                    className="w-full h-9 px-3 rounded-lg bg-black/35 border border-white/10 text-xs text-white/75 focus:outline-none focus:border-fuchsia-400/60"
+                    className="w-full h-9 px-3 rounded-lg bg-[var(--mv-input)] border border-[var(--mv-border)] text-xs text-[var(--mv-text-muted)] focus:outline-none focus:border-[var(--mv-accent)]"
                   />
                 </div>
               </div>
@@ -418,7 +420,7 @@ export default function YouTubeShareModal({
 
             {/* Optional playlist */}
             <div>
-              <p className="text-xs font-semibold text-white/45 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+              <p className="text-xs font-semibold text-[var(--mv-text-muted)] uppercase tracking-wider mb-2 flex items-center gap-1.5">
                 <ListMusic className="w-3.5 h-3.5" /> Add to playlist{" "}
                 <span className="normal-case tracking-normal font-normal">(optional)</span>
               </p>
@@ -437,8 +439,8 @@ export default function YouTubeShareModal({
                     onClick={() => setDest(key)}
                     className={`h-11 rounded-xl text-sm font-semibold border transition-colors disabled:opacity-30 cursor-pointer ${
                       dest === key
-                        ? "bg-fuchsia-500 border-fuchsia-400 text-white"
-                        : "bg-white/[0.06] border-white/10 text-white/60"
+                        ? "bg-[var(--mv-accent)] border-[var(--mv-accent)] text-[var(--mv-accent-fg)]"
+                        : "bg-[var(--mv-input)] border-[var(--mv-border)] text-[var(--mv-text-muted)]"
                     }`}
                   >
                     {key === "NEW" && <Plus className="w-3.5 h-3.5 inline -mt-0.5 mr-0.5" />}
@@ -451,7 +453,7 @@ export default function YouTubeShareModal({
                   value={selectedPl}
                   onChange={(e) => setSelectedPl(e.target.value)}
                   disabled={working}
-                  className="mt-2 w-full h-12 px-4 rounded-xl bg-[#1d1d28] border border-white/10 text-sm text-white"
+                  className="mt-2 w-full h-12 px-4 rounded-xl bg-[var(--mv-bg-elevated)] border border-[var(--mv-border)] text-sm text-[var(--mv-text)]"
                 >
                   {playlists.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -466,24 +468,27 @@ export default function YouTubeShareModal({
                   onChange={(e) => setNewPlTitle(e.target.value)}
                   disabled={working}
                   placeholder="Playlist name"
-                  className="mt-2 w-full h-12 px-4 rounded-xl bg-white/[0.07] border border-white/10 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-fuchsia-400/60"
+                  className="mt-2 w-full h-12 px-4 rounded-xl bg-[var(--mv-input)] border border-[var(--mv-border)] text-sm text-[var(--mv-text)] placeholder:text-[var(--mv-text-subtle)] focus:outline-none focus:border-[var(--mv-accent)]"
                 />
               )}
             </div>
 
             {working && (
-              <div className="p-3.5 rounded-2xl bg-fuchsia-500/12 border border-fuchsia-400/25 space-y-2">
+              <div className="p-3.5 rounded-2xl bg-[var(--mv-accent-soft)] border border-[var(--mv-border-strong)] space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-2 font-medium text-white">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-fuchsia-300 shrink-0" />
+                  <span className="flex items-center gap-2 font-medium text-[var(--mv-text)]">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--mv-accent)] shrink-0" />
                     {step}
                   </span>
-                  <span className="font-mono text-fuchsia-200">{progress}%</span>
+                  <span className="font-mono font-semibold text-[var(--mv-accent)]">{progress}%</span>
                 </div>
-                <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div className="w-full h-1.5 rounded-full bg-[var(--mv-track)] overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-fuchsia-400 via-purple-400 to-cyan-300 transition-all duration-300"
-                    style={{ width: `${progress}%` }}
+                    className="h-full transition-all duration-300"
+                    style={{
+                      width: `${progress}%`,
+                      background: "linear-gradient(90deg, var(--mv-accent), var(--mv-accent-2))",
+                    }}
                   />
                 </div>
               </div>
@@ -492,7 +497,11 @@ export default function YouTubeShareModal({
             <button
               type="submit"
               disabled={!videoId || working}
-              className="w-full h-14 rounded-2xl bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500 text-white font-bold flex items-center justify-center gap-2 shadow-[0_12px_30px_rgba(168,85,247,0.35)] disabled:opacity-40 active:scale-[0.98] transition-transform cursor-pointer"
+              className="w-full h-14 rounded-2xl text-[var(--mv-accent-fg)] font-bold flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform cursor-pointer"
+              style={{
+                background: "linear-gradient(135deg, var(--mv-accent), var(--mv-accent-2))",
+                boxShadow: "0 12px 28px -4px var(--mv-glow)",
+              }}
             >
               <DownloadCloud className="w-5 h-5" />
               {working ? "Extracting audio…" : "Extract & save to vault"}

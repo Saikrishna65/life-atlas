@@ -1,11 +1,10 @@
 "use client";
 
 /**
- * Shared building blocks for the Atlas Sonic music theme.
+ * Shared building blocks for the Atlas Music Vault multi-palette theme system.
  */
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  Play,
   Heart,
   ListPlus,
   ListMusic,
@@ -58,13 +57,14 @@ export function hasCloudCopy(t: MusicTrack): boolean {
   return t.syncedToCloud === true || Boolean(t.audioUrl);
 }
 
+// Refined audiophile cover-art gradients (zero hot-pink / neon-purple)
 const GRADIENTS = [
-  "from-fuchsia-500 via-purple-600 to-indigo-700",
-  "from-amber-400 via-orange-500 to-rose-600",
-  "from-cyan-400 via-sky-500 to-blue-700",
-  "from-emerald-400 via-teal-500 to-cyan-700",
-  "from-pink-500 via-rose-500 to-orange-500",
-  "from-violet-500 via-indigo-500 to-sky-500",
+  "from-amber-600 via-yellow-700 to-stone-800",
+  "from-emerald-600 via-teal-700 to-slate-800",
+  "from-sky-600 via-cyan-700 to-slate-900",
+  "from-slate-600 via-zinc-700 to-neutral-900",
+  "from-orange-600 via-amber-700 to-stone-900",
+  "from-rose-600 via-red-700 to-stone-900",
 ];
 
 export function gradientFor(seed: string): string {
@@ -117,7 +117,7 @@ export function Artwork({
           draggable={false}
         />
       ) : (
-        <Music className={`${iconClass} text-white/80 drop-shadow`} />
+        <Music className={`${iconClass} text-white/85 drop-shadow`} />
       )}
     </div>
   );
@@ -126,9 +126,9 @@ export function Artwork({
 export function Equalizer({ className = "" }: { className?: string }) {
   return (
     <span className={`flex items-end gap-[2px] h-3.5 ${className}`} aria-label="Playing">
-      <span className="w-[3px] rounded-full bg-fuchsia-400 animate-eq-1" />
-      <span className="w-[3px] rounded-full bg-amber-300 animate-eq-2" />
-      <span className="w-[3px] rounded-full bg-cyan-300 animate-eq-3" />
+      <span className="w-[3px] rounded-full bg-[var(--mv-accent)] animate-eq-1" />
+      <span className="w-[3px] rounded-full bg-[var(--mv-accent)] opacity-80 animate-eq-2" />
+      <span className="w-[3px] rounded-full bg-[var(--mv-accent-2)] animate-eq-3" />
     </span>
   );
 }
@@ -155,7 +155,10 @@ export function SpectrumBars({
       {anims.map((anim, idx) => (
         <span
           key={idx}
-          className={`w-[3px] rounded-full bg-gradient-to-t from-fuchsia-400 via-purple-300 to-cyan-300 transition-all ${
+          style={{
+            background: "linear-gradient(to top, var(--mv-accent-2), var(--mv-accent))",
+          }}
+          className={`w-[3px] rounded-full transition-all ${
             playing ? anim : "h-1 opacity-40"
           }`}
         />
@@ -166,7 +169,15 @@ export function SpectrumBars({
 
 /* ----------------------------------------------------------- playlist cover */
 
-export function PlaylistCover({ playlist, tracksById, className = "" }: { playlist: MusicPlaylist; tracksById: Map<string, MusicTrack>; className?: string }) {
+export function PlaylistCover({
+  playlist,
+  tracksById,
+  className = "",
+}: {
+  playlist: MusicPlaylist;
+  tracksById: Map<string, MusicTrack>;
+  className?: string;
+}) {
   const covers = playlist.trackIds
     .map((id) => tracksById.get(id))
     .filter((t): t is MusicTrack => !!t)
@@ -174,7 +185,7 @@ export function PlaylistCover({ playlist, tracksById, className = "" }: { playli
   if (covers.length === 0) {
     return (
       <div className={`bg-gradient-to-br ${gradientFor(playlist.id)} flex items-center justify-center ${className}`}>
-        <ListMusic className="w-1/3 h-1/3 text-white/80" />
+        <ListMusic className="w-1/3 h-1/3 text-white/85" />
       </div>
     );
   }
@@ -208,7 +219,7 @@ export function TrackRow({
   return (
     <div
       className={`group flex items-center gap-3 pl-2 pr-1 py-2 rounded-2xl transition-colors ${
-        active ? "bg-white/[0.08]" : "active:bg-white/[0.06]"
+        active ? "bg-[var(--mv-accent-soft)]" : "active:bg-[var(--mv-card-hover)]"
       }`}
     >
       <button
@@ -219,7 +230,7 @@ export function TrackRow({
         className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
       >
         {index !== undefined && (
-          <span className="w-5 text-center text-[11px] font-mono text-white/30 shrink-0">
+          <span className="w-5 text-center text-[11px] font-mono text-[var(--mv-text-subtle)] shrink-0">
             {active && isPlaying ? <Equalizer className="mx-auto" /> : index + 1}
           </span>
         )}
@@ -227,25 +238,25 @@ export function TrackRow({
         <div className="min-w-0 flex-1">
           <p
             className={`text-[15px] font-semibold truncate ${
-              active ? "text-fuchsia-300" : "text-white"
+              active ? "text-[var(--mv-accent)]" : "text-[var(--mv-text)]"
             }`}
           >
             {track.title}
           </p>
-          <p className="text-xs text-white/50 truncate flex items-center gap-1.5">
+          <p className="text-xs text-[var(--mv-text-muted)] truncate flex items-center gap-1.5">
             {hasLocalAudio(track) && (
-              <HardDriveDownload className="w-3 h-3 text-emerald-400/80 shrink-0" />
+              <HardDriveDownload className="w-3 h-3 text-emerald-500 shrink-0" />
             )}
             <span className="truncate">{track.artist || "Unknown Artist"}</span>
           </p>
         </div>
-        <span className="text-[11px] font-mono text-white/35 shrink-0 pr-1">
+        <span className="text-[11px] font-mono text-[var(--mv-text-subtle)] shrink-0 pr-1">
           {formatTime(track.duration)}
         </span>
       </button>
       <button
         onClick={onMore}
-        className="w-10 h-10 rounded-full flex items-center justify-center text-white/40 active:bg-white/10 active:text-white shrink-0 cursor-pointer"
+        className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--mv-text-subtle)] active:bg-[var(--mv-card-hover)] active:text-[var(--mv-text)] shrink-0 cursor-pointer"
         aria-label="Song options"
       >
         <MoreVertical className="w-5 h-5" />
@@ -268,16 +279,20 @@ export function Sheet({
   if (!open) return null;
   return (
     <div
-      className="sonic-dark fixed inset-0 z-[60] bg-black/75 backdrop-blur-md flex items-end justify-center animate-fade-in"
+      className="music-theme fixed inset-0 z-[60] bg-black/65 backdrop-blur-md flex items-end justify-center animate-fade-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-t-[32px] bg-[#12121b]/98 backdrop-blur-2xl border-t border-white/15 shadow-[0_-20px_60px_rgba(0,0,0,0.75)] pt-3 pb-[max(env(safe-area-inset-bottom),1.25rem)] px-4 max-h-[88vh] overflow-y-auto animate-sheet-up"
+        style={{
+          background: "var(--mv-bg-elevated)",
+          borderColor: "var(--mv-border)",
+        }}
+        className="w-full max-w-lg rounded-t-[32px] backdrop-blur-2xl border-t shadow-[0_-20px_60px_rgba(0,0,0,0.45)] pt-3 pb-[max(env(safe-area-inset-bottom),1.25rem)] px-4 max-h-[88vh] overflow-y-auto animate-sheet-up"
       >
-        <div className="w-10 h-1 rounded-full bg-white/25 mx-auto mb-3" />
+        <div className="w-10 h-1 rounded-full bg-[var(--mv-border)] mx-auto mb-3" />
         {children}
       </div>
     </div>
@@ -302,14 +317,18 @@ function SheetAction({
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-4 px-3 py-3.5 rounded-2xl text-left active:bg-white/10 cursor-pointer ${
-        danger ? "text-rose-400" : "text-white"
+      className={`w-full flex items-center gap-4 px-3 py-3.5 rounded-2xl text-left active:bg-[var(--mv-card-hover)] cursor-pointer ${
+        danger ? "text-rose-500" : "text-[var(--mv-text)]"
       }`}
     >
-      <Icon className={`w-5 h-5 shrink-0 ${active ? "text-fuchsia-400 fill-fuchsia-400" : ""}`} />
+      <Icon
+        className={`w-5 h-5 shrink-0 ${
+          active ? "text-[var(--mv-accent)] fill-[var(--mv-accent)]" : ""
+        }`}
+      />
       <span className="flex-1 min-w-0">
         <span className="block text-[15px] font-medium">{label}</span>
-        {hint && <span className="block text-xs text-white/40 mt-0.5">{hint}</span>}
+        {hint && <span className="block text-xs text-[var(--mv-text-subtle)] mt-0.5">{hint}</span>}
       </span>
     </button>
   );
@@ -438,11 +457,11 @@ export function TrackActionSheet({
   return (
     <Sheet open={!!track} onClose={onClose}>
       {/* Header */}
-      <div className="flex items-center gap-3 pb-3 border-b border-white/10 mb-2">
+      <div className="flex items-center gap-3 pb-3 border-b border-[var(--mv-border)] mb-2">
         {view === "playlists" ? (
           <button
             onClick={() => setView("menu")}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-white/70 active:bg-white/10 cursor-pointer"
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--mv-text-muted)] active:bg-[var(--mv-card-hover)] cursor-pointer"
             aria-label="Back"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -451,16 +470,16 @@ export function TrackActionSheet({
           <Artwork track={track} className="w-12 h-12 rounded-xl shrink-0" iconClass="w-5 h-5" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold text-white truncate">
+          <p className="text-[15px] font-semibold text-[var(--mv-text)] truncate">
             {view === "playlists" ? "Add to playlist" : track.title}
           </p>
-          <p className="text-xs text-white/45 truncate">
+          <p className="text-xs text-[var(--mv-text-muted)] truncate">
             {view === "playlists" ? track.title : track.artist}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="w-10 h-10 rounded-full flex items-center justify-center text-white/50 active:bg-white/10 cursor-pointer"
+          className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--mv-text-subtle)] active:bg-[var(--mv-card-hover)] cursor-pointer"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
@@ -468,20 +487,22 @@ export function TrackActionSheet({
       </div>
 
       {message && (
-        <div className="mb-2 px-3 py-2.5 rounded-xl bg-white/10 text-sm text-white/90">{message}</div>
+        <div className="mb-2 px-3 py-2.5 rounded-xl bg-[var(--mv-card)] border border-[var(--mv-border)] text-sm text-[var(--mv-text)]">
+          {message}
+        </div>
       )}
 
       {confirm ? (
         <div className="p-3 space-y-4">
           <div>
-            <p className="text-white font-semibold">{confirmCopy[confirm].title}</p>
-            <p className="text-sm text-white/55 mt-1">{confirmCopy[confirm].body}</p>
+            <p className="text-[var(--mv-text)] font-semibold">{confirmCopy[confirm].title}</p>
+            <p className="text-sm text-[var(--mv-text-muted)] mt-1">{confirmCopy[confirm].body}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setConfirm(null)}
               disabled={busy}
-              className="py-3.5 rounded-2xl bg-white/10 text-white font-semibold active:scale-95 cursor-pointer"
+              className="py-3.5 rounded-2xl bg-[var(--mv-card)] border border-[var(--mv-border)] text-[var(--mv-text)] font-semibold active:scale-95 cursor-pointer"
             >
               Cancel
             </button>
@@ -497,7 +518,7 @@ export function TrackActionSheet({
       ) : view === "playlists" ? (
         <div className="space-y-1">
           {playlists.length === 0 ? (
-            <p className="text-sm text-white/45 p-4 text-center">
+            <p className="text-sm text-[var(--mv-text-muted)] p-4 text-center">
               No playlists yet. Create one from the Playlists tab.
             </p>
           ) : (
@@ -513,14 +534,14 @@ export function TrackActionSheet({
                       return `Added to ${pl.title}`;
                     })
                   }
-                  className="w-full flex items-center gap-4 px-3 py-3.5 rounded-2xl text-left active:bg-white/10 disabled:opacity-50 cursor-pointer"
+                  className="w-full flex items-center gap-4 px-3 py-3.5 rounded-2xl text-left active:bg-[var(--mv-card-hover)] disabled:opacity-50 cursor-pointer"
                 >
-                  <ListMusic className="w-5 h-5 text-white/70" />
-                  <span className="flex-1 text-[15px] text-white truncate">{pl.title}</span>
+                  <ListMusic className="w-5 h-5 text-[var(--mv-text-muted)]" />
+                  <span className="flex-1 text-[15px] text-[var(--mv-text)] truncate">{pl.title}</span>
                   {inside ? (
-                    <Check className="w-4 h-4 text-emerald-400" />
+                    <Check className="w-4 h-4 text-emerald-500" />
                   ) : (
-                    <span className="text-xs text-white/35">{pl.trackIds.length}</span>
+                    <span className="text-xs text-[var(--mv-text-subtle)]">{pl.trackIds.length}</span>
                   )}
                 </button>
               );
@@ -587,7 +608,7 @@ export function TrackActionSheet({
             />
           )}
 
-          <div className="h-px bg-white/10 my-2" />
+          <div className="h-px bg-[var(--mv-border)] my-2" />
 
           {local && cloud && (
             <>
@@ -659,15 +680,23 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center text-center py-14 px-6">
-      <div className="w-20 h-20 rounded-[28px] bg-gradient-to-br from-fuchsia-500/30 to-indigo-500/20 border border-white/10 flex items-center justify-center mb-5">
-        <Music className="w-9 h-9 text-fuchsia-300" />
+      <div
+        style={{ background: "var(--mv-accent-soft)", borderColor: "var(--mv-border)" }}
+        className="w-20 h-20 rounded-[28px] border flex items-center justify-center mb-5"
+      >
+        <Music className="w-9 h-9 text-[var(--mv-accent)]" />
       </div>
-      <h3 className="font-display text-xl text-white">{title}</h3>
-      <p className="text-sm text-white/50 mt-1.5 max-w-xs">{body}</p>
+      <h3 className="font-display text-xl text-[var(--mv-text)]">{title}</h3>
+      <p className="text-sm text-[var(--mv-text-muted)] mt-1.5 max-w-xs">{body}</p>
       {cta && onCta && (
         <button
           onClick={onCta}
-          className="mt-6 inline-flex items-center gap-2 px-6 py-3.5 rounded-full bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500 text-white font-semibold text-sm shadow-[0_10px_30px_rgba(168,85,247,0.4)] active:scale-95 transition-transform cursor-pointer"
+          style={{
+            background: "linear-gradient(135deg, var(--mv-accent), var(--mv-accent-2))",
+            color: "var(--mv-accent-fg)",
+            boxShadow: "0 12px 28px -6px var(--mv-glow)",
+          }}
+          className="mt-6 inline-flex items-center gap-2 px-6 py-3.5 rounded-full font-bold text-sm active:scale-95 transition-transform cursor-pointer"
         >
           <Sparkles className="w-4 h-4" />
           {cta}
@@ -688,9 +717,9 @@ export function SectionTitle({
 }) {
   return (
     <div className="flex items-end justify-between px-1 mb-3">
-      <h2 className="font-display text-[22px] text-white leading-none">{title}</h2>
+      <h2 className="font-display text-[22px] text-[var(--mv-text)] leading-none">{title}</h2>
       {action && (
-        <button onClick={onAction} className="text-xs font-semibold text-fuchsia-300 cursor-pointer">
+        <button onClick={onAction} className="text-xs font-semibold text-[var(--mv-accent)] cursor-pointer">
           {action}
         </button>
       )}
