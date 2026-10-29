@@ -69,16 +69,37 @@ export default function NowPlayingModal() {
   const [sleepEndsAt, setSleepEndsAt] = useState<number | null>(null);
   const [sleepLabel, setSleepLabel] = useState<string | null>(null);
   const touchStartYRef = useRef<number | null>(null);
+  const showQueueRef = useRef(showQueue);
+
+  useEffect(() => {
+    showQueueRef.current = showQueue;
+  }, [showQueue]);
 
   // Handle Android Hardware / Gesture Back Navigation & browser popstate
   useEffect(() => {
     if (!isNowPlayingOpen) return;
 
+    // Push modal state to history so Android back gesture or browser back stays inside Music Vault
+    const modalState = { musicModal: "now-playing" };
+    window.history.pushState(modalState, "");
+
+    const onPopState = () => {
+      if (showQueueRef.current) {
+        setShowQueue(false);
+      }
+      setIsNowPlayingOpen(false);
+    };
+    window.addEventListener("popstate", onPopState);
+
     let appListenerHandle: PluginListenerHandle | null = null;
     if (Capacitor.isNativePlatform()) {
       App.addListener("backButton", () => {
-        if (showQueue) {
+        if (showQueueRef.current) {
           setShowQueue(false);
+          return;
+        }
+        if (typeof window !== "undefined" && window.history.state?.musicModal === "now-playing") {
+          window.history.back();
         } else {
           setIsNowPlayingOpen(false);
         }
@@ -89,20 +110,11 @@ export default function NowPlayingModal() {
         .catch(() => {});
     }
 
-    const onPopState = () => {
-      if (showQueue) {
-        setShowQueue(false);
-      } else {
-        setIsNowPlayingOpen(false);
-      }
-    };
-    window.addEventListener("popstate", onPopState);
-
     return () => {
       appListenerHandle?.remove();
       window.removeEventListener("popstate", onPopState);
     };
-  }, [isNowPlayingOpen, showQueue, setIsNowPlayingOpen]);
+  }, [isNowPlayingOpen, setIsNowPlayingOpen]);
 
   const handleMinimize = () => {
     triggerHaptic("tap");
@@ -110,7 +122,11 @@ export default function NowPlayingModal() {
       setShowQueue(false);
       return;
     }
-    setIsNowPlayingOpen(false);
+    if (typeof window !== "undefined" && window.history.state?.musicModal === "now-playing") {
+      window.history.back();
+    } else {
+      setIsNowPlayingOpen(false);
+    }
   };
 
   const handleHeaderTouchStart = (e: React.TouchEvent) => {
@@ -202,15 +218,15 @@ export default function NowPlayingModal() {
         />
       </div>
 
-      {/* Top Drag Handle & Gesture Bar */}
+      {/* Top Drag Handle & Gesture Bar - generous padding clears selfie camera & punch holes */}
       <div
         onTouchStart={handleHeaderTouchStart}
         onTouchEnd={handleHeaderTouchEnd}
-        className="relative z-20 pt-2 pb-1 flex justify-center cursor-pointer"
+        className="relative z-20 pt-[max(env(safe-area-inset-top),3.25rem)] pb-2 flex justify-center cursor-pointer"
         onClick={handleMinimize}
         aria-label="Swipe or tap to minimize"
       >
-        <div className="w-12 h-1.5 rounded-full bg-[var(--mv-border-strong)] active:scale-95 transition-transform opacity-70 hover:opacity-100" />
+        <div className="w-14 h-1.5 rounded-full bg-[var(--mv-border-strong)] active:scale-95 transition-transform opacity-75 hover:opacity-100 shadow-sm" />
       </div>
 
       {/* Top bar */}
@@ -222,7 +238,7 @@ export default function NowPlayingModal() {
         <button
           onClick={handleMinimize}
           className="w-11 h-11 rounded-full sonic-glass flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-          aria-label="Minimize"
+          aria-label="Back to Music Vault"
         >
           <ChevronDown className="w-6 h-6 text-[var(--mv-text)]" />
         </button>

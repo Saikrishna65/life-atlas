@@ -35,6 +35,7 @@ import {
 } from "@/components/music/ui";
 import { triggerHaptic } from "@/lib/deviceAuth";
 import { MUSIC_THEMES, useMusicTheme } from "@/lib/music/theme";
+import MusicWidgetsSection from "@/components/music/MusicWidgetsSection";
 
 function getSonicSessionLabel(): { eyebrow: string; accent: string } {
   const hr = new Date().getHours();
@@ -396,6 +397,9 @@ export default function MusicHomePage() {
               })}
             </div>
           </section>
+
+          {/* Audiophile Interactive Widgets */}
+          <MusicWidgetsSection />
 
           {/* Horizontal cover carousel — only rendered when there are >=3 additional songs beyond the Hero Spotlight */}
           {carouselTracks.length >= 3 && (

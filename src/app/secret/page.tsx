@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, ArrowUpRight, Lock, Compass, Music, Wallet } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { revokeSecretAccess } from "@/lib/deviceAuth";
+import MusicDashboardWidget from "@/components/music/MusicDashboardWidget";
 
 export default function SecretDashboard() {
   const router = useRouter();
@@ -113,43 +114,8 @@ export default function SecretDashboard() {
           </div>
         </Link>
 
-        {/* Card 2: Music Vault (Offline Music Player & Expedition Audio) */}
-        <Link
-          href="/secret/music"
-          className="group block relative rounded-2xl border border-cyan-500/20 bg-surface hover:bg-surface-hover/80 hover:border-cyan-400/40 p-6 sm:p-7 transition-all duration-300 shadow-soft overflow-hidden active:scale-[0.99] ring-1 ring-cyan-400/10"
-        >
-          <div
-            className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-cyan-500/10 transition-colors"
-            aria-hidden="true"
-          />
-
-          <div className="relative z-10 flex flex-col gap-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="w-11 h-11 rounded-xl bg-background border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-105 group-hover:border-cyan-400/60 group-hover:bg-cyan-500/10 transition-all duration-300 shrink-0 shadow-xs">
-                <Music className="w-5 h-5 text-cyan-400" />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-mono uppercase tracking-wider text-cyan-400 font-semibold">
-                  Audio Sanctuary
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-xs font-sans tracking-wider uppercase text-cyan-400 font-semibold group-hover:text-cyan-300 transition-colors pt-1">
-                  <span>Enter Music Vault</span>
-                  <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <h2 className="font-display text-2xl sm:text-3xl text-foreground group-hover:text-cyan-400 transition-colors font-normal tracking-tight">
-                Music Vault
-              </h2>
-              <p className="font-body text-muted-foreground text-xs sm:text-sm leading-relaxed max-w-lg">
-                Your offline personal audio archive. Import MP3s, stream ambient soundtracks, manage playlists, and soundtrack your expeditions with persistent background playback.
-              </p>
-            </div>
-          </div>
-        </Link>
+        {/* Card 2: Interactive Audiophile Music Vault Widget */}
+        <MusicDashboardWidget />
 
         {/* Card 3: Life Atlas Finance (Local-First Offline Financial Ledger) */}
         <Link
