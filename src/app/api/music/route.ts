@@ -189,11 +189,13 @@ export async function DELETE(request: Request) {
     if (track) {
       await prisma.musicTrack.delete({ where: { id } });
 
-      // Clean up audio file from Neon storage
+      // Clean up audio file from Neon storage asynchronously in background (never block response!)
       try {
         const fileExt = (track.fileName || 'track.mp3').split('.').pop() || 'mp3';
         const filename = `${id}.${fileExt}`;
-        await getMusicFiles().delete(filename);
+        getMusicFiles().delete(filename).catch((err) => {
+          console.warn('Async cloud file delete error:', err);
+        });
       } catch {
         // File deletion is best-effort
       }

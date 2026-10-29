@@ -84,7 +84,6 @@ public class MediaPlaybackService extends Service {
     private NotificationManager notificationManager;
     private MediaSession mediaSession;
     private AudioManager audioManager;
-    private AudioFocusRequest audioFocusRequest;
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
 
@@ -100,39 +99,6 @@ public class MediaPlaybackService extends Service {
     private float playbackRate = 1.0f;
     private boolean isForeground = false;
     private boolean noisyReceiverRegistered = false;
-    private boolean resumeOnFocusGain = false;
-
-    private final AudioManager.OnAudioFocusChangeListener focusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
-        @Override
-        public void onAudioFocusChange(int focusChange) {
-            switch (focusChange) {
-                case AudioManager.AUDIOFOCUS_LOSS:
-                    resumeOnFocusGain = false;
-                    if (isPlaying) {
-                        MediaPlaybackPlugin.dispatchMediaAction("pause", -1L);
-                    }
-                    break;
-                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                    if (isPlaying) {
-                        resumeOnFocusGain = true;
-                        MediaPlaybackPlugin.dispatchMediaAction("pause", -1L);
-                    }
-                    break;
-                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                    MediaPlaybackPlugin.dispatchMediaAction("duck", -1L);
-                    break;
-                case AudioManager.AUDIOFOCUS_GAIN:
-                    MediaPlaybackPlugin.dispatchMediaAction("unduck", -1L);
-                    if (resumeOnFocusGain) {
-                        resumeOnFocusGain = false;
-                        MediaPlaybackPlugin.dispatchMediaAction("play", -1L);
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-    };
 
     private final BroadcastReceiver becomingNoisyReceiver = new BroadcastReceiver() {
         @Override
@@ -337,7 +303,6 @@ public class MediaPlaybackService extends Service {
 
     private void updateLocksAndFocus(boolean playing) {
         if (playing) {
-            requestAudioFocus();
             registerNoisyReceiver();
             try {
                 if (wakeLock != null) {
@@ -355,50 +320,6 @@ public class MediaPlaybackService extends Service {
         } else {
             unregisterNoisyReceiver();
             releaseWakeAndWifiLocks();
-        }
-    }
-
-    private void requestAudioFocus() {
-        if (audioManager == null) return;
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (audioFocusRequest == null) {
-                    AudioAttributes attrs = new AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build();
-                    audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                        .setAudioAttributes(attrs)
-                        .setAcceptsDelayedFocusGain(true)
-                        .setWillPauseWhenDucked(false)
-                        .setOnAudioFocusChangeListener(focusChangeListener, mainHandler)
-                        .build();
-                }
-                audioManager.requestAudioFocus(audioFocusRequest);
-            } else {
-                @SuppressWarnings("deprecation")
-                int ignored = audioManager.requestAudioFocus(
-                    focusChangeListener,
-                    AudioManager.STREAM_MUSIC,
-                    AudioManager.AUDIOFOCUS_GAIN
-                );
-            }
-        } catch (Exception ignored) {
-        }
-    }
-
-    private void abandonAudioFocus() {
-        if (audioManager == null) return;
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (audioFocusRequest != null) {
-                    audioManager.abandonAudioFocusRequest(audioFocusRequest);
-                }
-            } else {
-                @SuppressWarnings("deprecation")
-                int ignored = audioManager.abandonAudioFocus(focusChangeListener);
-            }
-        } catch (Exception ignored) {
         }
     }
 
@@ -449,11 +370,16 @@ public class MediaPlaybackService extends Service {
             .putString(MediaMetadata.METADATA_KEY_TITLE, currentTitle)
             .putString(MediaMetadata.METADATA_KEY_ARTIST, currentArtist)
             .putString(MediaMetadata.METADATA_KEY_ALBUM, currentAlbum)
+            .putString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST, currentArtist)
+            .putString(MediaMetadata.METADATA_KEY_DISPLAY_TITLE, currentTitle)
+            .putString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE, currentArtist)
+            .putString(MediaMetadata.METADATA_KEY_DISPLAY_DESCRIPTION, currentAlbum)
             .putLong(MediaMetadata.METADATA_KEY_DURATION, durationMs > 0 ? durationMs : -1L);
 
         if (art != null) {
             metaBuilder.putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, art);
             metaBuilder.putBitmap(MediaMetadata.METADATA_KEY_ART, art);
+            metaBuilder.putBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON, art);
         }
         mediaSession.setMetadata(metaBuilder.build());
 
@@ -552,7 +478,8 @@ public class MediaPlaybackService extends Service {
             .setAutoCancel(false)
             .setShowWhen(false)
             .setOnlyAlertOnce(true)
-            .setColor(Color.parseColor("#141820"))
+            .setColor(Color.parseColor("#E5B869"))
+            .setColorized(true)
             .addAction(prevAction)
             .addAction(playPauseAction)
             .addAction(nextAction);
@@ -669,52 +596,55 @@ public class MediaPlaybackService extends Service {
             Bitmap bmp = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.length, opts);
             if (bmp == null) return null;
 
-            if (bmp.getWidth() > maxDim || bmp.getHeight() > maxDim) {
-                float ratio = Math.min((float) maxDim / bmp.getWidth(), (float) maxDim / bmp.getHeight());
-                int w = Math.max(1, Math.round(bmp.getWidth() * ratio));
-                int h = Math.max(1, Math.round(bmp.getHeight() * ratio));
-                Bitmap scaled = Bitmap.createScaledBitmap(bmp, w, h, true);
-                if (scaled != bmp) bmp.recycle();
-                return scaled;
-            }
-            return bmp;
+            // Center-crop to 1:1 square so 16:9 thumbnails (like YouTube) have zero black bars
+            int minDim = Math.min(bmp.getWidth(), bmp.getHeight());
+            int x = (bmp.getWidth() - minDim) / 2;
+            int y = (bmp.getHeight() - minDim) / 2;
+            Bitmap square = Bitmap.createBitmap(bmp, x, y, minDim, minDim);
+            if (square != bmp) bmp.recycle();
+
+            int targetDim = 512;
+            Bitmap scaled = Bitmap.createScaledBitmap(square, targetDim, targetDim, true);
+            if (scaled != square) square.recycle();
+            return scaled;
         } catch (Exception ignored) {
             return null;
         }
     }
 
     private Bitmap createFallbackVinylBitmap() {
-        int size = 256;
+        int size = 512;
         Bitmap bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bmp);
 
         Paint bgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         bgPaint.setShader(new LinearGradient(
             0, 0, size, size,
-            Color.parseColor("#171A21"),
-            Color.parseColor("#0B0D12"),
+            Color.parseColor("#141822"),
+            Color.parseColor("#090B0F"),
             Shader.TileMode.CLAMP
         ));
         canvas.drawRect(0, 0, size, size, bgPaint);
 
         Paint discPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        discPaint.setColor(Color.parseColor("#222631"));
-        canvas.drawCircle(size / 2f, size / 2f, 92f, discPaint);
+        discPaint.setColor(Color.parseColor("#1C202B"));
+        canvas.drawCircle(size / 2f, size / 2f, 210f, discPaint);
 
         Paint groovePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         groovePaint.setStyle(Paint.Style.STROKE);
-        groovePaint.setStrokeWidth(2f);
-        groovePaint.setColor(Color.parseColor("#343947"));
-        canvas.drawCircle(size / 2f, size / 2f, 74f, groovePaint);
-        canvas.drawCircle(size / 2f, size / 2f, 56f, groovePaint);
+        groovePaint.setStrokeWidth(3f);
+        groovePaint.setColor(Color.parseColor("#2A3040"));
+        canvas.drawCircle(size / 2f, size / 2f, 180f, groovePaint);
+        canvas.drawCircle(size / 2f, size / 2f, 150f, groovePaint);
+        canvas.drawCircle(size / 2f, size / 2f, 120f, groovePaint);
 
         Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         labelPaint.setColor(Color.parseColor("#E5B869"));
-        canvas.drawCircle(size / 2f, size / 2f, 30f, labelPaint);
+        canvas.drawCircle(size / 2f, size / 2f, 75f, labelPaint);
 
         Paint spindlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        spindlePaint.setColor(Color.parseColor("#0B0D12"));
-        canvas.drawCircle(size / 2f, size / 2f, 7f, spindlePaint);
+        spindlePaint.setColor(Color.parseColor("#090B0F"));
+        canvas.drawCircle(size / 2f, size / 2f, 18f, spindlePaint);
 
         return bmp;
     }
@@ -722,10 +652,8 @@ public class MediaPlaybackService extends Service {
     private void stopSessionAndService() {
         sessionActive = false;
         isPlaying = false;
-        resumeOnFocusGain = false;
         unregisterNoisyReceiver();
         releaseWakeAndWifiLocks();
-        abandonAudioFocus();
 
         if (mediaSession != null) {
             try {
@@ -769,7 +697,6 @@ public class MediaPlaybackService extends Service {
         sessionActive = false;
         unregisterNoisyReceiver();
         releaseWakeAndWifiLocks();
-        abandonAudioFocus();
         artworkExecutor.shutdownNow();
         if (mediaSession != null) {
             try {

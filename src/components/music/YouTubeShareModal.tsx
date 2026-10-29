@@ -273,6 +273,10 @@ export default function YouTubeShareModal({
       if (data.playlist) await savePlaylist(data.playlist, false);
       else if (dest === "EXISTING" && selectedPl) await addTrackToPlaylist(selectedPl, track.id);
 
+      if (blob) {
+        uploadTrackToCloud(track, blob).catch(() => {});
+      }
+
       window.dispatchEvent(new Event("lifeatlas_tracks_updated"));
       setProgress(100);
       setDone(track);

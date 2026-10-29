@@ -38,9 +38,12 @@ public class MainActivity extends BridgeActivity {
 
         // Append custom User-Agent so backend middleware strictly routes native app to private atlas
         if (getBridge() != null && getBridge().getWebView() != null) {
-            String defaultUA = getBridge().getWebView().getSettings().getUserAgentString();
+            WebView webView = getBridge().getWebView();
+            webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
+            MediaPlaybackPlugin.setActiveWebView(webView);
+            String defaultUA = webView.getSettings().getUserAgentString();
             if (defaultUA != null && !defaultUA.contains("LifeAtlasApp")) {
-                getBridge().getWebView().getSettings().setUserAgentString(defaultUA + " LifeAtlasApp/1.0");
+                webView.getSettings().setUserAgentString(defaultUA + " LifeAtlasApp/1.0");
             }
         }
 

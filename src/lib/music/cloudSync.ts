@@ -23,8 +23,6 @@ export async function uploadTrackToCloud(
   fileBlob?: Blob | File | null
 ): Promise<{ success: boolean; audioUrl?: string; error?: string }> {
   try {
-    const formData = new FormData();
-
     // Use provided blob or track.audioBlob or fetch from IndexedDB
     let blobToUpload = fileBlob || track.audioBlob;
     if (!blobToUpload) {
@@ -34,13 +32,86 @@ export async function uploadTrackToCloud(
       }
     }
 
+    const fileExt = (track.fileName || 'track.mp3').split('.').pop() || 'mp3';
+    const sanitizedId = track.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const storageFilename = `${sanitizedId}.${fileExt}`;
+    const contentType = blobToUpload?.type || track.format || 'audio/mpeg';
+
+    let directUploadSucceeded = false;
+
+    // Strategy 1: Direct presigned PUT upload (handles ANY file size > 4.5 MB without Vercel 413 limits)
     if (blobToUpload) {
-      const filename = track.fileName || `${track.id}.mp3`;
-      formData.append('file', blobToUpload, filename);
+      try {
+        const presignRes = await fetch(
+          `/api/music/upload-url?filename=${encodeURIComponent(storageFilename)}&contentType=${encodeURIComponent(contentType)}`
+        );
+        if (presignRes.ok) {
+          const presignData = await presignRes.json();
+          if (presignData.success && presignData.uploadUrl) {
+            const uploadPutRes = await fetch(presignData.uploadUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': contentType },
+              body: blobToUpload,
+            });
+            if (uploadPutRes.ok) {
+              directUploadSucceeded = true;
+            }
+          }
+        }
+      } catch (presignErr) {
+        console.warn('Direct S3 presigned upload failed, falling back:', presignErr);
+      }
     }
 
-    // Strip raw blob from metadata JSON to keep payload clean
     const { audioBlob, ...metaToUpload } = track;
+    metaToUpload.audioUrl = `/api/music/stream/${encodeURIComponent(track.id)}`;
+    metaToUpload.streamUrl = `/api/music/stream/${encodeURIComponent(track.id)}`;
+    metaToUpload.fileName = storageFilename;
+
+    if (directUploadSucceeded) {
+      // Save metadata JSON to Neon Postgres
+      const response = await fetch('/api/music', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'UPDATE_METADATA',
+          trackId: track.id,
+          updates: {
+            title: metaToUpload.title,
+            artist: metaToUpload.artist,
+            album: metaToUpload.album || null,
+            genre: metaToUpload.genre || null,
+            duration: metaToUpload.duration ? Number(metaToUpload.duration) : 0,
+            format: metaToUpload.format || 'audio/mpeg',
+            size: blobToUpload ? blobToUpload.size : (metaToUpload.size || 0),
+            artworkUrl: metaToUpload.artworkUrl || null,
+            audioUrl: metaToUpload.audioUrl,
+            fileName: storageFilename,
+          },
+        }),
+      });
+
+      // If track doesn't exist yet in DB, multipart fallback or standard upsert
+      if (!response.ok) {
+        const formData = new FormData();
+        formData.append('metadata', JSON.stringify(metaToUpload));
+        await fetch('/api/music', { method: 'POST', body: formData });
+      }
+
+      const localTrack = (await getTrack(track.id)) || track;
+      localTrack.audioUrl = metaToUpload.audioUrl;
+      localTrack.streamUrl = metaToUpload.streamUrl;
+      localTrack.syncedToCloud = true;
+      await saveTrack(localTrack);
+      window.dispatchEvent(new Event('lifeatlas_tracks_updated'));
+      return { success: true, audioUrl: metaToUpload.audioUrl };
+    }
+
+    // Strategy 2: Multipart form-data upload fallback
+    const formData = new FormData();
+    if (blobToUpload) {
+      formData.append('file', blobToUpload, storageFilename);
+    }
     formData.append('metadata', JSON.stringify(metaToUpload));
 
     const response = await fetch('/api/music', {
@@ -54,13 +125,13 @@ export async function uploadTrackToCloud(
 
     const data = await response.json();
     if (data.success && data.track) {
-      const updatedUrl = data.track.audioUrl;
-      // Mark track as synced locally
+      const updatedUrl = data.track.audioUrl || `/api/music/stream/${encodeURIComponent(track.id)}`;
       const localTrack = (await getTrack(track.id)) || track;
       localTrack.audioUrl = updatedUrl;
       localTrack.streamUrl = updatedUrl || localTrack.streamUrl;
       localTrack.syncedToCloud = true;
       await saveTrack(localTrack);
+      window.dispatchEvent(new Event('lifeatlas_tracks_updated'));
       return { success: true, audioUrl: updatedUrl };
     }
 

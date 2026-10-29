@@ -4,6 +4,8 @@
  * Shared building blocks for the Atlas Music Vault multi-palette theme system.
  */
 import React, { useEffect, useState, useCallback } from "react";
+import { Capacitor, PluginListenerHandle } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import {
   Heart,
   ListPlus,
@@ -276,6 +278,31 @@ export function Sheet({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  useEffect(() => {
+    if (!open) return;
+
+    let appListenerHandle: PluginListenerHandle | null = null;
+    if (Capacitor.isNativePlatform()) {
+      App.addListener("backButton", () => {
+        onClose();
+      })
+        .then((h) => {
+          appListenerHandle = h;
+        })
+        .catch(() => {});
+    }
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      appListenerHandle?.remove();
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <div
@@ -372,7 +399,7 @@ export function TrackActionSheet({
       onChanged();
       if (msg) {
         setMessage(msg);
-        setTimeout(onClose, 900);
+        setTimeout(onClose, 800);
       } else {
         onClose();
       }
@@ -433,94 +460,136 @@ export function TrackActionSheet({
     cloud: {
       title: "Delete from cloud?",
       body: local
-        ? "The online copy will be removed. Your copy on this phone stays."
-        : "This song only exists in the cloud, so it will be gone completely.",
+        ? "The online copy will be removed from your cloud vault. The copy on this phone stays safe."
+        : "This song only exists in the cloud, so it will be permanently deleted.",
       go: doDeleteCloud,
       cta: "Delete from cloud",
     },
     phone: {
       title: "Remove from this phone?",
       body: cloud
-        ? "The cloud copy stays and you can save it offline again later."
+        ? "The audio file will be removed from this phone to free storage. Your cloud copy remains safe."
         : "No cloud copy exists, so the song will be deleted completely.",
       go: doRemovePhone,
-      cta: "Remove",
+      cta: "Remove offline file",
     },
     everywhere: {
       title: "Delete everywhere?",
-      body: "This permanently deletes the song from your phone and from the cloud.",
+      body: "This permanently deletes the song from your phone storage and from your cloud database.",
       go: doDeleteEverywhere,
       cta: "Delete everywhere",
     },
   };
 
+  const formattedSize = track.size
+    ? `${(track.size / (1024 * 1024)).toFixed(1)} MB`
+    : null;
+  const formatLabel = (track.format || "MP3").split("/").pop()?.toUpperCase() || "MP3";
+
   return (
     <Sheet open={!!track} onClose={onClose}>
-      {/* Header */}
-      <div className="flex items-center gap-3 pb-3 border-b border-[var(--mv-border)] mb-2">
+      {/* Redesigned Cover Art & Metadata Hero Header */}
+      <div className="flex items-start gap-3.5 pb-4 border-b border-[var(--mv-border)] mb-3">
         {view === "playlists" ? (
           <button
-            onClick={() => setView("menu")}
-            className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--mv-text-muted)] active:bg-[var(--mv-card-hover)] cursor-pointer"
+            onClick={() => {
+              triggerHaptic("tap");
+              setView("menu");
+            }}
+            className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--mv-text-muted)] bg-[var(--mv-input)] active:scale-95 cursor-pointer shrink-0 mt-1"
             aria-label="Back"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
         ) : (
-          <Artwork track={track} className="w-12 h-12 rounded-xl shrink-0" iconClass="w-5 h-5" />
+          <Artwork
+            track={track}
+            className="w-16 h-16 rounded-2xl ring-1 ring-white/15 shadow-xl shrink-0 object-cover"
+            iconClass="w-7 h-7"
+          />
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold text-[var(--mv-text)] truncate">
+          <p className="text-base font-bold text-[var(--mv-text)] truncate leading-snug">
             {view === "playlists" ? "Add to playlist" : track.title}
           </p>
-          <p className="text-xs text-[var(--mv-text-muted)] truncate">
-            {view === "playlists" ? track.title : track.artist}
+          <p className="text-xs text-[var(--mv-text-muted)] truncate mt-0.5">
+            {view === "playlists" ? track.title : `${track.artist || "Unknown Artist"} · ${track.album || "Single"}`}
           </p>
+          {/* Metadata & Storage Badges */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-[var(--mv-input)] border border-[var(--mv-border)] text-[var(--mv-text-subtle)]">
+              {formatLabel} {formattedSize ? `· ${formattedSize}` : ""}
+            </span>
+            {local && cloud && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                <Check className="w-3 h-3 stroke-[3]" /> Phone & Cloud
+              </span>
+            )}
+            {local && !cloud && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-400">
+                <HardDriveDownload className="w-3 h-3" /> Phone only
+              </span>
+            )}
+            {!local && cloud && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/15 border border-sky-500/30 text-sky-400">
+                <Cloud className="w-3 h-3" /> Cloud stream
+              </span>
+            )}
+          </div>
         </div>
         <button
           onClick={onClose}
-          className="w-10 h-10 rounded-full flex items-center justify-center text-[var(--mv-text-subtle)] active:bg-[var(--mv-card-hover)] cursor-pointer"
+          className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--mv-text-subtle)] bg-[var(--mv-input)] active:scale-95 cursor-pointer shrink-0"
           aria-label="Close"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
       </div>
 
       {message && (
-        <div className="mb-2 px-3 py-2.5 rounded-xl bg-[var(--mv-card)] border border-[var(--mv-border)] text-sm text-[var(--mv-text)]">
+        <div className="mb-3 px-3.5 py-2.5 rounded-2xl bg-[var(--mv-card)] border border-[var(--mv-border-strong)] text-sm font-medium text-[var(--mv-text)] text-center animate-fade-in shadow-md">
           {message}
         </div>
       )}
 
       {confirm ? (
-        <div className="p-3 space-y-4">
-          <div>
-            <p className="text-[var(--mv-text)] font-semibold">{confirmCopy[confirm].title}</p>
-            <p className="text-sm text-[var(--mv-text-muted)] mt-1">{confirmCopy[confirm].body}</p>
+        <div className="p-2 space-y-4 animate-fade-in">
+          <div className="p-4 rounded-2xl bg-[var(--mv-card)] border border-[var(--mv-border)] text-center space-y-2">
+            <p className="text-base font-bold text-[var(--mv-text)]">{confirmCopy[confirm].title}</p>
+            <p className="text-xs text-[var(--mv-text-muted)] leading-relaxed max-w-xs mx-auto">
+              {confirmCopy[confirm].body}
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => setConfirm(null)}
+              onClick={() => {
+                triggerHaptic("tap");
+                setConfirm(null);
+              }}
               disabled={busy}
-              className="py-3.5 rounded-2xl bg-[var(--mv-card)] border border-[var(--mv-border)] text-[var(--mv-text)] font-semibold active:scale-95 cursor-pointer"
+              className="py-3.5 rounded-2xl bg-[var(--mv-input)] border border-[var(--mv-border)] text-[var(--mv-text)] font-semibold active:scale-95 cursor-pointer"
             >
               Cancel
             </button>
             <button
-              onClick={confirmCopy[confirm].go}
+              onClick={() => {
+                triggerHaptic("error");
+                confirmCopy[confirm].go();
+              }}
               disabled={busy}
-              className="py-3.5 rounded-2xl bg-rose-500 text-white font-semibold active:scale-95 disabled:opacity-60 cursor-pointer"
+              className="py-3.5 rounded-2xl bg-rose-500 text-white font-bold active:scale-95 disabled:opacity-60 cursor-pointer shadow-lg shadow-rose-500/25"
             >
               {busy ? "Working…" : confirmCopy[confirm].cta}
             </button>
           </div>
         </div>
       ) : view === "playlists" ? (
-        <div className="space-y-1">
+        <div className="space-y-1.5 animate-fade-in">
           {playlists.length === 0 ? (
-            <p className="text-sm text-[var(--mv-text-muted)] p-4 text-center">
-              No playlists yet. Create one from the Playlists tab.
-            </p>
+            <div className="p-6 text-center space-y-1">
+              <p className="text-sm font-semibold text-[var(--mv-text)]">No playlists created yet</p>
+              <p className="text-xs text-[var(--mv-text-muted)]">Create playlists from the Playlists tab to organize your music.</p>
+            </div>
           ) : (
             playlists.map((pl) => {
               const inside = pl.trackIds.includes(track.id);
@@ -528,20 +597,28 @@ export function TrackActionSheet({
                 <button
                   key={pl.id}
                   disabled={inside}
-                  onClick={() =>
+                  onClick={() => {
+                    triggerHaptic("tap");
                     run(async () => {
                       await addTrackToPlaylist(pl.id, track.id);
                       return `Added to ${pl.title}`;
-                    })
-                  }
-                  className="w-full flex items-center gap-4 px-3 py-3.5 rounded-2xl text-left active:bg-[var(--mv-card-hover)] disabled:opacity-50 cursor-pointer"
+                    });
+                  }}
+                  className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-2xl text-left bg-[var(--mv-input)] border border-[var(--mv-border)] active:scale-[0.98] disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  <ListMusic className="w-5 h-5 text-[var(--mv-text-muted)]" />
-                  <span className="flex-1 text-[15px] text-[var(--mv-text)] truncate">{pl.title}</span>
+                  <span className="w-10 h-10 rounded-xl bg-[var(--mv-card)] border border-[var(--mv-border)] flex items-center justify-center shrink-0">
+                    <ListMusic className="w-5 h-5 text-[var(--mv-accent)]" />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold text-[var(--mv-text)] truncate">{pl.title}</span>
+                    <span className="block text-xs text-[var(--mv-text-muted)] mt-0.5">{pl.trackIds.length} tracks</span>
+                  </span>
                   {inside ? (
-                    <Check className="w-4 h-4 text-emerald-500" />
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-400">
+                      <Check className="w-4 h-4 stroke-[3]" /> Added
+                    </span>
                   ) : (
-                    <span className="text-xs text-[var(--mv-text-subtle)]">{pl.trackIds.length}</span>
+                    <span className="text-xs text-[var(--mv-accent)] font-semibold">+ Add</span>
                   )}
                 </button>
               );
@@ -549,116 +626,203 @@ export function TrackActionSheet({
           )}
         </div>
       ) : (
-        <div>
-          <SheetAction
-            icon={SkipForward}
-            label="Play next"
-            onClick={() => {
-              playNext(track);
-              finish("Playing next");
-            }}
-          />
-          <SheetAction
-            icon={ListPlus}
-            label="Add to queue"
-            onClick={() => {
-              addToQueue(track);
-              finish("Added to queue");
-            }}
-          />
-          <SheetAction
-            icon={Heart}
-            active={liked}
-            label={liked ? "Remove from liked" : "Add to liked"}
-            onClick={async () => {
-              await toggleFavorite(track.id);
-              setLiked(!liked);
-              notifyLibraryChanged();
-              onChanged();
-            }}
-          />
-          <SheetAction icon={ListMusic} label="Add to playlist" onClick={() => setView("playlists")} />
-          {!local && cloud && (
-            <SheetAction
-              icon={DownloadCloud}
-              label="Save to phone"
-              hint="Listen offline"
-              onClick={() =>
-                run(async () => {
-                  await downloadTrackToLocalStorage({ ...track });
-                  return "Saved to phone";
-                })
-              }
-            />
-          )}
+        <div className="space-y-3 animate-fade-in">
+          {/* Quick Action 4-Col Grid */}
+          <div className="grid grid-cols-4 gap-2">
+            {/* 1. Favorite / Liked */}
+            <button
+              onClick={async () => {
+                triggerHaptic("tap");
+                await toggleFavorite(track.id);
+                setLiked(!liked);
+                notifyLibraryChanged();
+                onChanged();
+              }}
+              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--mv-input)] border border-[var(--mv-border)] active:scale-95 transition-transform cursor-pointer"
+            >
+              <Heart
+                className={`w-5 h-5 ${
+                  liked
+                    ? "text-[var(--mv-accent)] fill-[var(--mv-accent)]"
+                    : "text-[var(--mv-text-muted)]"
+                }`}
+              />
+              <span className="text-[11px] font-semibold text-[var(--mv-text)] mt-1.5 truncate max-w-full">
+                {liked ? "Liked" : "Like"}
+              </span>
+            </button>
+
+            {/* 2. Play Next */}
+            <button
+              onClick={() => {
+                triggerHaptic("tap");
+                playNext(track);
+                finish("Playing next");
+              }}
+              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--mv-input)] border border-[var(--mv-border)] active:scale-95 transition-transform cursor-pointer"
+            >
+              <SkipForward className="w-5 h-5 text-[var(--mv-text)]" />
+              <span className="text-[11px] font-semibold text-[var(--mv-text)] mt-1.5 truncate max-w-full">
+                Play Next
+              </span>
+            </button>
+
+            {/* 3. Add to Queue */}
+            <button
+              onClick={() => {
+                triggerHaptic("tap");
+                addToQueue(track);
+                finish("Added to queue");
+              }}
+              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--mv-input)] border border-[var(--mv-border)] active:scale-95 transition-transform cursor-pointer"
+            >
+              <ListPlus className="w-5 h-5 text-[var(--mv-text)]" />
+              <span className="text-[11px] font-semibold text-[var(--mv-text)] mt-1.5 truncate max-w-full">
+                Queue
+              </span>
+            </button>
+
+            {/* 4. Add to Playlist */}
+            <button
+              onClick={() => {
+                triggerHaptic("tap");
+                setView("playlists");
+              }}
+              className="flex flex-col items-center justify-center p-3 rounded-2xl bg-[var(--mv-input)] border border-[var(--mv-border)] active:scale-95 transition-transform cursor-pointer"
+            >
+              <ListMusic className="w-5 h-5 text-[var(--mv-text)]" />
+              <span className="text-[11px] font-semibold text-[var(--mv-text)] mt-1.5 truncate max-w-full">
+                Playlist
+              </span>
+            </button>
+          </div>
+
+          {/* Cloud & Offline Sync Card */}
           {local && !cloud && (
-            <SheetAction
-              icon={UploadCloud}
-              label="Back up to cloud"
-              hint="Sync online so you never lose it"
-              onClick={() =>
-                run(async () => {
-                  const res = await uploadTrackToCloud(track, track.audioBlob);
-                  if (!res.success) {
-                    throw new Error("Cloud upload failed (files over 4.5 MB stay offline-only).");
-                  }
-                  return "Backed up to cloud";
-                })
-              }
-            />
+            <div className="p-3.5 rounded-2xl bg-[var(--mv-card)] border border-[var(--mv-border-strong)] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-10 h-10 rounded-xl bg-[var(--mv-accent-soft)] text-[var(--mv-accent)] flex items-center justify-center shrink-0">
+                  <UploadCloud className="w-5 h-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-[var(--mv-text)]">Back up to Cloud</p>
+                  <p className="text-[11px] text-[var(--mv-text-muted)] truncate">Sync to Neon storage for cross-device access</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  triggerHaptic("tap");
+                  run(async () => {
+                    const res = await uploadTrackToCloud(track, track.audioBlob);
+                    if (!res.success) throw new Error("Cloud upload failed. Check connection.");
+                    return "Uploaded to cloud successfully!";
+                  });
+                }}
+                disabled={busy}
+                className="px-3.5 py-2 rounded-xl bg-[var(--mv-primary-bg)] text-[var(--mv-primary-fg)] text-xs font-bold shrink-0 active:scale-95 transition-transform cursor-pointer shadow-sm"
+              >
+                Sync Now
+              </button>
+            </div>
           )}
 
-          <div className="h-px bg-[var(--mv-border)] my-2" />
-
-          {local && cloud && (
-            <>
-              <SheetAction
-                icon={HardDriveDownload}
-                label="Remove from phone"
-                hint="Keep the cloud copy"
-                onClick={() => setConfirm("phone")}
-              />
-              <SheetAction
-                icon={Cloud}
-                label="Delete from cloud"
-                hint="Keep the copy on this phone"
-                onClick={() => setConfirm("cloud")}
-                danger
-              />
-              <SheetAction
-                icon={Trash2}
-                label="Delete everywhere"
-                onClick={() => setConfirm("everywhere")}
-                danger
-              />
-            </>
-          )}
-          {local && !cloud && (
-            <SheetAction
-              icon={Trash2}
-              label="Delete song"
-              hint="Removes it from this phone"
-              onClick={() => setConfirm("phone")}
-              danger
-            />
-          )}
           {!local && cloud && (
-            <SheetAction
-              icon={Cloud}
-              label="Delete from cloud"
-              hint="Removes the song completely"
-              onClick={() => setConfirm("cloud")}
-              danger
-            />
+            <div className="p-3.5 rounded-2xl bg-[var(--mv-card)] border border-[var(--mv-border-strong)] flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                  <DownloadCloud className="w-5 h-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-[var(--mv-text)]">Save to Phone</p>
+                  <p className="text-[11px] text-[var(--mv-text-muted)] truncate">Make playable offline without data</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  triggerHaptic("tap");
+                  run(async () => {
+                    await downloadTrackToLocalStorage({ ...track });
+                    return "Saved to phone!";
+                  });
+                }}
+                disabled={busy}
+                className="px-3.5 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold shrink-0 active:scale-95 transition-transform cursor-pointer shadow-sm shadow-emerald-500/20"
+              >
+                Download
+              </button>
+            </div>
           )}
-          {!local && !cloud && (
-            <SheetAction
-              icon={Trash2}
-              label="Delete song"
-              onClick={() => setConfirm("everywhere")}
-              danger
-            />
-          )}
+
+          {/* Structured Management Actions */}
+          <div className="space-y-1 pt-1 border-t border-[var(--mv-border)]">
+            {local && cloud && (
+              <>
+                <button
+                  onClick={() => {
+                    triggerHaptic("tap");
+                    setConfirm("phone");
+                  }}
+                  className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-left active:bg-[var(--mv-card-hover)] cursor-pointer text-[var(--mv-text)]"
+                >
+                  <HardDriveDownload className="w-4 h-4 text-[var(--mv-text-muted)]" />
+                  <span className="flex-1 text-sm font-medium">Remove offline file</span>
+                  <span className="text-[11px] text-[var(--mv-text-subtle)]">Keep cloud copy</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    triggerHaptic("tap");
+                    setConfirm("cloud");
+                  }}
+                  className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-left active:bg-[var(--mv-card-hover)] cursor-pointer text-amber-500"
+                >
+                  <Cloud className="w-4 h-4" />
+                  <span className="flex-1 text-sm font-medium">Delete from cloud</span>
+                  <span className="text-[11px] text-[var(--mv-text-subtle)]">Keep on phone</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    triggerHaptic("tap");
+                    setConfirm("everywhere");
+                  }}
+                  className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-left active:bg-[var(--mv-card-hover)] cursor-pointer text-rose-500"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="flex-1 text-sm font-medium">Delete everywhere</span>
+                  <span className="text-[11px] text-rose-500/60">Phone & cloud</span>
+                </button>
+              </>
+            )}
+
+            {local && !cloud && (
+              <button
+                onClick={() => {
+                  triggerHaptic("tap");
+                  setConfirm("phone");
+                }}
+                className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-left active:bg-[var(--mv-card-hover)] cursor-pointer text-rose-500"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="flex-1 text-sm font-medium">Delete song</span>
+                <span className="text-[11px] text-[var(--mv-text-subtle)]">From this phone</span>
+              </button>
+            )}
+
+            {!local && cloud && (
+              <button
+                onClick={() => {
+                  triggerHaptic("tap");
+                  setConfirm("cloud");
+                }}
+                className="w-full flex items-center gap-3.5 px-3 py-2.5 rounded-xl text-left active:bg-[var(--mv-card-hover)] cursor-pointer text-rose-500"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="flex-1 text-sm font-medium">Delete from cloud</span>
+                <span className="text-[11px] text-[var(--mv-text-subtle)]">From cloud vault</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
     </Sheet>

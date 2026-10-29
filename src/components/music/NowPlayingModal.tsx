@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { Capacitor, PluginListenerHandle } from "@capacitor/core";
+import { App } from "@capacitor/app";
 import {
   ChevronDown,
   Play,
@@ -66,6 +68,63 @@ export default function NowPlayingModal() {
   const [showQueue, setShowQueue] = useState(false);
   const [sleepEndsAt, setSleepEndsAt] = useState<number | null>(null);
   const [sleepLabel, setSleepLabel] = useState<string | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  // Handle Android Hardware / Gesture Back Navigation & browser popstate
+  useEffect(() => {
+    if (!isNowPlayingOpen) return;
+
+    let appListenerHandle: PluginListenerHandle | null = null;
+    if (Capacitor.isNativePlatform()) {
+      App.addListener("backButton", () => {
+        if (showQueue) {
+          setShowQueue(false);
+        } else {
+          setIsNowPlayingOpen(false);
+        }
+      })
+        .then((h) => {
+          appListenerHandle = h;
+        })
+        .catch(() => {});
+    }
+
+    const onPopState = () => {
+      if (showQueue) {
+        setShowQueue(false);
+      } else {
+        setIsNowPlayingOpen(false);
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+
+    return () => {
+      appListenerHandle?.remove();
+      window.removeEventListener("popstate", onPopState);
+    };
+  }, [isNowPlayingOpen, showQueue, setIsNowPlayingOpen]);
+
+  const handleMinimize = () => {
+    triggerHaptic("tap");
+    if (showQueue) {
+      setShowQueue(false);
+      return;
+    }
+    setIsNowPlayingOpen(false);
+  };
+
+  const handleHeaderTouchStart = (e: React.TouchEvent) => {
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleHeaderTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartYRef.current === null) return;
+    const deltaY = e.changedTouches[0].clientY - touchStartYRef.current;
+    if (deltaY > 60) {
+      handleMinimize();
+    }
+    touchStartYRef.current = null;
+  };
 
   useEffect(() => {
     if (!sleepEndsAt) {
@@ -143,10 +202,25 @@ export default function NowPlayingModal() {
         />
       </div>
 
+      {/* Top Drag Handle & Gesture Bar */}
+      <div
+        onTouchStart={handleHeaderTouchStart}
+        onTouchEnd={handleHeaderTouchEnd}
+        className="relative z-20 pt-2 pb-1 flex justify-center cursor-pointer"
+        onClick={handleMinimize}
+        aria-label="Swipe or tap to minimize"
+      >
+        <div className="w-12 h-1.5 rounded-full bg-[var(--mv-border-strong)] active:scale-95 transition-transform opacity-70 hover:opacity-100" />
+      </div>
+
       {/* Top bar */}
-      <header className="relative z-10 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),1rem)]">
+      <header
+        onTouchStart={handleHeaderTouchStart}
+        onTouchEnd={handleHeaderTouchEnd}
+        className="relative z-10 flex items-center justify-between px-4 pt-1 pb-2"
+      >
         <button
-          onClick={() => setIsNowPlayingOpen(false)}
+          onClick={handleMinimize}
           className="w-11 h-11 rounded-full sonic-glass flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
           aria-label="Minimize"
         >

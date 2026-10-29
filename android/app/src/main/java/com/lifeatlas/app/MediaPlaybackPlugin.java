@@ -34,38 +34,46 @@ import java.lang.ref.WeakReference;
 )
 public class MediaPlaybackPlugin extends Plugin {
 
-    private static WeakReference<MediaPlaybackPlugin> activeInstance = new WeakReference<>(null);
+    private static volatile MediaPlaybackPlugin activeInstance = null;
+    private static volatile WebView activeWebView = null;
     private static final Handler MAIN_HANDLER = new Handler(Looper.getMainLooper());
     private boolean hasPromptedNotificationPermission = false;
+
+    public static void setActiveWebView(WebView webView) {
+        activeWebView = webView;
+    }
 
     @Override
     public void load() {
         super.load();
-        activeInstance = new WeakReference<>(this);
+        activeInstance = this;
+        if (getBridge() != null && getBridge().getWebView() != null) {
+            activeWebView = getBridge().getWebView();
+        }
     }
 
     public static void dispatchMediaAction(final String action, final long seekPositionMs) {
         MAIN_HANDLER.post(new Runnable() {
             @Override
             public void run() {
-                MediaPlaybackPlugin instance = activeInstance.get();
-                if (instance == null) return;
+                MediaPlaybackPlugin instance = activeInstance;
+                if (instance != null) {
+                    JSObject payload = new JSObject();
+                    payload.put("action", action);
+                    if (seekPositionMs >= 0L) {
+                        payload.put("positionMs", seekPositionMs);
+                    }
 
-                JSObject payload = new JSObject();
-                payload.put("action", action);
-                if (seekPositionMs >= 0L) {
-                    payload.put("positionMs", seekPositionMs);
-                }
-
-                try {
-                    instance.notifyListeners("mediaAction", payload, true);
-                } catch (Exception ignored) {
+                    try {
+                        instance.notifyListeners("mediaAction", payload, true);
+                    } catch (Exception ignored) {
+                    }
                 }
 
                 // Also dispatch a DOM CustomEvent directly so background/locked WebView listeners react immediately
                 try {
-                    if (instance.getBridge() != null && instance.getBridge().getWebView() != null) {
-                        WebView webView = instance.getBridge().getWebView();
+                    WebView webView = activeWebView != null ? activeWebView : (instance != null && instance.getBridge() != null ? instance.getBridge().getWebView() : null);
+                    if (webView != null) {
                         String js = "window.dispatchEvent(new CustomEvent('atlas:native-media-action', { detail: { action: '"
                             + action + "', positionMs: " + seekPositionMs + " } }));";
                         webView.evaluateJavascript(js, null);
