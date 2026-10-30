@@ -35,6 +35,7 @@
             android:name=".MediaPlaybackService"
             android:enabled="true"
             android:exported="false"
+            android:stopWithTask="false"
             android:foregroundServiceType="mediaPlayback" />
 
         <!-- Music Vault Android Home Screen Widget Provider -->

@@ -10,7 +10,9 @@ export type NativeMediaActionType =
   | "play"
   | "pause"
   | "toggle"
+  | "playPause"
   | "next"
+  | "prev"
   | "previous"
   | "seek"
   | "stop"
@@ -31,11 +33,13 @@ export interface NativePlaybackPayload {
   positionMs: number;
   durationMs: number;
   playbackRate: number;
+  theme?: string;
 }
 
 export interface MediaPlaybackPluginInterface {
   updatePlayback(options: NativePlaybackPayload): Promise<{ granted?: boolean } | void>;
   stopPlayback(): Promise<void>;
+  setTheme?: (options: { theme: string }) => Promise<void>;
   addListener(
     eventName: "mediaAction",
     listenerFunc: (event: NativeMediaActionEvent) => void
@@ -88,21 +92,40 @@ export function syncNativeMediaPlayback(
 ): void {
   if (!adapter.isAndroidNative()) return;
 
+  const nativePayload: NativePlaybackPayload = {
+    title: payload.title || "Atlas Music Vault",
+    artist: payload.artist || "Life Atlas",
+    album: payload.album || "Music Vault",
+    artworkUrl: resolveArtworkUrl(payload.artworkUrl, adapter.origin),
+    isPlaying: payload.isPlaying,
+    positionMs: Math.max(0, Math.round(payload.positionMs || 0)),
+    durationMs: Math.max(0, Math.round(payload.durationMs || 0)),
+    playbackRate: payload.playbackRate || 1,
+  };
+
+  if (payload.theme) {
+    nativePayload.theme = payload.theme;
+  }
+
   try {
-    adapter.plugin
-      .updatePlayback({
-        title: payload.title || "Atlas Music Vault",
-        artist: payload.artist || "Life Atlas",
-        album: payload.album || "Music Vault",
-        artworkUrl: resolveArtworkUrl(payload.artworkUrl, adapter.origin),
-        isPlaying: payload.isPlaying,
-        positionMs: Math.max(0, Math.round(payload.positionMs || 0)),
-        durationMs: Math.max(0, Math.round(payload.durationMs || 0)),
-        playbackRate: payload.playbackRate || 1,
-      })
-      .catch(() => {});
+    adapter.plugin.updatePlayback(nativePayload).catch(() => {});
   } catch {
     // Graceful no-op if native plugin is unavailable on older APK builds
+  }
+}
+
+export function syncNativeTheme(
+  theme: string,
+  adapter: NativeBridgeAdapter = defaultAdapter
+): void {
+  if (!adapter.isAndroidNative()) return;
+
+  try {
+    if (adapter.plugin && typeof adapter.plugin.setTheme === "function") {
+      adapter.plugin.setTheme({ theme }).catch(() => {});
+    }
+  } catch {
+    // Graceful no-op
   }
 }
 

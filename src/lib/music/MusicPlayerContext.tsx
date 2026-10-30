@@ -503,6 +503,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
           audio.pause();
           break;
         case "toggle":
+        case "playPause":
           if (audio.paused) {
             audio.play().catch(() => {});
           } else {
@@ -512,6 +513,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         case "next":
           nextTrack();
           break;
+        case "prev":
         case "previous":
           previousTrack();
           break;

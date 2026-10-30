@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { syncNativeTheme } from "./nativeMediaBridge";
 
 export type MusicThemeId = "gold" | "emerald" | "cyan" | "alabaster";
 
@@ -70,6 +71,7 @@ export function setSavedMusicTheme(theme: MusicThemeId): void {
   }
   applyMusicThemeAttribute(theme);
   window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: theme }));
+  syncNativeTheme(theme);
 }
 
 export function useMusicTheme(): {

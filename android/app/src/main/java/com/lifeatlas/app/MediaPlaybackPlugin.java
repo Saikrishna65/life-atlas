@@ -103,6 +103,13 @@ public class MediaPlaybackPlugin extends Plugin {
         long positionMs = getLongSafe(call, "positionMs", 0L);
         long durationMs = getLongSafe(call, "durationMs", 0L);
         float playbackRate = call.getFloat("playbackRate", 1.0f);
+        String theme = call.getString("theme", null);
+        if (theme != null && !theme.isEmpty()) {
+            context.getSharedPreferences("life_atlas_widget_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putString("widget_theme", theme)
+                .apply();
+        }
 
         // On Android 13+, request POST_NOTIFICATIONS once if not yet granted so lock-screen notification can display
         if (isPlaying
@@ -145,6 +152,22 @@ public class MediaPlaybackPlugin extends Plugin {
                 }
             }
         }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void setTheme(PluginCall call) {
+        Context context = getContext();
+        if (context == null) {
+            call.resolve();
+            return;
+        }
+        String theme = call.getString("theme", "gold");
+        context.getSharedPreferences("life_atlas_widget_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .putString("widget_theme", theme)
+            .apply();
+        MusicAppWidgetProvider.updateAllWidgets(context, null, null, null, null);
         call.resolve();
     }
 

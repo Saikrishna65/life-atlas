@@ -44,11 +44,11 @@ export function Modal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fade-in overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className={`w-full ${maxWidthClassName} max-h-[90vh] flex flex-col rounded-2xl border border-muted bg-background shadow-2xl overflow-hidden overscroll-contain animate-fade-in-up`}
+        className={`w-full ${maxWidthClassName} my-auto max-h-[90vh] flex flex-col rounded-2xl border border-muted bg-background shadow-2xl overflow-hidden overscroll-contain animate-fade-in-up`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}

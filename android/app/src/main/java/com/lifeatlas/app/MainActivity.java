@@ -197,6 +197,10 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onStop() {
         super.onStop();
+        if (MediaPlaybackService.shouldKeepWebViewAwake() && getBridge() != null && getBridge().getWebView() != null) {
+            getBridge().getWebView().onResume();
+            getBridge().getWebView().resumeTimers();
+        }
     }
 
     @Override
@@ -205,8 +209,30 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
+    public void onDetachedFromWindow() {
+        if (MediaPlaybackService.shouldKeepWebViewAwake()) {
+            return;
+        }
+        super.onDetachedFromWindow();
+    }
+
+    @Override
     public void onDestroy() {
-        super.onDestroy();
         timeoutHandler.removeCallbacks(slowNetworkWatchdog);
+        if (MediaPlaybackService.shouldKeepWebViewAwake()) {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                try {
+                    android.view.ViewParent parent = getBridge().getWebView().getParent();
+                    if (parent instanceof android.view.ViewGroup) {
+                        ((android.view.ViewGroup) parent).removeView(getBridge().getWebView());
+                    }
+                    getBridge().getWebView().onResume();
+                    getBridge().getWebView().resumeTimers();
+                } catch (Exception ignored) {
+                }
+            }
+            return;
+        }
+        super.onDestroy();
     }
 }
