@@ -28,105 +28,15 @@ export default function BankIntegrationModal({
   useFinanceDialog(isOpen, onClose);
   if (!isOpen) return null;
 
-  const supportedInstitutions = [
-    { name: "State Bank of India (SBI)", code: "SBI", type: "Public Bank", status: "Ready for AA consent" },
-    { name: "HDFC Bank", code: "HDFC", type: "Private Bank", status: "Ready for AA consent" },
-    { name: "ICICI Bank", code: "ICICI", type: "Private Bank", status: "Ready for AA consent" },
-    { name: "Axis Bank", code: "AXIS", type: "Private Bank", status: "Ready for AA consent" },
-    { name: "Kotak Mahindra Bank", code: "KOTAK", type: "Private Bank", status: "Ready for AA consent" },
-    { name: "IndusInd Bank", code: "INDUSIND", type: "Private Bank", status: "Ready for AA consent" },
-  ];
-
   return (
     <div className="finance-workspace-overlay">
       <div className="finance-workspace finance-tool-workspace" role="dialog" aria-modal="true" aria-label="Bank connections" tabIndex={-1}>
         <FinancePanelHeader title="Bank connections" subtitle="Choose how to bring your transactions into Atlas." onClose={onClose}/>
 
-        {/* Content */}
-        <div className="finance-panel-content flex-1 overflow-y-auto p-6 space-y-4 text-xs">
-          {/* Honest Disclosure Box */}
-          <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl space-y-2 text-foreground">
-            <div className="flex items-center gap-2 font-bold text-blue-400">
-              <ShieldCheck className="w-4 h-4" />
-              <span>Honest Security & Regulatory Compliance</span>
-            </div>
-            <p className="leading-relaxed text-muted-foreground">
-              Life Atlas adheres strictly to Reserve Bank of India (RBI) cybersecurity guidelines. We <strong>never scrape bank websites</strong>, <strong>never capture SMS notifications</strong> without explicit intent, and <strong>never request your net banking password or OTPs</strong>.
-            </p>
-          </div>
-
-          {/* Connection Status Card */}
-          <div className="p-4 bg-card border border-border rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-foreground">Current Integration Status</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                NOT_CONNECTED (Phase 4 Ready)
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50 text-[11px]">
-              <div>
-                <span className="text-muted-foreground block">Consent Gateway:</span>
-                <span className="font-semibold text-foreground">RBI NBFC-AA Protocol</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Encryption Standard:</span>
-                <span className="font-semibold text-foreground">End-to-End Elliptic Curve</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Session Status:</span>
-                <span className="font-semibold text-foreground">Idle (No active consent)</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground block">Recommended Action:</span>
-                <span className="font-semibold text-emerald-400">Offline Statement Import</span>
-              </div>
-            </div>
-          </div>
-
-          {/* How Account Aggregator Works */}
-          <div className="space-y-2">
-            <h4 className="font-bold text-foreground">How RBI Account Aggregator Works</h4>
-            <div className="space-y-1.5 text-muted-foreground leading-relaxed">
-              <div className="flex items-start gap-2">
-                <div className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[10px] text-foreground font-bold shrink-0 mt-0.5">
-                  1
-                </div>
-                <span>You initiate consent with an RBI-licensed AA provider (e.g. Setu, Finvu, OneMoney).</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[10px] text-foreground font-bold shrink-0 mt-0.5">
-                  2
-                </div>
-                <span>Your bank (FIP) encrypts statements directly for Life Atlas using public-key cryptography.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[10px] text-foreground font-bold shrink-0 mt-0.5">
-                  3
-                </div>
-                <span>Consent is revocable at any time from your AA dashboard.</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Prepared Bank Institutions */}
-          <div className="space-y-2">
-            <h4 className="font-bold text-foreground">Supported Financial Institutions (Prepared)</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {supportedInstitutions.map((inst) => (
-                <div
-                  key={inst.code}
-                  className="p-2.5 bg-muted/20 border border-border/60 rounded-lg flex items-center justify-between"
-                >
-                  <div>
-                    <span className="font-semibold text-foreground block">{inst.name}</span>
-                    <span className="text-[10px] text-muted-foreground">{inst.type}</span>
-                  </div>
-                  <span className="text-[10px] text-emerald-400 font-medium">Ready</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="finance-panel-content bank-connection-options">
+          <article className="finance-connection-feature"><span className="finance-tool-symbol"><Landmark size={26}/></span><span className="finance-status-pill">AVAILABLE NOW</span><h3>Your bank history.<br/>One organised place.</h3><p>Import a statement from your bank to add past payments. You can review categories and duplicates before anything is saved.</p><div className="finance-file-types"><span>CSV</span><span>OFX</span><span>QIF</span></div></article>
+          <article className="finance-connection-state"><div><Lock size={20}/><h3>Direct bank connection</h3></div><span className="finance-status-pill">NOT CONNECTED</span><p>Automatic bank sync is not configured. No bank login, password or OTP is needed to use statement import.</p></article>
+          <div className="finance-inline-note"><ShieldCheck size={19}/><p>Statement files are processed on this device. Your account balances change only after you confirm the import.</p></div>
         </div>
 
         {/* Footer */}

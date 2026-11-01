@@ -140,22 +140,20 @@ export default function SyncSettingsModal({
         {/* Content Body */}
         <div className="finance-panel-content overflow-y-auto space-y-4 py-4 pr-1 text-xs">
           {/* Status Banner */}
-          <div className="p-3.5 rounded-xl bg-background/80 border border-muted space-y-2">
+          <div className="finance-storage-status p-3.5 rounded-xl bg-background/80 border border-muted space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="font-semibold text-foreground text-xs">
-                  Active Mode: Local Vault (Offline First)
+                  Saved on this device
                 </span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                Adapter: Unconfigured (Local-Only)
+                Cloud sync off
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Your financial ledger operates completely offline. Every account balance, transaction, transfer, budget,
-              and savings goal is safely recorded in your device&apos;s encrypted local storage engine. No sensitive records
-              are transmitted without explicit cloud endpoint configuration.
+              Your accounts, payments, budgets and goals are stored in this browser on this device. Cloud sync is not configured. Clearing this browser’s data can remove these records.
             </p>
           </div>
 
@@ -176,7 +174,7 @@ export default function SyncSettingsModal({
           )}
 
           {/* Outbox Metrics Summary */}
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="finance-storage-metrics grid grid-cols-3 gap-2.5">
             <div className="p-3 rounded-xl bg-background/60 border border-muted text-center">
               <span className="text-[10px] uppercase font-semibold text-muted-foreground">Pending / Queued</span>
               <div className="text-lg font-mono font-bold text-amber-400 mt-1">{pendingCount}</div>
