@@ -34,7 +34,7 @@ export interface ParseAlertResult {
 }
 
 // Capacitor Plugin Interface Contract
-interface IKotakNativePlugin {
+export interface IKotakNativePlugin {
   isNotificationAccessGranted(): Promise<{ granted: boolean }>;
   requestNotificationAccess(): Promise<{ opened: boolean }>;
   getTrackingStatus(): Promise<{
@@ -60,7 +60,7 @@ let nativePluginInstance: IKotakNativePlugin | null = null;
 
 function getNativePlugin(): IKotakNativePlugin | null {
   if (nativePluginInstance) return nativePluginInstance;
-  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+  if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android" && Capacitor.isPluginAvailable("KotakNotificationTracker")) {
     try {
       nativePluginInstance = registerPlugin<IKotakNativePlugin>("KotakNotificationTracker");
       return nativePluginInstance;
@@ -75,30 +75,37 @@ function getNativePlugin(): IKotakNativePlugin | null {
 export class NotificationTrackingService {
   private processedFingerprints = new Set<string>();
   private reviewQueue: NotificationReviewItem[] = [];
-  private isProcessing = false;
+  private operationQueue: Promise<unknown> = Promise.resolve();
+  private listener: { remove: () => void } | null = null;
   private isListening = false;
+  private lifecycle = 0;
 
   constructor(
     private readonly uow: IUnitOfWork,
     private readonly transactionService: TransactionService,
-    private readonly categorizationService: CategorizationService
+    private readonly categorizationService: CategorizationService,
+    private readonly nativePluginOverride?: IKotakNativePlugin
   ) {}
 
   /**
    * Initializes real-time listener and drains pending offline queue
    */
   async initialize(): Promise<void> {
-    const plugin = getNativePlugin();
+    const plugin = this.nativePluginOverride ?? getNativePlugin();
     if (!plugin) return;
 
     // Attach real-time listener once
     if (!this.isListening) {
+      const lifecycle = this.lifecycle;
+      this.isListening = true;
       try {
-        await plugin.addListener("notificationReceived", async (rawEvent) => {
-          await this.processRawEvents([rawEvent]);
+        const listener = await plugin.addListener("notificationReceived", () => {
+          this.drainPendingNotifications().catch((error) => console.warn("Bank alert import failed", error));
         });
-        this.isListening = true;
+        if (lifecycle !== this.lifecycle) { await listener.remove(); return; }
+        this.listener = listener;
       } catch (e) {
+        this.isListening = false;
         console.warn("Could not register live notification listener:", e);
       }
     }
@@ -111,22 +118,28 @@ export class NotificationTrackingService {
    * Drains and processes all pending notifications stored by native service
    */
   async drainPendingNotifications(): Promise<{ processed: number; duplicates: number }> {
-    if (this.isProcessing) return { processed: 0, duplicates: 0 };
-    this.isProcessing = true;
-
-    try {
-      const plugin = getNativePlugin();
+    return this.serialize(async () => {
+      const plugin = this.nativePluginOverride ?? getNativePlugin();
       if (!plugin) return { processed: 0, duplicates: 0 };
-
       const pending = await plugin.getPendingNotifications();
-      if (!pending || !pending.notifications || pending.notifications.length === 0) {
-        return { processed: 0, duplicates: 0 };
-      }
+      const result = await this.processEvents(pending.notifications || []);
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("finance-notifications-updated"));
+      return result;
+    });
+  }
 
-      return await this.processRawEvents(pending.notifications);
-    } finally {
-      this.isProcessing = false;
-    }
+  private serialize<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.operationQueue.then(operation);
+    this.operationQueue = result.catch(() => undefined);
+    return result;
+  }
+
+  async dispose(): Promise<void> {
+    this.lifecycle++;
+    const listener = this.listener;
+    this.listener = null;
+    this.isListening = false;
+    await listener?.remove();
   }
 
   /**
@@ -208,7 +221,17 @@ export class NotificationTrackingService {
     categoryId?: string;
     description?: string;
   }): Promise<Transaction> {
+    return this.serialize(() => this.recordConfirmedTransaction(options));
+  }
+
+  private async recordConfirmedTransaction(options: {
+    parsed: ParsedNotificationTransaction;
+    accountId: string;
+    categoryId?: string;
+    description?: string;
+  }): Promise<Transaction> {
     const { parsed, accountId, categoryId, description } = options;
+    if (await this.checkExistingLedgerDuplicate(parsed)) throw new Error("This bank transaction is already recorded.");
 
     const recorded = await this.transactionService.recordTransaction({
       accountId,
@@ -237,7 +260,11 @@ export class NotificationTrackingService {
   async processRawEvents(
     events: RawNotificationEvent[]
   ): Promise<{ processed: number; duplicates: number }> {
-    const plugin = getNativePlugin();
+    return this.serialize(() => this.processEvents(events));
+  }
+
+  private async processEvents(events: RawNotificationEvent[]): Promise<{ processed: number; duplicates: number }> {
+    const plugin = this.nativePluginOverride ?? getNativePlugin();
     const ackIds: string[] = [];
     let processedCount = 0;
     let duplicateCount = 0;
@@ -273,14 +300,19 @@ export class NotificationTrackingService {
         continue;
       }
 
+      if (this.reviewQueue.some((item) => item.status === "pending" && item.parsedTransaction.normalizedFingerprint === fp)) continue;
+
       // 2. Find matching Kotak account in user's accounts
       const matchedAccount = await this.matchKotakAccount(parsed.accountMask);
 
       if (!matchedAccount) {
         // Stage in review queue rather than inventing fake bank account or dropping
         this.stageInReviewQueue(parsed, "No matching Kotak account found in your accounts list");
-        this.processedFingerprints.add(fp);
-        ackIds.push(raw.id);
+        // Keep the native event until the user resolves or dismisses it.
+        continue;
+      }
+      if (parsed.isAmbiguous) {
+        this.stageInReviewQueue(parsed, parsed.ambiguityReason || "Check this transaction before recording");
         continue;
       }
 
@@ -328,6 +360,8 @@ export class NotificationTrackingService {
         }
       } catch (err: unknown) {
         console.error("Failed to record notification transaction in ledger:", err);
+        // Do not acknowledge failed writes: retry from the durable native queue.
+        continue;
       }
 
       ackIds.push(raw.id);
@@ -350,19 +384,23 @@ export class NotificationTrackingService {
    */
   async matchKotakAccount(accountMask?: string): Promise<FinanceAccount | null> {
     const allAccounts = await this.uow.accounts.getAll("active");
-    const bankAccounts = allAccounts.filter((a) => a.accountType === "bank" || a.accountType === "savings");
+    const bankAccounts = allAccounts.filter((a) =>
+      (a.accountType === "bank" || a.accountType === "savings") &&
+      (!a.metadata?.institutionName || a.metadata.institutionName.toLowerCase().includes("kotak"))
+    );
 
     if (bankAccounts.length === 0) return null;
 
     // 1. Try matching by mask if account number / mask is known
     if (accountMask) {
-      const matchByMask = bankAccounts.find((a) => {
+      const matches = bankAccounts.filter((a) => {
         const metaMask = (a.metadata as Record<string, unknown> | undefined)?.accountNumberLast4 || 
                          (a.metadata as Record<string, unknown> | undefined)?.accountNumberMask;
         const nameHasMask = a.name.includes(accountMask);
         return (typeof metaMask === "string" && metaMask.endsWith(accountMask)) || nameHasMask;
       });
-      if (matchByMask) return matchByMask;
+      // An explicit but unknown mask must never fall back to a different account.
+      return matches.length === 1 ? matches[0] : null;
     }
 
     // 2. Try matching by name containing "Kotak" or institution "Kotak"
@@ -401,6 +439,8 @@ export class NotificationTrackingService {
     });
 
     for (const txn of sameDayTxns) {
+      // Distinct bank references identify separate payments even for the same amount/payee.
+      if (parsed.referenceNumber && txn.externalId?.startsWith("kotak_notif_") && txn.externalId !== `kotak_notif_${parsed.referenceNumber}`) continue;
       if (
         txn.merchant?.toLowerCase() === parsed.merchantOrBeneficiary.toLowerCase() ||
         txn.description.toLowerCase().includes(parsed.merchantOrBeneficiary.toLowerCase())
@@ -413,6 +453,7 @@ export class NotificationTrackingService {
   }
 
   private stageInReviewQueue(parsed: ParsedNotificationTransaction, reason: string): void {
+    if (this.reviewQueue.some((item) => item.status === "pending" && item.parsedTransaction.normalizedFingerprint === parsed.normalizedFingerprint)) return;
     const item: NotificationReviewItem = {
       id: `rev_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       rawEventId: parsed.rawEventId,
@@ -429,7 +470,7 @@ export class NotificationTrackingService {
    * Returns current tracking status across Android settings and review items
    */
   async getStatus(): Promise<NotificationTrackingStatus> {
-    const plugin = getNativePlugin();
+    const plugin = this.nativePluginOverride ?? getNativePlugin();
     const isNativeAndroid = Boolean(plugin && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android");
 
     if (plugin) {
@@ -471,7 +512,7 @@ export class NotificationTrackingService {
    * Toggles tracking enabled status in native Android preferences
    */
   async setTrackingEnabled(enabled: boolean): Promise<boolean> {
-    const plugin = getNativePlugin();
+    const plugin = this.nativePluginOverride ?? getNativePlugin();
     if (!plugin) return false;
     const res = await plugin.setTrackingEnabled({ enabled });
     return res.enabled;
@@ -481,7 +522,7 @@ export class NotificationTrackingService {
    * Opens Android Notification Access system settings
    */
   async requestNotificationAccess(): Promise<void> {
-    const plugin = getNativePlugin();
+    const plugin = this.nativePluginOverride ?? getNativePlugin();
     if (!plugin) return;
     await plugin.requestNotificationAccess();
   }
@@ -501,9 +542,18 @@ export class NotificationTrackingService {
     accountId: ID,
     categoryId?: ID
   ): Promise<void> {
-    const item = this.reviewQueue.find((i) => i.id === itemId);
-    if (!item) return;
+    return this.serialize(() => this.recordReviewedItem(itemId, accountId, categoryId));
+  }
 
+  private async recordReviewedItem(itemId: string, accountId: ID, categoryId?: ID): Promise<void> {
+    const item = this.reviewQueue.find((i) => i.id === itemId);
+    if (!item || item.status !== "pending") return;
+
+    if (await this.checkExistingLedgerDuplicate(item.parsedTransaction)) {
+      item.status = "approved";
+      await (this.nativePluginOverride ?? getNativePlugin())?.acknowledgeNotifications({ ids: [item.rawEventId] });
+      return;
+    }
     await this.transactionService.recordTransaction({
       accountId,
       amountPaise: item.parsedTransaction.amountPaise,
@@ -522,15 +572,19 @@ export class NotificationTrackingService {
     });
 
     item.status = "approved";
+    this.processedFingerprints.add(item.parsedTransaction.normalizedFingerprint);
+    await (this.nativePluginOverride ?? getNativePlugin())?.acknowledgeNotifications({ ids: [item.rawEventId] });
   }
 
   /**
    * Dismisses a review queue item without recording in ledger
    */
-  dismissReviewItem(itemId: string): void {
+  async dismissReviewItem(itemId: string): Promise<void> {
     const item = this.reviewQueue.find((i) => i.id === itemId);
     if (item) {
       item.status = "dismissed";
+      this.processedFingerprints.add(item.parsedTransaction.normalizedFingerprint);
+      await (this.nativePluginOverride ?? getNativePlugin())?.acknowledgeNotifications({ ids: [item.rawEventId] });
     }
   }
 
@@ -538,7 +592,7 @@ export class NotificationTrackingService {
    * Clears tracking metadata and resets queue
    */
   async clearTrackingData(): Promise<void> {
-    const plugin = getNativePlugin();
+    const plugin = this.nativePluginOverride ?? getNativePlugin();
     if (plugin) {
       await plugin.clearTrackingData();
     }

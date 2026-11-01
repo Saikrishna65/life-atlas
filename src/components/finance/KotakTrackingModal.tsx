@@ -14,7 +14,9 @@ import {
   Check,
   Ban,
   Info,
+  MessageSquare,
 } from "lucide-react";
+import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 import {
   NotificationTrackingService,
   FinanceAccount,
@@ -22,6 +24,7 @@ import {
   NotificationReviewItem,
   formatPaise,
   ParseAlertResult,
+  NotificationTrackingStatus,
 } from "@/lib/finance";
 
 interface KotakTrackingModalProps {
@@ -34,7 +37,7 @@ interface KotakTrackingModalProps {
   onOpenStatementImport?: () => void;
 }
 
-type ModalTab = "PASTE" | "IMPORT" | "PRIVACY" | "REVIEW";
+type ModalTab = "AUTOMATIC" | "PASTE" | "IMPORT" | "PRIVACY" | "REVIEW";
 
 export default function KotakTrackingModal({
   isOpen,
@@ -45,11 +48,14 @@ export default function KotakTrackingModal({
   onTransactionsUpdated,
   onOpenStatementImport,
 }: KotakTrackingModalProps) {
-  const [activeTab, setActiveTab] = useState<ModalTab>("PASTE");
+  const [activeTab, setActiveTab] = useState<ModalTab>("AUTOMATIC");
   const [alertText, setAlertText] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [parseResult, setParseResult] = useState<ParseAlertResult | null>(null);
+
+  const [trackingStatus, setTrackingStatus] = useState<NotificationTrackingStatus | null>(null);
+  const [isChangingTracking, setIsChangingTracking] = useState(false);
 
   // Editable fields for parsed transaction preview
   const [selectedAccountId, setSelectedAccountId] = useState("");
@@ -80,6 +86,40 @@ export default function KotakTrackingModal({
     }
   }, [isOpen, loadReviewQueue]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const update = () => {
+      void trackingService.getStatus().then(setTrackingStatus).catch(console.warn);
+      loadReviewQueue();
+    };
+    update();
+    window.addEventListener("focus", update);
+    window.addEventListener("finance-notifications-updated", update);
+    return () => {
+      window.removeEventListener("focus", update);
+      window.removeEventListener("finance-notifications-updated", update);
+    };
+  }, [isOpen, trackingService, loadReviewQueue]);
+
+  const changeTracking = async (enabled: boolean) => {
+    setIsChangingTracking(true);
+    try {
+      await trackingService.setTrackingEnabled(enabled);
+      if (enabled && !trackingStatus?.permissionGranted) await trackingService.requestNotificationAccess();
+      setTrackingStatus(await trackingService.getStatus());
+      onTransactionsUpdated();
+    } catch {
+      setFeedbackMessage({ type: "error", text: "Could not change notification tracking. Check Android notification access and try again." });
+    } finally { setIsChangingTracking(false); }
+  };
+
+  useLockBodyScroll(isOpen);
+  useEffect(() => {
+    if (!isOpen) return;
+    const close = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [isOpen, onClose]);
   if (!isOpen) return null;
 
   // Handle parsing the pasted text
@@ -261,8 +301,11 @@ export default function KotakTrackingModal({
     }
   };
 
-  const handleDismissReviewItem = (itemId: string) => {
-    trackingService.dismissReviewItem(itemId);
+  const handleDismissReviewItem = async (itemId: string) => {
+    try { await trackingService.dismissReviewItem(itemId); } catch {
+      setFeedbackMessage({ type: "error", text: "Could not dismiss this alert. Please try again." });
+      return;
+    }
     loadReviewQueue();
     setFeedbackMessage({
       type: "info",
@@ -274,28 +317,29 @@ export default function KotakTrackingModal({
   const isOutflow = parsedTxn?.direction === "outflow";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+    <div role="dialog" aria-modal="true" aria-labelledby="message-import-title" className="finance-message fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
       <div className="relative w-full max-w-2xl max-h-[92vh] bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/80">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0 border border-red-200">
-              <Sparkles className="w-5 h-5 text-red-600" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
+              <MessageSquare className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-900">Kotak 811 Smart Assistant</h2>
+                <h2 id="message-import-title" className="text-base font-bold text-slate-900">Bank messages</h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  100% OFFLINE
+                  LOCAL
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Instant on-device transaction parser, duplicate defense & statement ingestion
+                Track Kotak transactions from Google Messages, automatically.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
+            aria-label="Close message import"
             className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 cursor-pointer transition-colors"
           >
             <X className="w-5 h-5" />
@@ -304,6 +348,7 @@ export default function KotakTrackingModal({
 
         {/* Tab Navigation */}
         <div className="flex items-center gap-1 px-6 pt-3 pb-2 border-b border-slate-200 bg-slate-50/50 text-xs overflow-x-auto no-scrollbar">
+          <button onClick={() => setActiveTab("AUTOMATIC")} className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap ${activeTab === "AUTOMATIC" ? "bg-white text-slate-900 border border-slate-200" : "text-slate-500"}`}>Automatic</button>
           <button
             onClick={() => setActiveTab("PASTE")}
             className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
@@ -312,7 +357,7 @@ export default function KotakTrackingModal({
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            Paste & Record
+            Message
           </button>
           <button
             onClick={() => setActiveTab("IMPORT")}
@@ -322,7 +367,7 @@ export default function KotakTrackingModal({
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            Statement Import (CSV)
+            Statement
           </button>
           <button
             onClick={() => setActiveTab("PRIVACY")}
@@ -332,7 +377,7 @@ export default function KotakTrackingModal({
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            Privacy & Architecture
+            Privacy
           </button>
           {reviewItems.length > 0 && (
             <button
@@ -379,14 +424,37 @@ export default function KotakTrackingModal({
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
+          {activeTab === "AUTOMATIC" && (
+            <div className="space-y-5">
+              <div className="message-instructions"><MessageSquare size={24} /><div><h3>Your bank alerts, organised.</h3><p>Allow Atlas to capture new Kotak transaction notifications from Google Messages. Clear transactions go into the matching account; uncertain details stay in Review.</p></div></div>
+              {!trackingStatus ? <p role="status">Checking device support…</p> : !trackingStatus.isNativeAndroid ? (
+                <div className="p-5 rounded-xl border border-slate-200 space-y-2"><h3>Available in the updated Android app</h3><p className="text-slate-600 leading-relaxed">Automatic capture needs the Atlas Android app with the bank-notification plugin. In a browser or an older app version, use the Message tab to paste an alert.</p></div>
+              ) : (
+                <>
+                  <div className="p-5 rounded-xl border border-slate-200 space-y-4">
+                    <div className="flex justify-between items-center gap-3"><h3>Google Messages capture</h3><span className="font-semibold text-emerald-800">{trackingStatus.enabled && trackingStatus.permissionGranted ? "Active" : trackingStatus.enabled ? "Permission needed" : "Off"}</span></div>
+                    <p className="leading-relaxed text-slate-600">Android grants access to notifications broadly. Atlas filters for Kotak transaction alerts from Google Messages before saving anything. It does not read your SMS history. You can turn capture off at any time.</p>
+                    <button disabled={isChangingTracking} onClick={() => changeTracking(!trackingStatus.enabled)} className="w-full rounded-xl bg-emerald-800 text-white px-4 py-3 font-semibold disabled:opacity-50">{isChangingTracking ? "Updating…" : trackingStatus.enabled ? "Turn off capture" : "Enable automatic capture"}</button>
+                    {trackingStatus.enabled && !trackingStatus.permissionGranted && <button onClick={() => changeTracking(true)} disabled={isChangingTracking} className="w-full rounded-xl border border-emerald-200 text-emerald-800 px-4 py-3 font-semibold">Open Android notification access</button>}
+                    <p className="text-slate-500 leading-relaxed">In Android settings, allow “Atlas bank alerts (Google Messages)”. Keep transaction notification previews enabled in Google Messages. On some Android versions, sideloaded apps need “Allow restricted settings” in App info first.</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-center"><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{trackingStatus.eventsReceivedCount}</strong><span>Captured</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{trackingStatus.pendingCount}</strong><span>Pending</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{trackingStatus.duplicatesIgnoredCount}</strong><span>Duplicates skipped</span></div></div>
+                  {trackingStatus.lastError && <p role="alert" className="text-amber-800">{trackingStatus.lastError}</p>}
+                  <p className="text-slate-600 leading-relaxed">Alerts are queued on this device while Finance is closed. They are recorded when you open or return to Finance. Match your Kotak account’s last four digits in Accounts. Old messages and notifications with hidden content cannot be imported automatically.</p>
+                  <button className="w-full rounded-xl border border-slate-200 py-3 font-semibold" onClick={async () => { try { await trackingService.drainPendingNotifications(); setTrackingStatus(await trackingService.getStatus()); loadReviewQueue(); onTransactionsUpdated(); } catch { setFeedbackMessage({ type: "error", text: "Import failed. Your pending alerts remain saved for retry." }); } }}>Import pending alerts now</button>
+                </>
+              )}
+            </div>
+          )}
           {/* TAB 1: PASTE & RECORD */}
           {activeTab === "PASTE" && (
             <div className="space-y-4">
+              <div className="message-instructions"><MessageSquare size={22} /><div><h3>From message to money insight.</h3><p>In Google Messages, open a Kotak transaction SMS, press and hold the message, then copy it. Paste it below to review the amount, account, and category.</p></div></div>
               {/* Text Input Box */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="font-semibold text-slate-900 flex items-center gap-1.5">
-                    <span>Transaction SMS or Notification Text</span>
+                    <span>Bank message</span>
                   </label>
                   <div className="flex items-center gap-2">
                     <button
@@ -688,43 +756,8 @@ export default function KotakTrackingModal({
           {/* TAB 3: PRIVACY & ARCHITECTURE */}
           {activeTab === "PRIVACY" && (
             <div className="space-y-4">
-              {/* Play Protect Explanation */}
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                <div className="flex items-center gap-2 font-bold text-slate-900">
-                  <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                  <span>Why Kotak Smart Assistant Instead of Background Notification Access?</span>
-                </div>
-                <p className="leading-relaxed text-slate-600 text-[11px]">
-                  Google Play Protect analyzes sideloaded APKs using automated static heuristics.
-                  Android&apos;s <code className="text-slate-900 font-mono text-[10px] bg-slate-200 px-1 py-0.5 rounded">NotificationListenerService</code> grants
-                  system-wide notification access, which triggers Play Protect&apos;s <code className="text-amber-800 font-mono text-[10px] bg-amber-100 px-1 py-0.5 rounded">PHA:SPYWARE</code> flag
-                  even on completely benign personal apps.
-                </p>
-                <p className="leading-relaxed text-slate-600 text-[11px]">
-                  By replacing background notification listening with explicit, user-initiated on-device parsing,
-                  Life Atlas completely removes the system service heuristic trigger while preserving instant,
-                  accurate transaction entry and full privacy.
-                </p>
-              </div>
+              <div className="message-instructions"><ShieldCheck size={24} /><div><h3>You choose what to import.</h3><p>Only the message you paste is parsed on this device. Atlas does not read your Google Messages inbox. Optional automatic capture listens for new Kotak transaction notifications after you enable it and grant Android notification access. Check the suggested transaction before saving; duplicate checks help prevent recording the same alert twice.</p></div></div>
 
-              {/* Zero Permissions Guarantee */}
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
-                <div className="flex items-center gap-2 font-bold text-emerald-800">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                  <span>Zero Sensitive Android Permissions</span>
-                </div>
-                <ul className="list-disc list-inside space-y-1 text-slate-700 text-[11px] leading-relaxed pl-1">
-                  <li>
-                    <strong>NO READ_SMS or RECEIVE_SMS:</strong> Life Atlas does not access your text message inbox.
-                  </li>
-                  <li>
-                    <strong>NO NotificationListenerService:</strong> No system background services running.
-                  </li>
-                  <li>
-                    <strong>NO Cloud Transmission:</strong> Parsed 100% in local device memory. No Gemini, LLM, or external APIs.
-                  </li>
-                </ul>
-              </div>
             </div>
           )}
 
@@ -858,6 +891,7 @@ export default function KotakTrackingModal({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close message import"
             className="px-4 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs transition-all cursor-pointer"
           >
             Close
