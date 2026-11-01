@@ -1,5 +1,7 @@
 "use client";
 
+import FinanceSelect from "@/components/finance/FinanceSelect";
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   X,
@@ -615,7 +617,7 @@ export default function ForecastViewModal({
                     onChange={(e) => setPlannedExpenseRupees(e.target.value)}
                     className="px-2.5 py-1.5 rounded-lg border border-muted bg-surface text-foreground text-xs focus:outline-hidden focus:border-purple-500 font-mono"
                   />
-                  <select
+                  <FinanceSelect
                     value={plannedExpenseDays}
                     onChange={(e) => setPlannedExpenseDays(e.target.value)}
                     className="px-2.5 py-1.5 rounded-lg border border-muted bg-surface text-foreground text-xs focus:outline-hidden focus:border-purple-500 cursor-pointer"
@@ -624,7 +626,7 @@ export default function ForecastViewModal({
                     <option value="7">In 1 Week</option>
                     <option value="14">In 2 Weeks</option>
                     <option value="30">In 1 Month</option>
-                  </select>
+                  </FinanceSelect>
                 </div>
               </div>
 

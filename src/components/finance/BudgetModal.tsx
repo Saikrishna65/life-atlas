@@ -1,5 +1,7 @@
 "use client";
 
+import FinanceSelect from "@/components/finance/FinanceSelect";
+
 import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Plus, Check, Tag } from "lucide-react";
@@ -103,7 +105,7 @@ export default function BudgetModal({
         {/* Category Select */}
         <div className="space-y-1">
           <label className="text-xs font-sans font-medium text-muted-foreground">Expense Category</label>
-          <select
+          <FinanceSelect
             value={categoryId}
             disabled={!!editingCategoryId}
             onChange={(e) => {
@@ -121,7 +123,7 @@ export default function BudgetModal({
                 {c.name} {c.budgetAmountPaise ? `(Current: ${formatPaise(c.budgetAmountPaise)})` : ""}
               </option>
             ))}
-          </select>
+          </FinanceSelect>
         </div>
 
         {/* Budget Allocation Input */}

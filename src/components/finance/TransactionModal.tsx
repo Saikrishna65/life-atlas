@@ -1,5 +1,7 @@
 "use client";
 
+import FinanceSelect from "@/components/finance/FinanceSelect";
+
 import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { Plus, Check, ArrowDownRight, ArrowUpRight } from "lucide-react";
@@ -219,7 +221,7 @@ export default function TransactionModal({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-xs font-sans font-medium text-muted-foreground">Account</label>
-            <select
+            <FinanceSelect
               value={accountId}
               disabled={!!editingTransaction}
               onChange={(e) => setAccountId(e.target.value)}
@@ -230,12 +232,12 @@ export default function TransactionModal({
                   {a.name} ({a.accountType})
                 </option>
               ))}
-            </select>
+            </FinanceSelect>
           </div>
 
           <div className="space-y-1">
             <label className="text-xs font-sans font-medium text-muted-foreground">Category</label>
-            <select
+            <FinanceSelect
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
@@ -246,7 +248,7 @@ export default function TransactionModal({
                   {c.name}
                 </option>
               ))}
-            </select>
+            </FinanceSelect>
           </div>
         </div>
 
@@ -290,14 +292,14 @@ export default function TransactionModal({
 
           <div className="space-y-1">
             <label className="text-xs font-sans font-medium text-muted-foreground">Settlement Status</label>
-            <select
+            <FinanceSelect
               value={status}
               onChange={(e) => setStatus(e.target.value as TransactionStatus)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
             >
               <option value="posted">Posted (Cleared)</option>
               <option value="pending">Pending (Authorized)</option>
-            </select>
+            </FinanceSelect>
           </div>
         </div>
 

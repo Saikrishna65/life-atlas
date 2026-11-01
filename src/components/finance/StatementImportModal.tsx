@@ -1,5 +1,7 @@
 "use client";
 
+import FinanceSelect from "@/components/finance/FinanceSelect";
+
 import React, { useState, useMemo, useEffect } from "react";
 import {
   X,
@@ -281,7 +283,7 @@ export default function StatementImportModal({
                 </span>
               </h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                On-device parsing, automated deduplication & ledger reconciliation
+                Import your statement, review matches, and skip duplicates.
               </p>
             </div>
           </div>
@@ -353,7 +355,7 @@ export default function StatementImportModal({
                 </label>
                 {activeAccounts.length > 0 ? (
                   <div className="relative">
-                    <select
+                    <FinanceSelect
                       value={effectiveAccountId}
                       onChange={(e) => setSelectedAccountId(e.target.value)}
                       className="w-full px-3.5 py-2.5 text-xs bg-surface border border-muted rounded-2xl text-foreground focus:outline-none focus:border-emerald-500 transition-colors shadow-xs"
@@ -364,7 +366,7 @@ export default function StatementImportModal({
                           {formatPaise(acc.currentBalancePaise)}
                         </option>
                       ))}
-                    </select>
+                    </FinanceSelect>
                   </div>
                 ) : (
                   <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-3">
@@ -455,7 +457,7 @@ export default function StatementImportModal({
                   <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground block">
                     Date Column *
                   </label>
-                  <select
+                  <FinanceSelect
                     value={customMapping.dateColIndex}
                     onChange={(e) =>
                       setCustomMapping({ ...customMapping, dateColIndex: parseInt(e.target.value, 10) })
@@ -467,14 +469,14 @@ export default function StatementImportModal({
                         {h} (Col {i + 1})
                       </option>
                     ))}
-                  </select>
+                  </FinanceSelect>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground block">
                     Narration / Desc *
                   </label>
-                  <select
+                  <FinanceSelect
                     value={customMapping.descriptionColIndex}
                     onChange={(e) =>
                       setCustomMapping({ ...customMapping, descriptionColIndex: parseInt(e.target.value, 10) })
@@ -486,14 +488,14 @@ export default function StatementImportModal({
                         {h} (Col {i + 1})
                       </option>
                     ))}
-                  </select>
+                  </FinanceSelect>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground block">
                     Withdrawal / Debit
                   </label>
-                  <select
+                  <FinanceSelect
                     value={customMapping.debitColIndex ?? ""}
                     onChange={(e) =>
                       setCustomMapping({
@@ -509,14 +511,14 @@ export default function StatementImportModal({
                         {h} (Col {i + 1})
                       </option>
                     ))}
-                  </select>
+                  </FinanceSelect>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground block">
                     Deposit / Credit
                   </label>
-                  <select
+                  <FinanceSelect
                     value={customMapping.creditColIndex ?? ""}
                     onChange={(e) =>
                       setCustomMapping({
@@ -532,7 +534,7 @@ export default function StatementImportModal({
                         {h} (Col {i + 1})
                       </option>
                     ))}
-                  </select>
+                  </FinanceSelect>
                 </div>
               </div>
 
@@ -666,7 +668,7 @@ export default function StatementImportModal({
           {step === 4 && (
             <div className="space-y-4 animate-fade-in">
               <div className="p-5 bg-surface/70 border border-muted rounded-3xl space-y-4 shadow-soft">
-                <h3 className="text-sm font-bold text-foreground tracking-tight">Ledger Sync Summary</h3>
+                <h3 className="text-sm font-bold text-foreground tracking-tight">Review your import</h3>
                 <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <span className="text-muted-foreground block text-[11px]">Destination Account:</span>
@@ -675,7 +677,7 @@ export default function StatementImportModal({
                     </span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-[11px]">Transactions to Commit:</span>
+                    <span className="text-muted-foreground block text-[11px]">Transactions to add:</span>
                     <span className="font-mono font-bold text-emerald-400 text-sm mt-0.5 block">
                       {selectedCount} entries
                     </span>
@@ -687,16 +689,16 @@ export default function StatementImportModal({
                     </span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-[11px]">Accounting Invariant:</span>
+                    <span className="text-muted-foreground block text-[11px]">Balance update:</span>
                     <span className="font-semibold text-emerald-400 text-xs mt-0.5 block">
-                      Atomic Dual-Ledger Safe
+                      After you confirm
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="p-3.5 bg-muted/20 border border-muted rounded-2xl text-xs text-muted-foreground">
-                Committing this import will update your account balances and create an irreversible audit log. You can review all imported transactions in the ledger at any time.
+                Confirm to add these transactions and update your balances. You can review imported entries in Activity.
               </div>
             </div>
           )}
@@ -710,7 +712,7 @@ export default function StatementImportModal({
               <div className="space-y-1">
                 <h3 className="text-xl font-bold text-foreground">Import Completed Successfully!</h3>
                 <p className="text-xs text-muted-foreground">
-                  Your offline ledger and balances are now synchronized.
+                  Your transactions are saved on this device and your balances are updated.
                 </p>
               </div>
 
@@ -820,7 +822,7 @@ export default function StatementImportModal({
                 className="px-5 py-2.5 text-xs font-bold rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 flex items-center gap-2 cursor-pointer disabled:opacity-40 transition-all shadow-xs"
               >
                 <Check className="w-4 h-4" />
-                <span>{loading ? "Importing to Ledger..." : "Commit & Synchronize"}</span>
+                <span>{loading ? "Importing…" : "Confirm import"}</span>
               </button>
             </>
           )}
