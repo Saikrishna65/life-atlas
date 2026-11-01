@@ -450,9 +450,10 @@ export class TransactionService {
     }
     const nextAssignment=resolveTripAssignment(existing,tripContext);
     if(JSON.stringify(existing.tripAssignment)!==JSON.stringify(nextAssignment)){
-      changes.tripAssignment={oldVal:existing.tripAssignment,newVal:nextAssignment};existing.tripAssignment=nextAssignment;
+      changes.tripAssignment={oldVal:changes.tripAssignment?changes.tripAssignment.oldVal:existing.tripAssignment,newVal:nextAssignment};existing.tripAssignment=nextAssignment;
     }
 
+    if(changes.tripAssignment)changes.tripAssignment.newVal=existing.tripAssignment;
     if (Object.keys(changes).length === 0) {
       return existing; // No modifications
     }
