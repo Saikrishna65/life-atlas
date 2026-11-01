@@ -1,7 +1,7 @@
 "use client";
 import { PieChart } from "lucide-react";
 import { CategorySpendingItem, formatPaise } from "@/lib/finance";
-const colors=["#9aab74","#d2bea0","#b9c7a0","#a6b6ac","#cab5a5","#d4d79f","#b9a585","#929d7e"];
+const colors=["#3971f6","#8b5cf6","#38bdf8","#f59e0b","#a78bfa","#0ea5e9","#f472b6","#64748b"];
 export default function CategorySpendingChart({categories,totalExpensesPaise}:{categories:CategorySpendingItem[];totalExpensesPaise:number}) {
   const total=categories.reduce((sum,c)=>sum+c.totalSpentPaise,0);let angle=0;
   const gradient=categories.map((c,i)=>{const start=angle;angle+=total?c.totalSpentPaise/total*360:0;return `${colors[i%colors.length]} ${start}deg ${angle}deg`;}).join(",");
