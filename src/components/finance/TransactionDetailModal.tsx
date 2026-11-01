@@ -1,5 +1,6 @@
 "use client";
 
+import MerchantImage from "./MerchantImage";
 import React, { useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import {
@@ -11,8 +12,6 @@ import {
   FileText,
   ShieldCheck,
   AlertTriangle,
-  ArrowDownRight,
-  ArrowUpRight,
   ArrowLeftRight,
 } from "lucide-react";
 import {
@@ -119,13 +118,8 @@ export default function TransactionDetailModal({
                 : "text-foreground"
             }`}
           >
-            {isTransfer ? (
-              <ArrowLeftRight className="w-5 h-5 text-muted-foreground" />
-            ) : transaction.direction === "inflow" ? (
-              <ArrowUpRight className="w-6 h-6 text-emerald-400" />
-            ) : (
-              <ArrowDownRight className="w-6 h-6 text-muted-foreground" />
-            )}
+            {!isTransfer && <MerchantImage merchant={transaction.merchant || transaction.description} category={category?.name} direction={transaction.direction}/>}
+            {isTransfer && <ArrowLeftRight className="w-5 h-5 text-muted-foreground" />}
             <span>
               {transaction.direction === "inflow" ? "+" : "-"}
               {formatPaise(transaction.amountPaise, { currency: transaction.currency })}
