@@ -152,11 +152,19 @@ const fs = require('node:fs');
       const categoryPeriod=page.getByRole('combobox',{name:'Category comparison period',exact:true});
       assert.ok((await categoryPeriod.innerText()).includes('Month'),'Categories default to month');
       const cardCount=await page.locator('.category-stat-card').count();
+      const decoratedCategory=await page.locator('.category-stat-card').first().getAttribute('data-category');
+      const decoration=await page.locator(`.category-stat-card[data-category="${decoratedCategory}"] .category-card-decoration`).innerHTML();
+
       assert.ok(cardCount>=10,'Every expense category should have a card');
       for(const range of ['Week','Year','Month']) {
         await categoryPeriod.click();
         await page.getByRole('option',{name:range,exact:true}).click();
         assert.equal(await page.locator('.category-stat-card').count(),cardCount);
+        const geometry=await page.locator('.category-stat-card').evaluateAll(cards=>cards.map(card=>{const r=card.getBoundingClientRect();return {width:r.width,height:r.height,contentBottom:card.querySelector('.category-card-previous').getBoundingClientRect().bottom,artTop:card.querySelector('.category-card-decoration').getBoundingClientRect().top};}));
+        for(const card of geometry){assert.ok(Math.abs(card.width-card.height)<=1,'Category cards must be square');assert.ok(card.contentBottom<=card.artTop+1,'Card figures must stay above decoration');}
+        assert.ok(Math.max(...geometry.map(c=>c.height))-Math.min(...geometry.map(c=>c.height))<=1,'All category cards must be equally sized');
+        assert.equal(await page.locator(`.category-stat-card[data-category="${decoratedCategory}"] .category-card-decoration`).innerHTML(),decoration,'Decorative art must not change with financial values');
+
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`Category cards overflow for ${range}`);
       }
       await categorySection.evaluate(node=>node.scrollIntoView({block:'start'}));

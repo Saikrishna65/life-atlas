@@ -22,7 +22,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate && npx tsc --noEmit
-      - run: node --import tsx --test tests/finance/cashFlowChart.test.ts tests/finance/categoryComparison.test.ts
+      - run: node --import tsx --test tests/finance/cashFlowChart.test.ts tests/finance/categoryComparison.test.ts tests/finance/demoComparisons.test.ts
       - name: Check all Finance screens on phones and desktop
         env:
           FINANCE_QA: '1'
@@ -39,3 +39,32 @@ jobs:
         with:
           name: finance-new-design-screenshots
           path: finance-qa/
+
+  production_build:
+    if: startsWith(github.head_ref, 'design/finance-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: finance_ci
+          POSTGRES_PASSWORD: finance_ci
+          POSTGRES_DB: finance_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U finance_ci -d finance_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://finance_ci:finance_ci@127.0.0.1:5432/finance_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx prisma db push --skip-generate
+      - run: npm run build
