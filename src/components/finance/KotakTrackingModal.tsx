@@ -758,7 +758,7 @@ export default function KotakTrackingModal({
                             <option value="">Select Account...</option>
                             {accounts.map((acc) => (
                               <option key={acc.id} value={acc.id}>
-                                {acc.name} ({acc.accountType})
+                                {acc.name}
                               </option>
                             ))}
                           </FinanceSelect></label>
