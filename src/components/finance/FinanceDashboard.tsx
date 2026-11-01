@@ -96,7 +96,6 @@ export default function FinanceDashboardPage() {
   }, [theme]);
   const realPendingCount = usePendingFinanceCount();
   const [activeTab, setActiveTab] = useState<DashboardTab>("OVERVIEW");
-  const [balanceScope, setBalanceScope] = useState("all");
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("THIS_MONTH");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -416,10 +415,10 @@ export default function FinanceDashboardPage() {
         <nav role="tablist" aria-label="Finance sections" className="af-navigation">{tabs.map(tab=><button key={tab.id} role="tab" aria-selected={activeTab===tab.id} onClick={()=>{setActiveTab(tab.id);window.scrollTo({top:0});}}><tab.icon size={19}/><span>{tab.label}</span></button>)}</nav>
         <main className={`af-canvas glass-view-${activeTab.toLowerCase()}`} key={activeTab}>
           {activeTab === "OVERVIEW" && <>
-            <section className="balance-panel" aria-label="Account balances">
-              <div className="balance-switcher" role="group" aria-label="Balance account type">{([["all","All accounts"],["bank","Bank"],["savings","Savings"],["credit","Credit"]] as const).map(([id,label])=><button key={id} aria-pressed={balanceScope===id} onClick={()=>setBalanceScope(id)}>{label}</button>)}</div>
-              <div className="balance-panel-content"><div><p>{balanceScope==="all" ? "Net worth" : `${balanceScope.charAt(0).toUpperCase()+balanceScope.slice(1)} balance`}</p><div className="balance-figure"><AnimatedMoney value={balanceScope==="all" ? netWorthPaise : accounts.filter(a=>a.status==="active" && a.accountType===balanceScope).reduce((sum,a)=>sum+a.currentBalancePaise,0)}/></div><div className="balance-breakdown"><span>Assets <b>{formatPaise(totalAssetsPaise)}</b></span><span>Liabilities <b>{formatPaise(Math.abs(totalLiabilitiesPaise))}</b></span></div></div>
-              <div className="balance-controls"><button className="balance-record" aria-label="Add transaction" onClick={accounts.length ? newEntry : newAccount}><Plus size={18}/><span>{accounts.length ? "Record" : "Account"}</span></button><div><button disabled={accounts.length<2} onClick={()=>setIsTransferModalOpen(true)}><ArrowUpRight size={17}/>Transfer</button><button onClick={()=>setIsImportModalOpen(true)}><FileUp size={17}/>Import</button></div></div></div>
+            <section className="glass-balance" aria-label="Account balances">
+              <span>Your total balance</span><div className="glass-balance-number"><AnimatedMoney value={netWorthPaise}/></div>
+              <p><span>Assets <b>{formatPaise(totalAssetsPaise)}</b></span><i/><span>Liabilities <b>{formatPaise(Math.abs(totalLiabilitiesPaise))}</b></span></p>
+              <div className="glass-actions"><button disabled={accounts.length<2} onClick={()=>setIsTransferModalOpen(true)}><ArrowUpRight size={16}/>Transfer</button><button className="glass-add" aria-label="Add transaction" onClick={accounts.length ? newEntry : newAccount}><Plus size={23}/></button><button onClick={()=>setIsImportModalOpen(true)}><ArrowDownRight size={16}/>Import</button></div>
             </section>
             <div className="glass-dashboard-grid">
               <div className="glass-main-column">
