@@ -1,6 +1,7 @@
 "use client";
 
 import { openDemoDatabase, seedFinanceDemo, createDemoCapture } from "@/lib/finance/demo";
+import FinanceThemePicker, { FinanceTheme, THEME_STORAGE_KEY, isFinanceTheme } from "@/components/finance/FinanceThemePicker";
 import AnimatedMoney from "@/components/finance/AnimatedMoney";
 import { usePendingFinanceCount } from "@/lib/finance/usePendingFinanceCount";
 import FinanceSelect from "@/components/finance/FinanceSelect";
@@ -85,6 +86,14 @@ type PeriodPreset = "THIS_MONTH" | "LAST_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR" 
 
 export default function FinanceDashboardPage() {
   const isDemo = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";
+  const [theme, setTheme] = useState<FinanceTheme>(() => {
+    try { const saved = localStorage.getItem(THEME_STORAGE_KEY); return isFinanceTheme(saved) ? saved : "ocean"; } catch { return "ocean"; }
+  });
+  useEffect(() => {
+    document.documentElement.dataset.financeTheme = theme;
+    try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* Theme still works when storage is unavailable. */ }
+    return () => { delete document.documentElement.dataset.financeTheme; };
+  }, [theme]);
   const realPendingCount = usePendingFinanceCount();
   const [activeTab, setActiveTab] = useState<DashboardTab>("OVERVIEW");
   const [balanceScope, setBalanceScope] = useState("all");
@@ -394,7 +403,7 @@ export default function FinanceDashboardPage() {
   }) : <div className="af-empty"><ArrowRightLeft size={28} /><h3>A fresh start.</h3><p>Your approved transactions will appear here.</p>{accounts.length > 0 && <button className="af-primary" onClick={newEntry}>Record a transaction</button>}</div>}</div>;
 
   return (
-    <div className="atlas-finance af-shell" aria-busy={isLoading}>
+    <div className="atlas-finance af-shell" data-finance-theme={theme} aria-busy={isLoading}>
       <div className="af-workspace">
         <header className="glass-masthead">
           <Link href="/secret" className="glass-back" aria-label="Return to Life Atlas"><ArrowLeft size={20}/></Link>
@@ -402,6 +411,7 @@ export default function FinanceDashboardPage() {
           <a className="glass-demo" href={isDemo ? "?" : "?demo=1"}>{isDemo ? "Exit demo" : "Try demo"}<ArrowUpRight size={13}/></a>
           <button className="glass-bell" aria-label={`${pendingFinanceCount} transactions awaiting approval`} onClick={()=>setIsKotakModalOpen(true)}><BellRing size={18}/>{pendingFinanceCount>0 && <b>{pendingFinanceCount}</b>}</button>
         </header>
+        <FinanceThemePicker value={theme} onChange={setTheme}/>
         {isDemo && <div className="glass-demo-note"><span>Demo workspace</span><small>Sample data only</small></div>}
         <nav role="tablist" aria-label="Finance sections" className="af-navigation">{tabs.map(tab=><button key={tab.id} role="tab" aria-selected={activeTab===tab.id} onClick={()=>{setActiveTab(tab.id);window.scrollTo({top:0});}}><tab.icon size={19}/><span>{tab.label}</span></button>)}</nav>
         <main className={`af-canvas glass-view-${activeTab.toLowerCase()}`} key={activeTab}>

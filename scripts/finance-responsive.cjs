@@ -70,6 +70,22 @@ const fs = require('node:fs');
       await page.getByRole('tab', { name: 'Budgets', exact: true }).click();
       assert.ok(await page.locator('.af-plan').count() >= 3);
       await page.getByRole('tab', { name: 'Overview', exact: true }).click();
+      for (const [id, name] of [['ocean','Ocean teal'],['royal','Royal blue'],['emerald','Emerald'],['graphite','Warm graphite']]) {
+        await page.locator('.finance-theme-picker summary').click();
+        await page.getByRole('button', { name, exact: true }).click();
+        assert.equal(await page.locator('.atlas-finance').getAttribute('data-finance-theme'), id);
+        await page.waitForFunction(theme => document.documentElement.dataset.financeTheme === theme, id);
+        await page.locator('.finance-theme-picker summary').click();
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false, `${name} overflows`);
+        await page.screenshot({ path: `finance-qa/theme-${id}-${width}.png`, fullPage: true });
+      }
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.locator('.atlas-finance[aria-busy="false"]').waitFor({ timeout: 60000 });
+      assert.equal(await page.locator('.atlas-finance').getAttribute('data-finance-theme'), 'graphite', 'Theme must persist after reload');
+      await page.locator('.finance-theme-picker summary').click();
+      await page.getByRole('button', { name: 'Ocean teal', exact: true }).click();
+      await page.locator('.finance-theme-picker summary').click();
+      console.log(`Theme viewport ${width}: all four palettes switched without overflow; selection survived reload`);
       await page.getByRole('button', { name: 'Bank', exact: true }).click();
       await page.getByText('Bank balance', { exact: true }).waitFor();
       await page.getByRole('button', { name: 'Savings', exact: true }).click();
