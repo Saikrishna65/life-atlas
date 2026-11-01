@@ -90,6 +90,7 @@ export default function TransactionDetailModal({
           </div>
         )}
 
+        {transaction.tripAssignment?.tripId && transaction.tripAssignment.mode!=="excluded" && <div className="trip-notice"><strong>Trip · {transaction.tripAssignment.tripTitle}</strong><p>{transaction.tripAssignment.mode==='manual'?'Manually attached / advance booking':'Automatically assigned from payment time'}</p></div>}
         {/* Top Summary Banner */}
         <div className="p-4 rounded-xl border border-muted bg-surface/70 space-y-2">
           <div className="flex items-center justify-between">

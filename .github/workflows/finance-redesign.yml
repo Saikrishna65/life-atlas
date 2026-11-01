@@ -6,6 +6,11 @@ on:
       - 'src/components/finance/**'
       - 'src/app/secret/finance/**'
       - 'scripts/finance-responsive.cjs'
+      - 'scripts/finance-trips-responsive.cjs'
+      - 'src/lib/finance/**'
+      - 'src/lib/vault/**'
+      - 'src/app/secret/vault/**'
+      - 'tests/finance/**'
       - '.github/workflows/finance-redesign.yml'
 permissions:
   contents: read
@@ -22,7 +27,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate && npx tsc --noEmit
-      - run: node --import tsx --test tests/finance/cashFlowChart.test.ts tests/finance/categoryComparison.test.ts tests/finance/demoComparisons.test.ts tests/finance/categoryCardLayout.test.ts
+      - run: node --import tsx --test tests/finance/cashFlowChart.test.ts tests/finance/categoryComparison.test.ts tests/finance/demoComparisons.test.ts tests/finance/categoryCardLayout.test.ts tests/finance/tripFinance.test.ts tests/vault/tripVaultFlow.test.ts
       - name: Check all Finance screens on phones and desktop
         env:
           FINANCE_QA: '1'
@@ -34,6 +39,7 @@ jobs:
           npx next dev --webpack -p 3001 > /tmp/next-finance.log 2>&1 &
           for attempt in $(seq 1 60); do if curl -sf http://localhost:3001/secret/finance > /dev/null; then break; fi; sleep 2; done
           node scripts/finance-responsive.cjs
+          node scripts/finance-trips-responsive.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

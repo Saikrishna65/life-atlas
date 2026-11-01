@@ -355,6 +355,17 @@ export default function TripCommandCenterPage() {
       badgeStyle: "bg-amber-500/15 text-amber-300 border-amber-500/30",
     },
     {
+      id: "finance",
+      title: "Finance & Trip Spending",
+      subtitle: "Automatic bank payments, advance bookings & timing changes",
+      href: `/secret/finance?trip=${encodeURIComponent(trip.id)}`,
+      icon: <CreditCard className="w-5 h-5 text-teal-400" />,
+      badge: "Linked Finance",
+      accent: "border-muted/80 hover:border-teal-500/50 bg-surface/90",
+      iconBg: "bg-teal-500/10 border-teal-500/25 text-teal-400",
+      badgeStyle: "bg-teal-500/15 text-teal-300 border-teal-500/30",
+    },
+    {
       id: "budget",
       title: "Budget & Expenses",
       subtitle: "Multi-currency expense log, payment modes & spending quotas",
@@ -776,20 +787,21 @@ export default function TripCommandCenterPage() {
               </div>
 
               {/* Single Custom DateRangePicker for Edit Modal */}
-              <DateRangePicker
+              {trip.finance ? <Link className="block rounded-xl border border-teal-500/30 bg-teal-500/10 p-4 text-sm text-teal-300" href={`/secret/finance?trip=${encodeURIComponent(trip.id)}`}>Trip timing is linked to Finance. Change dates and exact times there to preview affected payments →</Link> : (              <DateRangePicker
                 startDate={editStartDate}
                 endDate={editEndDate}
                 onChange={(start, end) => {
                   setEditStartDate(start);
                   setEditEndDate(end);
                 }}
-              />
+              />)}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3.5 rounded-xl bg-surface border border-muted space-y-1">
                   <Select
                     label="Departure Travel Slot"
                     value={editDepartureSlot}
+                    disabled={!!trip.finance}
                     onChange={(e) => setEditDepartureSlot(e.target.value as DepartureTravelSlot)}
                   >
                     <option value="NIGHT">Night Departure (Overnight travel)</option>
@@ -803,6 +815,7 @@ export default function TripCommandCenterPage() {
                   <Select
                     label="Return Travel Slot"
                     value={editReturnSlot}
+                    disabled={!!trip.finance}
                     onChange={(e) => setEditReturnSlot(e.target.value as ReturnTravelSlot)}
                   >
                     <option value="MORNING">Morning Return (Leaves morning)</option>

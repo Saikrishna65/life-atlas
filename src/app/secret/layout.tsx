@@ -1,3 +1,4 @@
+import TripFinanceBridge from "@/components/finance/trips/TripFinanceBridge";
 import { ReactNode } from "react";
 import { Metadata } from "next";
 import SecretAppGuard from "@/components/secret/SecretAppGuard";
@@ -27,6 +28,7 @@ export default function SecretLayout({ children }: { children: ReactNode }) {
           />
 
           <div className="relative z-10 pt-[max(env(safe-area-inset-top),1.25rem)] pb-[max(env(safe-area-inset-bottom),5.5rem)] px-3.5 sm:px-6 md:px-8">
+            <TripFinanceBridge />
             {children}
           </div>
 

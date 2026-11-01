@@ -236,6 +236,7 @@ export class NotificationTrackingService {
 
     const recorded = await this.transactionService.recordTransaction({
       accountId,
+      paymentKind: parsed.paymentKind,
       amountPaise: parsed.amountPaise,
       direction: parsed.direction,
       description: description?.trim() || parsed.merchantOrBeneficiary,
@@ -526,6 +527,7 @@ export class NotificationTrackingService {
     if (!approvedCategory) throw new Error("Select a category before approval.");
     await this.transactionService.recordTransaction({
       accountId,
+      paymentKind: item.parsedTransaction.paymentKind,
       amountPaise: item.parsedTransaction.amountPaise,
       direction: item.parsedTransaction.direction,
       description: item.parsedTransaction.merchantOrBeneficiary,

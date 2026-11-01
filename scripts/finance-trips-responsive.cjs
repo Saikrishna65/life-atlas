@@ -1,0 +1,82 @@
+const {chromium}=require('@playwright/test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+(async()=>{
+ const browser=await chromium.launch({headless:true});let active;
+ try{
+  for(const width of [320,390,1280]){
+   const page=await browser.newPage({viewport:{width,height:900},reducedMotion:'reduce'});active=page;
+   await page.goto('http://localhost:3001/secret/finance',{waitUntil:'networkidle'});
+   await page.locator('.atlas-finance[aria-busy="false"]').waitFor();
+   await page.getByTitle('Add a new bank, cash, or credit account').click();
+   await page.getByPlaceholder('e.g. HDFC Salary Account, Emergency Fund').fill('Trip QA bank');
+   await page.getByRole('button',{name:'Create Account',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});
+   const fixture=await page.evaluate(async()=>{
+    const now=Date.now(),iso=n=>new Date(n).toISOString();
+    const finance=await new Promise((resolve,reject)=>{const r=indexedDB.open('life_atlas_finance_db');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+    const vault=await new Promise((resolve,reject)=>{const r=indexedDB.open('life_atlas_trip_vault_db');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+    const accounts=await new Promise((resolve,reject)=>{const r=finance.transaction('accounts','readonly').objectStore('accounts').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+    const account=accounts[0];const startAt=iso(now-2*86400000),endAt=iso(now+2*86400000);
+    const trip={id:'qa-coast',title:'QA Coast escape',destination:'Coast',startDate:startAt,endDate:endAt,finance:{startAt,endAt,timeZone:'UTC',confirmation:'planned'},status:'PLANNING',travelStyle:'LEISURE',budgetTotal:20000,currency:'INR',createdAt:iso(now),updatedAt:iso(now)};
+    await new Promise((resolve,reject)=>{const tx=vault.transaction('trips','readwrite');tx.objectStore('trips').put(trip);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+    const make=(id,description,amount,occurredAt,extra={})=>({id,accountId:account.id,description,merchant:description,amountPaise:amount,currency:'INR',direction:'outflow',status:'posted',categoryId:'cat_food_dining',source:'manual',occurredAt,postedAt:occurredAt,reviewRequired:false,createdAt:iso(now),updatedAt:iso(now),version:1,...extra});
+    const records=[make('qa-cafe','QA Cafe',30000,iso(now-86400000)),make('qa-hotel','QA Advance Hotel',500000,iso(now-5*86400000)),make('qa-autopay','QA automatic bill autopay',90000,iso(now-86400000)),make('qa-salary','QA Salary',2000000,iso(now-86400000),{direction:'inflow',categoryId:'cat_salary'})];
+    account.currentBalancePaise=1380000;
+    await new Promise((resolve,reject)=>{const tx=finance.transaction(['transactions','accounts'],'readwrite');for(const r of records)tx.objectStore('transactions').put(r);tx.objectStore('accounts').put(account);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});
+    finance.close();vault.close();window.dispatchEvent(new Event('life_atlas_vault_change'));
+    return {startAt,endAt,shortEnd:iso(now-36*3600000).slice(0,16)};
+   });
+   const banner=page.getByRole('complementary',{name:'Upcoming trip confirmations'});await banner.waitFor();
+   await banner.getByRole('button',{name:'Yes, I’m going'}).click();await banner.waitFor({state:'hidden'});
+   await page.locator('.trip-finance-card').filter({hasText:'QA Coast escape'}).click();
+   await page.getByRole('dialog').getByRole('heading',{name:'QA Coast escape',exact:true}).waitFor();
+   const list=page.locator('.trip-transaction-list');await list.getByText('QA Cafe',{exact:true}).waitFor();
+   assert.equal(await list.getByText('QA automatic bill autopay',{exact:true}).count(),0);assert.equal(await list.getByText('QA Salary',{exact:true}).count(),0);
+   await page.getByRole('button',{name:'Attach a payment',exact:true}).click();
+   await page.getByRole('textbox',{name:'Search payments to attach'}).fill('Advance');
+   await page.locator('.trip-attach-choice').filter({hasText:'QA Advance Hotel'}).click();
+   await list.getByText('QA Advance Hotel',{exact:true}).waitFor();
+   const row=list.locator('article').filter({hasText:'QA Cafe'});await row.getByRole('button',{name:'Edit payment'}).click();
+   await page.getByPlaceholder('0.00',{exact:true}).fill('400');
+   await page.getByRole('button',{name:'Save Correction',exact:true}).click();
+   await page.getByRole('dialog').getByRole('heading',{name:'QA Coast escape',exact:true}).waitFor();
+   await page.waitForFunction(()=>document.querySelector('.trip-spend-hero')?.textContent.includes('5,400'));
+   await page.getByRole('button',{name:'End trip now',exact:true}).click();
+   await page.locator('.trip-change-preview').waitFor();
+   await page.getByRole('button',{name:'Cancel timing changes',exact:true}).click();
+   assert.ok((await page.locator('.trip-spend-hero').innerText()).includes('5,400'),'Cancel ending a trip must not change payments');
+   await page.getByRole('button',{name:'Change timing',exact:true}).click();
+   await page.getByLabel('Trip end date and time',{exact:true}).fill(fixture.shortEnd);
+   await page.getByRole('button',{name:'Preview changes',exact:true}).click();
+   const preview=page.locator('.trip-change-preview');await preview.getByText('QA Cafe',{exact:true}).waitFor();
+   assert.equal(await preview.getByText('QA Advance Hotel',{exact:true}).count(),0,'Manual booking must remain attached');
+   assert.ok(await list.getByText('QA Cafe',{exact:true}).count(),'Preview must not apply before confirmation');
+   await page.getByRole('button',{name:'Apply changes',exact:true}).click();
+   await page.waitForFunction(()=>document.querySelector('.trip-spend-hero')?.textContent.includes('5,000'));
+   assert.equal(await list.getByText('QA Cafe',{exact:true}).count(),0);
+   await page.getByRole('button',{name:'Change timing',exact:true}).click();
+   await page.getByLabel('Trip end date and time',{exact:true}).fill(fixture.endAt.slice(0,16));
+   await page.getByRole('button',{name:'Preview changes',exact:true}).click();await preview.getByText('QA Cafe',{exact:true}).waitFor();
+   await page.getByRole('button',{name:'Apply changes',exact:true}).click();await list.getByText('QA Cafe',{exact:true}).waitFor();
+   const bounds=await page.locator('.finance-workspace').evaluate(n=>{const r=n.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,overflow:n.scrollWidth-n.clientWidth};});assert.ok(bounds.left>=0&&bounds.right<=width+1&&bounds.top>=0&&bounds.bottom<=901&&bounds.overflow<=1,JSON.stringify(bounds));
+   await page.locator('.finance-panel-content').evaluate(n=>n.scrollTop=0);
+   fs.mkdirSync('finance-qa',{recursive:true});await page.screenshot({path:`finance-qa/trip-spending-${width}.png`});
+   if(width===390){const b=(await page.screenshot({type:'jpeg',quality:75})).toString('base64');for(let i=0;i<b.length;i+=16000)console.log(`ATLAS_TRIP_${String(i/16000).padStart(4,'0')}=${b.slice(i,i+16000)}`);}
+   await list.locator('article').filter({hasText:'QA Cafe'}).getByRole('button',{name:'Remove from trip'}).click();
+   await list.getByText('QA Cafe',{exact:true}).waitFor({state:'hidden'});
+   await page.getByRole('button',{name:'Close dialog',exact:true}).click();
+   await page.reload({waitUntil:'networkidle'});await page.locator('.atlas-finance[aria-busy="false"]').waitFor();
+   await page.locator('.trip-finance-card').filter({hasText:'QA Coast escape'}).click();await page.getByRole('dialog').getByRole('heading',{name:'QA Coast escape',exact:true}).waitFor();
+   assert.equal(await page.locator('.trip-transaction-list').getByText('QA Cafe',{exact:true}).count(),0,'Manual removal must survive reload and reconciliation');
+   await page.locator('.trip-transaction-list').getByText('QA Advance Hotel',{exact:true}).waitFor();
+   await page.getByRole('button',{name:'Close dialog',exact:true}).click();
+   await page.getByRole('tab',{name:'Activity',exact:true}).click();
+   await page.getByRole('combobox',{name:'Filter category',exact:true}).click();
+   await page.getByRole('option',{name:'Food & Dining',exact:true}).click();
+   assert.equal(await page.locator('.af-activity-list').getByText('QA Advance Hotel',{exact:true}).count(),0,'Trip bookings stay out of everyday category drilldowns');
+   await page.locator('.af-activity-list').getByText('QA Cafe',{exact:true}).waitFor();
+   console.log(`Trip Finance ${width}: confirmation, auto routing, bill exclusions, advance booking, editing, timing preview, extend/shorten, persistent removal and viewport passed`);
+   await page.close();
+  }
+ }catch(e){if(active){console.log('TRIP VISIBLE PAGE:',(await active.locator('body').innerText()).slice(-16000));const b=(await active.screenshot({type:'jpeg',quality:70})).toString('base64');for(let i=0;i<b.length;i+=16000)console.log(`ATLAS_TRIP_ERROR_${String(i/16000).padStart(4,'0')}=${b.slice(i,i+16000)}`);}throw e;}finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

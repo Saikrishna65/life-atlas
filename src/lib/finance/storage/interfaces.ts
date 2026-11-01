@@ -52,6 +52,7 @@ export interface IFinanceAccountRepository {
 }
 
 export interface ITransactionRepository {
+  saveIfVersion?(transaction: Transaction, expectedVersion: number): Promise<boolean>;
   getById(id: ID): Promise<Transaction | null>;
   getByExternalId(externalId: string): Promise<Transaction | null>;
   getByTransferGroupId(transferGroupId: ID): Promise<Transaction[]>;

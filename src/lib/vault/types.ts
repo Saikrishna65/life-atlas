@@ -108,6 +108,7 @@ export interface DestinationStop {
 }
 
 export interface TripRecord {
+  finance?: import("../finance/trips/policy").TripFinanceSettings;
   id: ID;
   title: string;
   subtitle?: string;
