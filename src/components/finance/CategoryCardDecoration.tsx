@@ -1,3 +1,4 @@
+"use client";
 import {useId} from 'react';
 /** Decorative artwork only: deliberately independent of transaction values. */
 export default function CategoryCardDecoration({variant}:{variant:number}){

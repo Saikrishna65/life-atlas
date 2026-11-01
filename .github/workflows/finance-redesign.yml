@@ -39,3 +39,18 @@ jobs:
         with:
           name: finance-new-design-screenshots
           path: finance-qa/
+
+  production_build:
+    if: startsWith(github.head_ref, 'design/finance-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
