@@ -30,3 +30,12 @@ export function groupCashFlow(timeline:CashFlowTimelinePoint[],startDate:string,
   return {grouping:mode==='day'?'Daily':mode==='week'?'Weekly':monthStep===1?'Monthly':monthStep<12?`${monthStep}-month groups`:'Year groups',buckets};
 }
 export function cashFlowAxisMax(value:number){if(value<=0)return 100;const magnitude=10**Math.floor(Math.log10(value));return [1,2,5,10].map(n=>n*magnitude).find(n=>n>=value) ?? 10*magnitude;}
+
+import type { Transaction, FinanceCategory } from './domain/models';
+export interface StoreSpending { name:string; category:string; amountPaise:number; count:number; }
+export function topExpenseStores(transactions:Transaction[],categories:FinanceCategory[]):StoreSpending[] {
+ const names=new Map(categories.map(c=>[c.id,c]));const stores=new Map<string,StoreSpending>();
+ for(const transaction of transactions){if(transaction.direction!=='outflow'||transaction.status!=='posted'||transaction.transferGroupId||names.get(transaction.categoryId||'')?.type==='transfer')continue;const name=(transaction.merchant||transaction.description).trim()||'Other payment';const key=name.toLocaleLowerCase();const current=stores.get(key)||{name,category:names.get(transaction.categoryId||'')?.name||'Uncategorized',amountPaise:0,count:0};current.amountPaise+=transaction.amountPaise;current.count++;stores.set(key,current);}
+ return [...stores.values()].sort((a,b)=>b.amountPaise-a.amountPaise||a.name.localeCompare(b.name));
+}
+export function formatCashFlowAxis(paise:number){const value=paise/100;for(const [threshold,suffix] of [[10000000,'Cr'],[100000,'L'],[1000,'K']] as const)if(Math.abs(value)>=threshold)return `₹${Number((value/threshold).toFixed(1))}${suffix}`;return `₹${Number(value.toFixed(0))}`;}
