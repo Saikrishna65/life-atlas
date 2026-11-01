@@ -1,13 +1,14 @@
+import { currentFinanceWeek, localFinanceDateKey } from "./calendar";
 import type { CashFlowTimelinePoint } from './application/balanceService';
 const DAY = 86_400_000;
-export interface CashFlowBucket { key:string; label:string; rangeLabel:string; incomePaise:number; expensePaise:number; }
+export interface CashFlowBucket { key:string; label:string; rangeLabel:string; incomePaise:number; expensePaise:number; isFuture?:boolean; }
 function day(value:string) { return Date.parse(`${value.slice(0,10)}T00:00:00Z`); }
 function dateLabel(value:number) { return `${new Date(value).getUTCDate()} ${monthLabel(value)}`; }
 function monthLabel(value:number) { return new Date(value).toLocaleDateString('en-US',{month:'short',timeZone:'UTC'}); }
 /** Bucket by calendar ranges, never by dropping points or averaging money. */
 export function groupCashFlow(timeline:CashFlowTimelinePoint[],startDate:string,endDate:string,maxBuckets:number) {
   const limit=Math.max(2,Math.min(8,Math.floor(maxBuckets)||2));
-  const first=day(startDate), last=day(endDate);
+  const first=day(startDate.length===10?startDate:localFinanceDateKey(startDate)), last=day(endDate.length===10?endDate:localFinanceDateKey(endDate));
   if(!Number.isFinite(first)||!Number.isFinite(last)||last<first) return {grouping:'Daily',buckets:[] as CashFlowBucket[]};
   // Include every supplied point, even at date boundaries, so totals stay exact.
   const valid=timeline.filter(p=>Number.isFinite(day(p.dateKey)));
@@ -31,11 +32,11 @@ export function groupCashFlow(timeline:CashFlowTimelinePoint[],startDate:string,
 }
 export function cashFlowAxisMax(value:number){if(value<=0)return 100;const magnitude=10**Math.floor(Math.log10(value));return [1,2,5,10].map(n=>n*magnitude).find(n=>n>=value) ?? 10*magnitude;}
 
-import type { Transaction, FinanceCategory } from './domain/models';
-export interface StoreSpending { name:string; category:string; amountPaise:number; count:number; }
-export function topExpenseStores(transactions:Transaction[],categories:FinanceCategory[]):StoreSpending[] {
- const names=new Map(categories.map(c=>[c.id,c]));const stores=new Map<string,StoreSpending>();
- for(const transaction of transactions){if(transaction.direction!=='outflow'||transaction.status!=='posted'||transaction.transferGroupId||names.get(transaction.categoryId||'')?.type==='transfer')continue;const name=(transaction.merchant||transaction.description).trim()||'Other payment';const key=name.toLocaleLowerCase();const current=stores.get(key)||{name,category:names.get(transaction.categoryId||'')?.name||'Uncategorized',amountPaise:0,count:0};current.amountPaise+=transaction.amountPaise;current.count++;stores.set(key,current);}
- return [...stores.values()].sort((a,b)=>b.amountPaise-a.amountPaise||a.name.localeCompare(b.name));
-}
 export function formatCashFlowAxis(paise:number){const value=paise/100;for(const [threshold,suffix] of [[10000000,'Cr'],[100000,'L'],[1000,'K']] as const)if(Math.abs(value)>=threshold)return `₹${Number((value/threshold).toFixed(1))}${suffix}`;return `₹${Number(value.toFixed(0))}`;}
+
+export function currentWeekCashFlow(timeline:CashFlowTimelinePoint[],now=new Date()) {
+ const {start}=currentFinanceWeek(now),today=localFinanceDateKey(now);
+ const buckets:CashFlowBucket[]=Array.from({length:7},(_,index)=>{const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+index);const key=localFinanceDateKey(d);return {key,label:d.toLocaleDateString('en-US',{weekday:'short'}),rangeLabel:d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short',year:'numeric'}),incomePaise:0,expensePaise:0,isFuture:key>today};});
+ for(const point of timeline){const bucket=buckets.find(b=>b.key===point.dateKey);if(bucket&&!bucket.isFuture){bucket.incomePaise+=point.incomePaise;bucket.expensePaise+=point.expensePaise;}}
+ return {grouping:'Daily',buckets};
+}

@@ -15,6 +15,7 @@ import {
   CashFlowSummary,
 } from "../domain/ledger";
 import { addPaise, subtractPaise } from "../domain/money";
+import { localFinanceDateKey } from "../calendar";
 import { FinanceError } from "../domain/errors";
 
 export interface CategorySpendingItem {
@@ -154,7 +155,7 @@ export class BalanceService {
       if (txn.transferGroupId) continue;
       if (txn.categoryId && transferCategoryIds.has(txn.categoryId)) continue;
 
-      const dateKey = txn.occurredAt.split("T")[0];
+      const dateKey = localFinanceDateKey(txn.occurredAt);
       const entry = pointMap.get(dateKey) || { income: 0, expense: 0 };
 
       if (txn.direction === "inflow") {
@@ -170,7 +171,7 @@ export class BalanceService {
     return sortedKeys.map((k) => {
       const val = pointMap.get(k)!;
       // Format readable date label (e.g. "Oct 24")
-      const parsed = new Date(k);
+      const parsed = new Date(`${k}T12:00:00`);
       const label = parsed.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
       return {
