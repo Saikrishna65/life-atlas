@@ -18,6 +18,10 @@ import {
   Info,
   MessageSquare,
   Tag,
+  ChevronDown,
+  ChevronRight,
+  SlidersHorizontal,
+  ArrowLeft,
 } from "lucide-react";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 import {
@@ -51,6 +55,7 @@ export default function KotakTrackingModal({
   onTransactionsUpdated,
   onOpenStatementImport,
 }: KotakTrackingModalProps) {
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ModalTab>("REVIEW");
   const [alertText, setAlertText] = useState("");
   const [isParsing, setIsParsing] = useState(false);
@@ -336,19 +341,19 @@ export default function KotakTrackingModal({
     });
   };
 
+  const activeReviewId = reviewItems.find(item => item.rawEventId === focusedEvent)?.id ?? (reviewItems.some(item => item.id === selectedReviewId) ? selectedReviewId : reviewItems[0]?.id);
   const parsedTxn = parseResult?.success ? parseResult.parsed : null;
   const isOutflow = parsedTxn?.direction === "outflow";
 
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="message-import-title" className="message-inbox fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
       <div className="inbox-window relative w-full max-w-2xl max-h-[92vh] bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <header className="inbox-header">
-          <div><span className="inbox-kicker">TRANSACTION INBOX {new URLSearchParams(window.location.search).get("demo") === "1" && <b>DEMO</b>}</span><h2 id="message-import-title">Bank messages</h2></div>
-          <button onClick={onClose} aria-label="Close message import" className="inbox-close"><X size={22}/></button>
+        <header className="inbox-header review-masthead">
+          <button onClick={onClose} aria-label="Close message import" className="review-back"><ArrowLeft size={21}/></button>
+          <div><h2 id="message-import-title">Bank messages</h2><p>Review. Confirm. Carry on.</p></div>
+          <span className="review-private"><ShieldCheck size={17}/><span>On device</span></span>
         </header>
-        <nav className="inbox-tabs" aria-label="Message tools">{([
-          ["REVIEW", "To review"], ["AUTOMATIC", "Capture"], ["PASTE", "Paste SMS"], ["IMPORT", "Statement"], ["PRIVACY", "Privacy"]
-        ] as const).map(([id,label]) => <button key={id} onClick={()=>setActiveTab(id)} aria-current={activeTab===id ? "page" : undefined}>{label}{id === "REVIEW" && <b>{reviewItems.length}</b>}</button>)}</nav>
+        <div className="review-toolbar"><nav aria-label="Message tools"><button onClick={()=>setActiveTab("REVIEW")} aria-current={activeTab==="REVIEW" ? "page" : undefined}>Inbox <b>{reviewItems.length}</b></button><button onClick={()=>setActiveTab("AUTOMATIC")} aria-current={activeTab==="AUTOMATIC" ? "page" : undefined}><SlidersHorizontal size={14}/>Capture</button></nav><details className="review-more"><summary>More <ChevronDown size={14}/></summary><div>{([["PASTE","Paste a message"],["IMPORT","Import statement"],["PRIVACY","Privacy & access"]] as const).map(([id,label])=><button key={id} onClick={event=>{setActiveTab(id);event.currentTarget.closest("details")?.removeAttribute("open");}}>{label}<ChevronRight size={14}/></button>)}</div></details></div>
         {/* Feedback Banner */}
         {feedbackMessage && (
           <div
@@ -719,8 +724,8 @@ export default function KotakTrackingModal({
           {activeTab === "REVIEW" && reviewItems.length === 0 && <div className="finance-review-empty"><CheckCircle2 size={40} /><h3>You’re all caught up.</h3><p>New bank messages will appear here for your approval.</p></div>}
           {activeTab === "REVIEW" && reviewItems.length > 0 && (
             <div className="space-y-3">
-              <div className="inbox-summary"><h3>{reviewItems.length} to review</h3><span>Confirm a category to save each payment.</span></div>
-              <div className="space-y-2.5">
+              <div className="inbox-summary"><div><span>YOUR MONEY MOVES</span><h3>{reviewItems.length} awaiting approval</h3></div><span className="review-status-dot">Needs your review</span></div>
+              <div className="review-queue">
                 {reviewItems.map((item) => {
                   const txn = item.parsedTransaction;
                   const itemIsOutflow = txn.direction === "outflow";
@@ -731,13 +736,15 @@ export default function KotakTrackingModal({
                       id={`finance-review-${item.rawEventId}`}
                       data-focused={focusedEvent === item.rawEventId}
                       className="finance-review-card inbox-transaction"
+                      data-expanded={activeReviewId===item.id}
                     >
-                      <div className="inbox-payment">
-                        <span className={`inbox-merchant-icon ${itemIsOutflow ? "" : "inflow"}`}>{txn.merchantOrBeneficiary.slice(0,1).toUpperCase()}</span>
-                        <div className="inbox-payee"><strong>{txn.merchantOrBeneficiary}</strong><span>{new Date(txn.occurredAt).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {new Date(txn.occurredAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}</span></div>
-                        <strong className="inbox-amount">{itemIsOutflow ? "−" : "+"}{formatPaise(txn.amountPaise)}</strong>
-                      </div>
-                      <div className="inbox-match"><Sparkles size={13}/><span>{suggested ? `Suggested: ${suggested.name}` : "Choose the right category below"}</span></div>
+                      <button className="review-payment" aria-expanded={activeReviewId===item.id} aria-controls={`review-editor-${item.id}`} onClick={()=>{setFocusedEvent(null);setSelectedReviewId(item.id);}}>
+                        <span className="inbox-merchant-icon">{txn.merchantOrBeneficiary.slice(0,1).toUpperCase()}</span>
+                        <span className="inbox-payee"><strong>{txn.merchantOrBeneficiary}</strong><span>{new Date(txn.occurredAt).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {suggested?.name || "Choose category"}</span></span>
+                        <span className="review-payment-value"><strong className="inbox-amount">{itemIsOutflow ? "−" : "+"}{formatPaise(txn.amountPaise)}</strong><span>{activeReviewId===item.id ? "Reviewing" : "Review"}<ChevronRight size={12}/></span></span>
+                      </button>
+                      {activeReviewId===item.id && <div id={`review-editor-${item.id}`} className="review-editor">
+                      <div className="review-suggestion"><Sparkles size={15}/><span><strong>{suggested ? `Suggested: ${suggested.name}` : "Choose a category"}</strong><small>Check the category before saving this payment.</small></span></div>
                       {/* Assignment Row */}
                       <div className="inbox-assignment">
                         <div className="inbox-fields">
@@ -751,7 +758,7 @@ export default function KotakTrackingModal({
                             <option value="">Select Account...</option>
                             {accounts.map((acc) => (
                               <option key={acc.id} value={acc.id}>
-                                {acc.name} ({acc.accountType})
+                                {acc.name}
                               </option>
                             ))}
                           </FinanceSelect></label>
@@ -793,6 +800,7 @@ export default function KotakTrackingModal({
                           </button>
                         </div>
                       </div>
+                      </div>}
                     </div>
                   );
                 })}
@@ -801,7 +809,7 @@ export default function KotakTrackingModal({
           )}
         </div>
 
-        <div className="inbox-footnote"><ShieldCheck size={13}/><span>Only approved transactions affect your balance.</span></div>
+        <div className="inbox-footnote"><ShieldCheck size={14}/><span>Your balance updates only after approval.</span></div>
       </div>
     </div>
   );
