@@ -77,8 +77,11 @@ const fs = require('node:fs');
       await page.getByRole('button', { name: 'All accounts', exact: true }).click();
       const typography = await page.evaluate(() => ['.glass-flow small', '.af-entry-description small', '.balance-panel-content>div>p'].map(selector => {
         const node = document.querySelector(selector); const style = getComputedStyle(node);
-        const rgb = style.color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=> {v/=255; return v<=.04045 ? v/12.92 : ((v+.055)/1.055)**2.4;});
-        return { selector, size: parseFloat(style.fontSize), contrast: 1.05/(.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]+.05) };
+        const luminance = color => {const rgb=color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;});return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];};
+        let parent=node, background='rgb(16, 24, 34)';
+        while(parent){const bg=getComputedStyle(parent).backgroundColor;if(bg!=='transparent' && !bg.endsWith(', 0)')){background=bg;break;}parent=parent.parentElement;}
+        const fg=luminance(style.color), bg=luminance(background);
+        return {selector,size:parseFloat(style.fontSize),contrast:(Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05)};
       }));
       for (const item of typography) { assert.ok(item.size >= 12, `${item.selector} is too small`); assert.ok(item.contrast >= 4.5, `${item.selector} has low contrast`); }
       await page.evaluate(() => window.scrollTo(0,0));
