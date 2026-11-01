@@ -121,7 +121,9 @@ public class MainActivity extends BridgeActivity {
         String type = intent.getType();
 
         if ("com.lifeatlas.app.ACTION_REVIEW_FINANCE".equals(action)) {
-            pendingTargetRoute = "/secret/finance?review=1";
+            String eventId = intent.getStringExtra("finance_event_id");
+            String eventQuery = eventId != null && eventId.matches("gmsg_[0-9a-f]{64}") ? "&event=" + eventId : "";
+            pendingTargetRoute = "/secret/finance?review=1" + eventQuery;
             dispatchPendingRoute();
             return;
         }

@@ -73,6 +73,7 @@ export default function KotakTrackingModal({
   // Legacy or staged review items
   const [reviewItems, setReviewItems] = useState<NotificationReviewItem[]>([]);
   const [reviewAccounts, setReviewAccounts] = useState<Record<string, string>>({});
+  const [focusedEvent, setFocusedEvent] = useState<string | null>(null);
   const [busyReviewId, setBusyReviewId] = useState<string | null>(null);
   const [reviewCategories, setReviewCategories] = useState<Record<string, string>>({});
 
@@ -121,6 +122,15 @@ export default function KotakTrackingModal({
       setFeedbackMessage({ type: "error", text: "Could not change notification tracking. Check Android notification access and try again." });
     } finally { setIsChangingTracking(false); }
   };
+
+  useEffect(() => {
+    if (isOpen) setFocusedEvent(new URLSearchParams(window.location.search).get("event"));
+  }, [isOpen]);
+  useEffect(() => {
+    if (!isOpen || activeTab !== "REVIEW" || !focusedEvent) return;
+    const card = document.getElementById(`finance-review-${focusedEvent}`);
+    card?.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [isOpen, activeTab, focusedEvent, reviewItems]);
 
   useLockBodyScroll(isOpen);
   useEffect(() => {
@@ -792,6 +802,8 @@ export default function KotakTrackingModal({
                   return (
                     <div
                       key={item.id}
+                      id={`finance-review-${item.rawEventId}`}
+                      data-focused={focusedEvent === item.rawEventId}
                       className="finance-review-card p-3.5 bg-slate-50 border border-amber-200 rounded-xl space-y-3"
                     >
                       <div className="flex items-start justify-between gap-3">

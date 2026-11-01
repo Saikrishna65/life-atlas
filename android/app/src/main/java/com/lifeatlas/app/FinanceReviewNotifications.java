@@ -33,6 +33,7 @@ final class FinanceReviewNotifications {
         Intent intent = new Intent(context, MainActivity.class)
             .setAction("com.lifeatlas.app.ACTION_REVIEW_FINANCE")
             .putExtra("target_route", "/secret/finance?review=1")
+            .putExtra("finance_event_id", id)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent pending = PendingIntent.getActivity(context, id.hashCode(), intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL)
