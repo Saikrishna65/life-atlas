@@ -160,9 +160,13 @@ const fs = require('node:fs');
         await categoryPeriod.click();
         await page.getByRole('option',{name:range,exact:true}).click();
         assert.equal(await page.locator('.category-stat-card').count(),cardCount);
-        const geometry=await page.locator('.category-stat-card').evaluateAll(cards=>cards.map(card=>{const r=card.getBoundingClientRect();return {width:r.width,height:r.height,contentBottom:card.querySelector('.category-card-previous').getBoundingClientRect().bottom,artTop:card.querySelector('.category-card-decoration').getBoundingClientRect().top};}));
-        for(const card of geometry){assert.ok(Math.abs(card.width-card.height)<=1,'Category cards must be square');assert.ok(card.contentBottom<=card.artTop+1,'Card figures must stay above decoration');}
-        assert.ok(Math.max(...geometry.map(c=>c.height))-Math.min(...geometry.map(c=>c.height))<=1,'All category cards must be equally sized');
+        const geometry=await page.locator('.category-stat-card').evaluateAll(cards=>cards.map(card=>{const r=card.getBoundingClientRect();const art=card.querySelector('.category-card-decoration').getBoundingClientRect();return {layout:card.getAttribute('data-layout'),width:r.width,height:r.height,left:r.left,artLeft:art.left,gap:parseFloat(getComputedStyle(card.parentElement).rowGap)};}));
+        for(const card of geometry){
+          if(card.layout==='wide'){assert.ok(Math.abs(card.width-(2*card.height+card.gap))<=2,'Wide cards should span two columns');assert.ok(card.artLeft>=card.left+card.width*.5,'Wide card artwork belongs on the right');}
+          else if(card.layout==='tall')assert.ok(Math.abs(card.height-(2*card.width+card.gap))<=2,'Tall cards should span two rows');
+          else assert.ok(Math.abs(card.width-card.height)<=2,'Regular cards should remain square');
+        }
+        assert.ok(geometry.some(c=>c.layout==='wide')&&geometry.some(c=>c.layout==='tall'),'The layout needs both wide and tall cards');
         assert.equal(await page.locator(`.category-stat-card[data-category="${decoratedCategory}"] .category-card-decoration`).innerHTML(),decoration,'Decorative art must not change with financial values');
 
         assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`Category cards overflow for ${range}`);
