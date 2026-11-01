@@ -4,11 +4,17 @@ const fs = require('node:fs');
 (async () => {
   fs.mkdirSync('finance-qa', { recursive: true });
   const browser = await chromium.launch({ headless: true });
+  let activePage;
   try {
     for (const width of [320, 390, 768, 1280]) {
       const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
+      activePage = page;
+      page.on('pageerror', error => console.error('BROWSER ERROR:', error.message));
+      page.on('console', message => { if (message.type() === 'error') console.error('BROWSER CONSOLE:', message.text()); });
       await page.goto('http://127.0.0.1:3001/secret/finance', { waitUntil: 'networkidle', timeout: 120000 });
       await page.getByRole('heading', { name: 'Atlas Finance', exact: true }).waitFor();
+      await page.locator('.atlas-finance[aria-busy="false"]').waitFor({ timeout: 60000 });
+      await page.screenshot({ path: `finance-qa/initial-${width}.png`, fullPage: true });
       await page.getByTitle('Add a new bank, cash, or credit account').click();
       await page.getByPlaceholder('e.g. HDFC Salary Account, Emergency Fund').fill('Kotak QA');
       await page.getByPlaceholder('e.g. SBI, ICICI').fill('Kotak');
@@ -46,5 +52,14 @@ const fs = require('node:fs');
       await page.close();
       console.log(`Finance viewport ${width}: passed overview, tabs, dropdown keyboard selection, and message dialog`);
     }
+  } catch (error) {
+    if (activePage) {
+      const screenshot = await activePage.screenshot({ path: 'finance-qa/failure.png', fullPage: true });
+      const encoded = screenshot.toString('base64');
+      for (let offset = 0; offset < encoded.length; offset += 16000) console.log(`ATLAS_QA_IMAGE_${String(offset / 16000).padStart(4, '0')}=${encoded.slice(offset, offset + 16000)}`);
+      fs.writeFileSync('finance-qa/failure.html', await activePage.content());
+      console.error('VISIBLE PAGE:', (await activePage.locator('body').innerText()).slice(-6000));
+    }
+    throw error;
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,6 +1,7 @@
 name: Build Finance approval update
 on:
   pull_request:
+    paths-ignore: ['android/apk-signature.json']
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
@@ -82,7 +83,7 @@ jobs:
           from zipfile import ZipFile, ZIP_DEFLATED
           with ZipFile('android/app/build/outputs/apk/debug/app-debug.apk') as source, ZipFile('/tmp/unsigned.apk','w',ZIP_DEFLATED) as target:
               for item in source.infolist():
-                  if not item.filename.startswith('META-INF/'):
+                  if not (item.filename.upper().startswith('META-INF/') and (item.filename.upper().endswith(('.RSA', '.DSA', '.EC', '.SF')) or item.filename.upper() == 'META-INF/MANIFEST.MF')):
                       target.writestr(item,source.read(item.filename))
           PY
           "$ANDROID_HOME/build-tools/34.0.0/zipalign" -f -p 4 /tmp/unsigned.apk signing-request/unsigned-aligned.apk

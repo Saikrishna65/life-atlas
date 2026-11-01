@@ -358,7 +358,7 @@ export default function FinanceDashboardPage() {
   }, [transactions, txnSearchQuery, txnAccountFilter, txnCategoryFilter, txnStatusFilter, txnSortOrder]);
 
   return (
-    <div className="atlas-finance mx-auto space-y-6 sm:space-y-8 pb-16">
+    <div aria-busy={isLoading} className="atlas-finance mx-auto space-y-6 sm:space-y-8 pb-16">
       {/* 1. Header Navigation & Mode */}
       <nav className="flex items-center justify-between border-b border-muted pb-4">
         <Link
