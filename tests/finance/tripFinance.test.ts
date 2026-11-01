@@ -65,13 +65,14 @@ test('timing preview does not mutate; shortening and extending reclassify only a
 test('editing the actual timestamp recalculates automatic assignment and preserves the account balance',async()=>{
  const t=await record('Correct date');await tx.correctTransaction(t.id,{occurredAt:'2026-11-12T01:00:00Z'},'Wrong payment time');const edited=(await uow.transactions.getById(t.id))!;assert.equal(edited.occurredAt,'2026-11-12T01:00:00Z');assert.equal(assignedTripId(edited),undefined);assert.equal((await new BalanceService(uow).getNetWorth()).netWorthPaise,990000);
 });
-test('trip expenses count once in cash flow and stay outside everyday category budget usage',async()=>{
+test('trip expenses count once and appear in Travel & Leisure budgets, reports and cards',async()=>{
  await new BudgetService(uow).setCategoryMonthlyBudget('cat_food_dining',50000);
- await record('Trip expense');await record('Everyday expense','2026-11-03T10:00:00Z');
+ await new BudgetService(uow).setCategoryMonthlyBudget('cat_travel',50000);
+ const tripPayment=await record('Trip expense');assert.equal(tripPayment.categoryId,'cat_travel');assert.equal(tripPayment.tripAssignment?.originalCategoryId,'cat_food_dining');await record('Everyday expense','2026-11-03T10:00:00Z');
  const start='2026-11-01T00:00:00Z',end='2026-11-30T23:59:59Z';const flow=await new BalanceService(uow).getCashFlow(start,end);assert.equal(flow.totalExpensesPaise,20000);
- const budget=await new BudgetService(uow).getCategoryBudgetStatuses(start,end);assert.equal(budget.statuses.find(b=>b.categoryId==='cat_food_dining')?.spentPaise,10000);
- const comparisons=categoryComparisons(await uow.transactions.query({}),await uow.categories.getAll(),'month',new Date('2026-11-15T12:00:00Z'));assert.equal(comparisons.find(c=>c.id==='cat_food_dining')?.currentPaise,10000);
- const breakdown=await new BalanceService(uow).getCategorySpendingBreakdown(start,end);assert.equal(breakdown.find(b=>b.categoryId==='cat_food_dining')?.totalSpentPaise,10000);
+ const budget=await new BudgetService(uow).getCategoryBudgetStatuses(start,end);assert.equal(budget.statuses.find(b=>b.categoryId==='cat_food_dining')?.spentPaise,10000);assert.equal(budget.statuses.find(b=>b.categoryId==='cat_travel')?.spentPaise,10000);
+ const comparisons=categoryComparisons(await uow.transactions.query({}),await uow.categories.getAll(),'month',new Date('2026-11-15T12:00:00Z'));assert.equal(comparisons.find(c=>c.id==='cat_food_dining')?.currentPaise,10000);assert.equal(comparisons.find(c=>c.id==='cat_travel')?.currentPaise,10000);
+ const breakdown=await new BalanceService(uow).getCategorySpendingBreakdown(start,end);assert.equal(breakdown.find(b=>b.categoryId==='cat_food_dining')?.totalSpentPaise,10000);assert.equal(breakdown.find(b=>b.categoryId==='cat_travel')?.totalSpentPaise,10000);
 });
 test('multiple trips can be chosen manually when dates overlap; currency mismatch is rejected',async()=>{
  trips=[trip(),trip('second')];const t=await record('Overlap');assert.equal(assignedTripId(t),undefined);await service.setAssignment(t.id,'second');await service.reconcile();assert.equal(assignedTripId((await uow.transactions.getById(t.id))!),'second');trips.push({...trip('usd'),currency:'USD'});await assert.rejects(()=>service.setAssignment(t.id,'usd'),/currencies must match/);
@@ -97,4 +98,14 @@ test('automatic-bill provenance survives bank message parsing',()=>{
 test('pasted bank alerts retain automatic-bill classification when saved to the ledger',async()=>{
  const parsed=KotakNotificationParser.parse({id:'pasted-autopay',packageName:'com.google.android.apps.messaging',sender:'VM-KOTAKB',title:'Kotak Bank',text:'Sent Rs. 900.00 from Kotak Bank AC X1234 to NETFLIX via autopay. UPI Ref 876543210987.',postTime:Date.parse('2026-11-07T10:00:00Z'),postTimeIso:'2026-11-07T10:00:00Z'});
  assert.ok(parsed.transaction);const notifications=new NotificationTrackingService(uow,tx,new CategorizationService(uow));const saved=await notifications.confirmParsedTransaction({parsed:parsed.transaction,accountId,categoryId:'cat_food_dining'});assert.equal(saved.paymentKind,'automatic_bill');assert.equal(assignedTripId(saved),undefined);
+});
+
+test('existing trip assignments migrate to Travel & Leisure once and restore their original category on removal',async()=>{
+ const old=await record('Legacy trip meal');old.categoryId='cat_food_dining';delete old.tripAssignment!.originalCategoryId;await uow.transactions.save(old);assert.equal(await service.reconcile(),1);const migrated=(await uow.transactions.getById(old.id))!;assert.equal(migrated.categoryId,'cat_travel');assert.equal(migrated.tripAssignment?.originalCategoryId,'cat_food_dining');assert.equal(await service.reconcile(),0);await service.setAssignment(old.id,null);assert.equal((await uow.transactions.getById(old.id))?.categoryId,'cat_food_dining');
+});
+test('editing detail category keeps the Finance category as Travel and retains it on removal',async()=>{
+ const t=await record('Trip edit detail');await tx.correctTransaction(t.id,{categoryId:'cat_groceries',tripAssignment:{mode:'auto'}},'Edit trip breakdown');const edited=(await uow.transactions.getById(t.id))!;assert.equal(edited.categoryId,'cat_travel');assert.equal(edited.tripAssignment?.originalCategoryId,'cat_groceries');await service.setAssignment(t.id,null);assert.equal((await uow.transactions.getById(t.id))?.categoryId,'cat_groceries');
+});
+test('uncategorised trip expenses retain an empty original category across reassignment and removal',async()=>{
+ const t=await tx.recordTransaction({accountId,description:'Unknown trip purchase',amountPaise:1200,direction:'outflow',occurredAt:'2026-11-07T14:00:00Z'});assert.equal(t.categoryId,'cat_travel');assert.equal(t.tripAssignment?.originalCategoryId,null);await tx.correctTransaction(t.id,{amountPaise:1300,tripAssignment:{mode:'auto'}},'Correct price');assert.equal((await uow.transactions.getById(t.id))?.tripAssignment?.originalCategoryId,null);await service.setAssignment(t.id,null);assert.equal((await uow.transactions.getById(t.id))?.categoryId,undefined);
 });

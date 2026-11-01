@@ -1,6 +1,5 @@
 "use client";
 import TripFinancePanel from "./trips/TripFinancePanel";
-import { assignedTripId } from "@/lib/finance/trips/policy";
 import { TripFinanceService } from "@/lib/finance/trips/service";
 
 import { openDemoDatabase, seedFinanceDemo, createDemoCapture } from "@/lib/finance/demo";
@@ -279,7 +278,7 @@ export default function FinanceDashboardPage() {
       if (isCurrent()) setSavingsGoals(goals);
 
       // Transactions
-      const allTxns = await uow.transactions.query({ limit: 200 });
+      const allTxns = await uow.transactions.query({});
       if (isCurrent()) setTransactions(allTxns);
 
       // Uncategorized review count
@@ -341,7 +340,7 @@ export default function FinanceDashboardPage() {
   // Filtered transactions for the Transactions Tab
   const filteredTransactions = useMemo(() => {
     let result = [...(categoryDrilldown ? categoryHistory : transactions)];
-    if(categoryDrilldown) result=result.filter(t=>!assignedTripId(t)&&!t.transferGroupId&&!categories.some(c=>c.id===t.categoryId&&c.type==="transfer")&&Date.parse(t.occurredAt)>=Date.parse(categoryDrilldown.start)&&Date.parse(t.occurredAt)<=Date.parse(categoryDrilldown.end));
+    if(categoryDrilldown) result=result.filter(t=>!t.transferGroupId&&!categories.some(c=>c.id===t.categoryId&&c.type==="transfer")&&Date.parse(t.occurredAt)>=Date.parse(categoryDrilldown.start)&&Date.parse(t.occurredAt)<=Date.parse(categoryDrilldown.end));
 
     if (txnSearchQuery.trim()) {
       const q = txnSearchQuery.toLowerCase();
@@ -358,7 +357,7 @@ export default function FinanceDashboardPage() {
     }
 
     if (txnCategoryFilter !== "ALL") {
-      result = result.filter((t) => !assignedTripId(t) && (txnCategoryFilter === "__uncategorized" ? !categories.some(c=>c.id===t.categoryId&&c.type==="expense") : t.categoryId === txnCategoryFilter));
+      result = result.filter((t) => (txnCategoryFilter === "__uncategorized" ? !categories.some(c=>c.id===t.categoryId&&c.type==="expense") : t.categoryId === txnCategoryFilter));
     }
 
     if (txnStatusFilter !== "ALL") {
@@ -401,7 +400,7 @@ export default function FinanceDashboardPage() {
     const account = accounts.find(a => a.id === transaction.accountId);
     return <button key={transaction.id} className="af-activity-row" onClick={() => setSelectedTxnForDetail(transaction)}>
       <MerchantImage merchant={transaction.merchant || transaction.description} category={category?.name} direction={transaction.direction}/>
-      <span className="af-entry-description"><strong>{transaction.description}</strong><small>{transaction.tripAssignment?.tripId && transaction.tripAssignment.mode!=="excluded" ? `Trip · ${transaction.tripAssignment.tripTitle}` : category?.name || "Uncategorized"} <span>· {account?.name || "Account"}</span></small></span>
+      <span className="af-entry-description"><strong>{transaction.description}</strong><small>{transaction.tripAssignment?.tripId && transaction.tripAssignment.mode!=="excluded" ? `Travel & Leisure · ${transaction.tripAssignment.tripTitle}` : category?.name || "Uncategorized"} <span>· {account?.name || "Account"}</span></small></span>
       <span className={`af-entry-value ${transaction.direction === "inflow" ? "is-income" : ""} ${transaction.status === "reversed" ? "is-reversed" : ""}`}><strong>{transaction.direction === "inflow" ? "+" : "−"}{formatPaise(transaction.amountPaise)}</strong><small>{new Date(transaction.occurredAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}{transaction.status !== "posted" ? ` · ${transaction.status}` : ""}</small></span>
     </button>;
   }) : <div className="af-empty"><ArrowRightLeft size={28} /><h3>A fresh start.</h3><p>Your approved transactions will appear here.</p>{accounts.length > 0 && <button className="af-primary" onClick={newEntry}>Record a transaction</button>}</div>}</div>;

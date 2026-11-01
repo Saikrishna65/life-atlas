@@ -1,5 +1,5 @@
 import { TripFinanceService, loadFinanceTrips } from "../trips/service";
-import { resolveTripAssignment } from "../trips/policy";
+import { resolveTripAssignment, applyTripCategory } from "../trips/policy";
 import type { TripAssignment } from "../trips/policy";
 import type { TripRecord } from "../../vault/types";
 /**
@@ -177,6 +177,7 @@ export class TransactionService {
       if(!target || target.currency!==transaction.currency || transaction.direction!=='outflow') throw new FinanceError('Choose a trip with the same currency for an expense.', 'INVALID_TRIP');
       transaction.tripAssignment={...transaction.tripAssignment,tripTitle:target.title};
     } else transaction.tripAssignment=resolveTripAssignment(transaction,tripContext);
+    Object.assign(transaction,applyTripCategory(transaction,transaction.tripAssignment));
     await this.uow.transactions.save(transaction);
 
     // Update account balance
@@ -389,6 +390,7 @@ export class TransactionService {
       throw new FinanceError(`Transaction ${id} not found`, "TRANSACTION_NOT_FOUND");
     }
 
+    const previous={...existing,tripAssignment:existing.tripAssignment?{...existing.tripAssignment}:undefined};
     const now = new Date().toISOString();
     const changes: Record<string, { oldVal: unknown; newVal: unknown }> = {};
 
@@ -449,11 +451,11 @@ export class TransactionService {
       existing.tripAssignment={...existing.tripAssignment,tripTitle:target.title};
     }
     const nextAssignment=resolveTripAssignment(existing,tripContext);
-    if(JSON.stringify(existing.tripAssignment)!==JSON.stringify(nextAssignment)){
-      changes.tripAssignment={oldVal:changes.tripAssignment?changes.tripAssignment.oldVal:existing.tripAssignment,newVal:nextAssignment};existing.tripAssignment=nextAssignment;
-    }
-
-    if(changes.tripAssignment)changes.tripAssignment.newVal=existing.tripAssignment;
+    Object.assign(existing,applyTripCategory(existing,nextAssignment,previous,updates.categoryId));
+    if(JSON.stringify(previous.tripAssignment)!==JSON.stringify(existing.tripAssignment))changes.tripAssignment={oldVal:previous.tripAssignment,newVal:existing.tripAssignment};
+    else delete changes.tripAssignment;
+    if(previous.categoryId!==existing.categoryId)changes.categoryId={oldVal:previous.categoryId,newVal:existing.categoryId};
+    else delete changes.categoryId;
     if (Object.keys(changes).length === 0) {
       return existing; // No modifications
     }

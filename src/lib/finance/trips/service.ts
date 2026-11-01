@@ -1,7 +1,7 @@
 import type { IUnitOfWork } from '../storage/interfaces';
 import type { TripRecord } from '../../vault/types';
 import type { Transaction } from '../domain/models';
-import { resolveTripAssignment, assignedTripId, previewTripChanges, validateTripSettings, type TripAssignment, type TripContext, type TripFinanceSettings } from './policy';
+import { applyTripCategory, previewTripChanges, validateTripSettings, type TripAssignment, type TripContext, type TripFinanceSettings } from './policy';
 
 export async function loadFinanceTrips():Promise<TripRecord[]> {
   if(typeof window==='undefined'||!window.indexedDB)return [];
@@ -12,11 +12,11 @@ export class TripFinanceService {
   constructor(private uow:IUnitOfWork,private loadTrips:()=>Promise<TripRecord[]>=loadFinanceTrips){}
   async context():Promise<TripContext>{const [trips,recurring,categories]=await Promise.all([this.loadTrips(),this.uow.recurringRules.getAll(),this.uow.categories.getAll()]);return {trips,recurring,categories};}
   async writeAssignment(t:Transaction,assignment:TripAssignment|undefined,reason:string){
-    const now=new Date().toISOString();const updated={...t,tripAssignment:assignment,updatedAt:now,version:(t.version||1)+1};
+    const now=new Date().toISOString();const updated={...t,...applyTripCategory(t,assignment),updatedAt:now,version:(t.version||1)+1};
     if(this.uow.transactions.saveIfVersion){
       if(!await this.uow.transactions.saveIfVersion(updated,t.version))throw new Error('This payment changed in another view. Refresh and try again.');
     }else await this.uow.transactions.save(updated);
-    await this.uow.audit.record({id:crypto.randomUUID(),entityType:'transaction',entityId:t.id,action:'update',changes:{tripAssignment:{oldVal:t.tripAssignment,newVal:assignment}},reason,performedAt:now});
+    await this.uow.audit.record({id:crypto.randomUUID(),entityType:'transaction',entityId:t.id,action:'update',changes:{tripAssignment:{oldVal:t.tripAssignment,newVal:updated.tripAssignment},categoryId:{oldVal:t.categoryId,newVal:updated.categoryId}},reason,performedAt:now});
     await this.uow.outbox.enqueue({id:crypto.randomUUID(),entityType:'transaction',entityId:t.id,action:'update',payloadJson:JSON.stringify(updated),timestamp:now,status:'pending',retryCount:0,idempotencyKey:`trip_${t.id}_${updated.version}`});
     return updated;
   }
