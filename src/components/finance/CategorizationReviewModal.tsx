@@ -1,4 +1,5 @@
 "use client";
+import { FinancePanelHeader, useFinanceDialog } from "./FinanceDialog";
 
 import FinanceSelect from "@/components/finance/FinanceSelect";
 
@@ -91,6 +92,7 @@ export default function CategorizationReviewModal({
     }
   }, [isOpen, loadData]);
 
+  useFinanceDialog(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleAcceptSuggestion = async (txn: Transaction, sugg: CategorizationResult) => {
@@ -197,26 +199,9 @@ export default function CategorizationReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-3xl max-h-[90vh] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground">Smart Categorization & Rules</h2>
-              <p className="text-xs text-muted-foreground">Deterministic local classification without cloud scraping</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="finance-workspace-overlay">
+      <div className="finance-workspace finance-tool-workspace" role="dialog" aria-modal="true" aria-label="Categories & rules" tabIndex={-1}>
+        <FinancePanelHeader title="Categories & rules" subtitle="Organise uncategorised payments and personalise your rules." onClose={onClose}/>
 
         {/* Tab Navigation */}
         <div className="flex border-b border-border bg-muted/20 px-6 pt-2">
@@ -256,7 +241,7 @@ export default function CategorizationReviewModal({
         )}
 
         {/* Body Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="finance-panel-content flex-1 overflow-y-auto p-6 space-y-4">
           {activeTab === "REVIEW" && (
             <div>
               <div className="flex items-center justify-between mb-4">

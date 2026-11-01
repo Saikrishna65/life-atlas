@@ -1,4 +1,5 @@
 "use client";
+import { FinancePanelHeader, useFinanceDialog } from "./FinanceDialog";
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -124,6 +125,7 @@ export default function SyncSettingsModal({
     }
   };
 
+  useFinanceDialog(isOpen, onClose);
   if (!isOpen) return null;
 
   const pendingCount = operations.filter((o) => o.status === "pending" || o.status === "in_progress").length;
@@ -131,50 +133,27 @@ export default function SyncSettingsModal({
   const syncedCount = operations.filter((o) => o.status === "synced").length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-xs overflow-y-auto">
-      <div className="w-full max-w-2xl bg-surface border border-muted rounded-2xl p-5 sm:p-6 shadow-2xl relative my-auto animate-fade-in max-h-[92vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-muted">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              <CloudOff className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="font-display text-lg sm:text-xl font-normal text-foreground">
-                Cloud Sync & Local Outbox
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Reliable mutation queuing, exponential backoff, and transparent local-first isolation.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="finance-workspace-overlay">
+      <div className="finance-workspace finance-tool-workspace" role="dialog" aria-modal="true" aria-label="Storage & sync" tabIndex={-1}>
+        <FinancePanelHeader title="Storage & sync" subtitle="See what is saved on this device and the status of your changes." onClose={onClose}/>
 
         {/* Content Body */}
-        <div className="overflow-y-auto space-y-4 py-4 pr-1 text-xs">
+        <div className="finance-panel-content overflow-y-auto space-y-4 py-4 pr-1 text-xs">
           {/* Status Banner */}
-          <div className="p-3.5 rounded-xl bg-background/80 border border-muted space-y-2">
+          <div className="finance-storage-status p-3.5 rounded-xl bg-background/80 border border-muted space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="font-semibold text-foreground text-xs">
-                  Active Mode: Local Vault (Offline First)
+                  Saved on this device
                 </span>
               </div>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                Adapter: Unconfigured (Local-Only)
+                Cloud sync off
               </span>
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Your financial ledger operates completely offline. Every account balance, transaction, transfer, budget,
-              and savings goal is safely recorded in your device&apos;s encrypted local storage engine. No sensitive records
-              are transmitted without explicit cloud endpoint configuration.
+              Your accounts, payments, budgets and goals are stored in this browser on this device. Cloud sync is not configured. Clearing this browser’s data can remove these records.
             </p>
           </div>
 
@@ -195,7 +174,7 @@ export default function SyncSettingsModal({
           )}
 
           {/* Outbox Metrics Summary */}
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="finance-storage-metrics grid grid-cols-3 gap-2.5">
             <div className="p-3 rounded-xl bg-background/60 border border-muted text-center">
               <span className="text-[10px] uppercase font-semibold text-muted-foreground">Pending / Queued</span>
               <div className="text-lg font-mono font-bold text-amber-400 mt-1">{pendingCount}</div>
@@ -321,7 +300,7 @@ export default function SyncSettingsModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-3 border-t border-muted flex justify-end">
+        <div className="finance-panel-footer pt-3 border-t border-muted flex justify-end">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-surface border border-muted hover:border-foreground/30 text-xs font-medium text-foreground transition-all cursor-pointer"

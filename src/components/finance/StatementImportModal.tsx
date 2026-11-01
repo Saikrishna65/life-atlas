@@ -1,4 +1,5 @@
 "use client";
+import { FinancePanelHeader, useFinanceDialog } from "./FinanceDialog";
 
 import FinanceSelect from "@/components/finance/FinanceSelect";
 
@@ -113,6 +114,7 @@ export default function StatementImportModal({
     }
   }, [isOpen]);
 
+  useFinanceDialog(isOpen, onClose);
   if (!isOpen) return null;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,73 +269,11 @@ export default function StatementImportModal({
   const selectedCount = previewItems.filter((i) => i.selectedForImport).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md overflow-y-auto animate-fade-in">
-      <div className="relative w-full max-w-3xl my-auto max-h-[92vh] bg-surface border border-muted/80 rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-fade-in-up">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 sm:px-7 py-4 sm:py-5 border-b border-muted bg-surface/80 backdrop-blur-md shrink-0">
-          <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-xs">
-              <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
-                <span>Import Bank Statement</span>
-                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 uppercase">
-                  100% Offline
-                </span>
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Import your statement, review matches, and skip duplicates.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground rounded-xl hover:bg-muted/40 transition-colors cursor-pointer"
-            aria-label="Close dialog"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="finance-workspace-overlay">
+      <div className="finance-workspace finance-tool-workspace" role="dialog" aria-modal="true" aria-label="Import a statement" tabIndex={-1}>
+        <FinancePanelHeader title="Import a statement" subtitle="Add your history in a few clear steps. Review everything before saving." onClose={onClose}/>
 
-        {/* Step Navigation Pill Indicator */}
-        <div className="px-5 sm:px-7 py-3 bg-muted/15 border-b border-muted flex items-center justify-between text-xs overflow-x-auto no-scrollbar shrink-0">
-          <div className="flex items-center gap-2">
-            {[1, 2, 3, 4, 5].map((s) => {
-              const isCurrent = step === s;
-              const isPast = step > s;
-              return (
-                <React.Fragment key={s}>
-                  <div
-                    className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold transition-all ${
-                      isCurrent
-                        ? "bg-emerald-500 text-slate-950 shadow-xs shadow-emerald-500/30 scale-105"
-                        : isPast
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
-                        : "bg-surface border border-muted text-muted-foreground/60"
-                    }`}
-                  >
-                    {isPast ? <Check className="w-3.5 h-3.5" /> : s}
-                  </div>
-                  {s < 5 && (
-                    <div
-                      className={`w-4 sm:w-6 h-0.5 transition-colors ${
-                        isPast ? "bg-emerald-500/60" : "bg-muted"
-                      }`}
-                    />
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </div>
-          <span className="text-muted-foreground font-medium text-xs ml-3 truncate">
-            {step === 1 && "1. Choose File & Account"}
-            {step === 2 && "2. Map CSV Headers"}
-            {step === 3 && "3. Deduplication Check"}
-            {step === 4 && "4. Confirm Ledger Import"}
-            {step === 5 && "5. Sync Complete"}
-          </span>
-        </div>
+        <nav className="finance-import-progress" aria-label="Statement import progress"><div className="finance-import-steps">{["Upload", "Map", "Review", "Confirm", "Done"].map((label,index)=><span key={label} aria-current={step===index+1?"step":undefined} data-complete={step>index+1}><i>{step>index+1?<Check size={14}/>:index+1}</i><small>{label}</small></span>)}</div><p>Step {step} of 5 · {["Choose a file and account", "Match your columns", "Check for duplicates", "Confirm your transactions", "Import complete"][step-1]}</p></nav>
 
         {/* Error Alert Banner */}
         {errorMessage && (
@@ -344,14 +284,14 @@ export default function StatementImportModal({
         )}
 
         {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-5">
+        <div className="finance-panel-content flex-1 overflow-y-auto p-5 sm:p-7 space-y-5">
           {/* STEP 1: Upload File & Pick Account */}
           {step === 1 && (
             <div className="space-y-5 animate-fade-in">
               {/* Account Selector */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold font-sans uppercase tracking-wider text-muted-foreground block">
-                  1. Target Account *
+                  Save transactions to *
                 </label>
                 {activeAccounts.length > 0 ? (
                   <div className="relative">
@@ -381,7 +321,7 @@ export default function StatementImportModal({
               {/* Upload Drop Zone */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold font-sans uppercase tracking-wider text-muted-foreground block">
-                  2. Upload Statement File (.csv, .ofx, .qif) *
+                  Your statement file *
                 </label>
                 <div
                   className={`relative border-2 border-dashed rounded-3xl p-6 sm:p-8 text-center transition-all ${
@@ -424,7 +364,7 @@ export default function StatementImportModal({
                           {fileName ? fileName : "Tap or click to select bank statement"}
                         </p>
                         <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                          Supports CSV, OFX, and QIF from Kotak, HDFC, SBI, ICICI, Axis, and all major Indian banks.
+                          Choose a CSV, OFX or QIF file from your bank.
                         </p>
                       </div>
                     )}
@@ -436,7 +376,7 @@ export default function StatementImportModal({
               <div className="p-3.5 bg-surface/60 border border-muted rounded-2xl flex items-start gap-3 text-xs text-muted-foreground shadow-xs">
                 <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-semibold text-foreground">Zero-Cloud Offline Encryption</p>
+                  <p className="font-semibold text-foreground">Processed on your device</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
                     Statements are parsed and reconciled strictly inside your browser/phone&apos;s local IndexedDB. No files, passwords, account numbers, or transactions are ever transmitted externally.
                   </p>
@@ -741,7 +681,7 @@ export default function StatementImportModal({
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="flex items-center justify-between px-5 sm:px-7 py-4 border-t border-muted bg-surface/80 backdrop-blur-md shrink-0">
+        <div className="finance-panel-footer flex items-center justify-between px-5 sm:px-7 py-4 border-t border-muted bg-surface/80 backdrop-blur-md shrink-0">
           {step === 1 && (
             <>
               <button

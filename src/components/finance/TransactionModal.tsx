@@ -3,7 +3,7 @@
 import FinanceSelect from "@/components/finance/FinanceSelect";
 
 import React, { useState, useEffect } from "react";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@/components/finance/FinanceDialog";
 import { Plus, Check, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import {
   Transaction,
@@ -164,7 +164,7 @@ export default function TransactionModal({
       subtitle={editingTransaction ? "Modifications are preserved with an immutable audit log." : undefined}
       maxWidthClassName="max-w-lg"
     >
-      <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {errorMessage && (
           <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
             {errorMessage}

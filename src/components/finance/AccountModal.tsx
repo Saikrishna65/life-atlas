@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@/components/finance/FinanceDialog";
 import { Landmark, Wallet, CreditCard, PiggyBank, Plus, Check } from "lucide-react";
 import {
   FinanceAccount,
@@ -113,7 +113,7 @@ export default function AccountModal({
       isOpen={isOpen}
       onClose={onClose}
       title={editingAccount ? "Edit Account" : "Add Financial Account"}
-      subtitle="Manual local tracking with zero bank credentials stored."
+      subtitle="Bring every balance into one clear view. No bank login needed."
       maxWidthClassName="max-w-md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -137,6 +137,7 @@ export default function AccountModal({
                   <button
                     key={t.type}
                     type="button"
+                    aria-pressed={isSelected}
                     onClick={() => setAccountType(t.type)}
                     className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       isSelected

@@ -29,6 +29,19 @@ const fs = require('node:fs');
       assert.equal(await page.locator('.finance-theme-picker[open]').count(), 0);
 
       await page.getByTitle('Add a new bank, cash, or credit account').click();
+      const checkWorkspace = async label => {
+        const dialog=page.locator('.finance-workspace'); await dialog.waitFor();
+        const geometry=await dialog.evaluate(node=>{const r=node.getBoundingClientRect();const head=node.querySelector('.finance-panel-header').getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,head:head.height,headerTop:head.top,headerBottom:head.bottom,close:node.querySelector(".finance-panel-close").getBoundingClientRect().top,closeRight:node.querySelector(".finance-panel-close").getBoundingClientRect().right,overflow:node.scrollWidth-node.clientWidth};});
+        assert.ok(geometry.left>=0 && geometry.right<=width+1 && geometry.top>=0 && geometry.bottom<=901 && geometry.overflow<=1,`${label} outside viewport ${width}: ${JSON.stringify(geometry)}`);
+        assert.ok(geometry.headerTop>=geometry.top && geometry.close>=geometry.top && geometry.closeRight<=width,`${label} header clipped: ${JSON.stringify(geometry)}`);
+        assert.ok(geometry.head<240,`${label} header too tall`);
+        await page.screenshot({path:`finance-qa/form-${label}-${width}.png`});
+        if(width===390 && ['account','Import a statement','Create budget'].includes(label)){
+          const preview=(await page.screenshot({type:'jpeg',quality:75})).toString('base64');
+          for(let offset=0;offset<preview.length;offset+=16000)console.log(`ATLAS_FORM_${label.replaceAll(' ','_')}_${String(offset/16000).padStart(4,'0')}=${preview.slice(offset,offset+16000)}`);
+        }
+      };
+      await checkWorkspace('account');
       await page.getByPlaceholder('e.g. HDFC Salary Account, Emergency Fund').fill('Kotak QA');
       await page.getByPlaceholder('e.g. SBI, ICICI').fill('Kotak');
       await page.getByPlaceholder('e.g. 4092').fill('1234');
@@ -44,6 +57,19 @@ const fs = require('node:fs');
       for (const tab of ['Activity', 'Budgets', 'Goals', 'Accounts']) {
         await page.getByRole('tab', { name: tab, exact: true }).click();
         assert.equal(await overflow(), false, `${tab} overflows at ${width}`);
+      }
+      await page.getByRole('tab',{name:'Budgets',exact:true}).click();
+      await page.getByRole('button',{name:'Create budget',exact:true}).click();
+      await checkWorkspace('Create budget'); await page.keyboard.press('Escape');
+      await page.getByRole('tab',{name:'Goals',exact:true}).click();
+      await page.getByRole('button',{name:'Create your first goal',exact:true}).click();
+      await checkWorkspace('goal'); await page.keyboard.press('Escape');
+      await page.locator('.af-utility-section summary').click();
+      assert.equal(await page.getByRole('button',{name:/Cash flow forecast/}).count(),0);
+      for(const label of ['Import a statement','Bills & subscriptions','Category rules','Storage & sync','Bank connections']){
+        await page.locator('.af-utility-grid button').filter({hasText:label}).click();
+        await checkWorkspace(label); await page.keyboard.press('Escape');
+        assert.equal(await page.locator('.finance-workspace').count(),0,`${label} must close with Escape`);
       }
       await page.getByRole('tab', { name: 'Activity', exact: true }).click();
       const select = page.getByRole('combobox', { name: 'Filter account', exact: true });
@@ -77,6 +103,7 @@ const fs = require('node:fs');
       await page.locator('.atlas-finance[aria-busy="false"]').waitFor({ timeout: 60000 });
       await page.getByText('Demo workspace', { exact: true }).waitFor();
       assert.equal(await page.locator('.expense-insights').getAttribute('data-period'),'THIS_WEEK');
+      assert.ok(await page.locator('.expense-average').evaluate(node=>Number(getComputedStyle(node).zIndex)>Number(getComputedStyle(document.querySelector('.expense-bars')).zIndex)),'Average label must render above bars');
       assert.deepEqual(await page.locator('.expense-labels .cash-date').allTextContents(),['Mon','Tue','Wed','Thu','Fri','Sat','Sun']);
       assert.equal(await page.locator('.expense-stores').count(),0,'Top stores should be removed');
       assert.equal(await page.getByRole('combobox',{name:'Reporting period',exact:true}).count(),0,'Remove the redundant Insights dropdown');

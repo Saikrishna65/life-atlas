@@ -3,7 +3,7 @@
 import FinanceSelect from "@/components/finance/FinanceSelect";
 
 import React, { useState, useEffect } from "react";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@/components/finance/FinanceDialog";
 import { Plus, Check, Tag } from "lucide-react";
 import {
   FinanceCategory,
@@ -92,10 +92,10 @@ export default function BudgetModal({
       isOpen={isOpen}
       onClose={onClose}
       title={editingCategoryId ? "Edit Monthly Budget" : "Set Category Budget"}
-      subtitle="Define monthly spending allocations to keep track of limits."
+      subtitle="Give each category a monthly limit and see what remains."
       maxWidthClassName="max-w-md"
     >
-      <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {errorMessage && (
           <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
             {errorMessage}
