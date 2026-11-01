@@ -536,7 +536,7 @@ export default function FinanceDashboardPage() {
               }`}
             >
               {tab.id === "OVERVIEW" ? <LayoutDashboard size={18} /> : tab.id === "TRANSACTIONS" ? <ArrowRightLeft size={18} /> : tab.id === "BUDGETS" ? <Tag size={18} /> : tab.id === "GOALS" ? <Target size={18} /> : <Wallet size={18} />}
-              <span>{tab.id === "TRANSACTIONS" ? "Activity" : tab.id === "BUDGETS" ? "Budgets" : tab.id === "ACCOUNTS" ? "Accounts" : tab.label}</span>
+              <span>{tab.id === "TRANSACTIONS" ? "Activity" : tab.id === "BUDGETS" ? "Budgets" : tab.id === "ACCOUNTS" ? "Accounts" : tab.id === "GOALS" ? "Goals" : tab.label}</span>
             </button>
           ))}
         </div>

@@ -1,7 +1,5 @@
 name: Build Finance approval update
 on:
-  push:
-    branches: ['build/atlas-finance-approvals-*']
   pull_request:
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
@@ -11,7 +9,7 @@ permissions:
   actions: read
 jobs:
   finance:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
