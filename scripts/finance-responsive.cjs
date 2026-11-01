@@ -31,9 +31,9 @@ const fs = require('node:fs');
       await page.getByTitle('Add a new bank, cash, or credit account').click();
       const checkWorkspace = async label => {
         const dialog=page.locator('.finance-workspace'); await dialog.waitFor();
-        const geometry=await dialog.evaluate(node=>{const r=node.getBoundingClientRect();const head=node.querySelector('.finance-panel-header').getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,head:head.height,headerTop:head.top,headerBottom:head.bottom,close:node.querySelector(".finance-panel-close").getBoundingClientRect().top,overflow:node.scrollWidth-node.clientWidth};});
+        const geometry=await dialog.evaluate(node=>{const r=node.getBoundingClientRect();const head=node.querySelector('.finance-panel-header').getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,head:head.height,headerTop:head.top,headerBottom:head.bottom,close:node.querySelector(".finance-panel-close").getBoundingClientRect().top,closeRight:node.querySelector(".finance-panel-close").getBoundingClientRect().right,overflow:node.scrollWidth-node.clientWidth};});
         assert.ok(geometry.left>=0 && geometry.right<=width+1 && geometry.top>=0 && geometry.bottom<=901 && geometry.overflow<=1,`${label} outside viewport ${width}: ${JSON.stringify(geometry)}`);
-        assert.ok(geometry.headerTop>=geometry.top && geometry.close>=geometry.top,`${label} header clipped: ${JSON.stringify(geometry)}`);
+        assert.ok(geometry.headerTop>=geometry.top && geometry.close>=geometry.top && geometry.closeRight<=width,`${label} header clipped: ${JSON.stringify(geometry)}`);
         assert.ok(geometry.head<240,`${label} header too tall`);
         await page.screenshot({path:`finance-qa/form-${label}-${width}.png`});
         if(width===390 && ['account','Import a statement','Create budget'].includes(label)){
