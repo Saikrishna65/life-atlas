@@ -1,5 +1,5 @@
 import { TripFinanceService, loadFinanceTrips } from "../trips/service";
-import { resolveTripAssignment, applyTripCategory } from "../trips/policy";
+import { resolveTripAssignment, applyTripCategory, tripDetailCategoryId } from "../trips/policy";
 import type { TripAssignment } from "../trips/policy";
 import type { TripRecord } from "../../vault/types";
 /**
@@ -174,7 +174,7 @@ export class TransactionService {
     const tripContext=await new TripFinanceService(this.uow,this.loadTrips).context();
     if(transaction.tripAssignment?.mode==='manual') {
       const target=tripContext.trips.find(t=>t.id===transaction.tripAssignment?.tripId);
-      if(!target || target.currency!==transaction.currency || transaction.direction!=='outflow') throw new FinanceError('Choose a trip with the same currency for an expense.', 'INVALID_TRIP');
+      if(!target || target.currency!==transaction.currency || transaction.direction!=='outflow' || tripContext.categories.some(c=>c.id===tripDetailCategoryId(transaction)&&c.type==='transfer')) throw new FinanceError('Choose a trip with the same currency for an expense.', 'INVALID_TRIP');
       transaction.tripAssignment={...transaction.tripAssignment,tripTitle:target.title};
     } else transaction.tripAssignment=resolveTripAssignment(transaction,tripContext);
     Object.assign(transaction,applyTripCategory(transaction,transaction.tripAssignment));
@@ -447,7 +447,7 @@ export class TransactionService {
     const tripContext=await new TripFinanceService(this.uow,this.loadTrips).context();
     if(existing.tripAssignment?.mode==='manual'){
       const target=tripContext.trips.find(t=>t.id===existing.tripAssignment?.tripId);
-      if(!target || target.currency!==existing.currency || existing.direction!=='outflow' || existing.transferGroupId)throw new FinanceError('Choose a trip with the same currency for an expense.','INVALID_TRIP');
+      if(!target || target.currency!==existing.currency || existing.direction!=='outflow' || existing.transferGroupId || tripContext.categories.some(c=>c.id===tripDetailCategoryId(existing)&&c.type==='transfer'))throw new FinanceError('Choose a trip with the same currency for an expense.','INVALID_TRIP');
       existing.tripAssignment={...existing.tripAssignment,tripTitle:target.title};
     }
     const nextAssignment=resolveTripAssignment(existing,tripContext);

@@ -109,3 +109,7 @@ test('editing detail category keeps the Finance category as Travel and retains i
 test('uncategorised trip expenses retain an empty original category across reassignment and removal',async()=>{
  const t=await tx.recordTransaction({accountId,description:'Unknown trip purchase',amountPaise:1200,direction:'outflow',occurredAt:'2026-11-07T14:00:00Z'});assert.equal(t.categoryId,'cat_travel');assert.equal(t.tripAssignment?.originalCategoryId,null);await tx.correctTransaction(t.id,{amountPaise:1300,tripAssignment:{mode:'auto'}},'Correct price');assert.equal((await uow.transactions.getById(t.id))?.tripAssignment?.originalCategoryId,null);await service.setAssignment(t.id,null);assert.equal((await uow.transactions.getById(t.id))?.categoryId,undefined);
 });
+
+test('manually categorised transfers cannot become Travel expenses by attachment',async()=>{
+ const t=await tx.recordTransaction({accountId,description:'Own account transfer',amountPaise:10000,direction:'outflow',categoryId:'cat_transfer',occurredAt:'2026-11-07T14:00:00Z'});assert.equal(assignedTripId(t),undefined);await assert.rejects(()=>service.setAssignment(t.id,'goa'),/Only an expense/);assert.equal((await uow.transactions.getById(t.id))?.categoryId,'cat_transfer');
+});
