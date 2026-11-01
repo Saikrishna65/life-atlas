@@ -1,0 +1,40 @@
+name: Verify Finance redesign
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/components/finance/**'
+      - 'src/app/secret/finance/**'
+      - 'scripts/finance-responsive.cjs'
+      - '.github/workflows/finance-redesign.yml'
+permissions:
+  contents: read
+jobs:
+  responsive:
+    if: startsWith(github.head_ref, 'design/finance-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate && npx tsc --noEmit
+      - name: Check all Finance screens on phones and desktop
+        env:
+          FINANCE_QA: '1'
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install chromium --with-deps
+          trap 'tail -n 60 /tmp/next-finance.log' EXIT
+          npx next dev --webpack -p 3001 > /tmp/next-finance.log 2>&1 &
+          for attempt in $(seq 1 60); do if curl -sf http://localhost:3001/secret/finance > /dev/null; then break; fi; sleep 2; done
+          node scripts/finance-responsive.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: finance-new-design-screenshots
+          path: finance-qa/

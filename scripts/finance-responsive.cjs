@@ -29,7 +29,7 @@ const fs = require('node:fs');
         assert.equal(await overflow(), false, `${tab} overflows at ${width}`);
       }
       await page.getByRole('tab', { name: 'Activity', exact: true }).click();
-      const select = page.getByRole('combobox').first();
+      const select = page.getByRole('combobox', { name: 'Filter account', exact: true });
       await select.click();
       const menu = page.getByRole('listbox');
       await menu.waitFor();
