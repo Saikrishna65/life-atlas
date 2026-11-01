@@ -1,5 +1,6 @@
 "use client";
 import TripFinancePanel from "./trips/TripFinancePanel";
+import { assignedTripId } from "@/lib/finance/trips/policy";
 import { TripFinanceService } from "@/lib/finance/trips/service";
 
 import { openDemoDatabase, seedFinanceDemo, createDemoCapture } from "@/lib/finance/demo";
@@ -340,7 +341,7 @@ export default function FinanceDashboardPage() {
   // Filtered transactions for the Transactions Tab
   const filteredTransactions = useMemo(() => {
     let result = [...(categoryDrilldown ? categoryHistory : transactions)];
-    if(categoryDrilldown) result=result.filter(t=>!t.transferGroupId&&!categories.some(c=>c.id===t.categoryId&&c.type==="transfer")&&Date.parse(t.occurredAt)>=Date.parse(categoryDrilldown.start)&&Date.parse(t.occurredAt)<=Date.parse(categoryDrilldown.end));
+    if(categoryDrilldown) result=result.filter(t=>!assignedTripId(t)&&!t.transferGroupId&&!categories.some(c=>c.id===t.categoryId&&c.type==="transfer")&&Date.parse(t.occurredAt)>=Date.parse(categoryDrilldown.start)&&Date.parse(t.occurredAt)<=Date.parse(categoryDrilldown.end));
 
     if (txnSearchQuery.trim()) {
       const q = txnSearchQuery.toLowerCase();
@@ -357,7 +358,7 @@ export default function FinanceDashboardPage() {
     }
 
     if (txnCategoryFilter !== "ALL") {
-      result = result.filter((t) => txnCategoryFilter === "__uncategorized" ? !categories.some(c=>c.id===t.categoryId&&c.type==="expense") : t.categoryId === txnCategoryFilter);
+      result = result.filter((t) => !assignedTripId(t) && (txnCategoryFilter === "__uncategorized" ? !categories.some(c=>c.id===t.categoryId&&c.type==="expense") : t.categoryId === txnCategoryFilter));
     }
 
     if (txnStatusFilter !== "ALL") {

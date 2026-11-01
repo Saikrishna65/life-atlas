@@ -65,6 +65,12 @@ const fs=require('node:fs');
    await page.locator('.trip-finance-card').filter({hasText:'QA Coast escape'}).click();await page.getByRole('dialog').getByRole('heading',{name:'QA Coast escape',exact:true}).waitFor();
    assert.equal(await page.locator('.trip-transaction-list').getByText('QA Cafe',{exact:true}).count(),0,'Manual removal must survive reload and reconciliation');
    await page.locator('.trip-transaction-list').getByText('QA Advance Hotel',{exact:true}).waitFor();
+   await page.getByRole('button',{name:'Close dialog',exact:true}).click();
+   await page.getByRole('tab',{name:'Activity',exact:true}).click();
+   await page.getByRole('combobox',{name:'Filter category',exact:true}).click();
+   await page.getByRole('option',{name:'Food & Dining',exact:true}).click();
+   assert.equal(await page.locator('.af-activity-list').getByText('QA Advance Hotel',{exact:true}).count(),0,'Trip bookings stay out of everyday category drilldowns');
+   await page.locator('.af-activity-list').getByText('QA Cafe',{exact:true}).waitFor();
    console.log(`Trip Finance ${width}: confirmation, auto routing, bill exclusions, advance booking, editing, timing preview, extend/shorten, persistent removal and viewport passed`);
    await page.close();
   }

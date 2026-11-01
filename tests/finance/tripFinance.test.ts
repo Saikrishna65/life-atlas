@@ -2,7 +2,7 @@ import { KotakNotificationParser } from "@/lib/finance/infrastructure/kotakNotif
 import 'fake-indexeddb/auto';
 import assert from 'node:assert/strict';
 import { test, beforeEach, afterEach } from 'node:test';
-import { IndexedDBUnitOfWork, AccountService, TransactionService, BalanceService, BudgetService, deleteFinanceDB } from '@/lib/finance';
+import { IndexedDBUnitOfWork, AccountService, TransactionService, BalanceService, BudgetService, NotificationTrackingService, CategorizationService, deleteFinanceDB } from '@/lib/finance';
 import type { Transaction } from '@/lib/finance/domain/models';
 import type { TripRecord } from '@/lib/vault/types';
 import { TripFinanceService } from '@/lib/finance/trips/service';
@@ -92,4 +92,9 @@ test('deleting a trip restores manually linked payments to everyday spending wit
 test('automatic-bill provenance survives bank message parsing',()=>{
  const parsed=KotakNotificationParser.parse({id:'autopay',packageName:'com.google.android.apps.messaging',sender:'VM-KOTAKB',title:'Kotak Bank',text:'Sent Rs. 900.00 from Kotak Bank AC X1234 to NETFLIX via autopay. UPI Ref 123456789012.',postTime:Date.parse('2026-11-07T10:00:00Z'),postTimeIso:'2026-11-07T10:00:00Z'});
  assert.equal(parsed.success,true);assert.equal(parsed.transaction?.paymentKind,'automatic_bill');
+});
+
+test('pasted bank alerts retain automatic-bill classification when saved to the ledger',async()=>{
+ const parsed=KotakNotificationParser.parse({id:'pasted-autopay',packageName:'com.google.android.apps.messaging',sender:'VM-KOTAKB',title:'Kotak Bank',text:'Sent Rs. 900.00 from Kotak Bank AC X1234 to NETFLIX via autopay. UPI Ref 876543210987.',postTime:Date.parse('2026-11-07T10:00:00Z'),postTimeIso:'2026-11-07T10:00:00Z'});
+ assert.ok(parsed.transaction);const notifications=new NotificationTrackingService(uow,tx,new CategorizationService(uow));const saved=await notifications.confirmParsedTransaction({parsed:parsed.transaction,accountId,categoryId:'cat_food_dining'});assert.equal(saved.paymentKind,'automatic_bill');assert.equal(assignedTripId(saved),undefined);
 });

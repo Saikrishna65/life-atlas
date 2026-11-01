@@ -184,8 +184,7 @@ export class NotificationTrackingService {
       const catResult = await this.categorizationService.suggestCategory({
         description: text.trim(),
         merchant: parsed.merchantOrBeneficiary,
-        paymentKind: parsed.paymentKind,
-      amountPaise: parsed.amountPaise,
+        amountPaise: parsed.amountPaise,
         direction: parsed.direction,
       });
       if (catResult) {
@@ -237,6 +236,7 @@ export class NotificationTrackingService {
 
     const recorded = await this.transactionService.recordTransaction({
       accountId,
+      paymentKind: parsed.paymentKind,
       amountPaise: parsed.amountPaise,
       direction: parsed.direction,
       description: description?.trim() || parsed.merchantOrBeneficiary,

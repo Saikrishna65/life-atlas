@@ -264,7 +264,7 @@ export class CategorizationService {
       status: "posted",
     });
 
-    return all.filter((t) => !t.categoryId || t.reviewRequired);
+    return all.filter((t) => !(t.tripAssignment?.tripId && t.tripAssignment.mode!=="excluded") && (!t.categoryId || t.reviewRequired));
   }
 
   /**
