@@ -17,7 +17,8 @@ jobs:
       - id: mode
         run: |
           if [ -f android/apk-signature.json ]; then
-            echo 'phase=finalize' >> "$GITHUB_OUTPUT"
+            echo "phase=$(python -c 'import json;print(json.load(open("android/apk-signature.json"))["mode"])')" >> "$GITHUB_OUTPUT"
+            echo "artifact_name=$(python -c 'import json;print(json.load(open("android/apk-signature.json"))["artifact_name"])')" >> "$GITHUB_OUTPUT"
             echo "run_id=$(python -c 'import json;print(json.load(open("android/apk-signature.json"))["run_id"])')" >> "$GITHUB_OUTPUT"
           else
             echo 'phase=build' >> "$GITHUB_OUTPUT"
@@ -61,7 +62,7 @@ jobs:
           npx playwright install chromium --with-deps
           trap 'tail -n 100 /tmp/next-finance.log' EXIT
           npx next dev --webpack -p 3001 > /tmp/next-finance.log 2>&1 &
-          for attempt in $(seq 1 60); do if curl -sf http://127.0.0.1:3001/secret/finance > /dev/null; then break; fi; sleep 2; done
+          for attempt in $(seq 1 60); do if curl -sf http://localhost:3001/secret/finance > /dev/null; then break; fi; sleep 2; done
           node scripts/finance-responsive.cjs
       - uses: actions/upload-artifact@v4
         if: always() && steps.mode.outputs.phase == 'build'
@@ -88,7 +89,8 @@ jobs:
                       target.writestr(item,source.read(item.filename))
           PY
           "$ANDROID_HOME/build-tools/34.0.0/zipalign" -f -p 4 /tmp/unsigned.apk signing-request/unsigned-aligned.apk
-          python scripts/apk-signing.py prepare --apk signing-request/unsigned-aligned.apk --certificate /tmp/existing-cert.pem --request signing-request/request.json
+          cp /tmp/existing-cert.pem signing-request/existing-cert.pem
+          python scripts/apk-signing.py prepare-v1 --apk signing-request/unsigned-aligned.apk --certificate /tmp/existing-cert.pem --request signing-request/request.json --manifest signing-request/MANIFEST.MF --sf signing-request/ATLAS.SF
           python - <<'PY'
           import base64
           from pathlib import Path
@@ -102,14 +104,30 @@ jobs:
           name: atlas-signing-request
           path: signing-request/
       - uses: actions/download-artifact@v4
-        if: steps.mode.outputs.phase == 'finalize'
+        if: steps.mode.outputs.phase != 'build'
         with:
-          name: atlas-signing-request
+          name: ${{ steps.mode.outputs.artifact_name }}
           run-id: ${{ steps.mode.outputs.run_id }}
           github-token: ${{ github.token }}
           path: signing-request
+      - name: Attach JAR signature and prepare APK v2 signature
+        if: steps.mode.outputs.phase == 'v1'
+        run: |
+          mkdir -p signing-v2
+          python scripts/apk-signing.py attach-v1 --apk signing-request/unsigned-aligned.apk --request signing-request/request.json --signature android/apk-signature.json --manifest signing-request/MANIFEST.MF --sf signing-request/ATLAS.SF --output /tmp/jar-signed.apk
+          sdkmanager 'build-tools;34.0.0'
+          "$ANDROID_HOME/build-tools/34.0.0/zipalign" -f -p 4 /tmp/jar-signed.apk signing-v2/unsigned-aligned.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --min-sdk-version 22 --max-sdk-version 23 signing-v2/unsigned-aligned.apk
+          python scripts/apk-signing.py prepare --apk signing-v2/unsigned-aligned.apk --certificate signing-request/existing-cert.pem --request signing-v2/request.json
+          cp signing-request/signing-key-backup.p7m signing-v2/
+          python -c 'import base64;from pathlib import Path;print("ATLAS_SIGN_REQUEST="+base64.b64encode(Path("signing-v2/request.json").read_bytes()).decode())'
+      - uses: actions/upload-artifact@v4
+        if: steps.mode.outputs.phase == 'v1'
+        with:
+          name: atlas-v2-signing-request
+          path: signing-v2/
       - name: Assemble and verify signed update
-        if: steps.mode.outputs.phase == 'finalize'
+        if: steps.mode.outputs.phase == 'v2'
         run: |
           mkdir -p apk-download
           python scripts/apk-signing.py finalize --apk signing-request/unsigned-aligned.apk --request signing-request/request.json --signature android/apk-signature.json --output apk-download/atlas-finance-approvals.apk
@@ -119,7 +137,7 @@ jobs:
           cp signing-request/signing-key-backup.p7m apk-download/
           sha256sum apk-download/atlas-finance-approvals.apk > apk-download/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
-        if: steps.mode.outputs.phase == 'finalize'
+        if: steps.mode.outputs.phase == 'v2'
         with:
           name: atlas-finance-approvals-apk
           path: apk-download/

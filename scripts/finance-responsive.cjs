@@ -11,7 +11,7 @@ const fs = require('node:fs');
       activePage = page;
       page.on('pageerror', error => console.error('BROWSER ERROR:', error.message));
       page.on('console', message => { if (message.type() === 'error') console.error('BROWSER CONSOLE:', message.text()); });
-      await page.goto('http://127.0.0.1:3001/secret/finance', { waitUntil: 'networkidle', timeout: 120000 });
+      await page.goto('http://localhost:3001/secret/finance', { waitUntil: 'networkidle', timeout: 120000 });
       await page.getByRole('heading', { name: 'Atlas Finance', exact: true }).waitFor();
       await page.locator('.atlas-finance[aria-busy="false"]').waitFor({ timeout: 60000 });
       await page.screenshot({ path: `finance-qa/initial-${width}.png`, fullPage: true });
