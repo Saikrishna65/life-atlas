@@ -1,10 +1,13 @@
+import {savePlaylistChange} from "../control-room/music-queue";
+import { musicSyncPaused } from "../control-room/store";
+import { isControlRestoreActive } from "../control-room/maintenance";
 /**
  * Life Atlas Music Vault - Online Cloud Synchronization Service
  * Manages dual persistence between local IndexedDB and Neon Postgres / Object Storage.
  */
 
 import { MusicTrack, MusicPlaylist } from './types';
-import { saveTrack, getTrack, getAllTracks } from './storage';
+import { saveTrack, getTrack, getAllTracks, savePlaylist, getAllPlaylists } from './storage';
 import { extractAudioDuration } from './metadataParser';
 import { canExtractOnDevice, extractAudioOnDevice } from './clientYouTube';
 
@@ -20,8 +23,10 @@ export interface CloudSyncResponse {
  */
 export async function uploadTrackToCloud(
   track: MusicTrack,
-  fileBlob?: Blob | File | null
+  fileBlob?: Blob | File | null,
+  options: {manual?:boolean} = {}
 ): Promise<{ success: boolean; audioUrl?: string; error?: string }> {
+  if(isControlRestoreActive() || (!options.manual && musicSyncPaused()))return {success:false,error:"Music sync is paused in Control Room."};
   try {
     // Use provided blob or track.audioBlob or fetch from IndexedDB
     let blobToUpload = fileBlob || track.audioBlob;
@@ -95,12 +100,14 @@ export async function uploadTrackToCloud(
       if (!response.ok) {
         const formData = new FormData();
         formData.append('metadata', JSON.stringify(metaToUpload));
-        await fetch('/api/music', { method: 'POST', body: formData });
+        const fallback=await fetch('/api/music', { method: 'POST', body: formData });
+        if(!fallback.ok||(await fallback.json()).success!==true)throw new Error('Audio uploaded, but cloud metadata could not be saved. The device copy is unchanged.');
       }
 
       const localTrack = (await getTrack(track.id)) || track;
       localTrack.audioUrl = metaToUpload.audioUrl;
       localTrack.streamUrl = metaToUpload.streamUrl;
+      localTrack.fileName = storageFilename;
       localTrack.syncedToCloud = true;
       await saveTrack(localTrack);
       window.dispatchEvent(new Event('lifeatlas_tracks_updated'));
@@ -129,6 +136,7 @@ export async function uploadTrackToCloud(
       const localTrack = (await getTrack(track.id)) || track;
       localTrack.audioUrl = updatedUrl;
       localTrack.streamUrl = updatedUrl || localTrack.streamUrl;
+      localTrack.fileName = storageFilename;
       localTrack.syncedToCloud = true;
       await saveTrack(localTrack);
       window.dispatchEvent(new Event('lifeatlas_tracks_updated'));
@@ -145,7 +153,7 @@ export async function uploadTrackToCloud(
 /**
  * Fetches all tracks and playlists stored in the online database
  */
-export async function fetchCloudTracks(): Promise<{
+export async function fetchCloudTracks(options:{strict?:boolean}={}): Promise<{
   tracks: MusicTrack[];
   playlists: MusicPlaylist[];
 }> {
@@ -156,6 +164,7 @@ export async function fetchCloudTracks(): Promise<{
     });
 
     if (!response.ok) {
+      if(options.strict)throw new Error('Cloud music connection is unavailable.');
       return { tracks: [], playlists: [] };
     }
 
@@ -203,8 +212,10 @@ export async function fetchCloudTracks(): Promise<{
 
       return { tracks: mappedTracks, playlists: mappedPlaylists };
     }
+    if(options.strict)throw new Error('Cloud music inventory is incomplete.');
     return { tracks: [], playlists: [] };
   } catch (err) {
+    if(options.strict)throw err;
     console.warn('Failed to fetch from cloud:', err);
     return { tracks: [], playlists: [] };
   }
@@ -284,9 +295,11 @@ export async function downloadTrackToLocalStorage(
  * Syncs / restores all cloud tracks that are not yet stored in local IndexedDB
  */
 export async function syncCloudToLocalStorage(
-  onTrackRestored?: (track: MusicTrack, index: number, total: number) => void
+  onTrackRestored?: (track: MusicTrack, index: number, total: number) => void,
+  options: {manual?:boolean} = {}
 ): Promise<{ added: number; total: number }> {
-  const { tracks: cloudTracks, playlists: cloudPlaylists } = await fetchCloudTracks();
+  if(isControlRestoreActive() || (!options.manual && musicSyncPaused()))throw new Error("Music sync is paused in Control Room.");
+  const { tracks: cloudTracks, playlists: cloudPlaylists } = await fetchCloudTracks({strict:true});
   const localTracks = await getAllTracks();
   const localMap = new Map(localTracks.map((t) => [t.id, t]));
 
@@ -311,6 +324,8 @@ export async function syncCloudToLocalStorage(
     }
   }
 
+  const existingPlaylists=new Set((await getAllPlaylists()).map(p=>p.id));
+  for(const playlist of cloudPlaylists)if(!existingPlaylists.has(playlist.id))await savePlaylist(playlist,false);
   return { added: addedCount, total: cloudTracks.length };
 }
 
@@ -332,19 +347,7 @@ export async function deleteTrackFromCloud(trackId: string): Promise<boolean> {
 /**
  * Syncs a playlist to the online database
  */
-export async function syncPlaylistToCloud(playlist: MusicPlaylist): Promise<boolean> {
-  try {
-    const response = await fetch('/api/music', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'SYNC_PLAYLIST', playlist }),
-    });
-    return response.ok;
-  } catch (err) {
-    console.warn('Failed to sync playlist to cloud:', err);
-    return false;
-  }
-}
+export async function syncPlaylistToCloud(playlist: MusicPlaylist): Promise<boolean> {return savePlaylistChange(playlist);}
 
 /**
  * Deletes a playlist from the online database
