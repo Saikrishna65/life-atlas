@@ -10,7 +10,7 @@ permissions:
   actions: read
 jobs:
   finance:
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
@@ -111,34 +111,11 @@ jobs:
           run-id: ${{ steps.mode.outputs.run_id }}
           github-token: ${{ github.token }}
           path: signing-request
-      - name: Inspect existing install certificate and recover matching retained debug key
-        if: steps.mode.outputs.phase == 'inspect'
-        run: |
-          openssl x509 -in signing-request/existing-cert.pem -noout -subject -dates -fingerprint -sha256
-          python - <<'PYCODE'
-          import subprocess,hashlib,os,base64
-          from pathlib import Path
-          expected='143e98e0ddb55b85c93d5ffad33644b9574f137389c2f2171cccee75976ec8cd'
-          for name in ['ANDROID_USER_HOME','ANDROID_SDK_HOME','ANDROID_PREFS_ROOT']:
-              print(name,os.environ.get(name,'unset'))
-          search=subprocess.run(['find','/home/runner/.android','/home/runner/.config','/usr/local/lib/android','-name','debug.keystore'],capture_output=True,text=True)
-          found=False
-          for item in search.stdout.splitlines():
-              key=Path(item)
-              result=subprocess.run(['keytool','-exportcert','-keystore',str(key),'-alias','androiddebugkey','-storepass','android'],capture_output=True)
-              if result.returncode: continue
-              fingerprint=hashlib.sha256(result.stdout).hexdigest()
-              print('Retained debug key:',str(key),'certificate SHA256:',fingerprint)
-              if fingerprint==expected:
-                  subprocess.run(['openssl','cms','-encrypt','-binary','-aes-256-cbc','-in',str(key),'-out','/tmp/recovered-key.p7m','-outform','DER','android/signing-backup-public.pem'],check=True)
-                  print('ATLAS_REALKEY_BACKUP='+base64.b64encode(Path('/tmp/recovered-key.p7m').read_bytes()).decode())
-                  found=True
-          print('MATCHING_RETAINED_KEY_FOUND='+str(found))
-          PYCODE
       - name: Attach JAR signature and prepare APK v2 signature
         if: steps.mode.outputs.phase == 'v1'
         run: |
           mkdir -p signing-v2
+          python -c 'import json;from pathlib import Path;data=json.load(open("android/apk-signature.json"));Path("signing-request/existing-cert.pem").write_text(data["certificate"])'
           python scripts/apk-signing.py attach-v1 --apk signing-request/unsigned-aligned.apk --request signing-request/request.json --signature android/apk-signature.json --manifest signing-request/MANIFEST.MF --sf signing-request/ATLAS.SF --output /tmp/jar-signed.apk
           sdkmanager 'build-tools;34.0.0'
           "$ANDROID_HOME/build-tools/34.0.0/zipalign" -f -p 4 /tmp/jar-signed.apk signing-v2/unsigned-aligned.apk
@@ -167,3 +144,5 @@ jobs:
           name: atlas-finance-approvals-apk
           path: apk-download/
           retention-days: 30
+
+# Signing stage: retained identity, v1
