@@ -9,6 +9,9 @@ test('expanded demo provides varied current/prior periods and leaves live accoun
  const live=new IndexedDBUnitOfWork();assert.equal((await live.accounts.getAll()).length,0);
  const database=await openDemoDatabase();const demo=new IndexedDBUnitOfWork(Promise.resolve(database));await seedFinanceDemo(demo);
  const transactions=await demo.transactions.query({});const categories=await demo.categories.getAll();
+ assert.ok(transactions.filter(t=>t.merchant==='Salary').every(t=>t.direction==='inflow'));
+ const bank=(await demo.accounts.getAll()).find(a=>a.name==='Kotak Everyday')!;
+ assert.ok(bank.currentBalancePaise>bank.openingBalancePaise,'Demo salary and spending should reconcile to a funded balance');
  assert.ok(transactions.length>400);assert.equal((await demo.accounts.getAll()).length,4);
  const month=categoryComparisons(transactions,categories,'month');
  assert.ok(month.filter(c=>c.currentPaise>0&&c.previousPaise>0).length>=8);

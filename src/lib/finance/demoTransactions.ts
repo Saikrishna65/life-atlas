@@ -14,7 +14,7 @@ export function buildDemoTransactions(accountId:string,categories:ReadonlyArray<
  ] as const;
  for(let year=now.getFullYear()-1;year<=now.getFullYear();year++)for(let month=0;month<12;month++){
    if(year===now.getFullYear()&&month>now.getMonth())continue;
-   add('Salary',year===now.getFullYear()?92000:86000,'salary',new Date(year,month,1,0,1));
+   add('Salary',year===now.getFullYear()?92000:86000,'salary',new Date(year,month,1,0,1),'inflow');
    plans.forEach(([merchant,cat,base,days],index)=>days.forEach((day,occurrence)=>{
      const variation=.82+((month*3+index*2+occurrence+(year%7))%8)*.065;
      // First-day purchases allow comparisons even at the start of a month.
