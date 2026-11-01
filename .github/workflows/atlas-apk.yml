@@ -2,6 +2,7 @@ name: Build Atlas APK
 on:
   push:
     branches: ['build/atlas-google-messages-*']
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
