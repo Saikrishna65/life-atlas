@@ -86,12 +86,7 @@ const fs = require('node:fs');
       await page.getByRole('button', { name: 'Ocean teal', exact: true }).click();
       await page.locator('.finance-theme-picker summary').click();
       console.log(`Theme viewport ${width}: all four palettes switched without overflow; selection survived reload`);
-      await page.getByRole('button', { name: 'Bank', exact: true }).click();
-      await page.getByText('Bank balance', { exact: true }).waitFor();
-      await page.getByRole('button', { name: 'Savings', exact: true }).click();
-      await page.getByText('Savings balance', { exact: true }).waitFor();
-      await page.getByRole('button', { name: 'All accounts', exact: true }).click();
-      const typography = await page.evaluate(() => ['.glass-flow small', '.af-entry-description small', '.balance-panel-content>div>p'].map(selector => {
+      const typography = await page.evaluate(() => ['.glass-flow small', '.af-entry-description small', '.glass-insight small'].map(selector => {
         const node = document.querySelector(selector); const style = getComputedStyle(node);
         const luminance = color => {const rgb=color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;});return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];};
         let parent=node, background='rgb(16, 24, 34)';
@@ -100,6 +95,9 @@ const fs = require('node:fs');
         return {selector,size:parseFloat(style.fontSize),contrast:(Math.max(fg,bg)+.05)/(Math.min(fg,bg)+.05)};
       }));
       for (const item of typography) { assert.ok(item.size >= 12, `${item.selector} is too small`); assert.ok(item.contrast >= 4.5, `${item.selector} has low contrast`); }
+      await page.locator('.glass-balance-number').waitFor();
+      assert.equal(await page.locator('.balance-panel').count(), 0, 'Restore the centered balance layout');
+      await page.locator('.af-canvas').evaluate(async node => { await Promise.all(node.getAnimations().map(animation => animation.finished.catch(() => {}))); });
       await page.evaluate(() => window.scrollTo(0,0));
       await page.screenshot({ path: `finance-qa/reference-overview-${width}.png`, fullPage: true });
       const home = (await page.screenshot({ type: 'jpeg', quality: 80 })).toString('base64');
