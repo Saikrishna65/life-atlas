@@ -266,7 +266,7 @@ export default function KotakTrackingModal({
       console.error("Recording error:", err);
       setFeedbackMessage({
         type: "error",
-        text: "Failed to commit transaction to ledger. Please check account balance or constraints.",
+        text: "Could not save this transaction. Check the details and try again.",
       });
     } finally {
       setIsRecording(false);
@@ -312,7 +312,7 @@ export default function KotakTrackingModal({
       onTransactionsUpdated();
       setFeedbackMessage({
         type: "success",
-        text: "Transaction assigned and recorded in ledger.",
+        text: "Transaction approved and saved.",
       });
     } catch (e) {
       console.error(e);
@@ -332,7 +332,7 @@ export default function KotakTrackingModal({
     onTransactionsUpdated();
     setFeedbackMessage({
       type: "info",
-      text: "Item dismissed without recording in ledger.",
+      text: "Transaction dismissed. Your balances were not changed.",
     });
   };
 
@@ -464,7 +464,7 @@ export default function KotakTrackingModal({
                   <button onClick={async () => { const granted = await trackingService.requestReviewNotifications(); setFeedbackMessage({ type: granted ? "success" : "info", text: granted ? "Review notifications are enabled. Tap an Atlas alert to approve its transaction." : "Enable Atlas notifications in Android App info to receive review alerts. Review is always available here." }); }} className="w-full rounded-xl border border-slate-200 py-3 font-semibold">Enable review notifications</button>
                   <div className="grid grid-cols-3 gap-3 text-center"><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{trackingStatus.eventsReceivedCount}</strong><span>Captured</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{trackingStatus.pendingCount}</strong><span>Pending</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{trackingStatus.duplicatesIgnoredCount}</strong><span>Duplicates skipped</span></div></div>
                   {trackingStatus.lastError && <p role="alert" className="text-amber-800">{trackingStatus.lastError}</p>}
-                  <p className="text-slate-600 leading-relaxed">Alerts are queued on this device while Finance is closed. They are recorded when you open or return to Finance. Match your Kotak account’s last four digits in Accounts. Tap an Atlas notification to open Review. Old messages and notifications with hidden content cannot be captured.</p>
+                  <p className="text-slate-600 leading-relaxed">Alerts are queued on this device while Finance is closed. Open Finance to review them. They are recorded only after you approve. Match your Kotak account’s last four digits in Accounts. Tap an Atlas notification to open Review. Old messages and notifications with hidden content cannot be captured.</p>
                   <button className="w-full rounded-xl border border-slate-200 py-3 font-semibold" onClick={async () => { try { await trackingService.drainPendingNotifications(); setTrackingStatus(await trackingService.getStatus()); loadReviewQueue(); onTransactionsUpdated(); } catch { setFeedbackMessage({ type: "error", text: "Import failed. Your pending alerts remain saved for retry." }); } }}>Import pending alerts now</button>
                 </>
               )}
@@ -855,7 +855,7 @@ export default function KotakTrackingModal({
                       <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-1">
                           <FinanceSelect
-                            aria-label="Transaction account" value={reviewAccounts[item.id] ?? item.candidateAccountIds[0] ?? ""}
+                            disabled={busyReviewId !== null} aria-label="Transaction account" value={reviewAccounts[item.id] ?? item.candidateAccountIds[0] ?? ""}
                             onChange={(e) =>
                               setReviewAccounts((prev) => ({ ...prev, [item.id]: e.target.value }))
                             }
@@ -870,7 +870,7 @@ export default function KotakTrackingModal({
                           </FinanceSelect>
 
                           <FinanceSelect
-                            aria-label="Transaction category" value={reviewCategories[item.id] ?? item.suggestedCategoryId ?? ""}
+                            disabled={busyReviewId !== null} aria-label="Transaction category" value={reviewCategories[item.id] ?? item.suggestedCategoryId ?? ""}
                             onChange={(e) =>
                               setReviewCategories((prev) => ({ ...prev, [item.id]: e.target.value }))
                             }
