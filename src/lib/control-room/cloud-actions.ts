@@ -2,7 +2,7 @@ import type {Files} from 'files-sdk';
 import {cloudKey,newTrashKey,originalTrashKey,TRASH_PREFIX,ControlInputError} from './cloud-policy';
 interface Dependencies {files:Pick<Files,'head'|'url'|'copy'|'delete'|'exists'>;referencesAvailable:()=>Promise<unknown>;rewrite:(key:string,next:string|null)=>Promise<unknown>;id:()=>string;}
 export async function executeCloudAction(body:Record<string,any>,deps:Dependencies){const {files}=deps,key=cloudKey(body.key),current=await files.head(key);
- if(body.action==='url')return {url:await files.url(key,{expiresIn:300,responseContentDisposition:body.download?'attachment':undefined})};
+ if(body.action==='url')return {url:await files.url(key,{expiresIn:300,responseContentDisposition:body.download?'attachment':undefined}),bytes:current.size,etag:current.etag};
  if(!body.etag||current.etag!==body.etag)throw new ControlInputError('This file changed. Refresh before trying again.',409);
  const copy=async(target:string)=>{if(await files.exists(target))throw new ControlInputError('A file already exists at the destination. Choose another path.');await files.copy(key,target);};
  const removeSource=async()=>{if((await files.head(key)).etag!==current.etag)throw new ControlInputError('This file changed during the operation. Refresh to review its copies.',409);await files.delete(key);};
