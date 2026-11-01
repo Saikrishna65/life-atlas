@@ -407,11 +407,10 @@ export default function FinanceDashboardPage() {
         <header className="glass-masthead">
           <Link href="/secret" className="glass-back" aria-label="Return to Life Atlas"><ArrowLeft size={20}/></Link>
           <div><h1>Atlas Finance</h1></div>
-          <a className="glass-demo" href={isDemo ? "?" : "?demo=1"}>{isDemo ? "Exit demo" : "Try demo"}<ArrowUpRight size={13}/></a>
+          <FinanceThemePicker value={theme} onChange={setTheme}/>
           <button className="glass-bell" aria-label={`${pendingFinanceCount} transactions awaiting approval`} onClick={()=>setIsKotakModalOpen(true)}><BellRing size={18}/>{pendingFinanceCount>0 && <b>{pendingFinanceCount}</b>}</button>
         </header>
-        <FinanceThemePicker value={theme} onChange={setTheme}/>
-        {isDemo && <div className="glass-demo-note"><span>Demo workspace</span><small>Sample data only</small></div>}
+        <div className="glass-demo-note"><span>{isDemo ? "Demo workspace" : "Personal finance"}</span><a href={isDemo ? "?" : "?demo=1"}>{isDemo ? "Exit demo" : "Try demo"}<ArrowUpRight size={13}/></a></div>
         <nav role="tablist" aria-label="Finance sections" className="af-navigation">{tabs.map(tab=><button key={tab.id} role="tab" aria-selected={activeTab===tab.id} onClick={()=>{setActiveTab(tab.id);window.scrollTo({top:0});}}><tab.icon size={19}/><span>{tab.label}</span></button>)}</nav>
         <main className={`af-canvas glass-view-${activeTab.toLowerCase()}`} key={activeTab}>
           {activeTab === "OVERVIEW" && <>
