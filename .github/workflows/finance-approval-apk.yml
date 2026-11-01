@@ -39,8 +39,8 @@ jobs:
       - uses: actions/download-artifact@v4
         if: steps.mode.outputs.phase == 'build'
         with:
-          name: atlas-apk-download
-          run-id: 41263195935
+          name: atlas-finance-approvals-apk
+          run-id: 41269864014
           github-token: ${{ github.token }}
           path: previous-apk
       - name: Preserve encrypted signing backup
@@ -81,7 +81,7 @@ jobs:
         if: steps.mode.outputs.phase == 'build'
         run: |
           mkdir -p signing-request
-          keytool -printcert -jarfile previous-apk/atlas-finance-google-messages.apk -rfc > /tmp/existing-cert.pem
+          keytool -printcert -jarfile "$(find previous-apk -name '*.apk' -print -quit)" -rfc > /tmp/existing-cert.pem
           python - <<'PY'
           from zipfile import ZipFile, ZIP_DEFLATED
           with ZipFile('android/app/build/outputs/apk/debug/app-debug.apk') as source, ZipFile('/tmp/unsigned.apk','w',ZIP_DEFLATED) as target:
@@ -145,6 +145,4 @@ jobs:
           path: apk-download/
           retention-days: 30
 
-# Signing stage: retained identity, v1
 
-# Detached signing stage: v2

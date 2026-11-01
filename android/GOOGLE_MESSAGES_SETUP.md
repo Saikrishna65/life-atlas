@@ -32,3 +32,9 @@ The updated app can post an Atlas notification for each captured bank alert. Gra
 ## Updating an installed APK
 
 Keep the established signing identity for updates. The approval-update workflow prepares unsigned APK contents in CI and uses detached signatures from the retained key in the private workspace. It verifies both Android JAR (v1) and APK (v2) signatures before publishing the final APK. Do not distribute the temporary Gradle debug APK, which uses a temporary build key. Keep the encrypted signing backup and the workspace’s private recovery key.
+
+### Signing correction for the first Google Messages APK
+
+The first APK from run 41263195935 was signed by an automatically generated debug certificate (SHA-256 143e98e0ddb55b85c93d5ffad33644b9574f137389c2f2171cccee75976ec8cd). Its backup contained a different key, so that original install cannot be updated in place. Preserve any data in it before a reinstall.
+
+The fresh-install approval APK from run 41269864014 uses the retained and correctly backed-up certificate a9c5704bcf104d2fff905b1dd56b80f5e3a643c55f52b96292615de62626bd6d. Future updates must reuse this retained identity; do not generate another debug signing key. The workflow now uses this verified artifact and backup as its signing reference.
