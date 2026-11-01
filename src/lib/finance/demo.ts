@@ -1,10 +1,11 @@
-import { IndexedDBUnitOfWork, AccountService, TransactionService, BudgetService, SavingsGoalService } from './index';
+import {buildDemoTransactions} from "./demoTransactions";
+import { IndexedDBUnitOfWork, AccountService, BudgetService, SavingsGoalService } from './index';
 import { FINANCE_DB_VERSION, migrateToV1, migrateToV2, migrateToV3, migrateToV4 } from './storage/indexeddb/migrations';
 import type { IKotakNativePlugin } from './application/notificationTrackingService';
 
 export function openDemoDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('life_atlas_finance_demo_v1', FINANCE_DB_VERSION);
+    const request = indexedDB.open('life_atlas_finance_demo_v2', FINANCE_DB_VERSION);
     request.onupgradeneeded = e => {
       const db = request.result, tx = request.transaction!;
       if (e.oldVersion < 1) migrateToV1(db, tx);
@@ -23,18 +24,16 @@ export function seedFinanceDemo(uow: IndexedDBUnitOfWork) {
     await uow.categories.seedDefaults();
     const cats = await uow.categories.getAll();
     const category = (name: string) => cats.find(c => c.name.toLowerCase().includes(name.toLowerCase()))?.id;
-    const as = new AccountService(uow), ts = new TransactionService(uow);
+    const as = new AccountService(uow);
     const now = new Date();
     const date = (days: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - days, 12).toISOString();
-    const bank = await as.createAccount({ name:'Kotak Everyday',accountType:'bank',openingBalancePaise:8500000,openingBalanceDate:date(100),metadata:{institutionName:'Kotak',accountNumberLast4:'1234'}});
-    await as.createAccount({name:'Emergency savings',accountType:'savings',openingBalancePaise:18000000,openingBalanceDate:date(100)});
-    await as.createAccount({name:'Travel credit card',accountType:'credit',openingBalancePaise:-1250000,openingBalanceDate:date(100)});
-    await as.createAccount({name:'Pocket cash',accountType:'cash',openingBalancePaise:350000,openingBalanceDate:date(100)});
-    for (let month = 0; month < 3; month++) {
-      for (const [merchant, amount, cat, day] of [['Salary',92000,'salary',0],['Apartment rent',18500,'housing',1],['BigBasket',2450,'grocer',2],['Swiggy',640,'food',3],['Uber',380,'transport',4],['Netflix',649,'entertain',5],['Electricity',1850,'utilit',6],['Amazon',3200,'shopping',7],['Pharmacy',750,'health',8]] as const) {
-        await ts.recordTransaction({accountId:bank.id,description:merchant,merchant,amountPaise:amount*100,direction:merchant==='Salary'?'inflow':'outflow',categoryId:category(cat),occurredAt:month === 0 ? new Date(now.getTime()-day*600000).toISOString() : date(month*30+day),source:'manual',reviewRequired:false});
-      }
-    }
+    const openingDate=new Date(now.getFullYear()-1,0,0,12).toISOString();
+    const bank = await as.createAccount({ name:'Kotak Everyday',accountType:'bank',openingBalancePaise:8500000,openingBalanceDate:openingDate,metadata:{institutionName:'Kotak',accountNumberLast4:'1234'}});
+    await as.createAccount({name:'Emergency savings',accountType:'savings',openingBalancePaise:18000000,openingBalanceDate:openingDate});
+    await as.createAccount({name:'Travel credit card',accountType:'credit',openingBalancePaise:-1250000,openingBalanceDate:openingDate});
+    await as.createAccount({name:'Pocket cash',accountType:'cash',openingBalancePaise:350000,openingBalanceDate:openingDate});
+    await uow.transactions.saveBatch(buildDemoTransactions(bank.id,cats,now));
+    await as.recalculateAccountBalance(bank.id);
     const bs = new BudgetService(uow);
     for (const [name,amount] of [['food',6000],['grocer',8000],['transport',3500],['shopping',5000],['entertain',2000]] as const) { const id=category(name);if(id) await bs.setCategoryMonthlyBudget(id,amount*100); }
     const gs = new SavingsGoalService(uow);
