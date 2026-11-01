@@ -1,5 +1,7 @@
 "use client";
 
+import FinanceSelect from "@/components/finance/FinanceSelect";
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   X,
@@ -338,7 +340,7 @@ export default function CategorizationReviewModal({
 
                           {/* Quick Category Picker */}
                           <div className="flex items-center gap-1.5">
-                            <select
+                            <FinanceSelect
                               defaultValue=""
                               onChange={(e) => {
                                 const selectedCat = e.target.value;
@@ -360,7 +362,7 @@ export default function CategorizationReviewModal({
                                     {cat.name}
                                   </option>
                                 ))}
-                            </select>
+                            </FinanceSelect>
                           </div>
                         </div>
                       </div>
@@ -420,7 +422,7 @@ export default function CategorizationReviewModal({
                     </div>
                     <div>
                       <label className="text-[11px] text-muted-foreground block mb-1">Target Category *</label>
-                      <select
+                      <FinanceSelect
                         value={newRuleCategoryId}
                         onChange={(e) => setNewRuleCategoryId(e.target.value)}
                         className="w-full px-2.5 py-1.5 text-xs bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -430,11 +432,11 @@ export default function CategorizationReviewModal({
                             {c.name} ({c.type})
                           </option>
                         ))}
-                      </select>
+                      </FinanceSelect>
                     </div>
                     <div>
                       <label className="text-[11px] text-muted-foreground block mb-1">Match Type</label>
-                      <select
+                      <FinanceSelect
                         value={newRuleMatchType}
                         onChange={(e) => setNewRuleMatchType(e.target.value as RuleMatchType)}
                         className="w-full px-2.5 py-1.5 text-xs bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -443,7 +445,7 @@ export default function CategorizationReviewModal({
                         <option value="exact">Exact Merchant Match</option>
                         <option value="starts_with">Starts With</option>
                         <option value="regex">Regular Expression</option>
-                      </select>
+                      </FinanceSelect>
                     </div>
                   </div>
                   <div className="flex justify-end pt-2">

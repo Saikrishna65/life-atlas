@@ -105,7 +105,12 @@ describe("Life Atlas Finance: Kotak Notification Tracking Service", () => {
     assert.strictEqual(result.processed, 1, "Only one unique transaction should be recorded");
     assert.strictEqual(result.duplicates, 2, "Two duplicate events should be suppressed");
 
-    // Verify ledger has exactly 1 transaction
+    assert.strictEqual((await uow.transactions.query({})).length, 0, "SMS must wait for approval");
+    const pending = trackingService.getReviewQueue();
+    assert.strictEqual(pending.length, 1);
+    assert.strictEqual(pending[0].suggestedCategoryId, "cat_food_dining");
+    await trackingService.resolveReviewItem(pending[0].id, kotakAccountId);
+    // Verify ledger has exactly 1 approved transaction
     const txns = await uow.transactions.query({ accountId: kotakAccountId });
     assert.strictEqual(txns.length, 1);
     assert.strictEqual(txns[0].amountPaise, rupeesToPaise(450));
@@ -144,6 +149,8 @@ describe("Life Atlas Finance: Kotak Notification Tracking Service", () => {
     assert.strictEqual(result.processed, 2);
     assert.strictEqual(result.duplicates, 0);
 
+    assert.strictEqual((await uow.transactions.query({})).length, 0);
+    for (const item of trackingService.getReviewQueue()) await trackingService.resolveReviewItem(item.id, kotakAccountId);
     const txns = await uow.transactions.query({ accountId: kotakAccountId });
     assert.strictEqual(txns.length, 2);
     const sortedAmounts = txns.map((t) => t.amountPaise).sort((a, b) => a - b);
@@ -165,7 +172,7 @@ describe("Life Atlas Finance: Kotak Notification Tracking Service", () => {
     };
 
     const result = await trackingService.processRawEvents([event]);
-    assert.strictEqual(result.processed, 0, "Should not record in ledger when no account matches");
+    assert.strictEqual(result.processed, 1, "Stage the unmatched alert for approval");
 
     // Review queue should contain 1 pending item
     const reviewItems = trackingService.getReviewQueue();
@@ -215,7 +222,7 @@ describe("Life Atlas Finance: Kotak Notification Tracking Service", () => {
     const items = trackingService.getReviewQueue();
     assert.strictEqual(items.length, 1);
 
-    trackingService.dismissReviewItem(items[0].id);
+    await trackingService.dismissReviewItem(items[0].id);
     assert.strictEqual(trackingService.getReviewQueue().length, 0);
 
     const allTxns = await uow.transactions.query({});

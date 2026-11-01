@@ -1,5 +1,7 @@
 "use client";
 
+import FinanceSelect from "@/components/finance/FinanceSelect";
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   X,
@@ -15,6 +17,7 @@ import {
   Ban,
   Info,
   MessageSquare,
+  Tag,
 } from "lucide-react";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 import {
@@ -70,6 +73,7 @@ export default function KotakTrackingModal({
   // Legacy or staged review items
   const [reviewItems, setReviewItems] = useState<NotificationReviewItem[]>([]);
   const [reviewAccounts, setReviewAccounts] = useState<Record<string, string>>({});
+  const [busyReviewId, setBusyReviewId] = useState<string | null>(null);
   const [reviewCategories, setReviewCategories] = useState<Record<string, string>>({});
 
   const loadReviewQueue = useCallback(() => {
@@ -82,9 +86,13 @@ export default function KotakTrackingModal({
 
   useEffect(() => {
     if (isOpen) {
+      trackingService.drainPendingNotifications().then(() => {
+        loadReviewQueue();
+        if (trackingService.getReviewQueue().length) setActiveTab("REVIEW");
+      }).catch(console.warn);
       loadReviewQueue();
     }
-  }, [isOpen, loadReviewQueue]);
+  }, [isOpen, loadReviewQueue, trackingService]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -104,6 +112,7 @@ export default function KotakTrackingModal({
   const changeTracking = async (enabled: boolean) => {
     setIsChangingTracking(true);
     try {
+      if (enabled) await trackingService.requestReviewNotifications();
       await trackingService.setTrackingEnabled(enabled);
       if (enabled && !trackingStatus?.permissionGranted) await trackingService.requestNotificationAccess();
       setTrackingStatus(await trackingService.getStatus());
@@ -274,7 +283,8 @@ export default function KotakTrackingModal({
 
   // Review Queue Handlers
   const handleResolveReviewItem = async (itemId: string) => {
-    const accountId = reviewAccounts[itemId] || accounts[0]?.id;
+    const item = reviewItems.find((entry) => entry.id === itemId);
+    const accountId = reviewAccounts[itemId] || item?.candidateAccountIds[0];
     if (!accountId) {
       setFeedbackMessage({
         type: "error",
@@ -282,7 +292,9 @@ export default function KotakTrackingModal({
       });
       return;
     }
-    const categoryId = reviewCategories[itemId];
+    const categoryId = reviewCategories[itemId] || item?.suggestedCategoryId;
+    if (!categoryId) { setFeedbackMessage({ type: "error", text: "Choose a category before approving." }); return; }
+    setBusyReviewId(itemId);
 
     try {
       await trackingService.resolveReviewItem(itemId, accountId, categoryId);
@@ -296,9 +308,9 @@ export default function KotakTrackingModal({
       console.error(e);
       setFeedbackMessage({
         type: "error",
-        text: "Failed to record reviewed transaction.",
+        text: "Failed to record reviewed transaction. Your approval stays queued for retry.",
       });
-    }
+    } finally { setBusyReviewId(null); }
   };
 
   const handleDismissReviewItem = async (itemId: string) => {
@@ -307,6 +319,7 @@ export default function KotakTrackingModal({
       return;
     }
     loadReviewQueue();
+    onTransactionsUpdated();
     setFeedbackMessage({
       type: "info",
       text: "Item dismissed without recording in ledger.",
@@ -379,7 +392,7 @@ export default function KotakTrackingModal({
           >
             Privacy
           </button>
-          {reviewItems.length > 0 && (
+          {(
             <button
               onClick={() => setActiveTab("REVIEW")}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
@@ -426,7 +439,7 @@ export default function KotakTrackingModal({
         <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
           {activeTab === "AUTOMATIC" && (
             <div className="space-y-5">
-              <div className="message-instructions"><MessageSquare size={24} /><div><h3>Your bank alerts, organised.</h3><p>Allow Atlas to capture new Kotak transaction notifications from Google Messages. Clear transactions go into the matching account; uncertain details stay in Review.</p></div></div>
+              <div className="message-instructions"><MessageSquare size={24} /><div><h3>Your bank alerts, organised.</h3><p>Allow Atlas to capture new Kotak transaction notifications from Google Messages. Every transaction stays in Review. Check the suggested category, change it if needed, and approve before it affects your balances.</p></div></div>
               {!trackingStatus ? <p role="status">Checking device support…</p> : !trackingStatus.isNativeAndroid ? (
                 <div className="p-5 rounded-xl border border-slate-200 space-y-2"><h3>Available in the updated Android app</h3><p className="text-slate-600 leading-relaxed">Automatic capture needs the Atlas Android app with the bank-notification plugin. In a browser or an older app version, use the Message tab to paste an alert.</p></div>
               ) : (
@@ -438,9 +451,10 @@ export default function KotakTrackingModal({
                     {trackingStatus.enabled && !trackingStatus.permissionGranted && <button onClick={() => changeTracking(true)} disabled={isChangingTracking} className="w-full rounded-xl border border-emerald-200 text-emerald-800 px-4 py-3 font-semibold">Open Android notification access</button>}
                     <p className="text-slate-500 leading-relaxed">In Android settings, allow “Atlas bank alerts (Google Messages)”. Keep transaction notification previews enabled in Google Messages. On some Android versions, sideloaded apps need “Allow restricted settings” in App info first.</p>
                   </div>
+                  <button onClick={async () => { const granted = await trackingService.requestReviewNotifications(); setFeedbackMessage({ type: granted ? "success" : "info", text: granted ? "Review notifications are enabled. Tap an Atlas alert to approve its transaction." : "Enable Atlas notifications in Android App info to receive review alerts. Review is always available here." }); }} className="w-full rounded-xl border border-slate-200 py-3 font-semibold">Enable review notifications</button>
                   <div className="grid grid-cols-3 gap-3 text-center"><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{trackingStatus.eventsReceivedCount}</strong><span>Captured</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{trackingStatus.pendingCount}</strong><span>Pending</span></div><div className="rounded-xl bg-slate-50 p-3"><strong className="block text-xl">{trackingStatus.duplicatesIgnoredCount}</strong><span>Duplicates skipped</span></div></div>
                   {trackingStatus.lastError && <p role="alert" className="text-amber-800">{trackingStatus.lastError}</p>}
-                  <p className="text-slate-600 leading-relaxed">Alerts are queued on this device while Finance is closed. They are recorded when you open or return to Finance. Match your Kotak account’s last four digits in Accounts. Old messages and notifications with hidden content cannot be imported automatically.</p>
+                  <p className="text-slate-600 leading-relaxed">Alerts are queued on this device while Finance is closed. They are recorded when you open or return to Finance. Match your Kotak account’s last four digits in Accounts. Tap an Atlas notification to open Review. Old messages and notifications with hidden content cannot be captured.</p>
                   <button className="w-full rounded-xl border border-slate-200 py-3 font-semibold" onClick={async () => { try { await trackingService.drainPendingNotifications(); setTrackingStatus(await trackingService.getStatus()); loadReviewQueue(); onTransactionsUpdated(); } catch { setFeedbackMessage({ type: "error", text: "Import failed. Your pending alerts remain saved for retry." }); } }}>Import pending alerts now</button>
                 </>
               )}
@@ -615,7 +629,7 @@ export default function KotakTrackingModal({
                           <span className="text-[10px] text-emerald-700 font-mono font-semibold">Matched by mask</span>
                         )}
                       </label>
-                      <select
+                      <FinanceSelect
                         value={selectedAccountId}
                         onChange={(e) => setSelectedAccountId(e.target.value)}
                         className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
@@ -626,7 +640,7 @@ export default function KotakTrackingModal({
                             {acc.name} ({acc.accountType}) — {formatPaise(acc.currentBalancePaise)}
                           </option>
                         ))}
-                      </select>
+                      </FinanceSelect>
                     </div>
 
                     <div className="space-y-1">
@@ -636,7 +650,7 @@ export default function KotakTrackingModal({
                           <span className="text-[10px] text-emerald-700 font-mono font-semibold">Smart suggested</span>
                         )}
                       </label>
-                      <select
+                      <FinanceSelect
                         value={selectedCategoryId}
                         onChange={(e) => setSelectedCategoryId(e.target.value)}
                         className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
@@ -649,7 +663,7 @@ export default function KotakTrackingModal({
                               {cat.name}
                             </option>
                           ))}
-                      </select>
+                      </FinanceSelect>
                     </div>
                   </div>
 
@@ -762,21 +776,23 @@ export default function KotakTrackingModal({
           )}
 
           {/* TAB 4: REVIEW QUEUE (If items exist) */}
+          {activeTab === "REVIEW" && reviewItems.length === 0 && <div className="finance-review-empty"><CheckCircle2 size={40} /><h3>You’re all caught up.</h3><p>New bank messages will appear here for your approval.</p></div>}
           {activeTab === "REVIEW" && reviewItems.length > 0 && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-900">Pending Review Queue</span>
-                <span className="text-[10px] text-slate-500">Assign accounts or dismiss</span>
+                <span className="text-[10px] text-slate-500">Nothing is recorded until you approve</span>
               </div>
 
               <div className="space-y-2.5">
                 {reviewItems.map((item) => {
                   const txn = item.parsedTransaction;
                   const itemIsOutflow = txn.direction === "outflow";
+                  const suggested = categories.find((category) => category.id === item.suggestedCategoryId);
                   return (
                     <div
                       key={item.id}
-                      className="p-3.5 bg-slate-50 border border-amber-200 rounded-xl space-y-3"
+                      className="finance-review-card p-3.5 bg-slate-50 border border-amber-200 rounded-xl space-y-3"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-2.5">
@@ -822,11 +838,12 @@ export default function KotakTrackingModal({
                         </div>
                       </div>
 
+                      <div className="finance-category-suggestion"><Tag size={16} /><div><span>Suggested category</span><strong>{suggested?.name || "Choose a category"}</strong><p>{item.categoryExplanation || "Check the suggestion before approving."}</p></div></div>
                       {/* Assignment Row */}
                       <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-1">
-                          <select
-                            value={reviewAccounts[item.id] || ""}
+                          <FinanceSelect
+                            aria-label="Transaction account" value={reviewAccounts[item.id] ?? item.candidateAccountIds[0] ?? ""}
                             onChange={(e) =>
                               setReviewAccounts((prev) => ({ ...prev, [item.id]: e.target.value }))
                             }
@@ -838,16 +855,16 @@ export default function KotakTrackingModal({
                                 {acc.name} ({acc.accountType})
                               </option>
                             ))}
-                          </select>
+                          </FinanceSelect>
 
-                          <select
-                            value={reviewCategories[item.id] || ""}
+                          <FinanceSelect
+                            aria-label="Transaction category" value={reviewCategories[item.id] ?? item.suggestedCategoryId ?? ""}
                             onChange={(e) =>
                               setReviewCategories((prev) => ({ ...prev, [item.id]: e.target.value }))
                             }
                             className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[11px] text-slate-900 flex-1 focus:outline-none focus:border-emerald-600"
                           >
-                            <option value="">Optional Category...</option>
+                            <option value="">Choose Category...</option>
                             {categories
                               .filter((c) => (itemIsOutflow ? c.type === "expense" : c.type === "income"))
                               .map((cat) => (
@@ -855,18 +872,20 @@ export default function KotakTrackingModal({
                                   {cat.name}
                                 </option>
                               ))}
-                          </select>
+                          </FinanceSelect>
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
+                            disabled={busyReviewId !== null || !(reviewAccounts[item.id] || item.candidateAccountIds[0]) || !(reviewCategories[item.id] || item.suggestedCategoryId)}
                             onClick={() => handleResolveReviewItem(item.id)}
                             className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                           >
                             <Check className="w-3.5 h-3.5" />
-                            <span>Approve</span>
+                            <span>{busyReviewId === item.id ? "Saving…" : "Approve transaction"}</span>
                           </button>
                           <button
+                            disabled={busyReviewId !== null}
                             onClick={() => handleDismissReviewItem(item.id)}
                             className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-[11px] transition-all cursor-pointer flex items-center gap-1"
                           >

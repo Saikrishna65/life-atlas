@@ -57,7 +57,10 @@ public class BankNotificationListener extends NotificationListenerService {
         JSONObject event = new JSONObject().put("id", id.toString()).put("packageName", sbn.getPackageName())
             .put("sender", sender).put("title", sender).put("text", text).put("postTime", timestamp)
             .put("postTimeIso", iso.format(new Date(timestamp))).put("notificationKey", sbn.getKey());
-        if (BankNotificationStore.enqueue(this, event)) KotakNotificationTrackerPlugin.signalNotification();
+        if (BankNotificationStore.enqueue(this, event)) {
+            FinanceReviewNotifications.show(this, event);
+            KotakNotificationTrackerPlugin.signalNotification();
+        }
     }
     private static String value(CharSequence text) { return text == null ? "" : text.toString(); }
 }

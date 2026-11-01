@@ -1,5 +1,7 @@
 "use client";
 
+import FinanceSelect from "@/components/finance/FinanceSelect";
+
 import React, { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { ArrowLeftRight, Check, AlertCircle, ArrowRight } from "lucide-react";
@@ -131,7 +133,7 @@ export default function TransferModal({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-xs font-sans font-medium text-muted-foreground">From (Source)</label>
-            <select
+            <FinanceSelect
               value={sourceAccountId}
               onChange={(e) => setSourceAccountId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
@@ -141,12 +143,12 @@ export default function TransferModal({
                   {a.name} ({a.accountType})
                 </option>
               ))}
-            </select>
+            </FinanceSelect>
           </div>
 
           <div className="space-y-1">
             <label className="text-xs font-sans font-medium text-muted-foreground">To (Destination)</label>
-            <select
+            <FinanceSelect
               value={destinationAccountId}
               onChange={(e) => setDestinationAccountId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
@@ -156,7 +158,7 @@ export default function TransferModal({
                   {a.name} ({a.accountType})
                 </option>
               ))}
-            </select>
+            </FinanceSelect>
           </div>
         </div>
 

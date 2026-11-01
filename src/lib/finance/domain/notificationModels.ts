@@ -52,6 +52,7 @@ export interface NotificationReviewItem {
   parsedTransaction: ParsedNotificationTransaction;
   candidateAccountIds: ID[];
   suggestedCategoryId?: ID;
+  categoryExplanation?: string;
   reason: string;
   createdAt: ISODateString;
   status: "pending" | "approved" | "dismissed";

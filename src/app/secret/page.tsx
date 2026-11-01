@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, ArrowUpRight, Compass, Music, Wallet } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
+import { usePendingFinanceCount } from "@/lib/finance/usePendingFinanceCount";
 import MusicDashboardWidget from "@/components/music/MusicDashboardWidget";
 
 export default function SecretDashboard() {
   const router = useRouter();
+  const pendingFinance = usePendingFinanceCount();
   const [isNative, setIsNative] = useState(false);
 
   useEffect(() => {
@@ -104,7 +106,7 @@ export default function SecretDashboard() {
 
         {/* Card 3: Life Atlas Finance (Local-First Offline Financial Ledger) */}
         <Link
-          href="/secret/finance"
+          href={pendingFinance ? "/secret/finance?review=1" : "/secret/finance"}
           className="group block relative rounded-2xl border border-emerald-500/20 bg-surface hover:bg-surface-hover/80 hover:border-emerald-400/40 p-6 sm:p-7 transition-all duration-300 shadow-soft overflow-hidden active:scale-[0.99] ring-1 ring-emerald-400/10"
         >
           <div
@@ -120,7 +122,7 @@ export default function SecretDashboard() {
 
               <div className="flex items-center gap-2">
                 <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-semibold">
-                  Offline Ledger
+                  {pendingFinance ? `${pendingFinance} awaiting approval` : "Spending & savings"}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs font-sans tracking-wider uppercase text-emerald-400 font-semibold group-hover:text-emerald-300 transition-colors pt-1">
                   <span>Enter Finance</span>
@@ -131,10 +133,10 @@ export default function SecretDashboard() {
 
             <div className="space-y-1.5">
               <h2 className="font-display text-2xl sm:text-3xl text-foreground group-hover:text-emerald-400 transition-colors font-normal tracking-tight">
-                Life Atlas Finance
+                Life Atlas Finance {pendingFinance > 0 && <span aria-live="polite" aria-label={`${pendingFinance} transactions awaiting approval`} className="inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-full bg-emerald-500 text-white text-sm font-sans font-bold align-middle">{pendingFinance}</span>}
               </h2>
               <p className="font-body text-muted-foreground text-xs sm:text-sm leading-relaxed max-w-lg">
-                Your private, local-first financial ledger. Multi-account tracking, deterministic integer paise arithmetic, double-entry transfer invariants, and secure offline storage.
+                Your spending, accounts, and savings in one place. Review bank messages and approve transactions before they affect your balance.
               </p>
             </div>
           </div>

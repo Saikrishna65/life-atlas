@@ -31,15 +31,24 @@ describe("Google Messages automatic imports", () => {
   beforeEach(async () => {
     await deleteFinanceDB();
     uow = new IndexedDBUnitOfWork();
+    await uow.categories.seedDefaults();
+    await uow.categorizationRules.seedDefaults();
     transactions = new TransactionService(uow);
     categories = new CategorizationService(uow);
     const account = await new AccountService(uow).createAccount({ name: "Kotak", accountType: "bank", currency: "INR", openingBalancePaise: 0, metadata: { institutionName: "Kotak", accountNumberLast4: "1234" } });
     accountId = account.id;
   });
-  test("concurrent queue drains produce one ledger entry", async () => {
+  test("concurrent queue drains stage one suggested transaction without touching the ledger", async () => {
     const { plugin, state } = nativeQueue([alert()]);
     const service = new NotificationTrackingService(uow, transactions, categories, plugin);
     await Promise.all([service.drainPendingNotifications(), service.drainPendingNotifications()]);
+    assert.equal((await uow.transactions.query({})).length, 0);
+    assert.equal(state.events.length, 1);
+    const items = service.getReviewQueue();
+    assert.equal(items.length, 1);
+    assert.equal(items[0].suggestedCategoryId, "cat_food_dining");
+    assert.deepEqual(items[0].candidateAccountIds, [accountId]);
+    await Promise.all([service.resolveReviewItem(items[0].id, accountId), service.resolveReviewItem(items[0].id, accountId)]);
     assert.equal((await uow.transactions.query({})).length, 1);
     assert.equal(state.events.length, 0);
   });
@@ -49,10 +58,12 @@ describe("Google Messages automatic imports", () => {
     transactions.recordTransaction = async () => { throw new Error("Simulated storage failure"); };
     const service = new NotificationTrackingService(uow, transactions, categories, plugin);
     await service.drainPendingNotifications();
+    const item = service.getReviewQueue()[0];
+    await assert.rejects(service.resolveReviewItem(item.id, accountId), /Simulated storage failure/);
     assert.equal(state.events.length, 1);
     assert.deepEqual(state.acknowledgements, []);
     transactions.recordTransaction = original;
-    await service.drainPendingNotifications();
+    await service.resolveReviewItem(item.id, accountId);
     assert.equal(state.events.length, 0);
     assert.equal((await uow.transactions.query({})).length, 1);
   });
@@ -73,8 +84,30 @@ describe("Google Messages automatic imports", () => {
   });
   test("different references at the same merchant and amount remain separate", async () => {
     const { plugin } = nativeQueue([alert(), alert("two", "222222222222")]);
-    await new NotificationTrackingService(uow, transactions, categories, plugin).drainPendingNotifications();
+    const service = new NotificationTrackingService(uow, transactions, categories, plugin);
+    await service.drainPendingNotifications();
+    assert.equal(service.getReviewQueue().length, 2);
+    for (const item of service.getReviewQueue()) await service.resolveReviewItem(item.id, accountId);
     assert.equal((await uow.transactions.query({})).length, 2);
+  });
+  test("user can correct the suggested category before approval", async () => {
+    const { plugin } = nativeQueue([alert()]);
+    const service = new NotificationTrackingService(uow, transactions, categories, plugin);
+    await service.drainPendingNotifications();
+    const item = service.getReviewQueue()[0];
+    assert.equal(item.suggestedCategoryId, "cat_food_dining");
+    await service.resolveReviewItem(item.id, accountId, "cat_shopping");
+    const rows = await uow.transactions.query({});
+    assert.equal(rows[0].categoryId, "cat_shopping");
+  });
+  test("matching accounts also remain queued across recreation until approved", async () => {
+    const { plugin, state } = nativeQueue([alert()]);
+    await new NotificationTrackingService(uow, transactions, categories, plugin).drainPendingNotifications();
+    const reopened = new NotificationTrackingService(uow, transactions, categories, plugin);
+    await reopened.drainPendingNotifications();
+    assert.equal(state.events.length, 1);
+    assert.equal(reopened.getReviewQueue().length, 1);
+    assert.equal((await uow.transactions.query({})).length, 0);
   });
   test("dismissal acknowledges unmatched alert without creating a transaction", async () => {
     const { plugin, state } = nativeQueue([alert("unknown", "111111111111", "9999")]);

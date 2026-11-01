@@ -1,0 +1,123 @@
+name: Build Finance approval update
+on:
+  push:
+    branches: ['build/atlas-finance-approvals-*']
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+  actions: read
+jobs:
+  finance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - id: mode
+        run: |
+          if [ -f android/apk-signature.json ]; then
+            echo 'phase=finalize' >> "$GITHUB_OUTPUT"
+            echo "run_id=$(python -c 'import json;print(json.load(open("android/apk-signature.json"))["run_id"])')" >> "$GITHUB_OUTPUT"
+          else
+            echo 'phase=build' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.mode.outputs.phase == 'build'
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: actions/download-artifact@v4
+        if: steps.mode.outputs.phase == 'build'
+        with:
+          name: atlas-apk-download
+          run-id: 41263195935
+          github-token: ${{ github.token }}
+          path: previous-apk
+      - name: Install and verify Finance
+        if: steps.mode.outputs.phase == 'build'
+        run: |
+          npm ci
+          npx prisma generate
+          npx tsc --noEmit
+          for file in tests/finance/*.test.ts; do node --import tsx "$file"; done
+      - name: Test responsive Finance screens
+        if: steps.mode.outputs.phase == 'build'
+        env:
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install chromium --with-deps
+          npm run dev > /tmp/next-finance.log 2>&1 &
+          for attempt in $(seq 1 60); do if curl -sf http://127.0.0.1:3001/secret/finance > /dev/null; then break; fi; sleep 2; done
+          node scripts/finance-responsive.cjs
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.mode.outputs.phase == 'build'
+        with:
+          name: finance-responsive-screenshots
+          path: finance-qa/
+      - name: Build native approval notifications
+        if: steps.mode.outputs.phase == 'build'
+        run: |
+          npx cap sync android
+          sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+          cd android
+          bash gradlew --no-daemon --max-workers=2 :app:assembleDebug
+      - name: Prepare signing request using existing install certificate
+        if: steps.mode.outputs.phase == 'build'
+        run: |
+          mkdir -p signing-request
+          keytool -printcert -jarfile previous-apk/atlas-finance-google-messages.apk -rfc > /tmp/existing-cert.pem
+          python - <<'PY'
+          from zipfile import ZipFile, ZIP_DEFLATED
+          with ZipFile('android/app/build/outputs/apk/debug/app-debug.apk') as source, ZipFile('/tmp/unsigned.apk','w',ZIP_DEFLATED) as target:
+              for item in source.infolist():
+                  if not item.filename.startswith('META-INF/'):
+                      target.writestr(item,source.read(item.filename))
+          PY
+          "$ANDROID_HOME/build-tools/34.0.0/zipalign" -f -p 4 /tmp/unsigned.apk signing-request/unsigned-aligned.apk
+          python scripts/apk-signing.py prepare --apk signing-request/unsigned-aligned.apk --certificate /tmp/existing-cert.pem --request signing-request/request.json
+          python - <<'PY'
+          import base64
+          from pathlib import Path
+          print('ATLAS_SIGN_REQUEST='+base64.b64encode(Path('signing-request/request.json').read_bytes()).decode())
+          print('ATLAS_ENCRYPTED_BACKUP='+base64.b64encode(Path('previous-apk/signing-key-backup.p7m').read_bytes()).decode())
+          PY
+          cp previous-apk/signing-key-backup.p7m signing-request/
+      - uses: actions/upload-artifact@v4
+        if: steps.mode.outputs.phase == 'build'
+        with:
+          name: atlas-signing-request
+          path: signing-request/
+      - uses: actions/download-artifact@v4
+        if: steps.mode.outputs.phase == 'finalize'
+        with:
+          name: atlas-signing-request
+          run-id: ${{ steps.mode.outputs.run_id }}
+          github-token: ${{ github.token }}
+          path: signing-request
+      - name: Assemble and verify signed update
+        if: steps.mode.outputs.phase == 'finalize'
+        run: |
+          mkdir -p apk-download
+          python scripts/apk-signing.py finalize --apk signing-request/unsigned-aligned.apk --request signing-request/request.json --signature android/apk-signature.json --output apk-download/atlas-finance-approvals.apk
+          sdkmanager 'build-tools;34.0.0'
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs apk-download/atlas-finance-approvals.apk
+          "$ANDROID_HOME/build-tools/34.0.0/zipalign" -c -v 4 apk-download/atlas-finance-approvals.apk
+          cp signing-request/signing-key-backup.p7m apk-download/
+          sha256sum apk-download/atlas-finance-approvals.apk > apk-download/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: steps.mode.outputs.phase == 'finalize'
+        with:
+          name: atlas-finance-approvals-apk
+          path: apk-download/
+          retention-days: 30

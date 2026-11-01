@@ -1,5 +1,9 @@
 "use client";
 
+import AnimatedMoney from "@/components/finance/AnimatedMoney";
+import { usePendingFinanceCount } from "@/lib/finance/usePendingFinanceCount";
+import FinanceSelect from "@/components/finance/FinanceSelect";
+
 import "./finance.css";
 import { App } from "@capacitor/app";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
@@ -28,6 +32,8 @@ import {
   Cloud,
   CloudOff,
   BellRing,
+  LayoutDashboard,
+  ListFilter,
 } from "lucide-react";
 import {
   IndexedDBUnitOfWork,
@@ -77,6 +83,7 @@ type DashboardTab = "OVERVIEW" | "TRANSACTIONS" | "BUDGETS" | "GOALS" | "ACCOUNT
 type PeriodPreset = "THIS_MONTH" | "LAST_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR" | "ALL_TIME";
 
 export default function FinanceDashboardPage() {
+  const pendingFinanceCount = usePendingFinanceCount();
   const [activeTab, setActiveTab] = useState<DashboardTab>("OVERVIEW");
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("THIS_MONTH");
   const [isLoading, setIsLoading] = useState(true);
@@ -161,6 +168,10 @@ export default function FinanceDashboardPage() {
     [uow, transactionService, categorizationService]
   );
   const secureAdapter = useMemo(() => new WebIndexedDBSecureStorageAdapter(), []);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("review") === "1") setIsKotakModalOpen(true);
+  }, []);
 
   // Compute date boundaries based on period preset
   const { startDate, endDate, periodLabel } = useMemo(() => {
@@ -524,7 +535,8 @@ export default function FinanceDashboardPage() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {tab.label}
+              {tab.id === "OVERVIEW" ? <LayoutDashboard size={18} /> : tab.id === "TRANSACTIONS" ? <ArrowRightLeft size={18} /> : tab.id === "BUDGETS" ? <Tag size={18} /> : tab.id === "GOALS" ? <Target size={18} /> : <Wallet size={18} />}
+              <span>{tab.id === "TRANSACTIONS" ? "Activity" : tab.id === "BUDGETS" ? "Budgets" : tab.id === "ACCOUNTS" ? "Accounts" : tab.label}</span>
             </button>
           ))}
         </div>
@@ -569,17 +581,20 @@ export default function FinanceDashboardPage() {
           TAB 1: OVERVIEW DASHBOARD
          ========================================================================= */}
       {activeTab === "OVERVIEW" && (
-        <div className="space-y-6">
+        <div className="finance-tab-panel space-y-6">
+          <button className="finance-inbox-banner" onClick={() => setIsKotakModalOpen(true)}>
+            <span className="finance-inbox-icon"><BellRing size={22} /></span><span><strong>{pendingFinanceCount ? `${pendingFinanceCount} transaction${pendingFinanceCount === 1 ? "" : "s"} to review` : "Your approval inbox"}</strong><small>{pendingFinanceCount ? "Check categories and approve. Your balances update only after approval." : "Captured bank messages wait here for your approval."}</small></span><span className="finance-inbox-count">{pendingFinanceCount || <CheckCircle2 size={18} />}</span><ChevronRight size={18} />
+          </button>
           <section className="finance-summary" aria-label="Financial overview">
             <div className="finance-balance">
               <div className="finance-eyebrow"><Wallet size={17} /> TOTAL NET WORTH <span>INR</span></div>
-              <div className="finance-balance-value">{formatPaise(netWorthPaise)}</div>
+              <div className="finance-balance-value"><AnimatedMoney value={netWorthPaise} /></div>
               <p>Everything you own, less what you owe.</p>
-              <div className="finance-balance-footer"><div><span>Total assets</span><strong>{formatPaise(totalAssetsPaise)}</strong></div><div><span>Total debt</span><strong>{formatPaise(totalLiabilitiesPaise)}</strong></div></div>
+              <div className="finance-balance-footer"><div><span>Total assets</span><strong><AnimatedMoney value={totalAssetsPaise} /></strong></div><div><span>Total debt</span><strong><AnimatedMoney value={totalLiabilitiesPaise} /></strong></div></div>
             </div>
             <div className="finance-movement">
-              <div><span className="finance-icon income"><ArrowUpRight size={20} /></span><div><span>Money in</span><strong>{formatPaise(periodIncomePaise)}</strong></div></div>
-              <div><span className="finance-icon expense"><ArrowDownRight size={20} /></span><div><span>Money out</span><strong>{formatPaise(periodExpensePaise)}</strong></div></div>
+              <div><span className="finance-icon income"><ArrowUpRight size={20} /></span><div><span>Money in</span><strong><AnimatedMoney value={periodIncomePaise} /></strong></div></div>
+              <div><span className="finance-icon expense"><ArrowDownRight size={20} /></span><div><span>Money out</span><strong><AnimatedMoney value={periodExpensePaise} /></strong></div></div>
               <div className="finance-net"><span>Net cash flow</span><strong className={periodNetCashFlowPaise >= 0 ? "text-emerald-700" : "text-rose-700"}>{formatPaise(periodNetCashFlowPaise)}</strong></div>
             </div>
           </section>
@@ -809,10 +824,10 @@ export default function FinanceDashboardPage() {
           TAB 2: TRANSACTIONS HISTORY & ADVANCED FILTERING
          ========================================================================= */}
       {activeTab === "TRANSACTIONS" && (
-        <div className="space-y-4">
+        <div className="finance-tab-panel space-y-4">
           {/* Search & Filter Bar */}
           <div className="p-4 rounded-2xl border border-muted bg-white space-y-3 shadow-soft">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <div className="finance-filter-grid">
               {/* Search */}
               <div className="relative flex-1">
                 <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
@@ -826,7 +841,7 @@ export default function FinanceDashboardPage() {
               </div>
 
               {/* Account Filter */}
-              <select
+              <FinanceSelect
                 value={txnAccountFilter}
                 onChange={(e) => setTxnAccountFilter(e.target.value)}
                 className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
@@ -837,10 +852,10 @@ export default function FinanceDashboardPage() {
                     {a.name}
                   </option>
                 ))}
-              </select>
+              </FinanceSelect>
 
               {/* Category Filter */}
-              <select
+              <FinanceSelect
                 value={txnCategoryFilter}
                 onChange={(e) => setTxnCategoryFilter(e.target.value)}
                 className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
@@ -851,10 +866,10 @@ export default function FinanceDashboardPage() {
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </FinanceSelect>
 
               {/* Status Filter */}
-              <select
+              <FinanceSelect
                 value={txnStatusFilter}
                 onChange={(e) => setTxnStatusFilter(e.target.value)}
                 className="px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-800 focus:outline-none focus:border-emerald-600 focus:bg-white transition-colors"
@@ -863,7 +878,7 @@ export default function FinanceDashboardPage() {
                 <option value="posted">Posted</option>
                 <option value="pending">Pending</option>
                 <option value="reversed">Reversed</option>
-              </select>
+              </FinanceSelect>
             </div>
 
             {/* Sort & Count Bar */}
@@ -871,7 +886,7 @@ export default function FinanceDashboardPage() {
               <span>Showing {filteredTransactions.length} of {transactions.length} records</span>
               <div className="flex items-center gap-1.5">
                 <span>Sort by:</span>
-                <select
+                <FinanceSelect
                   value={txnSortOrder}
                   onChange={(e) => setTxnSortOrder(e.target.value as "date_desc" | "date_asc" | "amount_desc" | "amount_asc")}
                   className="bg-transparent text-slate-900 border-none font-semibold focus:outline-none cursor-pointer"
@@ -880,7 +895,7 @@ export default function FinanceDashboardPage() {
                   <option value="date_asc">Oldest First</option>
                   <option value="amount_desc">Highest Amount</option>
                   <option value="amount_asc">Lowest Amount</option>
-                </select>
+                </FinanceSelect>
               </div>
             </div>
           </div>

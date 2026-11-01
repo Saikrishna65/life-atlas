@@ -43,7 +43,8 @@ describe("Life Atlas Finance: Budget-Aware End-of-Month Projections", () => {
     await deleteFinanceDB();
   });
 
-  test("projects category spending to end-of-month and assigns risk levels accurately", async () => {
+  test("projects category spending to end-of-month and assigns risk levels accurately", async (context) => {
+    context.mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-15T12:00:00.000Z") });
     const bank = await accountService.createAccount({
       name: "Primary Bank",
       accountType: "bank",

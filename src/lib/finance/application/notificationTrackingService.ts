@@ -53,6 +53,7 @@ export interface IKotakNativePlugin {
   recordTransactionProcessed(options: { timestamp: string }): Promise<{ success: boolean }>;
   recordDuplicateIgnored(): Promise<{ success: boolean; count: number }>;
   clearTrackingData(): Promise<{ success: boolean }>;
+  requestReviewNotifications?(): Promise<{ granted: boolean }>;
   addListener(eventName: "notificationReceived", listener: (event: RawNotificationEvent) => void): Promise<{ remove: () => void }>;
 }
 
@@ -300,71 +301,29 @@ export class NotificationTrackingService {
         continue;
       }
 
-      if (this.reviewQueue.some((item) => item.status === "pending" && item.parsedTransaction.normalizedFingerprint === fp)) continue;
+      const staged = this.reviewQueue.find((item) => item.status === "pending" && item.parsedTransaction.normalizedFingerprint === fp);
+      if (staged) {
+        if (staged.rawEventId !== raw.id) { duplicateCount++; ackIds.push(raw.id); }
+        continue;
+      }
 
-      // 2. Find matching Kotak account in user's accounts
       const matchedAccount = await this.matchKotakAccount(parsed.accountMask);
-
-      if (!matchedAccount) {
-        // Stage in review queue rather than inventing fake bank account or dropping
-        this.stageInReviewQueue(parsed, "No matching Kotak account found in your accounts list");
-        // Keep the native event until the user resolves or dismisses it.
-        continue;
-      }
-      if (parsed.isAmbiguous) {
-        this.stageInReviewQueue(parsed, parsed.ambiguityReason || "Check this transaction before recording");
-        continue;
-      }
-
-      // 3. Smart Categorization
       let categoryId: ID | undefined;
+      let explanation = "No merchant rule matched. Please check the category.";
       try {
-        const catResult = await this.categorizationService.suggestCategory({
-          description: parsed.merchantOrBeneficiary,
-          merchant: parsed.merchantOrBeneficiary,
-          amountPaise: parsed.amountPaise,
-          direction: parsed.direction,
+        const suggestion = await this.categorizationService.suggestCategory({
+          description: parsed.merchantOrBeneficiary, merchant: parsed.merchantOrBeneficiary,
+          amountPaise: parsed.amountPaise, direction: parsed.direction,
         });
-        if (catResult) {
-          categoryId = catResult.categoryId;
-        }
-      } catch {
-        // Categorization failure shouldn't block transaction recording
-      }
+        if (suggestion) { categoryId = suggestion.categoryId; explanation = suggestion.ruleMatched || "Matched a merchant rule"; }
+      } catch { /* Review remains available when categorisation fails. */ }
+      if (!categoryId) categoryId = parsed.direction === "outflow" ? "cat_other_expense" : "cat_other_income";
+      this.stageInReviewQueue(parsed,
+        !matchedAccount ? "Choose the account, check the category, then approve." : "Check the suggested category before approving.",
+        matchedAccount ? [matchedAccount.id] : [], categoryId, explanation);
+      // Every SMS requires approval. Keep its durable native event until that decision.
+      processedCount++;
 
-      // 4. Record Transaction in Ledger
-      try {
-        const recorded = await this.transactionService.recordTransaction({
-          accountId: matchedAccount.id,
-          amountPaise: parsed.amountPaise,
-          direction: parsed.direction,
-          description: parsed.merchantOrBeneficiary,
-          merchant: parsed.merchantOrBeneficiary,
-          categoryId,
-          source: "notification",
-          externalId: parsed.referenceNumber ? `kotak_notif_${parsed.referenceNumber}` : undefined,
-          occurredAt: parsed.occurredAt,
-          status: "posted",
-          reviewRequired: parsed.isAmbiguous,
-          notes: `[Auto-tracked from ${parsed.sourceType.toUpperCase()}] ${
-            parsed.referenceNumber ? `Ref: ${parsed.referenceNumber}` : ""
-          }`,
-        });
-
-        if (recorded) {
-          this.processedFingerprints.add(fp);
-          processedCount++;
-          if (plugin) {
-            await plugin.recordTransactionProcessed({ timestamp: parsed.occurredAt });
-          }
-        }
-      } catch (err: unknown) {
-        console.error("Failed to record notification transaction in ledger:", err);
-        // Do not acknowledge failed writes: retry from the durable native queue.
-        continue;
-      }
-
-      ackIds.push(raw.id);
     }
 
     // Acknowledge processed notifications from native queue
@@ -452,13 +411,15 @@ export class NotificationTrackingService {
     return false;
   }
 
-  private stageInReviewQueue(parsed: ParsedNotificationTransaction, reason: string): void {
+  private stageInReviewQueue(parsed: ParsedNotificationTransaction, reason: string, candidateAccountIds: ID[] = [], suggestedCategoryId?: ID, categoryExplanation?: string): void {
     if (this.reviewQueue.some((item) => item.status === "pending" && item.parsedTransaction.normalizedFingerprint === parsed.normalizedFingerprint)) return;
     const item: NotificationReviewItem = {
       id: `rev_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       rawEventId: parsed.rawEventId,
       parsedTransaction: parsed,
-      candidateAccountIds: [],
+      candidateAccountIds,
+      suggestedCategoryId,
+      categoryExplanation,
       reason,
       createdAt: new Date().toISOString(),
       status: "pending",
@@ -527,6 +488,12 @@ export class NotificationTrackingService {
     await plugin.requestNotificationAccess();
   }
 
+  async requestReviewNotifications(): Promise<boolean> {
+    const plugin = this.nativePluginOverride ?? getNativePlugin();
+    try { return (await plugin?.requestReviewNotifications?.())?.granted || false; }
+    catch { return false; }
+  }
+
   /**
    * Returns pending items in review queue
    */
@@ -551,16 +518,19 @@ export class NotificationTrackingService {
 
     if (await this.checkExistingLedgerDuplicate(item.parsedTransaction)) {
       item.status = "approved";
-      await (this.nativePluginOverride ?? getNativePlugin())?.acknowledgeNotifications({ ids: [item.rawEventId] });
+      await this.acknowledgeFingerprint(item);
+      this.announceUpdate();
       return;
     }
+    const approvedCategory = categoryId || item.suggestedCategoryId;
+    if (!approvedCategory) throw new Error("Select a category before approval.");
     await this.transactionService.recordTransaction({
       accountId,
       amountPaise: item.parsedTransaction.amountPaise,
       direction: item.parsedTransaction.direction,
       description: item.parsedTransaction.merchantOrBeneficiary,
       merchant: item.parsedTransaction.merchantOrBeneficiary,
-      categoryId,
+      categoryId: approvedCategory,
       source: "notification",
       externalId: item.parsedTransaction.referenceNumber
         ? `kotak_notif_${item.parsedTransaction.referenceNumber}`
@@ -573,19 +543,42 @@ export class NotificationTrackingService {
 
     item.status = "approved";
     this.processedFingerprints.add(item.parsedTransaction.normalizedFingerprint);
-    await (this.nativePluginOverride ?? getNativePlugin())?.acknowledgeNotifications({ ids: [item.rawEventId] });
+    const plugin = this.nativePluginOverride ?? getNativePlugin();
+    await plugin?.recordTransactionProcessed({ timestamp: new Date().toISOString() });
+    await this.acknowledgeFingerprint(item);
+    this.announceUpdate();
   }
 
   /**
    * Dismisses a review queue item without recording in ledger
    */
   async dismissReviewItem(itemId: string): Promise<void> {
+    return this.serialize(() => this.dismissItem(itemId));
+  }
+
+  private async dismissItem(itemId: string): Promise<void> {
     const item = this.reviewQueue.find((i) => i.id === itemId);
-    if (item) {
+    if (item?.status === "pending") {
       item.status = "dismissed";
       this.processedFingerprints.add(item.parsedTransaction.normalizedFingerprint);
-      await (this.nativePluginOverride ?? getNativePlugin())?.acknowledgeNotifications({ ids: [item.rawEventId] });
+      await this.acknowledgeFingerprint(item);
+      this.announceUpdate();
     }
+  }
+
+  private async acknowledgeFingerprint(item: NotificationReviewItem): Promise<void> {
+    const plugin = this.nativePluginOverride ?? getNativePlugin();
+    if (!plugin) return;
+    const pending = await plugin.getPendingNotifications();
+    const ids = pending.notifications.filter((event) => {
+      const result = KotakNotificationParser.parse(event);
+      return result.transaction?.normalizedFingerprint === item.parsedTransaction.normalizedFingerprint;
+    }).map((event) => event.id);
+    await plugin.acknowledgeNotifications({ ids: ids.length ? ids : [item.rawEventId] });
+  }
+
+  private announceUpdate(): void {
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("finance-notifications-updated"));
   }
 
   /**

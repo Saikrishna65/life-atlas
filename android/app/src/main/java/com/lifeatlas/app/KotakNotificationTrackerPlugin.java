@@ -14,11 +14,15 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
+import com.getcapacitor.PermissionState;
+import android.Manifest;
 import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.Set;
 
-@CapacitorPlugin(name = "KotakNotificationTracker")
+@CapacitorPlugin(name = "KotakNotificationTracker", permissions = { @Permission(alias = "reviewNotifications", strings = { Manifest.permission.POST_NOTIFICATIONS }) })
 public class KotakNotificationTrackerPlugin extends Plugin {
     private static WeakReference<KotakNotificationTrackerPlugin> active = new WeakReference<>(null);
     @Override public void load() { active = new WeakReference<>(this); }
@@ -39,10 +43,20 @@ public class KotakNotificationTrackerPlugin extends Plugin {
             call.resolve(new JSObject().put("opened", true));
         } catch (Exception e) { call.reject("Could not open Android notification access settings", e); }
     }
+    @PluginMethod public void requestReviewNotifications(PluginCall call) {
+        if (Build.VERSION.SDK_INT >= 33 && getPermissionState("reviewNotifications") != PermissionState.GRANTED) {
+            requestPermissionForAlias("reviewNotifications", call, "reviewPermissionResult");
+        } else reviewPermissionResult(call);
+    }
+    @PermissionCallback private void reviewPermissionResult(PluginCall call) {
+        boolean granted = FinanceReviewNotifications.allowed(getContext());
+        if (granted) FinanceReviewNotifications.restorePending(getContext());
+        call.resolve(new JSObject().put("granted", granted));
+    }
     @PluginMethod public void getTrackingStatus(PluginCall call) {
         try {
             JSObject status = new JSObject().put("enabled", BankNotificationStore.enabled(getContext())).put("permissionGranted", granted())
-                .put("pendingCount", BankNotificationStore.pending(getContext()).length());
+                .put("pendingCount", BankNotificationStore.pending(getContext()).length()).put("reviewNotificationsGranted", FinanceReviewNotifications.allowed(getContext()));
             for (String key : new String[]{"lastEventTime", "lastTransactionTime", "lastError"}) status.put(key, BankNotificationStore.string(getContext(), key) == null ? org.json.JSONObject.NULL : BankNotificationStore.string(getContext(), key));
             for (String key : new String[]{"eventsReceivedCount", "duplicatesIgnoredCount"}) status.put(key, BankNotificationStore.count(getContext(), key));
             call.resolve(status);

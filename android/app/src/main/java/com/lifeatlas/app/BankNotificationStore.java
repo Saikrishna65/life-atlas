@@ -39,6 +39,8 @@ final class BankNotificationStore {
             if (!ids.contains(item.optString("id"))) remaining.put(item);
         }
         if (!prefs(context).edit().putString("queue", remaining.toString()).commit()) throw new IllegalStateException("Could not acknowledge bank alerts");
+        for (String id : ids) FinanceReviewNotifications.cancel(context, id);
+        KotakNotificationTrackerPlugin.signalNotification();
         return remaining.length();
     }
     static synchronized void error(Context context, String message) { prefs(context).edit().putString("lastError", message).commit(); }

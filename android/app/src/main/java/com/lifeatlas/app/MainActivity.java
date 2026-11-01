@@ -120,6 +120,12 @@ public class MainActivity extends BridgeActivity {
         String action = intent.getAction();
         String type = intent.getType();
 
+        if ("com.lifeatlas.app.ACTION_REVIEW_FINANCE".equals(action)) {
+            pendingTargetRoute = "/secret/finance?review=1";
+            dispatchPendingRoute();
+            return;
+        }
+
         // Check if intent was triggered by Music Vault Home Screen Widget
         if ("com.lifeatlas.app.ACTION_OPEN_MUSIC_VAULT".equals(action)
             || (intent.hasExtra("target_route") && "/secret/music".equals(intent.getStringExtra("target_route")))) {

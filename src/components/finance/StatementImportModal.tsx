@@ -1,5 +1,7 @@
 "use client";
 
+import FinanceSelect from "@/components/finance/FinanceSelect";
+
 import React, { useState, useMemo, useEffect } from "react";
 import {
   X,
@@ -353,7 +355,7 @@ export default function StatementImportModal({
                 </label>
                 {activeAccounts.length > 0 ? (
                   <div className="relative">
-                    <select
+                    <FinanceSelect
                       value={effectiveAccountId}
                       onChange={(e) => setSelectedAccountId(e.target.value)}
                       className="w-full px-3.5 py-2.5 text-xs bg-surface border border-muted rounded-2xl text-foreground focus:outline-none focus:border-emerald-500 transition-colors shadow-xs"
@@ -364,7 +366,7 @@ export default function StatementImportModal({
                           {formatPaise(acc.currentBalancePaise)}
                         </option>
                       ))}
-                    </select>
+                    </FinanceSelect>
                   </div>
                 ) : (
                   <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center justify-between gap-3">
@@ -455,7 +457,7 @@ export default function StatementImportModal({
                   <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground block">
                     Date Column *
                   </label>
-                  <select
+                  <FinanceSelect
                     value={customMapping.dateColIndex}
                     onChange={(e) =>
                       setCustomMapping({ ...customMapping, dateColIndex: parseInt(e.target.value, 10) })
@@ -467,14 +469,14 @@ export default function StatementImportModal({
                         {h} (Col {i + 1})
                       </option>
                     ))}
-                  </select>
+                  </FinanceSelect>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground block">
                     Narration / Desc *
                   </label>
-                  <select
+                  <FinanceSelect
                     value={customMapping.descriptionColIndex}
                     onChange={(e) =>
                       setCustomMapping({ ...customMapping, descriptionColIndex: parseInt(e.target.value, 10) })
@@ -486,14 +488,14 @@ export default function StatementImportModal({
                         {h} (Col {i + 1})
                       </option>
                     ))}
-                  </select>
+                  </FinanceSelect>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground block">
                     Withdrawal / Debit
                   </label>
-                  <select
+                  <FinanceSelect
                     value={customMapping.debitColIndex ?? ""}
                     onChange={(e) =>
                       setCustomMapping({
@@ -509,14 +511,14 @@ export default function StatementImportModal({
                         {h} (Col {i + 1})
                       </option>
                     ))}
-                  </select>
+                  </FinanceSelect>
                 </div>
 
                 <div className="space-y-1">
                   <label className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground block">
                     Deposit / Credit
                   </label>
-                  <select
+                  <FinanceSelect
                     value={customMapping.creditColIndex ?? ""}
                     onChange={(e) =>
                       setCustomMapping({
@@ -532,7 +534,7 @@ export default function StatementImportModal({
                         {h} (Col {i + 1})
                       </option>
                     ))}
-                  </select>
+                  </FinanceSelect>
                 </div>
               </div>
 
