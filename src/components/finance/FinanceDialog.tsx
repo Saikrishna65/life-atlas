@@ -11,7 +11,7 @@ export function useFinanceDialog(open: boolean, onClose: () => void) {
     const previous = document.activeElement as HTMLElement | null;
     const timer = requestAnimationFrame(() => {
       const dialogs = document.querySelectorAll<HTMLElement>(".finance-workspace");
-      dialogs[dialogs.length - 1]?.focus();
+      dialogs[dialogs.length - 1]?.focus({ preventScroll: true });
     });
     const key = (event: KeyboardEvent) => {
       const dialogs = document.querySelectorAll<HTMLElement>(".finance-workspace");
@@ -26,7 +26,7 @@ export function useFinanceDialog(open: boolean, onClose: () => void) {
       }
     };
     document.addEventListener("keydown", key);
-    return () => { cancelAnimationFrame(timer); document.removeEventListener("keydown", key); previous?.focus(); };
+    return () => { cancelAnimationFrame(timer); document.removeEventListener("keydown", key); previous?.focus({ preventScroll: true }); };
   }, [open, onClose]);
 }
 export function FinancePanelHeader({ title, subtitle, onClose, titleId }: {title: string; subtitle?: string; onClose: () => void; titleId?: string}) {

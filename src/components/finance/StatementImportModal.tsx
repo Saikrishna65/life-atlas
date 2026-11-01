@@ -321,7 +321,7 @@ export default function StatementImportModal({
               {/* Upload Drop Zone */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold font-sans uppercase tracking-wider text-muted-foreground block">
-                  2. Upload Statement File (.csv, .ofx, .qif) *
+                  Your statement file *
                 </label>
                 <div
                   className={`relative border-2 border-dashed rounded-3xl p-6 sm:p-8 text-center transition-all ${
