@@ -1,7 +1,7 @@
 "use client";
 
 import { openDemoDatabase, seedFinanceDemo, createDemoCapture } from "@/lib/finance/demo";
-import { topExpenseStores, StoreSpending } from "@/lib/finance/cashFlowChart";
+import { currentFinanceWeek, localFinanceDateKey } from "@/lib/finance/calendar";
 import FinanceThemePicker, { FinanceTheme, THEME_STORAGE_KEY, isFinanceTheme } from "@/components/finance/FinanceThemePicker";
 import AnimatedMoney from "@/components/finance/AnimatedMoney";
 import { usePendingFinanceCount } from "@/lib/finance/usePendingFinanceCount";
@@ -97,7 +97,7 @@ export default function FinanceDashboardPage() {
   }, [theme]);
   const realPendingCount = usePendingFinanceCount();
   const [activeTab, setActiveTab] = useState<DashboardTab>("OVERVIEW");
-  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("THIS_MONTH");
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("THIS_WEEK");
   const [isLoading, setIsLoading] = useState(true);
 
   // Core Data
@@ -115,7 +115,6 @@ export default function FinanceDashboardPage() {
   const [periodExpensePaise, setPeriodExpensePaise] = useState(0);
   const [periodNetCashFlowPaise, setPeriodNetCashFlowPaise] = useState(0);
   const [timelinePoints, setTimelinePoints] = useState<CashFlowTimelinePoint[]>([]);
-  const [topStores, setTopStores] = useState<StoreSpending[]>([]);
   const [spendingBreakdown, setSpendingBreakdown] = useState<CategorySpendingItem[]>([]);
 
   // Modals state
@@ -189,6 +188,7 @@ export default function FinanceDashboardPage() {
   }, []);
 
   // Compute date boundaries based on period preset
+  const calendarToday = localFinanceDateKey(new Date());
   const { startDate, endDate, periodLabel } = useMemo(() => {
     const now = new Date();
     let start: Date;
@@ -196,8 +196,10 @@ export default function FinanceDashboardPage() {
     let label = "This Month";
 
     if (periodPreset === "THIS_WEEK") {
-      start = new Date(now.getFullYear(),now.getMonth(),now.getDate()-6);
-      label = "Last 7 days";
+      const week = currentFinanceWeek(now);
+      start = week.start;
+      end = week.todayEnd;
+      label = "Current week";
     } else if (periodPreset === "LAST_6_MONTHS") {
       start = new Date(now.getFullYear(),now.getMonth()-5,1);
       label = "Last 6 months";
@@ -225,7 +227,7 @@ export default function FinanceDashboardPage() {
       endDate: end.toISOString(),
       periodLabel: label,
     };
-  }, [periodPreset]);
+  }, [periodPreset, calendarToday]);
 
   const refreshRequest = React.useRef(0);
 
@@ -270,8 +272,6 @@ export default function FinanceDashboardPage() {
 
       const breakdown = await balanceService.getCategorySpendingBreakdown(startDate, endDate);
       if (isCurrent()) setSpendingBreakdown(breakdown);
-      const reportExpenses = await uow.transactions.query({startDate,endDate,status:"posted",direction:"outflow"});
-      if (isCurrent()) setTopStores(topExpenseStores(reportExpenses,allCats));
 
       // Budgets
       const budgetReport = await budgetService.getCategoryBudgetStatuses(startDate, endDate);
@@ -440,7 +440,7 @@ export default function FinanceDashboardPage() {
                 <section className="glass-wallet-preview"><div className="af-section-heading"><h3>Your wallet</h3><button className="af-text-button" onClick={()=>setActiveTab("ACCOUNTS")}>Open wallet <ChevronRight size={15}/></button></div>{accountView()}</section>
                 <section className="glass-recent"><div className="af-section-heading"><h3>Recent transactions</h3><button className="af-text-button" onClick={()=>setActiveTab("TRANSACTIONS")}>See all</button></div>{activityView(transactions.slice(0,5))}</section>
               </div>
-              <div className="glass-insights-column"><div className="glass-period"><span>Insights</span><FinanceSelect aria-label="Reporting period" value={periodPreset} onChange={e=>setPeriodPreset(e.target.value as PeriodPreset)}><option value="THIS_WEEK">Last 7 days</option><option value="THIS_MONTH">This month</option><option value="LAST_MONTH">Last month</option><option value="LAST_3_MONTHS">Last 3 months</option><option value="LAST_6_MONTHS">Last 6 months</option><option value="THIS_YEAR">This year</option><option value="ALL_TIME">All time</option></FinanceSelect></div><CashFlowChart stores={topStores} period={periodPreset} onPeriodChange={value=>setPeriodPreset(value as PeriodPreset)} startDate={periodPreset === "ALL_TIME" && timelinePoints.length ? timelinePoints[0].dateKey : startDate} endDate={endDate} periodLabel={periodLabel} timeline={timelinePoints} totalIncomePaise={periodIncomePaise} totalExpensesPaise={periodExpensePaise}/><CategorySpendingChart categories={spendingBreakdown} totalExpensesPaise={periodExpensePaise}/></div>
+              <div className="glass-insights-column"><div className="glass-period"><span>Insights</span></div><CashFlowChart period={periodPreset} onPeriodChange={value=>setPeriodPreset(value as PeriodPreset)} startDate={periodPreset === "ALL_TIME" && timelinePoints.length ? timelinePoints[0].dateKey : startDate} endDate={endDate} periodLabel={periodLabel} timeline={timelinePoints} totalIncomePaise={periodIncomePaise} totalExpensesPaise={periodExpensePaise}/><CategorySpendingChart categories={spendingBreakdown} totalExpensesPaise={periodExpensePaise}/></div>
             </div>
           </>}
           {activeTab !== "OVERVIEW" && <header className="glass-section-title"><p>YOUR FINANCIAL SPACE</p><h2>{activeTab==="ACCOUNTS" ? "Wallet" : activeTab==="TRANSACTIONS" ? "Transactions" : activeTab==="BUDGETS" ? "Spending plan" : "Dream it. Save for it."}</h2><span>{periodLabel}</span></header>}
