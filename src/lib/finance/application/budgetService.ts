@@ -110,7 +110,7 @@ export class BudgetService {
     // Map spending per category (excluding transfers and reversed)
     const spentMap = new Map<ID, Paise>();
     for (const txn of txns) {
-      if (txn.status === "reversed" || (txn.tripAssignment?.tripId && txn.tripAssignment.mode!=="excluded")) continue;
+      if (txn.status === "reversed") continue;
       if (txn.transferGroupId) continue; // Invariant: internal transfers are NOT expenses
       if (!txn.categoryId) continue;
 

@@ -1,4 +1,5 @@
 "use client";
+import { tripDetailCategoryId } from "@/lib/finance/trips/policy";
 
 import FinanceSelect from "@/components/finance/FinanceSelect";
 
@@ -61,7 +62,7 @@ export default function TransactionModal({
       setDirection(editingTransaction.direction);
       setAmountStr(paiseToDecimalString(editingTransaction.amountPaise));
       setAccountId(editingTransaction.accountId);
-      setCategoryId(editingTransaction.categoryId || "");
+      setCategoryId(tripDetailCategoryId(editingTransaction) || "");
       setDescription(editingTransaction.description);
       setMerchant(editingTransaction.merchant || "");
       setOccurredAt(new Date(Date.parse(editingTransaction.occurredAt)-new Date(editingTransaction.occurredAt).getTimezoneOffset()*60000).toISOString().slice(0,16));
@@ -164,6 +165,7 @@ export default function TransactionModal({
     (c) => c.type === (direction === "inflow" ? "income" : "expense")
   );
 
+  const tripDetail=direction==="outflow"&&tripChoice!=="__normal"&&(tripChoice!=="__auto"||!!editingTransaction?.tripAssignment?.tripId);
   return (
     <Modal
       isOpen={isOpen}
@@ -244,7 +246,7 @@ export default function TransactionModal({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">Category</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">{tripDetail?"Trip detail category":"Category"}</label>
             <FinanceSelect
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
@@ -257,6 +259,7 @@ export default function TransactionModal({
                 </option>
               ))}
             </FinanceSelect>
+            {tripDetail&&<p>Finance category: Travel &amp; Leisure. This detail is kept for the trip breakdown.</p>}
           </div>
         </div>
 

@@ -8,7 +8,8 @@ export interface TripFinanceSettings {
   confirmation: 'planned' | 'going' | 'cancelled';
   confirmedAt?: string;
 }
-export interface TripAssignment { mode: 'auto' | 'manual' | 'excluded'; tripId?: string; tripTitle?: string; }
+export const TRIP_FINANCE_CATEGORY_ID = 'cat_travel';
+export interface TripAssignment { originalCategoryId?: string | null; mode: 'auto' | 'manual' | 'excluded'; tripId?: string; tripTitle?: string; }
 export interface TripContext { trips: TripRecord[]; recurring: RecurringRule[]; categories: FinanceCategory[]; }
 
 export function wallTime(iso: string, timeZone: string): string {
@@ -67,6 +68,18 @@ export function resolveTripAssignment(t:Transaction,context:TripContext):TripAss
   return matches.length===1?{mode:'auto',tripId:matches[0].id,tripTitle:matches[0].title}:undefined;
 }
 export function assignedTripId(t:Transaction):string|undefined {return t.tripAssignment?.mode==='excluded'?undefined:t.tripAssignment?.tripId;}
+/** Keep one Finance category while preserving the detail used inside the trip. */
+export function tripDetailCategoryId(t:Transaction):string|undefined {
+  return t.tripAssignment?.originalCategoryId!==undefined ? t.tripAssignment.originalCategoryId || undefined : t.categoryId;
+}
+export function applyTripCategory(t:Transaction,assignment:TripAssignment|undefined,previous:Transaction=t,detailOverride?:string|null):Pick<Transaction,'categoryId'|'tripAssignment'> {
+  if(assignment?.tripId && assignment.mode!=='excluded'){
+    const originalCategoryId=detailOverride!==undefined?detailOverride:assignment.originalCategoryId!==undefined?assignment.originalCategoryId:previous.tripAssignment?.originalCategoryId!==undefined?previous.tripAssignment.originalCategoryId:t.categoryId || null;
+    return {categoryId:TRIP_FINANCE_CATEGORY_ID,tripAssignment:{...assignment,originalCategoryId}};
+  }
+  const categoryId=assignedTripId(previous)?detailOverride!==undefined?detailOverride || undefined:tripDetailCategoryId(previous):t.categoryId;
+  return {categoryId,tripAssignment:assignment};
+}
 export function previewTripChanges(transactions:Transaction[],context:TripContext,nextTrips:TripRecord[]) {
-  return transactions.flatMap(t=>{const before=t.tripAssignment;const after=resolveTripAssignment(t,{...context,trips:nextTrips});return JSON.stringify(before)===JSON.stringify(after)?[]:[{transaction:t,before,after}];});
+  return transactions.flatMap(t=>{const before=t.tripAssignment;const next=applyTripCategory(t,resolveTripAssignment(t,{...context,trips:nextTrips}));const after=next.tripAssignment;return JSON.stringify(before)===JSON.stringify(after)&&t.categoryId===next.categoryId?[]:[{transaction:t,before,after,beforeCategoryId:t.categoryId,afterCategoryId:next.categoryId}];});
 }
