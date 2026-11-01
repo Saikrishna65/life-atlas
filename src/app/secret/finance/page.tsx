@@ -1,5 +1,7 @@
 "use client";
 
+import "./finance.css";
+import { App } from "@capacitor/app";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
@@ -279,10 +281,28 @@ export default function FinanceDashboardPage() {
   }, [uow, balanceService, budgetService, savingsGoalService, categorizationService, recurringService, runwayService, notificationTrackingService, startDate, endDate]);
 
   useEffect(() => {
-    notificationTrackingService.initialize().catch((err) => {
-      console.warn("Kotak tracking initialization:", err);
-    });
+    const resume = () => {
+      if (document.visibilityState === "visible") {
+        notificationTrackingService.drainPendingNotifications().catch(console.warn);
+      }
+    };
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("focus", resume);
+    const nativeResume = App.addListener("appStateChange", ({ isActive }) => { if (isActive) resume(); });
+    notificationTrackingService.initialize().catch(console.warn);
+    return () => {
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("focus", resume);
+      void nativeResume.then((listener) => listener.remove());
+      void notificationTrackingService.dispose();
+    };
   }, [notificationTrackingService]);
+
+  useEffect(() => {
+    const refresh = () => { void refreshAll(); };
+    window.addEventListener("finance-notifications-updated", refresh);
+    return () => window.removeEventListener("finance-notifications-updated", refresh);
+  }, [refreshAll]);
 
   useEffect(() => {
     refreshAll();
@@ -327,7 +347,7 @@ export default function FinanceDashboardPage() {
   }, [transactions, txnSearchQuery, txnAccountFilter, txnCategoryFilter, txnStatusFilter, txnSortOrder]);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 sm:space-y-8 animate-fade-in pb-16">
+    <div className="atlas-finance mx-auto space-y-6 sm:space-y-8 pb-16">
       {/* 1. Header Navigation & Mode */}
       <nav className="flex items-center justify-between border-b border-muted pb-4">
         <Link
@@ -335,7 +355,7 @@ export default function FinanceDashboardPage() {
           className="group inline-flex items-center gap-2 text-xs font-sans tracking-wide text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-0.5" />
-          <span>Private Sanctuary</span>
+          <span>Back to Atlas</span>
         </Link>
 
         <div className="flex items-center gap-2">
@@ -350,19 +370,19 @@ export default function FinanceDashboardPage() {
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-mono tracking-wider text-emerald-800 font-semibold uppercase">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Vault (Offline)</span>
+            <span>On this device</span>
           </div>
         </div>
       </nav>
 
       {/* 2. Editorial Title & Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="finance-heading flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display text-3xl sm:text-4xl text-foreground font-normal tracking-tight">
-            Life Atlas Finance
+            Atlas Finance
           </h1>
           <p className="font-body text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Deterministic integer-paise ledger, balanced transfers, and local offline privacy.
+            Your money. A clearer picture.
           </p>
         </div>
 
@@ -406,7 +426,7 @@ export default function FinanceDashboardPage() {
       </div>
 
       {/* 2b. Automation & Quick Links Strip */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 text-xs">
+      <details className="finance-tools"><summary>Tools & connections <ChevronRight size={16} /></summary><div className="finance-tools-grid">
         <button
           onClick={() => setIsForecastModalOpen(true)}
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap ${
@@ -463,7 +483,7 @@ export default function FinanceDashboardPage() {
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-800 transition-all font-medium cursor-pointer shadow-xs whitespace-nowrap"
         >
           <Sparkles className="w-3.5 h-3.5 text-red-600" />
-          <span>Kotak Assistant</span>
+          <span>Message import</span>
           {kotakReviewCount > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-slate-950 font-bold">
               {kotakReviewCount}
@@ -478,12 +498,12 @@ export default function FinanceDashboardPage() {
           <Landmark className="w-3.5 h-3.5 text-muted-foreground" />
           <span>Bank Consent (AA)</span>
         </button>
-      </div>
+      </div></details>
 
       {/* 3. Reporting Period Selector & Tabs Navigation */}
       <div className="space-y-3">
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-1 p-1 rounded-xl bg-surface border border-muted overflow-x-auto no-scrollbar text-xs">
+        <div className="finance-tabs" role="tablist" aria-label="Finance sections">
           {(
             [
               { id: "OVERVIEW", label: "Overview" },
@@ -495,6 +515,8 @@ export default function FinanceDashboardPage() {
           ).map((tab) => (
             <button
               key={tab.id}
+              role="tab"
+              aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === tab.id
@@ -548,216 +570,25 @@ export default function FinanceDashboardPage() {
          ========================================================================= */}
       {activeTab === "OVERVIEW" && (
         <div className="space-y-6">
-          {/* A. Financial Overview Metrics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* Net Worth Card */}
-            <div className="p-4 sm:p-5 rounded-2xl border border-emerald-200 bg-white relative overflow-hidden space-y-1 shadow-soft">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-                  Total Net Worth
-                </span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              </div>
-              <div className="font-display text-2xl sm:text-3xl font-semibold text-emerald-700">
-                {formatPaise(netWorthPaise)}
-              </div>
-              <div className="text-[10px] text-muted-foreground font-mono flex items-center justify-between pt-1">
-                <span>Assets: {formatPaise(totalAssetsPaise)}</span>
-                <span>Debt: {formatPaise(totalLiabilitiesPaise)}</span>
-              </div>
+          <section className="finance-summary" aria-label="Financial overview">
+            <div className="finance-balance">
+              <div className="finance-eyebrow"><Wallet size={17} /> TOTAL NET WORTH <span>INR</span></div>
+              <div className="finance-balance-value">{formatPaise(netWorthPaise)}</div>
+              <p>Everything you own, less what you owe.</p>
+              <div className="finance-balance-footer"><div><span>Total assets</span><strong>{formatPaise(totalAssetsPaise)}</strong></div><div><span>Total debt</span><strong>{formatPaise(totalLiabilitiesPaise)}</strong></div></div>
             </div>
-
-            {/* Income Card */}
-            <div className="p-4 sm:p-5 rounded-2xl border border-muted bg-white space-y-1 shadow-soft">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-                  Income ({periodLabel.split(" ")[0]})
-                </span>
-                <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600" />
-              </div>
-              <div className="font-display text-xl sm:text-2xl font-semibold text-slate-900">
-                {formatPaise(periodIncomePaise)}
-              </div>
-              <div className="text-[10px] text-muted-foreground font-sans pt-1">
-                Excludes internal account transfers
-              </div>
+            <div className="finance-movement">
+              <div><span className="finance-icon income"><ArrowUpRight size={20} /></span><div><span>Money in</span><strong>{formatPaise(periodIncomePaise)}</strong></div></div>
+              <div><span className="finance-icon expense"><ArrowDownRight size={20} /></span><div><span>Money out</span><strong>{formatPaise(periodExpensePaise)}</strong></div></div>
+              <div className="finance-net"><span>Net cash flow</span><strong className={periodNetCashFlowPaise >= 0 ? "text-emerald-700" : "text-rose-700"}>{formatPaise(periodNetCashFlowPaise)}</strong></div>
             </div>
-
-            {/* Expenses Card */}
-            <div className="p-4 sm:p-5 rounded-2xl border border-muted bg-white space-y-1 shadow-soft">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
-                  Expenses ({periodLabel.split(" ")[0]})
-                </span>
-                <ArrowDownRight className="w-3.5 h-3.5 text-rose-600" />
-              </div>
-              <div className="font-display text-xl sm:text-2xl font-semibold text-slate-900">
-                {formatPaise(periodExpensePaise)}
-              </div>
-              <div className="text-[10px] font-mono pt-1">
-                <span className="text-muted-foreground">Net Cash Flow: </span>
-                <span className={periodNetCashFlowPaise >= 0 ? "text-emerald-700 font-semibold" : "text-rose-700 font-semibold"}>
-                  {periodNetCashFlowPaise >= 0 ? "+" : ""}
-                  {formatPaise(periodNetCashFlowPaise)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* B. Redesigned Take Action Command Card */}
-          <div className="p-4 sm:p-5 rounded-2xl border border-muted bg-white shadow-soft space-y-4">
-            {/* Header & Live Status Indicators */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2 border-b border-muted">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-800 font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
-                    Take Action
-                  </span>
-                  <h3 className="text-sm font-bold text-slate-900">Financial Command</h3>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  Record, parse, or import transactions directly into your private offline ledger
-                </p>
-              </div>
-
-              {/* Live Status Indicators */}
-              <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                {uncategorizedCount > 0 && (
-                  <button
-                    onClick={() => setIsCategorizationModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer font-medium"
-                    title="Review uncategorized transactions"
-                  >
-                    <Sparkles className="w-3 h-3 text-amber-600" />
-                    <span>{uncategorizedCount} Uncategorized</span>
-                  </button>
-                )}
-
-                {hasLowBalanceWarning && (
-                  <button
-                    onClick={() => setIsForecastModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-100 transition-colors cursor-pointer font-medium animate-pulse"
-                    title="Low cash runway alert"
-                  >
-                    <TrendingUp className="w-3 h-3 text-rose-600" />
-                    <span>Runway Alert</span>
-                  </button>
-                )}
-
-                {kotakReviewCount > 0 && (
-                  <button
-                    onClick={() => setIsKotakModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 hover:bg-amber-100 transition-colors cursor-pointer font-medium"
-                    title="Kotak items needing review"
-                  >
-                    <Sparkles className="w-3 h-3 text-amber-600" />
-                    <span>{kotakReviewCount} Kotak Review</span>
-                  </button>
-                )}
-
-                {pendingOutboxCount > 0 && (
-                  <button
-                    onClick={() => setIsSyncModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-900 hover:bg-blue-100 transition-colors cursor-pointer font-medium"
-                    title="Outbox sync items pending"
-                  >
-                    <Cloud className="w-3 h-3 text-blue-600" />
-                    <span>{pendingOutboxCount} Outbox</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Action Grid: Primary Featured + Secondary Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* 1. PRIMARY PROMINENT ACTION: Paste Kotak Alert */}
-              <button
-                type="button"
-                onClick={() => setIsKotakModalOpen(true)}
-                className="group relative p-3.5 rounded-xl border-2 border-red-500/30 bg-red-50/40 hover:bg-red-50 hover:border-red-500/60 text-left transition-all cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="w-9 h-9 rounded-lg bg-red-100 border border-red-200 text-red-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <span className="text-[9px] font-mono uppercase tracking-wider text-red-800 font-bold px-1.5 py-0.5 rounded bg-red-100 border border-red-200">
-                    Smart Assistant
-                  </span>
-                </div>
-                <div className="mt-3 space-y-0.5">
-                  <div className="text-xs font-bold text-slate-950 group-hover:text-red-700 transition-colors">
-                    Paste Kotak Alert
-                  </div>
-                  <p className="text-[11px] text-slate-600 leading-snug">
-                    Parse SMS or notification & record with duplicate defense
-                  </p>
-                </div>
-              </button>
-
-              {/* 2. SECONDARY: Add Transaction */}
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingTransaction(null);
-                  setIsTransactionModalOpen(true);
-                }}
-                disabled={accounts.length === 0}
-                className="group p-3.5 rounded-xl border border-muted bg-white hover:border-emerald-300 hover:bg-emerald-50/20 text-left transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
-              >
-                <div className="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <Plus className="w-4 h-4" />
-                </div>
-                <div className="mt-3 space-y-0.5">
-                  <div className="text-xs font-semibold text-slate-950 group-hover:text-emerald-700 transition-colors">
-                    Record Transaction
-                  </div>
-                  <p className="text-[11px] text-slate-600 leading-snug">
-                    Manual debit or credit entry with category assignment
-                  </p>
-                </div>
-              </button>
-
-              {/* 3. SECONDARY: Import Statement */}
-              <button
-                type="button"
-                onClick={() => setIsImportModalOpen(true)}
-                className="group p-3.5 rounded-xl border border-muted bg-white hover:border-blue-300 hover:bg-blue-50/20 text-left transition-all cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
-              >
-                <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <FileUp className="w-4 h-4" />
-                </div>
-                <div className="mt-3 space-y-0.5">
-                  <div className="text-xs font-semibold text-slate-950 group-hover:text-blue-700 transition-colors">
-                    Import Statement
-                  </div>
-                  <p className="text-[11px] text-slate-600 leading-snug">
-                    Ingest offline bank statements (CSV, OFX, QIF)
-                  </p>
-                </div>
-              </button>
-
-              {/* 4. SECONDARY: Account Transfer */}
-              <button
-                type="button"
-                onClick={() => setIsTransferModalOpen(true)}
-                disabled={accounts.length < 2}
-                className="group p-3.5 rounded-xl border border-muted bg-white hover:border-purple-300 hover:bg-purple-50/20 text-left transition-all disabled:opacity-40 cursor-pointer shadow-xs active:scale-[0.98] flex flex-col justify-between"
-              >
-                <div className="w-9 h-9 rounded-lg bg-purple-50 border border-purple-200 text-purple-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <ArrowRightLeft className="w-4 h-4" />
-                </div>
-                <div className="mt-3 space-y-0.5">
-                  <div className="text-xs font-semibold text-slate-950 group-hover:text-purple-700 transition-colors">
-                    Account Transfer
-                  </div>
-                  <p className="text-[11px] text-slate-600 leading-snug">
-                    Move funds with balanced double-entry ledger guarantee
-                  </p>
-                </div>
-              </button>
-            </div>
-          </div>
-
+          </section>
+          <section className="finance-actions" aria-label="Quick actions">
+            <button onClick={() => { setEditingTransaction(null); setIsTransactionModalOpen(true); }} disabled={!accounts.length}><span><Plus size={21} /></span>Record payment</button>
+            <button onClick={() => setIsTransferModalOpen(true)} disabled={accounts.length < 2}><span><ArrowRightLeft size={21} /></span>Transfer</button>
+            <button onClick={() => setIsKotakModalOpen(true)}><span><BellRing size={21} /></span>{kotakTrackingActive ? "Messages · Active" : "Import message"}{kotakReviewCount > 0 && <small>{kotakReviewCount} to review</small>}</button>
+            <button onClick={() => setIsImportModalOpen(true)}><span><FileUp size={21} /></span>Upload statement</button>
+          </section>
           {/* B. Empty State when 0 accounts exist */}
           {accounts.length === 0 && (
             <div className="p-8 sm:p-10 rounded-2xl border border-dashed border-muted text-center space-y-3 bg-white shadow-soft">
@@ -765,9 +596,9 @@ export default function FinanceDashboardPage() {
                 <Wallet className="w-6 h-6" />
               </div>
               <div className="space-y-1 max-w-sm mx-auto">
-                <h3 className="font-display text-lg text-slate-900 font-normal">Welcome to Life Atlas Finance</h3>
+                <h3 className="font-display text-lg text-slate-900 font-normal">Welcome to Atlas Finance</h3>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  Start by adding your first account (Primary Bank, Savings, Cash, or Credit Card) to begin tracking your net worth and cash flow offline.
+                  Add a bank account, wallet, or credit card. Your balances, spending, and savings will come together here.
                 </p>
               </div>
               <button
@@ -778,7 +609,7 @@ export default function FinanceDashboardPage() {
                 className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Create Your First Account</span>
+                <span>Add your first account</span>
               </button>
             </div>
           )}
@@ -903,6 +734,9 @@ export default function FinanceDashboardPage() {
                   return (
                     <div
                       key={t.id}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedTxnForDetail(t); } }}
                       onClick={() => setSelectedTxnForDetail(t)}
                       className="p-3 rounded-xl border border-muted bg-white hover:border-slate-300 transition-all flex items-center justify-between text-xs cursor-pointer group shadow-soft"
                     >
@@ -1146,7 +980,7 @@ export default function FinanceDashboardPage() {
                         {t.direction === "inflow" ? "+" : "-"}
                         {formatPaise(t.amountPaise)}
                       </div>
-                      <div className="text-[10px] text-slate-400 font-mono">v{t.version || 1}</div>
+
                     </div>
                   </div>
                 );
@@ -1163,7 +997,7 @@ export default function FinanceDashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-display text-lg text-slate-900 font-normal">Monthly Category Budgets</h3>
+              <h3 className="font-display text-lg text-slate-900 font-normal">Your spending plan</h3>
               <p className="text-xs text-slate-600">Track expense limits for {periodLabel}.</p>
             </div>
 
@@ -1175,7 +1009,7 @@ export default function FinanceDashboardPage() {
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors cursor-pointer shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Set Category Budget</span>
+              <span>Create budget</span>
             </button>
           </div>
 
@@ -1278,7 +1112,7 @@ export default function FinanceDashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-display text-lg text-slate-900 font-normal">Savings Goals</h3>
-              <p className="text-xs text-slate-600">Track progress toward specific financial horizons.</p>
+              <p className="text-xs text-slate-600">Make room for what matters next.</p>
             </div>
 
             <button
@@ -1300,7 +1134,7 @@ export default function FinanceDashboardPage() {
               <div className="space-y-1 max-w-sm mx-auto">
                 <h4 className="font-sans font-semibold text-sm text-slate-900">No Goals Created</h4>
                 <p className="text-xs text-slate-600">
-                  Set targets for travel expeditions, equipment purchases, or an emergency safety buffer.
+                  Save for a holiday, a big purchase, or a little more peace of mind.
                 </p>
               </div>
               <button
@@ -1406,7 +1240,7 @@ export default function FinanceDashboardPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-display text-lg text-slate-900 font-normal">All Tracked Accounts</h3>
+              <h3 className="font-display text-lg text-slate-900 font-normal">Your accounts</h3>
               <p className="text-xs text-slate-600">Assets and liabilities kept strictly in balance.</p>
             </div>
 

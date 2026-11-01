@@ -1,0 +1,56 @@
+name: Build Atlas APK
+on:
+  push:
+    branches: ['build/atlas-google-messages-*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install dependencies
+        run: npm ci
+      - name: Check TypeScript and bank-message imports
+        run: |
+          npx prisma generate
+          npx tsc --noEmit
+          node --import tsx tests/finance/googleMessages.test.ts
+      - name: Prepare Android project
+        run: |
+          npx cap sync android
+          sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+      - name: Prepare new signing key
+        run: |
+          mkdir -p "$HOME/.android"
+          keytool -genkeypair -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 3072 -validity 10000 -dname 'CN=Atlas Android, O=Atlas, C=IN'
+      - name: Build installable APK
+        working-directory: android
+        run: bash gradlew --no-daemon --max-workers=2 :app:assembleDebug
+      - name: Verify APK and encrypt signing backup
+        run: |
+          mkdir -p apk-download
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-download/atlas-finance-google-messages.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose apk-download/atlas-finance-google-messages.apk
+          openssl cms -encrypt -binary -aes-256-cbc -in "$HOME/.android/debug.keystore" -out apk-download/signing-key-backup.p7m -outform DER android/signing-backup-public.pem
+          sha256sum apk-download/atlas-finance-google-messages.apk > apk-download/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atlas-apk-download
+          path: apk-download/
+          retention-days: 30
