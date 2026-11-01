@@ -24,6 +24,10 @@ const fs = require('node:fs');
       const overflow = () => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
       assert.equal(await overflow(), false, `Overview overflows at ${width}`);
       await page.screenshot({ path: `finance-qa/overview-${width}.png`, fullPage: true });
+      if (width === 390 || width === 1280) {
+        const preview = (await page.screenshot({ type: 'jpeg', quality: 75 })).toString('base64');
+        for (let offset = 0; offset < preview.length; offset += 16000) console.log(`ATLAS_PREVIEW_${width}_${String(offset / 16000).padStart(4, '0')}=${preview.slice(offset, offset + 16000)}`);
+      }
       for (const tab of ['Activity', 'Budgets', 'Goals', 'Accounts']) {
         await page.getByRole('tab', { name: tab, exact: true }).click();
         assert.equal(await overflow(), false, `${tab} overflows at ${width}`);
