@@ -182,7 +182,7 @@ export class NotificationTrackingService {
     let suggestedCategory: { categoryId: string; categoryName: string } | null = null;
     try {
       const catResult = await this.categorizationService.suggestCategory({
-        description: parsed.merchantOrBeneficiary,
+        description: text.trim(),
         merchant: parsed.merchantOrBeneficiary,
         amountPaise: parsed.amountPaise,
         direction: parsed.direction,
@@ -312,10 +312,10 @@ export class NotificationTrackingService {
       let explanation = "No merchant rule matched. Please check the category.";
       try {
         const suggestion = await this.categorizationService.suggestCategory({
-          description: parsed.merchantOrBeneficiary, merchant: parsed.merchantOrBeneficiary,
+          description: raw.text, merchant: parsed.merchantOrBeneficiary,
           amountPaise: parsed.amountPaise, direction: parsed.direction,
         });
-        if (suggestion) { categoryId = suggestion.categoryId; explanation = suggestion.ruleMatched || "Matched a merchant rule"; }
+        if (suggestion) { categoryId = suggestion.categoryId; explanation = suggestion.ruleMatched ? `Rule matched: ${suggestion.ruleMatched}` : "Matched a merchant rule"; }
       } catch { /* Review remains available when categorisation fails. */ }
       if (!categoryId) categoryId = parsed.direction === "outflow" ? "cat_other_expense" : "cat_other_income";
       this.stageInReviewQueue(parsed,

@@ -109,6 +109,24 @@ describe("Google Messages automatic imports", () => {
     assert.equal(reopened.getReviewQueue().length, 1);
     assert.equal((await uow.transactions.query({})).length, 0);
   });
+  test("uses the full SMS narration to suggest salary even when the merchant is just an employer name", async () => {
+    const event = alert("salary", "333333333333");
+    event.text = "Salary of Rs. 45,000.00 credited to your Kotak Bank A/c XX1234 from ACME PVT LTD. Ref 333333333333.";
+    const { plugin } = nativeQueue([event]);
+    const service = new NotificationTrackingService(uow, transactions, categories, plugin);
+    await service.drainPendingNotifications();
+    assert.equal(service.getReviewQueue()[0].suggestedCategoryId, "cat_salary");
+    assert.equal((await uow.transactions.query({})).length, 0);
+  });
+  test("unknown merchants receive an explicit fallback suggestion for the user to check", async () => {
+    const event = alert("unknown-merchant", "444444444444");
+    event.text = event.text.replace("SWIGGY", "A NEW MERCHANT");
+    const { plugin } = nativeQueue([event]);
+    const service = new NotificationTrackingService(uow, transactions, categories, plugin);
+    await service.drainPendingNotifications();
+    assert.equal(service.getReviewQueue()[0].suggestedCategoryId, "cat_other_expense");
+    assert.match(service.getReviewQueue()[0].categoryExplanation || "", /No merchant rule matched/);
+  });
   test("dismissal acknowledges unmatched alert without creating a transaction", async () => {
     const { plugin, state } = nativeQueue([alert("unknown", "111111111111", "9999")]);
     const service = new NotificationTrackingService(uow, transactions, categories, plugin);

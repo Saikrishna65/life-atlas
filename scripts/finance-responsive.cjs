@@ -7,7 +7,7 @@ const fs = require('node:fs');
   let activePage;
   try {
     for (const width of [320, 390, 768, 1280]) {
-      const page = await browser.newPage({ viewport: { width, height: 900 }, reducedMotion: 'reduce' });
+      const page = await browser.newPage({ viewport: { width, height: 900 }, hasTouch: width <= 768, isMobile: width <= 600, reducedMotion: 'reduce' });
       activePage = page;
       page.on('pageerror', error => console.error('BROWSER ERROR:', error.message));
       page.on('console', message => { if (message.type() === 'error') console.error('BROWSER CONSOLE:', message.text()); });
@@ -40,7 +40,8 @@ const fs = require('node:fs');
       await select.press('Enter');
       assert.equal(await menu.count(), 0, 'Dropdown should close after keyboard selection');
       await select.click();
-      await page.getByRole('option', { name: 'All Accounts', exact: true }).click();
+      const option = page.getByRole('option', { name: 'All Accounts', exact: true });
+      if (width <= 600) await option.tap(); else await option.click();
       assert.equal(await menu.count(), 0, 'Dropdown should close after tapping an option');
       await page.getByRole('tab', { name: 'Overview', exact: true }).click();
       await page.getByRole('button', { name: 'Your approval inbox' }).click();
