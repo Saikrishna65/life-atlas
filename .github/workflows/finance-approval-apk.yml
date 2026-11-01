@@ -10,6 +10,7 @@ permissions:
   actions: read
 jobs:
   finance:
+    if: startsWith(github.head_ref, 'build/atlas-finance-approvals-')
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
