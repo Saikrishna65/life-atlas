@@ -1,3 +1,4 @@
+import {saveMusicChange} from "../control-room/music-queue";
 /**
  * Life Atlas: Music Vault IndexedDB Storage Engine (Phase 16)
  * Dedicated database: life_atlas_music_db
@@ -258,18 +259,7 @@ export async function toggleFavoriteTrack(id: string): Promise<boolean> {
   track.isFavorite = !track.isFavorite;
   await saveTrack(track);
 
-  // Sync favorite update to online database
-  if (typeof window !== "undefined") {
-    fetch("/api/music", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "UPDATE_METADATA",
-        trackId: id,
-        updates: { isFavorite: track.isFavorite },
-      }),
-    }).catch(() => {});
-  }
+  if(typeof window!=="undefined")await saveMusicChange(id,{isFavorite:track.isFavorite});
 
   return track.isFavorite;
 }
@@ -291,21 +281,8 @@ export async function incrementPlayCount(id: string): Promise<void> {
     durationPlayed: track.duration,
   });
 
-  // Sync playcount to online database
-  if (typeof window !== "undefined") {
-    fetch("/api/music", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "UPDATE_METADATA",
-        trackId: id,
-        updates: {
-          playCount: track.playCount,
-          lastPlayedAt: new Date(track.lastPlayedAt).toISOString(),
-        },
-      }),
-    }).catch(() => {});
-  }
+  if(typeof window!=="undefined")await saveMusicChange(id,{playCount:track.playCount,lastPlayedAt:new Date(track.lastPlayedAt).toISOString()});
+
 }
 
 export async function updateTrackMetadata(
@@ -318,17 +295,7 @@ export async function updateTrackMetadata(
   Object.assign(track, updates);
   await saveTrack(track);
 
-  if (typeof window !== "undefined") {
-    fetch("/api/music", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "UPDATE_METADATA",
-        trackId: id,
-        updates,
-      }),
-    }).catch(() => {});
-  }
+  if(typeof window!=="undefined")await saveMusicChange(id,updates);
 
   return track;
 }

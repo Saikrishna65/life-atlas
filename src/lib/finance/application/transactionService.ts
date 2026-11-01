@@ -1,3 +1,4 @@
+import { isControlRestoreActive } from "../../control-room/maintenance";
 import { TripFinanceService, loadFinanceTrips } from "../trips/service";
 import { resolveTripAssignment, applyTripCategory, tripDetailCategoryId } from "../trips/policy";
 import type { TripAssignment } from "../trips/policy";
@@ -82,6 +83,7 @@ export class TransactionService {
    * Records a new transaction with duplicate prevention and automatic balance adjustment
    */
   async recordTransaction(dto: RecordTransactionDTO): Promise<Transaction> {
+    if(isControlRestoreActive())throw new FinanceError("A restore is in progress. Try again when it finishes.","CONCURRENCY_CONFLICT");
     const account = await this.uow.accounts.getById(dto.accountId);
     if (!account) {
       throw new FinanceError(`Account ${dto.accountId} not found`, "INVALID_ACCOUNT");

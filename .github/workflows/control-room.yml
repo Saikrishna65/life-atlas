@@ -1,0 +1,44 @@
+name: Verify Atlas Control Room
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/lib/control-room/**'
+      - 'src/components/control-room/**'
+      - 'src/app/secret/control-room/**'
+      - 'src/app/api/control-room/**'
+      - 'src/lib/music/**'
+      - 'tests/control-room/**'
+      - 'scripts/control-room-responsive.cjs'
+      - '.github/workflows/control-room.yml'
+permissions:
+  contents: read
+jobs:
+  control_room:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx prisma generate && npx tsc --noEmit
+      - run: node --import tsx --test tests/control-room/*.test.ts
+      - name: Check Control Room on phones, tablet and desktop
+        env:
+          FINANCE_QA: '1'
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install chromium --with-deps
+          trap 'tail -n 70 /tmp/next-control.log' EXIT
+          npx next dev --webpack -p 3001 > /tmp/next-control.log 2>&1 &
+          for attempt in $(seq 1 60); do if curl -sf http://localhost:3001/secret/control-room > /dev/null; then break; fi; sleep 2; done
+          node scripts/control-room-responsive.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: control-room-screenshots
+          path: control-room-qa/

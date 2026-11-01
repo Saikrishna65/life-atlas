@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BookOpen, ArrowUpRight, Compass, Music, Wallet } from "lucide-react";
+import { ArrowLeft, BookOpen, ArrowUpRight, Compass, Music, Wallet, SlidersHorizontal } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { usePendingFinanceCount } from "@/lib/finance/usePendingFinanceCount";
 import MusicDashboardWidget from "@/components/music/MusicDashboardWidget";
@@ -140,6 +140,11 @@ export default function SecretDashboard() {
               </p>
             </div>
           </div>
+        </Link>
+
+        <Link href="/secret/control-room" className="group block relative rounded-2xl border border-cyan-500/25 bg-surface hover:bg-surface-hover/80 hover:border-cyan-400/50 p-6 sm:p-7 transition-all duration-300 shadow-soft active:scale-[0.99]">
+          <div className="flex items-start justify-between gap-4"><span className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center text-cyan-400"><SlidersHorizontal className="w-5 h-5"/></span><span className="inline-flex items-center gap-1.5 text-xs font-sans tracking-wider uppercase text-cyan-400 font-semibold">Open Control Room <ArrowUpRight className="w-3.5 h-3.5"/></span></div>
+          <h2 className="mt-6 font-display text-2xl sm:text-3xl text-foreground group-hover:text-cyan-400 transition-colors font-normal tracking-tight">Atlas Control Room</h2><p className="mt-2 font-body text-muted-foreground text-xs sm:text-sm leading-relaxed max-w-lg">Understand your storage, manage files and cloud connections, protect your vaults with backups, and control app permissions and activity.</p>
         </Link>
 
         {/* Card 4: Creator Studio (Public Inscriptions) */}

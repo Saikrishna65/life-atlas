@@ -95,6 +95,7 @@ export default function FinanceDashboardPage() {
   }, [theme]);
   const realPendingCount = usePendingFinanceCount();
   const [activeTab, setActiveTab] = useState<DashboardTab>("OVERVIEW");
+  useEffect(()=>{const value=new URLSearchParams(window.location.search).get("section")?.toUpperCase();if(["OVERVIEW","TRANSACTIONS","BUDGETS","GOALS","ACCOUNTS"].includes(value||""))setActiveTab(value as DashboardTab);},[]);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("THIS_WEEK");
   const [isLoading, setIsLoading] = useState(true);
 
