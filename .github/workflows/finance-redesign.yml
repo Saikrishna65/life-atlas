@@ -22,6 +22,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx prisma generate && npx tsc --noEmit
+      - run: node --import tsx --test tests/finance/cashFlowChart.test.ts
       - name: Check all Finance screens on phones and desktop
         env:
           FINANCE_QA: '1'

@@ -1,6 +1,7 @@
 "use client";
 
 import { openDemoDatabase, seedFinanceDemo, createDemoCapture } from "@/lib/finance/demo";
+import { topExpenseStores, StoreSpending } from "@/lib/finance/cashFlowChart";
 import FinanceThemePicker, { FinanceTheme, THEME_STORAGE_KEY, isFinanceTheme } from "@/components/finance/FinanceThemePicker";
 import AnimatedMoney from "@/components/finance/AnimatedMoney";
 import { usePendingFinanceCount } from "@/lib/finance/usePendingFinanceCount";
@@ -82,7 +83,7 @@ import CashFlowChart from "@/components/finance/CashFlowChart";
 import CategorySpendingChart from "@/components/finance/CategorySpendingChart";
 
 type DashboardTab = "OVERVIEW" | "TRANSACTIONS" | "BUDGETS" | "GOALS" | "ACCOUNTS";
-type PeriodPreset = "THIS_MONTH" | "LAST_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR" | "ALL_TIME";
+type PeriodPreset = "THIS_WEEK" | "LAST_6_MONTHS" | "THIS_MONTH" | "LAST_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR" | "ALL_TIME";
 
 export default function FinanceDashboardPage() {
   const isDemo = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";
@@ -114,6 +115,7 @@ export default function FinanceDashboardPage() {
   const [periodExpensePaise, setPeriodExpensePaise] = useState(0);
   const [periodNetCashFlowPaise, setPeriodNetCashFlowPaise] = useState(0);
   const [timelinePoints, setTimelinePoints] = useState<CashFlowTimelinePoint[]>([]);
+  const [topStores, setTopStores] = useState<StoreSpending[]>([]);
   const [spendingBreakdown, setSpendingBreakdown] = useState<CategorySpendingItem[]>([]);
 
   // Modals state
@@ -193,7 +195,13 @@ export default function FinanceDashboardPage() {
     let end: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     let label = "This Month";
 
-    if (periodPreset === "THIS_MONTH") {
+    if (periodPreset === "THIS_WEEK") {
+      start = new Date(now.getFullYear(),now.getMonth(),now.getDate()-6);
+      label = "Last 7 days";
+    } else if (periodPreset === "LAST_6_MONTHS") {
+      start = new Date(now.getFullYear(),now.getMonth()-5,1);
+      label = "Last 6 months";
+    } else if (periodPreset === "THIS_MONTH") {
       start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
       label = start.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     } else if (periodPreset === "LAST_MONTH") {
@@ -219,12 +227,16 @@ export default function FinanceDashboardPage() {
     };
   }, [periodPreset]);
 
+  const refreshRequest = React.useRef(0);
+
   // Main Data Refresh Callback
   const refreshAll = useCallback(async () => {
-    setIsLoading(true);
+    const requestId = ++refreshRequest.current;
+    const isCurrent = () => requestId === refreshRequest.current;
+    if (isCurrent()) setIsLoading(true);
     try {
       if (!isIndexedDBAvailable()) {
-        setIsLoading(false);
+        if (isCurrent()) setIsLoading(false);
         return;
       }
 
@@ -236,73 +248,75 @@ export default function FinanceDashboardPage() {
         await uow.categories.seedDefaults();
         allCats = await uow.categories.getAll();
       }
-      setCategories(allCats);
+      if (isCurrent()) setCategories(allCats);
 
       // Fetch accounts and net worth
       const allAccounts = await uow.accounts.getAll();
-      setAccounts(allAccounts);
+      if (isCurrent()) setAccounts(allAccounts);
 
       const nw = await balanceService.getNetWorth();
-      setNetWorthPaise(nw.netWorthPaise);
-      setTotalAssetsPaise(nw.totalAssetsPaise);
-      setTotalLiabilitiesPaise(nw.totalLiabilitiesPaise);
+      if (isCurrent()) setNetWorthPaise(nw.netWorthPaise);
+      if (isCurrent()) setTotalAssetsPaise(nw.totalAssetsPaise);
+      if (isCurrent()) setTotalLiabilitiesPaise(nw.totalLiabilitiesPaise);
 
       // Fetch period-dependent cash flow and reports
       const flow = await balanceService.getCashFlow(startDate, endDate);
-      setPeriodIncomePaise(flow.totalIncomePaise);
-      setPeriodExpensePaise(flow.totalExpensesPaise);
-      setPeriodNetCashFlowPaise(flow.netCashFlowPaise);
+      if (isCurrent()) setPeriodIncomePaise(flow.totalIncomePaise);
+      if (isCurrent()) setPeriodExpensePaise(flow.totalExpensesPaise);
+      if (isCurrent()) setPeriodNetCashFlowPaise(flow.netCashFlowPaise);
 
       const timeline = await balanceService.getCashFlowTimeline(startDate, endDate);
-      setTimelinePoints(timeline);
+      if (isCurrent()) setTimelinePoints(timeline);
 
       const breakdown = await balanceService.getCategorySpendingBreakdown(startDate, endDate);
-      setSpendingBreakdown(breakdown);
+      if (isCurrent()) setSpendingBreakdown(breakdown);
+      const reportExpenses = await uow.transactions.query({startDate,endDate,status:"posted",direction:"outflow"});
+      if (isCurrent()) setTopStores(topExpenseStores(reportExpenses,allCats));
 
       // Budgets
       const budgetReport = await budgetService.getCategoryBudgetStatuses(startDate, endDate);
-      setBudgets(budgetReport.statuses);
+      if (isCurrent()) setBudgets(budgetReport.statuses);
 
       // Savings Goals
       const goals = await savingsGoalService.getGoalsWithProgress();
-      setSavingsGoals(goals);
+      if (isCurrent()) setSavingsGoals(goals);
 
       // Transactions
       const allTxns = await uow.transactions.query({ limit: 200 });
-      setTransactions(allTxns);
+      if (isCurrent()) setTransactions(allTxns);
 
       // Uncategorized review count
       const uncategorized = await categorizationService.getUncategorizedTransactions();
-      setUncategorizedCount(uncategorized.length);
+      if (isCurrent()) setUncategorizedCount(uncategorized.length);
 
       // Detected subscriptions count
       const detectedRules = await recurringService.getRecurringRules("detected");
-      setDetectedRecurringCount(detectedRules.length);
+      if (isCurrent()) setDetectedRecurringCount(detectedRules.length);
 
       // Outbox status
       const pendingOps = await uow.outbox.getPending();
-      setPendingOutboxCount(pendingOps.length);
+      if (isCurrent()) setPendingOutboxCount(pendingOps.length);
 
       // Low balance / runway alert check
       try {
         const rw = await runwayService.computeRunway();
-        setHasLowBalanceWarning(rw.runwayMonths !== null && rw.runwayMonths < 1.0);
+        if (isCurrent()) setHasLowBalanceWarning(rw.runwayMonths !== null && rw.runwayMonths < 1.0);
       } catch {
-        setHasLowBalanceWarning(false);
+        if (isCurrent()) setHasLowBalanceWarning(false);
       }
 
       // Kotak Notification Tracking status
       try {
         const trackingStatus = await notificationTrackingService.getStatus();
-        setKotakTrackingActive(trackingStatus.enabled && trackingStatus.permissionGranted);
-        setKotakReviewCount(trackingStatus.pendingReviewCount);
+        if (isCurrent()) setKotakTrackingActive(trackingStatus.enabled && trackingStatus.permissionGranted);
+        if (isCurrent()) setKotakReviewCount(trackingStatus.pendingReviewCount);
       } catch {
         // Ignored
       }
     } catch (err) {
       console.error("Failed to load finance data:", err);
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
   }, [uow, balanceService, budgetService, savingsGoalService, categorizationService, recurringService, runwayService, notificationTrackingService, startDate, endDate]);
 
@@ -426,7 +440,7 @@ export default function FinanceDashboardPage() {
                 <section className="glass-wallet-preview"><div className="af-section-heading"><h3>Your wallet</h3><button className="af-text-button" onClick={()=>setActiveTab("ACCOUNTS")}>Open wallet <ChevronRight size={15}/></button></div>{accountView()}</section>
                 <section className="glass-recent"><div className="af-section-heading"><h3>Recent transactions</h3><button className="af-text-button" onClick={()=>setActiveTab("TRANSACTIONS")}>See all</button></div>{activityView(transactions.slice(0,5))}</section>
               </div>
-              <div className="glass-insights-column"><div className="glass-period"><span>Insights</span><FinanceSelect aria-label="Reporting period" value={periodPreset} onChange={e=>setPeriodPreset(e.target.value as PeriodPreset)}><option value="THIS_MONTH">This month</option><option value="LAST_MONTH">Last month</option><option value="LAST_3_MONTHS">Last 3 months</option><option value="THIS_YEAR">This year</option><option value="ALL_TIME">All time</option></FinanceSelect></div><CashFlowChart timeline={timelinePoints} totalIncomePaise={periodIncomePaise} totalExpensesPaise={periodExpensePaise}/><CategorySpendingChart categories={spendingBreakdown} totalExpensesPaise={periodExpensePaise}/></div>
+              <div className="glass-insights-column"><div className="glass-period"><span>Insights</span><FinanceSelect aria-label="Reporting period" value={periodPreset} onChange={e=>setPeriodPreset(e.target.value as PeriodPreset)}><option value="THIS_WEEK">Last 7 days</option><option value="THIS_MONTH">This month</option><option value="LAST_MONTH">Last month</option><option value="LAST_3_MONTHS">Last 3 months</option><option value="LAST_6_MONTHS">Last 6 months</option><option value="THIS_YEAR">This year</option><option value="ALL_TIME">All time</option></FinanceSelect></div><CashFlowChart stores={topStores} period={periodPreset} onPeriodChange={value=>setPeriodPreset(value as PeriodPreset)} startDate={periodPreset === "ALL_TIME" && timelinePoints.length ? timelinePoints[0].dateKey : startDate} endDate={endDate} periodLabel={periodLabel} timeline={timelinePoints} totalIncomePaise={periodIncomePaise} totalExpensesPaise={periodExpensePaise}/><CategorySpendingChart categories={spendingBreakdown} totalExpensesPaise={periodExpensePaise}/></div>
             </div>
           </>}
           {activeTab !== "OVERVIEW" && <header className="glass-section-title"><p>YOUR FINANCIAL SPACE</p><h2>{activeTab==="ACCOUNTS" ? "Wallet" : activeTab==="TRANSACTIONS" ? "Transactions" : activeTab==="BUDGETS" ? "Spending plan" : "Dream it. Save for it."}</h2><span>{periodLabel}</span></header>}
