@@ -44,8 +44,21 @@ jobs:
     if: startsWith(github.head_ref, 'design/finance-')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: finance_ci
+          POSTGRES_PASSWORD: finance_ci
+          POSTGRES_DB: finance_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U finance_ci -d finance_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      DATABASE_URL: postgresql://unused:unused@127.0.0.1:5432/unused
+      DATABASE_URL: postgresql://finance_ci:finance_ci@127.0.0.1:5432/finance_ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,4 +66,5 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - run: npx prisma db push --skip-generate
       - run: npm run build
