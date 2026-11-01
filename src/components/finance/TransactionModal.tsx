@@ -25,6 +25,7 @@ interface TransactionModalProps {
   categories: FinanceCategory[];
   editingTransaction?: Transaction | null;
   defaultAccountId?: string;
+  defaultTripId?: string;
 }
 
 export default function TransactionModal({
@@ -36,7 +37,11 @@ export default function TransactionModal({
   categories,
   editingTransaction,
   defaultAccountId,
+  defaultTripId,
 }: TransactionModalProps) {
+  const [tripChoice,setTripChoice]=useState("__auto");
+  const [tripOptions,setTripOptions]=useState<import("@/lib/vault/types").TripRecord[]>([]);
+  useEffect(()=>{if(isOpen)void transactionService.availableTrips().then(setTripOptions).catch(()=>setTripOptions([]));},[isOpen,transactionService]);
   const [direction, setDirection] = useState<TransactionDirection>("outflow");
   const [amountStr, setAmountStr] = useState("");
   const [accountId, setAccountId] = useState("");
@@ -51,6 +56,7 @@ export default function TransactionModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    setTripChoice(editingTransaction?.tripAssignment?.mode==="excluded"?"__normal":editingTransaction?.tripAssignment?.mode==="manual"?editingTransaction.tripAssignment.tripId || "__normal":defaultTripId || "__auto");
     if (editingTransaction) {
       setDirection(editingTransaction.direction);
       setAmountStr(paiseToDecimalString(editingTransaction.amountPaise));
@@ -58,7 +64,7 @@ export default function TransactionModal({
       setCategoryId(editingTransaction.categoryId || "");
       setDescription(editingTransaction.description);
       setMerchant(editingTransaction.merchant || "");
-      setOccurredAt(editingTransaction.occurredAt.slice(0, 16));
+      setOccurredAt(new Date(Date.parse(editingTransaction.occurredAt)-new Date(editingTransaction.occurredAt).getTimezoneOffset()*60000).toISOString().slice(0,16));
       setStatus(editingTransaction.status);
       setNotes(editingTransaction.notes || "");
       setCorrectionReason("");
@@ -80,7 +86,7 @@ export default function TransactionModal({
       setCorrectionReason("");
     }
     setErrorMessage(null);
-  }, [editingTransaction, isOpen, defaultAccountId, accounts]);
+  }, [editingTransaction, isOpen, defaultAccountId, defaultTripId, accounts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,6 +121,7 @@ export default function TransactionModal({
         await transactionService.correctTransaction(
           editingTransaction.id,
           {
+            tripAssignment:tripChoice==="__auto"?{mode:"auto"}:tripChoice==="__normal"||direction==="inflow"?{mode:"excluded"}:{mode:"manual",tripId:tripChoice},
             description: description.trim(),
             merchant: merchant.trim() || undefined,
             amountPaise: paise,
@@ -129,6 +136,7 @@ export default function TransactionModal({
       } else {
         await transactionService.recordTransaction({
           accountId,
+          tripAssignment:tripChoice==="__auto"?{mode:"auto"}:tripChoice==="__normal"||direction==="inflow"?{mode:"excluded"}:{mode:"manual",tripId:tripChoice},
           description: description.trim(),
           merchant: merchant.trim() || undefined,
           amountPaise: paise,
@@ -331,6 +339,7 @@ export default function TransactionModal({
           </div>
         )}
 
+        {direction==="outflow"&&<div><label>Trip assignment</label><FinanceSelect aria-label="Trip assignment" value={tripChoice} onChange={e=>setTripChoice(e.target.value)}><option value="__auto">Automatic · confirmed trip window</option><option value="__normal">Normal category · keep outside trips</option>{tripOptions.map(trip=><option key={trip.id} value={trip.id}>{trip.title} · manual / advance booking</option>)}</FinanceSelect><p>Manual choices stay attached even outside the travel dates.</p></div>}
         {/* Actions */}
         <div className="flex items-center justify-end gap-2 pt-4 border-t border-muted">
           <button

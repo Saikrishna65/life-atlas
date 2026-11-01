@@ -27,6 +27,7 @@ export interface RawNotificationEvent {
  * Deterministically parsed transaction details extracted from notification text
  */
 export interface ParsedNotificationTransaction {
+  paymentKind?: import("./models").PaymentKind;
   rawEventId: string;
   sourcePackage: string;
   sourceType: NotificationSourceType;

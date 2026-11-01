@@ -1,4 +1,5 @@
 "use client";
+import { defaultTripSettings } from "../finance/trips/policy";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
@@ -113,6 +114,7 @@ export function useTripVault() {
         updatedAt: now,
       };
 
+      newTrip.finance = newTrip.finance || defaultTripSettings(newTrip) || undefined;
       const saved = await saveTrip(newTrip);
       notifyVaultChange();
       return saved;

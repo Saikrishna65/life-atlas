@@ -157,6 +157,18 @@ export class IndexedDBTransactionRepository implements ITransactionRepository {
     return list.length;
   }
 
+  async saveIfVersion(transaction: Transaction, expectedVersion: number): Promise<boolean> {
+    validateTransaction(transaction);
+    const db=await this.dbPromise;
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction("transactions","readwrite");const store=tx.objectStore("transactions");let saved=false;
+      const request=store.get(transaction.id);
+      request.onsuccess=()=>{if(request.result?.version===expectedVersion){store.put(transaction);saved=true;}};
+      tx.oncomplete=()=>resolve(saved);tx.onerror=()=>reject(new StorageError("Failed to save trip assignment","PERSISTENCE_FAILED",tx.error));
+      tx.onabort=()=>reject(new StorageError("Trip assignment was interrupted","PERSISTENCE_FAILED",tx.error));
+    });
+  }
+
   async save(transaction: Transaction): Promise<void> {
     const validated = validateTransaction(transaction);
     const db = await this.dbPromise;

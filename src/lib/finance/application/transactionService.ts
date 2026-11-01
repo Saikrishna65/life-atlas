@@ -1,3 +1,7 @@
+import { TripFinanceService, loadFinanceTrips } from "../trips/service";
+import { resolveTripAssignment } from "../trips/policy";
+import type { TripAssignment } from "../trips/policy";
+import type { TripRecord } from "../../vault/types";
 /**
  * Life Atlas Finance: Transaction Application Service
  * 
@@ -24,6 +28,10 @@ import {
 import { FinanceError } from "../domain/errors";
 
 export interface RecordTransactionDTO {
+  paymentKind?: import("../domain/models").PaymentKind;
+  tripAssignment?: TripAssignment;
+  recurringRuleId?: string;
+  originalTransactionId?: string;
   accountId: ID;
   description: string;
   merchant?: string;
@@ -53,6 +61,7 @@ export interface RecordTransferDTO {
 }
 
 export interface CorrectTransactionDTO {
+  tripAssignment?: TripAssignment;
   description?: string;
   merchant?: string;
   amountPaise?: Paise;
@@ -65,7 +74,9 @@ export interface CorrectTransactionDTO {
 }
 
 export class TransactionService {
-  constructor(private uow: IUnitOfWork) {}
+  constructor(private uow: IUnitOfWork, private loadTrips:()=>Promise<TripRecord[]>=loadFinanceTrips) {}
+
+  async availableTrips(){ return this.loadTrips(); }
 
   /**
    * Records a new transaction with duplicate prevention and automatic balance adjustment
@@ -136,6 +147,10 @@ export class TransactionService {
 
     const transaction: Transaction = {
       id,
+      paymentKind: dto.paymentKind,
+      tripAssignment: dto.tripAssignment,
+      recurringRuleId: dto.recurringRuleId,
+      originalTransactionId: dto.originalTransactionId,
       accountId: dto.accountId,
       description: dto.description.trim(),
       merchant: dto.merchant?.trim(),
@@ -156,6 +171,12 @@ export class TransactionService {
       version: 1,
     };
 
+    const tripContext=await new TripFinanceService(this.uow,this.loadTrips).context();
+    if(transaction.tripAssignment?.mode==='manual') {
+      const target=tripContext.trips.find(t=>t.id===transaction.tripAssignment?.tripId);
+      if(!target || target.currency!==transaction.currency || transaction.direction!=='outflow') throw new FinanceError('Choose a trip with the same currency for an expense.', 'INVALID_TRIP');
+      transaction.tripAssignment={...transaction.tripAssignment,tripTitle:target.title};
+    } else transaction.tripAssignment=resolveTripAssignment(transaction,tripContext);
     await this.uow.transactions.save(transaction);
 
     // Update account balance
@@ -184,6 +205,7 @@ export class TransactionService {
       idempotencyKey: `create_txn_${id}`,
     });
 
+    if(typeof window!=="undefined")window.dispatchEvent(new Event("finance-ledger-updated"));
     return transaction;
   }
 
@@ -350,6 +372,7 @@ export class TransactionService {
       }
     }
 
+    if(typeof window!=="undefined")window.dispatchEvent(new Event("finance-ledger-updated"));
     return existing;
   }
 
@@ -398,6 +421,11 @@ export class TransactionService {
       existing.categoryId = updates.categoryId;
     }
 
+    if(updates.occurredAt!==undefined && updates.occurredAt!==existing.occurredAt){
+      if(!Number.isFinite(Date.parse(updates.occurredAt)))throw new FinanceError('Enter a valid payment time.','INVALID_DATE');
+      changes.occurredAt={oldVal:existing.occurredAt,newVal:updates.occurredAt};existing.occurredAt=updates.occurredAt;
+    }
+
     if (updates.status !== undefined && updates.status !== existing.status) {
       changes.status = { oldVal: existing.status, newVal: updates.status };
       existing.status = updates.status;
@@ -411,6 +439,18 @@ export class TransactionService {
     if (updates.tags !== undefined) {
       changes.tags = { oldVal: existing.tags, newVal: updates.tags };
       existing.tags = updates.tags;
+    }
+
+    if(updates.tripAssignment!==undefined){changes.tripAssignment={oldVal:existing.tripAssignment,newVal:updates.tripAssignment};existing.tripAssignment=updates.tripAssignment;}
+    const tripContext=await new TripFinanceService(this.uow,this.loadTrips).context();
+    if(existing.tripAssignment?.mode==='manual'){
+      const target=tripContext.trips.find(t=>t.id===existing.tripAssignment?.tripId);
+      if(!target || target.currency!==existing.currency || existing.direction!=='outflow' || existing.transferGroupId)throw new FinanceError('Choose a trip with the same currency for an expense.','INVALID_TRIP');
+      existing.tripAssignment={...existing.tripAssignment,tripTitle:target.title};
+    }
+    const nextAssignment=resolveTripAssignment(existing,tripContext);
+    if(JSON.stringify(existing.tripAssignment)!==JSON.stringify(nextAssignment)){
+      changes.tripAssignment={oldVal:existing.tripAssignment,newVal:nextAssignment};existing.tripAssignment=nextAssignment;
     }
 
     if (Object.keys(changes).length === 0) {
@@ -434,6 +474,7 @@ export class TransactionService {
       performedAt: now,
     });
 
+    if(typeof window!=="undefined")window.dispatchEvent(new Event("finance-ledger-updated"));
     return existing;
   }
 

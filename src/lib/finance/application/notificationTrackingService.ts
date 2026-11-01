@@ -184,7 +184,8 @@ export class NotificationTrackingService {
       const catResult = await this.categorizationService.suggestCategory({
         description: text.trim(),
         merchant: parsed.merchantOrBeneficiary,
-        amountPaise: parsed.amountPaise,
+        paymentKind: parsed.paymentKind,
+      amountPaise: parsed.amountPaise,
         direction: parsed.direction,
       });
       if (catResult) {
@@ -526,6 +527,7 @@ export class NotificationTrackingService {
     if (!approvedCategory) throw new Error("Select a category before approval.");
     await this.transactionService.recordTransaction({
       accountId,
+      paymentKind: item.parsedTransaction.paymentKind,
       amountPaise: item.parsedTransaction.amountPaise,
       direction: item.parsedTransaction.direction,
       description: item.parsedTransaction.merchantOrBeneficiary,

@@ -76,7 +76,13 @@ export type TransactionSource =
   | "notification"
   | "receipt";
 
+export type PaymentKind = "purchase" | "salary" | "refund" | "transfer" | "automatic_bill";
+
 export interface Transaction {
+  paymentKind?: PaymentKind;
+  tripAssignment?: import("../trips/policy").TripAssignment;
+  /** Explicit provenance for generated or user-marked automatic bills. */
+  recurringRuleId?: ID;
   /** Immutable unique identifier (e.g. "txn_...") */
   id: ID;
   /** Associated account ID */

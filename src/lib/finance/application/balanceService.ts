@@ -100,7 +100,7 @@ export class BalanceService {
     let totalSpend = 0;
 
     for (const txn of txns) {
-      if (txn.status === "reversed") continue;
+      if (txn.status === "reversed" || (txn.tripAssignment?.tripId && txn.tripAssignment.mode!=="excluded")) continue;
       if (txn.transferGroupId) continue; // Exclude transfers
       if (txn.categoryId && transferCategoryIds.has(txn.categoryId)) continue;
 

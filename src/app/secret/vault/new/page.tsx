@@ -1,6 +1,7 @@
 "use client";
+import { zonedInstant, validateTripSettings } from "@/lib/finance/trips/policy";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -131,6 +132,10 @@ export default function NewTripPage() {
   const [coverImage, setCoverImage] = useState<string>(COVER_PRESETS[0].url);
   const [customCoverUrl, setCustomCoverUrl] = useState("");
 
+  const [financeStartTime,setFinanceStartTime]=useState("21:00");
+  const [financeEndTime,setFinanceEndTime]=useState("05:00");
+  const [financeTimeZone,setFinanceTimeZone]=useState("Asia/Kolkata");
+  useEffect(()=>setFinanceTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata"),[]);
   // Step 2: Route & Dates
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();
@@ -289,7 +294,10 @@ export default function NewTripPage() {
 
       const selectedCover = customCoverUrl.trim() || coverImage;
 
+      const finance=endDate?{startAt:zonedInstant(`${startDate}T${financeStartTime}`,financeTimeZone),endAt:zonedInstant(`${endDate}T${financeEndTime}`,financeTimeZone),timeZone:financeTimeZone,confirmation:"planned" as const}:undefined;
+      if(finance)validateTripSettings(finance);
       const created = await createTrip({
+        finance,
         title: title.trim(),
         subtitle: subtitle.trim() || undefined,
         destination: destination.trim(),
@@ -312,7 +320,7 @@ export default function NewTripPage() {
       router.push(`/secret/vault/${created.id}`);
     } catch (err) {
       console.error("Failed to create trip in vault:", err);
-      setFormError("Failed to store expedition in local database. Please try again.");
+      setFormError(err instanceof Error?err.message:"Failed to store expedition in local database. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -537,6 +545,7 @@ export default function NewTripPage() {
               }}
             />
 
+            <div className="rounded-2xl border border-teal-500/30 bg-teal-500/5 p-4 space-y-3"><h3 className="text-base text-foreground">Finance travel window</h3><p className="text-sm text-muted-foreground">Confirm on the day before departure to automatically group eligible payments during these exact times.</p><div className="grid grid-cols-2 gap-3"><label className="text-sm text-muted-foreground">Departure time<input aria-label="Finance departure time" type="time" value={financeStartTime} onChange={e=>setFinanceStartTime(e.target.value)} className="mt-2 block w-full rounded-xl border border-muted bg-surface p-3 text-foreground" required/></label><label className="text-sm text-muted-foreground">Return time<input aria-label="Finance return time" type="time" value={financeEndTime} onChange={e=>setFinanceEndTime(e.target.value)} className="mt-2 block w-full rounded-xl border border-muted bg-surface p-3 text-foreground" required/></label></div><label className="block text-sm text-muted-foreground">Timezone<input aria-label="Finance trip timezone" value={financeTimeZone} onChange={e=>setFinanceTimeZone(e.target.value)} className="mt-2 block w-full rounded-xl border border-muted bg-surface p-3 text-foreground" required/></label></div>
             {/* Travel Timing Slots Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-4 rounded-2xl bg-surface border border-muted space-y-2">

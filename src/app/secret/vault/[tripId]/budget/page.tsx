@@ -284,6 +284,7 @@ export default function TripBudgetPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in pt-2 sm:pt-4 pb-24">
+      <Link href={`/secret/finance?trip=${encodeURIComponent(tripId)}`} className="block rounded-2xl border border-teal-500/30 bg-teal-500/10 p-5"><strong className="block text-lg text-foreground">Connected Finance spending →</strong><p className="mt-2 text-sm text-muted-foreground">See automatic bank payments, attach advance bookings, and review travel timing. This separate planning log does not create Finance transactions.</p></Link>
       {/* Top Navigation */}
       <nav className="flex items-center justify-between border-b border-muted pb-4">
         <Link

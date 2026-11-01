@@ -95,6 +95,7 @@ export class KotakNotificationParser {
       : undefined;
 
     const parsed: ParsedNotificationTransaction = {
+      paymentKind: isRefund ? "refund" : /\b(salary|payroll)\b/i.test(combined) ? "salary" : /\b(autopay|auto[ -]?debit|standing instruction|mandate|emi|recurring payment)\b/i.test(combined) ? "automatic_bill" : /\b(self transfer|own account|internal transfer)\b/i.test(combined) ? "transfer" : "purchase",
       rawEventId: event.id,
       sourcePackage: event.packageName,
       sourceType,

@@ -3,6 +3,8 @@
  */
 
 export type FinanceErrorCode =
+  | "INVALID_TRIP"
+  | "INVALID_DATE"
   | "INVALID_AMOUNT"
   | "UNSAFE_NUMERIC_CONVERSION"
   | "CURRENCY_MISMATCH"
