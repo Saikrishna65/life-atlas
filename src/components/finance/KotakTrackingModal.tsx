@@ -284,7 +284,7 @@ export default function KotakTrackingModal({
   // Review Queue Handlers
   const handleResolveReviewItem = async (itemId: string) => {
     const item = reviewItems.find((entry) => entry.id === itemId);
-    const accountId = reviewAccounts[itemId] || item?.candidateAccountIds[0];
+    const accountId = reviewAccounts[itemId] ?? item?.candidateAccountIds[0];
     if (!accountId) {
       setFeedbackMessage({
         type: "error",
@@ -292,7 +292,7 @@ export default function KotakTrackingModal({
       });
       return;
     }
-    const categoryId = reviewCategories[itemId] || item?.suggestedCategoryId;
+    const categoryId = reviewCategories[itemId] ?? item?.suggestedCategoryId;
     if (!categoryId) { setFeedbackMessage({ type: "error", text: "Choose a category before approving." }); return; }
     setBusyReviewId(itemId);
 
@@ -877,7 +877,7 @@ export default function KotakTrackingModal({
 
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button
-                            disabled={busyReviewId !== null || !(reviewAccounts[item.id] || item.candidateAccountIds[0]) || !(reviewCategories[item.id] || item.suggestedCategoryId)}
+                            disabled={busyReviewId !== null || !(reviewAccounts[item.id] ?? item.candidateAccountIds[0]) || !(reviewCategories[item.id] ?? item.suggestedCategoryId)}
                             onClick={() => handleResolveReviewItem(item.id)}
                             className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                           >
