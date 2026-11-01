@@ -57,6 +57,32 @@ const fs = require('node:fs');
       await page.close();
       console.log(`Finance viewport ${width}: passed overview, tabs, dropdown keyboard selection, and message dialog`);
     }
+    for (const width of [390, 1280]) {
+      const page = await browser.newPage({ viewport: { width, height: 900 } });
+      activePage = page;
+      await page.goto('http://localhost:3001/secret/finance?demo=1', { waitUntil: 'networkidle', timeout: 120000 });
+      await page.locator('.atlas-finance[aria-busy="false"]').waitFor({ timeout: 60000 });
+      await page.getByText('Demo workspace', { exact: true }).waitFor();
+      await page.getByRole('tab', { name: 'Accounts', exact: true }).click();
+      assert.equal(await page.locator('.af-account-grid .af-account').count(), 4);
+      await page.getByRole('tab', { name: 'Goals', exact: true }).click();
+      assert.equal(await page.locator('.af-goal').count(), 3);
+      await page.getByRole('tab', { name: 'Budgets', exact: true }).click();
+      assert.ok(await page.locator('.af-plan').count() >= 3);
+      await page.getByRole('tab', { name: 'Overview', exact: true }).click();
+      await page.getByRole('button', { name: 'Your approval inbox' }).click();
+      await page.locator('.finance-review-card').first().waitFor();
+      assert.equal(await page.locator('.finance-review-card').count(), 3);
+      await page.screenshot({ path: `finance-qa/demo-inbox-${width}.png`, fullPage: true });
+      const preview = (await page.screenshot({ type: 'jpeg', quality: 75 })).toString('base64');
+      for (let offset = 0; offset < preview.length; offset += 16000) console.log(`ATLAS_INBOX_${width}_${String(offset / 16000).padStart(4, '0')}=${preview.slice(offset, offset + 16000)}`);
+      await page.getByRole('button', { name: 'Approve transaction', exact: true }).first().click();
+      await page.waitForFunction(() => document.querySelectorAll('.finance-review-card').length === 2);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
+      await page.keyboard.press('Escape');
+      await page.close();
+      console.log(`Demo viewport ${width}: passed populated accounts, goals, budgets and approval inbox`);
+    }
   } catch (error) {
     if (activePage) {
       const screenshot = await activePage.screenshot({ path: 'finance-qa/failure.png', fullPage: true });
