@@ -94,8 +94,8 @@ export default function FinanceSelect({ children, value, defaultValue, onChange,
       }
     }}><span>{options[selected]?.label || "Choose option"}</span><ChevronDown size={16} className={open ? "rotate-180" : ""} /></button>
     {name && <input type="hidden" name={name} value={current} />}
-    {open && createPortal(<div ref={menu} role="listbox" id={menuId} aria-label={props["aria-label"] || "Options"} className="finance-select-menu" style={{ ...position, position: "fixed", overflowY: "auto" }}>
-      {options.map((option, index) => <div id={`${menuId}-${index}`} data-index={index} key={`${option.value}-${index}`} role="option" aria-selected={option.value === current} aria-disabled={option.disabled} className={`finance-select-option ${active === index ? "is-active" : ""}`} onPointerMove={() => setActive(index)} onPointerDown={(event) => { event.preventDefault(); choose(index); }}><span>{option.label}</span>{option.value === current && <Check size={16} />}</div>)}
+    {open && createPortal(<div ref={menu} role="listbox" id={menuId} aria-label={props["aria-label"] || "Options"} className="finance-select-menu" style={{ ...position, position: "fixed", overflowY: "auto", touchAction: "pan-y" }}>
+      {options.map((option, index) => <div id={`${menuId}-${index}`} data-index={index} key={`${option.value}-${index}`} role="option" aria-selected={option.value === current} aria-disabled={option.disabled} className={`finance-select-option ${active === index ? "is-active" : ""}`} onPointerMove={(event) => { if (event.pointerType === "mouse") setActive(index); }} onPointerDown={(event) => event.preventDefault()} onClick={() => choose(index)}><span>{option.label}</span>{option.value === current && <Check size={16} />}</div>)}
     </div>, document.body)}
   </div>;
 }

@@ -18,6 +18,7 @@ export default function MiniPlayer({ embedded = false }: { embedded?: boolean })
   const { currentTrack, isPlaying, currentTime, duration, togglePlayPause, nextTrack, setIsNowPlayingOpen } =
     useMusicPlayer();
 
+  const inFinance = pathname.startsWith("/secret/finance");
   const inMusic = pathname.startsWith("/secret/music");
   if (inMusic !== embedded) return null;
   if (!currentTrack) return null;
@@ -29,7 +30,7 @@ export default function MiniPlayer({ embedded = false }: { embedded?: boolean })
       className={`music-theme fixed inset-x-4 max-w-md mx-auto select-none ${
         embedded
           ? "bottom-[calc(max(env(safe-area-inset-bottom),0.75rem)+5.1rem)] z-20"
-          : "bottom-[max(env(safe-area-inset-bottom),1rem)] z-40"
+          : `bottom-[max(env(safe-area-inset-bottom),1rem)] z-40 ${inFinance ? "finance-mini-player" : ""}`
       }`}
     >
       <div
