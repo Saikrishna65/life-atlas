@@ -49,9 +49,6 @@ import {
   CategorizationService,
   RecurringService,
   ImportService,
-  ForecastService,
-  RunwayService,
-  BudgetProjectionService,
   SyncOutboxService,
   UnconfiguredCloudSyncAdapter,
   NotificationTrackingService,
@@ -76,7 +73,6 @@ import CategorizationReviewModal from "@/components/finance/CategorizationReview
 import RecurringPaymentsModal from "@/components/finance/RecurringPaymentsModal";
 import StatementImportModal from "@/components/finance/StatementImportModal";
 import BankIntegrationModal from "@/components/finance/BankIntegrationModal";
-import ForecastViewModal from "@/components/finance/ForecastViewModal";
 import SyncSettingsModal from "@/components/finance/SyncSettingsModal";
 import KotakTrackingModal from "@/components/finance/KotakTrackingModal";
 import CashFlowChart from "@/components/finance/CashFlowChart";
@@ -144,10 +140,8 @@ export default function FinanceDashboardPage() {
   const [detectedRecurringCount, setDetectedRecurringCount] = useState(0);
 
   // Phase 4 Modal & Forecast State
-  const [isForecastModalOpen, setIsForecastModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
-  const [hasLowBalanceWarning, setHasLowBalanceWarning] = useState(false);
 
   // Kotak 811 Native Notification Tracking State
   const [isKotakModalOpen, setIsKotakModalOpen] = useState(false);
@@ -173,9 +167,6 @@ export default function FinanceDashboardPage() {
   const categorizationService = useMemo(() => new CategorizationService(uow), [uow]);
   const recurringService = useMemo(() => new RecurringService(uow), [uow]);
   const importService = useMemo(() => new ImportService(uow, transactionService), [uow, transactionService]);
-  const forecastService = useMemo(() => new ForecastService(uow), [uow]);
-  const runwayService = useMemo(() => new RunwayService(uow), [uow]);
-  const budgetProjectionService = useMemo(() => new BudgetProjectionService(uow), [uow]);
   const cloudSyncAdapter = useMemo(() => new UnconfiguredCloudSyncAdapter(), []);
   const syncOutboxService = useMemo(() => new SyncOutboxService(uow, cloudSyncAdapter), [uow, cloudSyncAdapter]);
   const notificationTrackingService = useMemo(
@@ -299,14 +290,6 @@ export default function FinanceDashboardPage() {
       const pendingOps = await uow.outbox.getPending();
       if (isCurrent()) setPendingOutboxCount(pendingOps.length);
 
-      // Low balance / runway alert check
-      try {
-        const rw = await runwayService.computeRunway();
-        if (isCurrent()) setHasLowBalanceWarning(rw.runwayMonths !== null && rw.runwayMonths < 1.0);
-      } catch {
-        if (isCurrent()) setHasLowBalanceWarning(false);
-      }
-
       // Kotak Notification Tracking status
       try {
         const trackingStatus = await notificationTrackingService.getStatus();
@@ -320,7 +303,7 @@ export default function FinanceDashboardPage() {
     } finally {
       if (isCurrent()) setIsLoading(false);
     }
-  }, [uow, balanceService, budgetService, savingsGoalService, categorizationService, recurringService, runwayService, notificationTrackingService, startDate, endDate]);
+  }, [uow, balanceService, budgetService, savingsGoalService, categorizationService, recurringService, notificationTrackingService, startDate, endDate]);
 
   useEffect(() => {
     const resume = () => {
@@ -456,7 +439,6 @@ export default function FinanceDashboardPage() {
             {label:"Import a statement",description:"Bring your past payments along",icon:FileUp,action:()=>setIsImportModalOpen(true)},
             {label:"Bills & subscriptions",description:`${detectedRecurringCount || "Review"} recurring payments`,icon:Repeat,action:()=>setIsRecurringModalOpen(true)},
             {label:"Category rules",description:`${uncategorizedCount} transactions to organise`,icon:Sparkles,action:()=>setIsCategorizationModalOpen(true)},
-            {label:"Cash flow forecast",description:hasLowBalanceWarning ? "Your cash buffer needs attention" : "Estimate your balance after bills and spending",icon:TrendingUp,action:()=>setIsForecastModalOpen(true)},
             {label:"Storage & sync",description:pendingOutboxCount ? `${pendingOutboxCount} changes saved locally` : "Your data, your device",icon:Cloud,action:()=>setIsSyncModalOpen(true)},
             {label:"Bank connections",description:"Connection options and imports",icon:Landmark,action:()=>setIsBankModalOpen(true)},
           ].map(tool => <button key={tool.label} onClick={tool.action}><tool.icon size={20} /><span><strong>{tool.label}</strong><small>{tool.description}</small></span>{tool.count ? <b>{tool.count}</b> : <ChevronRight size={16} />}</button>)}</div></details>
@@ -553,13 +535,6 @@ export default function FinanceDashboardPage() {
         onOpenImportModal={() => setIsImportModalOpen(true)}
       />
 
-      <ForecastViewModal
-        isOpen={isForecastModalOpen}
-        onClose={() => setIsForecastModalOpen(false)}
-        forecastService={forecastService}
-        runwayService={runwayService}
-        budgetProjectionService={budgetProjectionService}
-      />
 
       <SyncSettingsModal
         isOpen={isSyncModalOpen}

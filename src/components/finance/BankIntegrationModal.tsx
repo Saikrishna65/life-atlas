@@ -1,4 +1,5 @@
 "use client";
+import { FinancePanelHeader, useFinanceDialog } from "./FinanceDialog";
 
 import React from "react";
 import {
@@ -24,6 +25,7 @@ export default function BankIntegrationModal({
   onClose,
   onOpenImportModal,
 }: BankIntegrationModalProps) {
+  useFinanceDialog(isOpen, onClose);
   if (!isOpen) return null;
 
   const supportedInstitutions = [
@@ -36,29 +38,12 @@ export default function BankIntegrationModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-xl max-h-[90vh] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
-              <Landmark className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground">Bank Sync & Account Aggregator</h2>
-              <p className="text-xs text-muted-foreground">RBI-regulated consent framework architecture</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="finance-workspace-overlay">
+      <div className="finance-workspace finance-tool-workspace" role="dialog" aria-modal="true" aria-label="Bank connections" tabIndex={-1}>
+        <FinancePanelHeader title="Bank connections" subtitle="Choose how to bring your transactions into Atlas." onClose={onClose}/>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 text-xs">
+        <div className="finance-panel-content flex-1 overflow-y-auto p-6 space-y-4 text-xs">
           {/* Honest Disclosure Box */}
           <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl space-y-2 text-foreground">
             <div className="flex items-center gap-2 font-bold text-blue-400">
@@ -145,7 +130,7 @@ export default function BankIntegrationModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-card/50">
+        <div className="finance-panel-footer flex items-center justify-between px-6 py-4 border-t border-border bg-card/50">
           <button
             onClick={onClose}
             className="px-4 py-2 text-xs font-semibold rounded-lg border border-border text-muted-foreground hover:text-foreground cursor-pointer"

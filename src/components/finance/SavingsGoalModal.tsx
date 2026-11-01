@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@/components/finance/FinanceDialog";
 import { Plus, Check, Target, PiggyBank, Calendar } from "lucide-react";
 import {
   SavingsGoal,
@@ -117,11 +117,11 @@ export default function SavingsGoalModal({
       subtitle={
         mode === "contribute"
           ? "Manually recorded progress. Does not create an account withdrawal or expense."
-          : "Track targets for trips, emergency funds, or equipment."
+          : "Make room for something that matters to you."
       }
       maxWidthClassName="max-w-md"
     >
-      <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {errorMessage && (
           <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
             {errorMessage}

@@ -2,7 +2,7 @@
 
 import MerchantImage from "./MerchantImage";
 import React, { useState } from "react";
-import { Modal } from "@/components/ui/Modal";
+import { Modal } from "@/components/finance/FinanceDialog";
 import {
   RotateCcw,
   Edit3,

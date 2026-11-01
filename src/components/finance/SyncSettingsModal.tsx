@@ -1,4 +1,5 @@
 "use client";
+import { FinancePanelHeader, useFinanceDialog } from "./FinanceDialog";
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -124,6 +125,7 @@ export default function SyncSettingsModal({
     }
   };
 
+  useFinanceDialog(isOpen, onClose);
   if (!isOpen) return null;
 
   const pendingCount = operations.filter((o) => o.status === "pending" || o.status === "in_progress").length;
@@ -131,33 +133,12 @@ export default function SyncSettingsModal({
   const syncedCount = operations.filter((o) => o.status === "synced").length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-xs overflow-y-auto">
-      <div className="w-full max-w-2xl bg-surface border border-muted rounded-2xl p-5 sm:p-6 shadow-2xl relative my-auto animate-fade-in max-h-[92vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-start justify-between pb-4 border-b border-muted">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              <CloudOff className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="font-display text-lg sm:text-xl font-normal text-foreground">
-                Cloud Sync & Local Outbox
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Reliable mutation queuing, exponential backoff, and transparent local-first isolation.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="finance-workspace-overlay">
+      <div className="finance-workspace finance-tool-workspace" role="dialog" aria-modal="true" aria-label="Storage & sync" tabIndex={-1}>
+        <FinancePanelHeader title="Storage & sync" subtitle="See what is saved on this device and the status of your changes." onClose={onClose}/>
 
         {/* Content Body */}
-        <div className="overflow-y-auto space-y-4 py-4 pr-1 text-xs">
+        <div className="finance-panel-content overflow-y-auto space-y-4 py-4 pr-1 text-xs">
           {/* Status Banner */}
           <div className="p-3.5 rounded-xl bg-background/80 border border-muted space-y-2">
             <div className="flex items-center justify-between">
@@ -321,7 +302,7 @@ export default function SyncSettingsModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-3 border-t border-muted flex justify-end">
+        <div className="finance-panel-footer pt-3 border-t border-muted flex justify-end">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-surface border border-muted hover:border-foreground/30 text-xs font-medium text-foreground transition-all cursor-pointer"

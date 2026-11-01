@@ -1,4 +1,5 @@
 "use client";
+import { FinancePanelHeader, useFinanceDialog } from "./FinanceDialog";
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
@@ -64,6 +65,7 @@ export default function RecurringPaymentsModal({
     }
   }, [isOpen, loadData]);
 
+  useFinanceDialog(isOpen, onClose);
   if (!isOpen) return null;
 
   const activeRules = rules.filter((r) => r.status === "confirmed" || r.status === "paused");
@@ -122,26 +124,9 @@ export default function RecurringPaymentsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl max-h-[90vh] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center">
-              <Repeat className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-foreground">Subscriptions & Recurring Bills</h2>
-              <p className="text-xs text-muted-foreground">Deterministic local pattern detection and forecasting</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/50 cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="finance-workspace-overlay">
+      <div className="finance-workspace finance-tool-workspace" role="dialog" aria-modal="true" aria-label="Bills & subscriptions" tabIndex={-1}>
+        <FinancePanelHeader title="Bills & subscriptions" subtitle="Keep track of regular payments and review new suggestions." onClose={onClose}/>
 
         {/* Tab Navigation */}
         <div className="flex items-center justify-between border-b border-border bg-muted/20 px-6 pt-2">
@@ -206,7 +191,7 @@ export default function RecurringPaymentsModal({
         </div>
 
         {/* Body Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-3">
+        <div className="finance-panel-content flex-1 overflow-y-auto p-6 space-y-3">
           {activeTab === "ACTIVE" && (
             <div>
               {activeRules.length === 0 ? (
