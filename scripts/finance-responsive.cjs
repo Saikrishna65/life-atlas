@@ -70,6 +70,17 @@ const fs = require('node:fs');
       await page.getByRole('tab', { name: 'Budgets', exact: true }).click();
       assert.ok(await page.locator('.af-plan').count() >= 3);
       await page.getByRole('tab', { name: 'Overview', exact: true }).click();
+      await page.getByRole('button', { name: 'Bank', exact: true }).click();
+      await page.getByText('Bank balance', { exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Savings', exact: true }).click();
+      await page.getByText('Savings balance', { exact: true }).waitFor();
+      await page.getByRole('button', { name: 'All accounts', exact: true }).click();
+      const typography = await page.evaluate(() => ['.glass-flow small', '.af-entry-description small', '.balance-panel-content>div>p'].map(selector => {
+        const node = document.querySelector(selector); const style = getComputedStyle(node);
+        const rgb = style.color.match(/[\d.]+/g).slice(0,3).map(Number).map(v=> {v/=255; return v<=.04045 ? v/12.92 : ((v+.055)/1.055)**2.4;});
+        return { selector, size: parseFloat(style.fontSize), contrast: 1.05/(.2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2]+.05) };
+      }));
+      for (const item of typography) { assert.ok(item.size >= 12, `${item.selector} is too small`); assert.ok(item.contrast >= 4.5, `${item.selector} has low contrast`); }
       await page.evaluate(() => window.scrollTo(0,0));
       await page.screenshot({ path: `finance-qa/reference-overview-${width}.png`, fullPage: true });
       const home = (await page.screenshot({ type: 'jpeg', quality: 80 })).toString('base64');

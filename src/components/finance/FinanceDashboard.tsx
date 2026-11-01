@@ -87,6 +87,7 @@ export default function FinanceDashboardPage() {
   const isDemo = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";
   const realPendingCount = usePendingFinanceCount();
   const [activeTab, setActiveTab] = useState<DashboardTab>("OVERVIEW");
+  const [balanceScope, setBalanceScope] = useState("all");
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("THIS_MONTH");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -397,18 +398,18 @@ export default function FinanceDashboardPage() {
       <div className="af-workspace">
         <header className="glass-masthead">
           <Link href="/secret" className="glass-logotype" aria-label="Return to Life Atlas">a<span>✦</span></Link>
-          <div><h1>Atlas Finance</h1><p>Your everyday money, beautifully clear.</p></div>
+          <div><h1>Atlas Finance</h1></div>
           <a className="glass-demo" href={isDemo ? "?" : "?demo=1"}>{isDemo ? "Exit demo" : "Try demo"}<ArrowUpRight size={13}/></a>
           <button className="glass-bell" aria-label={`${pendingFinanceCount} transactions awaiting approval`} onClick={()=>setIsKotakModalOpen(true)}><BellRing size={18}/>{pendingFinanceCount>0 && <b>{pendingFinanceCount}</b>}</button>
         </header>
-        {isDemo && <div className="glass-demo-note"><span>Demo workspace</span><small>Sample data · separate from your finances</small></div>}
+        {isDemo && <div className="glass-demo-note"><span>Demo workspace</span><small>Sample data only</small></div>}
         <nav role="tablist" aria-label="Finance sections" className="af-navigation">{tabs.map(tab=><button key={tab.id} role="tab" aria-selected={activeTab===tab.id} onClick={()=>{setActiveTab(tab.id);window.scrollTo({top:0});}}><tab.icon size={19}/><span>{tab.label}</span></button>)}</nav>
         <main className={`af-canvas glass-view-${activeTab.toLowerCase()}`} key={activeTab}>
           {activeTab === "OVERVIEW" && <>
-            <section className="glass-balance">
-              <span>Your total balance</span><div className="glass-balance-number"><AnimatedMoney value={netWorthPaise}/></div>
-              <p><span>Assets {formatPaise(totalAssetsPaise)}</span><i/> <span>Liabilities {formatPaise(totalLiabilitiesPaise)}</span></p>
-              <div className="glass-actions"><button disabled={!accounts.length} onClick={()=>setIsTransferModalOpen(true)}><ArrowUpRight size={16}/>Transfer</button><button className="glass-add" aria-label="Add transaction" onClick={accounts.length ? newEntry : newAccount}><Plus size={23}/></button><button onClick={()=>setIsImportModalOpen(true)}><ArrowDownRight size={16}/>Import</button></div>
+            <section className="balance-panel" aria-label="Account balances">
+              <div className="balance-switcher" role="group" aria-label="Balance account type">{([["all","All accounts"],["bank","Bank"],["savings","Savings"],["credit","Credit"]] as const).map(([id,label])=><button key={id} aria-pressed={balanceScope===id} onClick={()=>setBalanceScope(id)}>{label}</button>)}</div>
+              <div className="balance-panel-content"><div><p>{balanceScope==="all" ? "Net worth" : `${balanceScope.charAt(0).toUpperCase()+balanceScope.slice(1)} balance`}</p><div className="balance-figure"><AnimatedMoney value={balanceScope==="all" ? netWorthPaise : accounts.filter(a=>a.status==="active" && a.accountType===balanceScope).reduce((sum,a)=>sum+a.currentBalancePaise,0)}/></div><div className="balance-breakdown"><span>Assets <b>{formatPaise(totalAssetsPaise)}</b></span><span>Liabilities <b>{formatPaise(Math.abs(totalLiabilitiesPaise))}</b></span></div></div>
+              <div className="balance-controls"><button className="balance-record" aria-label="Add transaction" onClick={accounts.length ? newEntry : newAccount}><Plus size={18}/><span>{accounts.length ? "Record" : "Account"}</span></button><div><button disabled={accounts.length<2} onClick={()=>setIsTransferModalOpen(true)}><ArrowUpRight size={17}/>Transfer</button><button onClick={()=>setIsImportModalOpen(true)}><FileUp size={17}/>Import</button></div></div></div>
             </section>
             <div className="glass-dashboard-grid">
               <div className="glass-main-column">
