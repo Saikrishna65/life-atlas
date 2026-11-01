@@ -340,86 +340,15 @@ export default function KotakTrackingModal({
   const isOutflow = parsedTxn?.direction === "outflow";
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="message-import-title" className="finance-message fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-      <div className="relative w-full max-w-2xl max-h-[92vh] bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        {/* Header */}
-        <div className="message-center-header">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
-              <MessageSquare className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 id="message-import-title" className="text-base font-bold text-slate-900">Bank messages</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  {new URLSearchParams(window.location.search).get("demo") === "1" ? "DEMO" : "LOCAL"}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">
-                Your transactions. Checked by you.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close message import"
-            className="p-2 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200/60 cursor-pointer transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="message-center-intro"><span>YOUR APPROVAL INBOX</span><h3>Every payment, in your control.</h3><p>Check the suggested category, choose an account and approve. Your balance updates only after you confirm.</p><div><b>{reviewItems.length}</b> waiting for your review <ShieldCheck size={17} /></div></div>
-        {/* Tab Navigation */}
-        <div className="flex items-center gap-1 px-6 pt-3 pb-2 border-b border-slate-200 bg-slate-50/50 text-xs overflow-x-auto no-scrollbar">
-          <button onClick={() => setActiveTab("AUTOMATIC")} className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap ${activeTab === "AUTOMATIC" ? "bg-white text-slate-900 border border-slate-200" : "text-slate-500"}`}>Capture settings</button>
-          <button
-            onClick={() => setActiveTab("PASTE")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "PASTE"
-                ? "bg-white text-slate-900 shadow-xs font-semibold border border-slate-200"
-                : "text-slate-500 hover:text-slate-900"
-            }`}
-          >
-            Message
-          </button>
-          <button
-            onClick={() => setActiveTab("IMPORT")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "IMPORT"
-                ? "bg-white text-slate-900 shadow-xs font-semibold border border-slate-200"
-                : "text-slate-500 hover:text-slate-900"
-            }`}
-          >
-            Statement
-          </button>
-          <button
-            onClick={() => setActiveTab("PRIVACY")}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "PRIVACY"
-                ? "bg-white text-slate-900 shadow-xs font-semibold border border-slate-200"
-                : "text-slate-500 hover:text-slate-900"
-            }`}
-          >
-            Privacy
-          </button>
-          {(
-            <button
-              onClick={() => setActiveTab("REVIEW")}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeTab === "REVIEW"
-                  ? "bg-amber-50 text-amber-800 border border-amber-200 font-semibold"
-                  : "text-amber-700 hover:text-amber-800"
-              }`}
-            >
-              <span>Inbox</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-bold">
-                {reviewItems.length}
-              </span>
-            </button>
-          )}
-        </div>
-
+    <div role="dialog" aria-modal="true" aria-labelledby="message-import-title" className="message-inbox fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+      <div className="inbox-window relative w-full max-w-2xl max-h-[92vh] bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <header className="inbox-header">
+          <div><span className="inbox-kicker">TRANSACTION INBOX {new URLSearchParams(window.location.search).get("demo") === "1" && <b>DEMO</b>}</span><h2 id="message-import-title">Bank messages</h2></div>
+          <button onClick={onClose} aria-label="Close message import" className="inbox-close"><X size={22}/></button>
+        </header>
+        <nav className="inbox-tabs" aria-label="Message tools">{([
+          ["REVIEW", "To review"], ["AUTOMATIC", "Capture"], ["PASTE", "Paste SMS"], ["IMPORT", "Statement"], ["PRIVACY", "Privacy"]
+        ] as const).map(([id,label]) => <button key={id} onClick={()=>setActiveTab(id)} aria-current={activeTab===id ? "page" : undefined}>{label}{id === "REVIEW" && <b>{reviewItems.length}</b>}</button>)}</nav>
         {/* Feedback Banner */}
         {feedbackMessage && (
           <div
@@ -447,7 +376,7 @@ export default function KotakTrackingModal({
         )}
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs">
+        <div className="inbox-body flex-1 overflow-y-auto p-6 space-y-5 text-xs">
           {activeTab === "AUTOMATIC" && (
             <div className="space-y-5">
               <div className="message-instructions"><MessageSquare size={24} /><div><h3>Your bank alerts, organised.</h3><p>Allow Atlas to capture new Kotak transaction notifications from Google Messages. Every transaction stays in Review. Check the suggested category, change it if needed, and approve before it affects your balances.</p></div></div>
@@ -790,11 +719,7 @@ export default function KotakTrackingModal({
           {activeTab === "REVIEW" && reviewItems.length === 0 && <div className="finance-review-empty"><CheckCircle2 size={40} /><h3>You’re all caught up.</h3><p>New bank messages will appear here for your approval.</p></div>}
           {activeTab === "REVIEW" && reviewItems.length > 0 && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-900">Pending Review Queue</span>
-                <span className="text-[10px] text-slate-500">Nothing is recorded until you approve</span>
-              </div>
-
+              <div className="inbox-summary"><h3>{reviewItems.length} to review</h3><span>Confirm a category to save each payment.</span></div>
               <div className="space-y-2.5">
                 {reviewItems.map((item) => {
                   const txn = item.parsedTransaction;
@@ -805,57 +730,18 @@ export default function KotakTrackingModal({
                       key={item.id}
                       id={`finance-review-${item.rawEventId}`}
                       data-focused={focusedEvent === item.rawEventId}
-                      className="finance-review-card p-3.5 bg-slate-50 border border-amber-200 rounded-xl space-y-3"
+                      className="finance-review-card inbox-transaction"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-2.5">
-                          <div
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                              itemIsOutflow
-                                ? "bg-rose-50 text-rose-700 border border-rose-200"
-                                : "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                            }`}
-                          >
-                            {itemIsOutflow ? (
-                              <ArrowDownRight className="w-4 h-4" />
-                            ) : (
-                              <ArrowUpRight className="w-4 h-4" />
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-bold text-slate-900 text-xs">
-                              {txn.merchantOrBeneficiary}
-                            </div>
-                            <div className="text-[10px] text-slate-500">
-                              {new Date(txn.occurredAt).toLocaleString()}
-                              {txn.referenceNumber ? ` • Ref: ${txn.referenceNumber}` : ""}
-                            </div>
-                            <div className="text-[10px] text-amber-800 font-semibold mt-0.5">{item.reason}</div>
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <div
-                            className={`font-mono font-bold text-sm ${
-                              itemIsOutflow ? "text-rose-700" : "text-emerald-700"
-                            }`}
-                          >
-                            {itemIsOutflow ? "-" : "+"}
-                            {formatPaise(txn.amountPaise)}
-                          </div>
-                          {txn.accountMask && (
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              Kotak *{txn.accountMask}
-                            </span>
-                          )}
-                        </div>
+                      <div className="inbox-payment">
+                        <span className={`inbox-merchant-icon ${itemIsOutflow ? "" : "inflow"}`}>{txn.merchantOrBeneficiary.slice(0,1).toUpperCase()}</span>
+                        <div className="inbox-payee"><strong>{txn.merchantOrBeneficiary}</strong><span>{new Date(txn.occurredAt).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {new Date(txn.occurredAt).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}</span></div>
+                        <strong className="inbox-amount">{itemIsOutflow ? "−" : "+"}{formatPaise(txn.amountPaise)}</strong>
                       </div>
-
-                      <div className="finance-category-suggestion"><Tag size={16} /><div><span>Suggested category</span><strong>{suggested?.name || "Choose a category"}</strong><p>{item.categoryExplanation || "Check the suggestion before approving."}</p></div></div>
+                      <div className="inbox-match"><Sparkles size={13}/><span>{suggested ? `Suggested: ${suggested.name}` : "Choose the right category below"}</span></div>
                       {/* Assignment Row */}
-                      <div className="pt-2 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-1">
-                          <FinanceSelect
+                      <div className="inbox-assignment">
+                        <div className="inbox-fields">
+                          <label>Account<FinanceSelect
                             disabled={busyReviewId !== null} aria-label="Transaction account" value={reviewAccounts[item.id] ?? item.candidateAccountIds[0] ?? ""}
                             onChange={(e) =>
                               setReviewAccounts((prev) => ({ ...prev, [item.id]: e.target.value }))
@@ -868,9 +754,9 @@ export default function KotakTrackingModal({
                                 {acc.name} ({acc.accountType})
                               </option>
                             ))}
-                          </FinanceSelect>
+                          </FinanceSelect></label>
 
-                          <FinanceSelect
+                          <label>Category<FinanceSelect
                             disabled={busyReviewId !== null} aria-label="Transaction category" value={reviewCategories[item.id] ?? item.suggestedCategoryId ?? ""}
                             onChange={(e) =>
                               setReviewCategories((prev) => ({ ...prev, [item.id]: e.target.value }))
@@ -885,10 +771,10 @@ export default function KotakTrackingModal({
                                   {cat.name}
                                 </option>
                               ))}
-                          </FinanceSelect>
+                          </FinanceSelect></label>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="inbox-actions">
                           <button
                             disabled={busyReviewId !== null || !(reviewAccounts[item.id] ?? item.candidateAccountIds[0]) || !(reviewCategories[item.id] ?? item.suggestedCategoryId)}
                             onClick={() => handleResolveReviewItem(item.id)}
@@ -915,20 +801,7 @@ export default function KotakTrackingModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-slate-50/80">
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-            <span>Zero cloud transmission · On-device parsing only</span>
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close message import"
-            className="px-4 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs transition-all cursor-pointer"
-          >
-            Close
-          </button>
-        </div>
+        <div className="inbox-footnote"><ShieldCheck size={13}/><span>Only approved transactions affect your balance.</span></div>
       </div>
     </div>
   );
