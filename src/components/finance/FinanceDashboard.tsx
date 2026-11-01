@@ -397,7 +397,7 @@ export default function FinanceDashboardPage() {
     <div className="atlas-finance af-shell" aria-busy={isLoading}>
       <div className="af-workspace">
         <header className="glass-masthead">
-          <Link href="/secret" className="glass-logotype" aria-label="Return to Life Atlas">a<span>✦</span></Link>
+          <Link href="/secret" className="glass-back" aria-label="Return to Life Atlas"><ArrowLeft size={20}/></Link>
           <div><h1>Atlas Finance</h1></div>
           <a className="glass-demo" href={isDemo ? "?" : "?demo=1"}>{isDemo ? "Exit demo" : "Try demo"}<ArrowUpRight size={13}/></a>
           <button className="glass-bell" aria-label={`${pendingFinanceCount} transactions awaiting approval`} onClick={()=>setIsKotakModalOpen(true)}><BellRing size={18}/>{pendingFinanceCount>0 && <b>{pendingFinanceCount}</b>}</button>
