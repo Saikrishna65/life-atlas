@@ -133,7 +133,7 @@ export default function NewTripPage() {
   const [customCoverUrl, setCustomCoverUrl] = useState("");
 
   const [financeStartTime,setFinanceStartTime]=useState("21:00");
-  const [financeEndTime,setFinanceEndTime]=useState("05:00");
+  const [financeEndTime,setFinanceEndTime]=useState("08:00");
   const [financeTimeZone,setFinanceTimeZone]=useState("Asia/Kolkata");
   useEffect(()=>setFinanceTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata"),[]);
   // Step 2: Route & Dates
@@ -552,7 +552,7 @@ export default function NewTripPage() {
                 <Select
                   label="Departure Travel Time / Slot"
                   value={departureSlot}
-                  onChange={(e) => setDepartureSlot(e.target.value as DepartureTravelSlot)}
+                  onChange={(e) => {setDepartureSlot(e.target.value as DepartureTravelSlot);setFinanceStartTime(({MORNING:"08:00",AFTERNOON:"13:00",EVENING:"18:00",NIGHT:"21:00",OVERNIGHT:"23:00"})[e.target.value as DepartureTravelSlot]);}}
                   hint="Specify if you travel overnight or depart during the day"
                 >
                   <option value="NIGHT">Night Departure (Overnight travel • arrives morning)</option>
@@ -566,7 +566,7 @@ export default function NewTripPage() {
                 <Select
                   label="Return Travel Time / Slot"
                   value={returnSlot}
-                  onChange={(e) => setReturnSlot(e.target.value as ReturnTravelSlot)}
+                  onChange={(e) => {setReturnSlot(e.target.value as ReturnTravelSlot);setFinanceEndTime(({EARLY_MORNING:"05:00",MORNING:"08:00",AFTERNOON:"13:00",EVENING:"18:00",NIGHT:"22:00"})[e.target.value as ReturnTravelSlot]);}}
                   hint="Specify if you return in the morning or spend full day"
                 >
                   <option value="MORNING">Morning Return (Leaves morning • trip wrap-up)</option>

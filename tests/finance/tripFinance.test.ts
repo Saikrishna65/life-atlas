@@ -1,3 +1,4 @@
+import { KotakNotificationParser } from "@/lib/finance/infrastructure/kotakNotificationParser";
 import 'fake-indexeddb/auto';
 import assert from 'node:assert/strict';
 import { test, beforeEach, afterEach } from 'node:test';
@@ -83,4 +84,12 @@ test('an outdated background assignment cannot overwrite a newer manual exclusio
 test('receipt provenance keeps a bill out even when the normalised merchant hides autopay wording',()=>{
  assert.equal(eligibleTripExpense(expense({description:'Netflix',merchant:'Netflix',paymentKind:'automatic_bill'}),ctx()),false);
  assert.equal(eligibleTripExpense(expense({description:'Refund merchant',paymentKind:'refund'}),ctx()),false);
+});
+test('deleting a trip restores manually linked payments to everyday spending without deleting the ledger',async()=>{
+ const t=await record('Deposit','2026-11-02T12:00:00Z');await service.setAssignment(t.id,'goa');trips=[];await service.reconcile();const remaining=await uow.transactions.getById(t.id);assert.equal(remaining?.tripAssignment?.mode,'excluded');assert.equal(remaining?.amountPaise,10000);
+});
+
+test('automatic-bill provenance survives bank message parsing',()=>{
+ const parsed=KotakNotificationParser.parse({id:'autopay',packageName:'com.google.android.apps.messaging',sender:'VM-KOTAKB',title:'Kotak Bank',text:'Sent Rs. 900.00 from Kotak Bank AC X1234 to NETFLIX via autopay. UPI Ref 123456789012.',postTime:Date.parse('2026-11-07T10:00:00Z'),postTimeIso:'2026-11-07T10:00:00Z'});
+ assert.equal(parsed.success,true);assert.equal(parsed.transaction?.paymentKind,'automatic_bill');
 });

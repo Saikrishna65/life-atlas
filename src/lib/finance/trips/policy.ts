@@ -61,7 +61,8 @@ export function tripCandidates(t:Transaction,context:TripContext):TripRecord[] {
   return context.trips.filter(trip=>{const s=trip.finance;return s?.confirmation==='going' && occurred>=Date.parse(s.startAt) && occurred<Date.parse(s.endAt) && trip.currency===t.currency;});
 }
 export function resolveTripAssignment(t:Transaction,context:TripContext):TripAssignment | undefined {
-  if(t.tripAssignment?.mode==='manual'||t.tripAssignment?.mode==='excluded')return t.tripAssignment;
+  if(t.tripAssignment?.mode==='excluded')return t.tripAssignment;
+  if(t.tripAssignment?.mode==='manual')return context.trips.some(trip=>trip.id===t.tripAssignment?.tripId)?t.tripAssignment:{mode:'excluded'};
   const matches=tripCandidates(t,context);
   return matches.length===1?{mode:'auto',tripId:matches[0].id,tripTitle:matches[0].title}:undefined;
 }
