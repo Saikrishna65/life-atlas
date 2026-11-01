@@ -146,3 +146,5 @@ jobs:
           retention-days: 30
 
 # Signing stage: retained identity, v1
+
+# Detached signing stage: v2
