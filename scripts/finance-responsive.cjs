@@ -148,6 +148,31 @@ const fs = require('node:fs');
       await page.locator('.atlas-finance[aria-busy="false"]').waitFor({timeout:60000});
       assert.deepEqual(await page.locator('.expense-labels .cash-date').allTextContents(),['Mon','Tue','Wed','Thu','Fri','Sat','Sun']);
 
+      const categorySection=page.locator('.category-section');
+      const categoryPeriod=page.getByRole('combobox',{name:'Category comparison period',exact:true});
+      assert.ok((await categoryPeriod.innerText()).includes('Month'),'Categories default to month');
+      const cardCount=await page.locator('.category-stat-card').count();
+      assert.ok(cardCount>=10,'Every expense category should have a card');
+      for(const range of ['Week','Year','Month']) {
+        await categoryPeriod.click();
+        await page.getByRole('option',{name:range,exact:true}).click();
+        assert.equal(await page.locator('.category-stat-card').count(),cardCount);
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,`Category cards overflow for ${range}`);
+      }
+      await categorySection.evaluate(node=>node.scrollIntoView({block:'start'}));
+      await page.screenshot({path:`finance-qa/category-cards-${width}.png`,fullPage:true});
+      const categoryPreview=(await page.screenshot({type:'jpeg',quality:80})).toString('base64');
+      for(let offset=0;offset<categoryPreview.length;offset+=16000) console.log(`ATLAS_CATEGORY_${width}_${String(offset/16000).padStart(4,'0')}=${categoryPreview.slice(offset,offset+16000)}`);
+      await page.locator('.category-stat-card').first().click();
+      await page.locator('.category-drilldown').waitFor();
+      assert.equal(await page.getByRole('tab',{name:'Activity',exact:true}).getAttribute('aria-selected'),'true');
+      assert.ok(await page.locator('.af-activity-row').count()>0,'Card opens related approved payments');
+      await page.getByRole('button',{name:'Clear period',exact:true}).click();
+      const logo=page.locator('.af-activity-row img[src="/finance/merchants/swiggy.svg"]').first();
+      await logo.scrollIntoViewIfNeeded();
+      await logo.evaluate(image=>image.complete&&image.naturalWidth>0?Promise.resolve():new Promise((resolve,reject)=>{image.onload=resolve;image.onerror=()=>reject(new Error('Merchant image failed to load'));}));
+      await page.getByRole('tab',{name:'Overview',exact:true}).click();
+      console.log(`Category viewport ${width}: month/week/year comparisons, drilldown and merchant image loading passed`);
       await page.locator('.glass-balance-number').waitFor();
       assert.equal(await page.locator('.balance-panel').count(), 0, 'Restore the centered balance layout');
       await page.locator('.af-canvas').evaluate(async node => { await Promise.all(node.getAnimations().map(animation => animation.finished.catch(() => {}))); });

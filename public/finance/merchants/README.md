@@ -1,0 +1,1 @@
+Swiggy, Uber, Netflix and BigBasket SVGs are from Simple Icons (https://github.com/simple-icons/simple-icons), distributed under CC0. Brand marks remain the property of their respective owners. Other SVGs in this folder are original category illustrations. Images are bundled locally; viewing transactions does not send merchant data to a logo service.

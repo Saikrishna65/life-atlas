@@ -1,5 +1,6 @@
 "use client";
 
+import MerchantImage from "./MerchantImage";
 import FinanceSelect from "@/components/finance/FinanceSelect";
 
 import React, { useState, useEffect, useCallback } from "react";
@@ -739,7 +740,7 @@ export default function KotakTrackingModal({
                       data-expanded={activeReviewId===item.id}
                     >
                       <button className="review-payment" aria-expanded={activeReviewId===item.id} aria-controls={`review-editor-${item.id}`} onClick={()=>{setFocusedEvent(null);setSelectedReviewId(item.id);}}>
-                        <span className="inbox-merchant-icon">{txn.merchantOrBeneficiary.slice(0,1).toUpperCase()}</span>
+                        <MerchantImage merchant={txn.merchantOrBeneficiary} category={suggested?.name} direction={txn.direction} className="review-merchant-image"/>
                         <span className="inbox-payee"><strong>{txn.merchantOrBeneficiary}</strong><span>{new Date(txn.occurredAt).toLocaleDateString("en-IN",{day:"numeric",month:"short"})} · {suggested?.name || "Choose category"}</span></span>
                         <span className="review-payment-value"><strong className="inbox-amount">{itemIsOutflow ? "−" : "+"}{formatPaise(txn.amountPaise)}</strong><span>{activeReviewId===item.id ? "Reviewing" : "Review"}<ChevronRight size={12}/></span></span>
                       </button>

@@ -2,6 +2,7 @@
 
 import { openDemoDatabase, seedFinanceDemo, createDemoCapture } from "@/lib/finance/demo";
 import { currentFinanceWeek, localFinanceDateKey } from "@/lib/finance/calendar";
+import MerchantImage from "@/components/finance/MerchantImage";
 import FinanceThemePicker, { FinanceTheme, THEME_STORAGE_KEY, isFinanceTheme } from "@/components/finance/FinanceThemePicker";
 import AnimatedMoney from "@/components/finance/AnimatedMoney";
 import { usePendingFinanceCount } from "@/lib/finance/usePendingFinanceCount";
@@ -59,7 +60,6 @@ import {
   FinanceCategory,
   formatPaise,
   CashFlowTimelinePoint,
-  CategorySpendingItem,
   CategoryBudgetStatus,
   GoalProgressView,
   isIndexedDBAvailable,
@@ -103,6 +103,8 @@ export default function FinanceDashboardPage() {
   // Core Data
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categoryHistory, setCategoryHistory] = useState<Transaction[]>([]);
+  const [categoryDrilldown, setCategoryDrilldown] = useState<{start:string;end:string;label:string}|null>(null);
   const [categories, setCategories] = useState<FinanceCategory[]>([]);
   const [budgets, setBudgets] = useState<CategoryBudgetStatus[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<GoalProgressView[]>([]);
@@ -115,7 +117,6 @@ export default function FinanceDashboardPage() {
   const [periodExpensePaise, setPeriodExpensePaise] = useState(0);
   const [periodNetCashFlowPaise, setPeriodNetCashFlowPaise] = useState(0);
   const [timelinePoints, setTimelinePoints] = useState<CashFlowTimelinePoint[]>([]);
-  const [spendingBreakdown, setSpendingBreakdown] = useState<CategorySpendingItem[]>([]);
 
   // Modals state
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
@@ -270,8 +271,9 @@ export default function FinanceDashboardPage() {
       const timeline = await balanceService.getCashFlowTimeline(startDate, endDate);
       if (isCurrent()) setTimelinePoints(timeline);
 
-      const breakdown = await balanceService.getCategorySpendingBreakdown(startDate, endDate);
-      if (isCurrent()) setSpendingBreakdown(breakdown);
+      const categoryHistoryStart = new Date(new Date().getFullYear()-1,0,1).toISOString();
+      const history = await uow.transactions.query({startDate:categoryHistoryStart,endDate:new Date().toISOString(),direction:"outflow"});
+      if (isCurrent()) setCategoryHistory(history);
 
       // Budgets
       const budgetReport = await budgetService.getCategoryBudgetStatuses(startDate, endDate);
@@ -350,7 +352,8 @@ export default function FinanceDashboardPage() {
 
   // Filtered transactions for the Transactions Tab
   const filteredTransactions = useMemo(() => {
-    let result = [...transactions];
+    let result = [...(categoryDrilldown ? categoryHistory : transactions)];
+    if(categoryDrilldown) result=result.filter(t=>!t.transferGroupId&&!categories.some(c=>c.id===t.categoryId&&c.type==="transfer")&&Date.parse(t.occurredAt)>=Date.parse(categoryDrilldown.start)&&Date.parse(t.occurredAt)<=Date.parse(categoryDrilldown.end));
 
     if (txnSearchQuery.trim()) {
       const q = txnSearchQuery.toLowerCase();
@@ -367,7 +370,7 @@ export default function FinanceDashboardPage() {
     }
 
     if (txnCategoryFilter !== "ALL") {
-      result = result.filter((t) => t.categoryId === txnCategoryFilter);
+      result = result.filter((t) => txnCategoryFilter === "__uncategorized" ? !categories.some(c=>c.id===t.categoryId&&c.type==="expense") : t.categoryId === txnCategoryFilter);
     }
 
     if (txnStatusFilter !== "ALL") {
@@ -384,7 +387,7 @@ export default function FinanceDashboardPage() {
     });
 
     return result;
-  }, [transactions, txnSearchQuery, txnAccountFilter, txnCategoryFilter, txnStatusFilter, txnSortOrder]);
+  }, [transactions, categoryHistory, categoryDrilldown, categories, txnSearchQuery, txnAccountFilter, txnCategoryFilter, txnStatusFilter, txnSortOrder]);
 
   const tabs = [
     { id: "OVERVIEW", label: "Overview", icon: LayoutDashboard },
@@ -409,7 +412,7 @@ export default function FinanceDashboardPage() {
     const category = categories.find(c => c.id === transaction.categoryId);
     const account = accounts.find(a => a.id === transaction.accountId);
     return <button key={transaction.id} className="af-activity-row" onClick={() => setSelectedTxnForDetail(transaction)}>
-      <span className={`af-entry-icon ${transaction.direction === "inflow" ? "is-income" : ""}`}>{(transaction.merchant || transaction.description).slice(0,1).toUpperCase()}</span>
+      <MerchantImage merchant={transaction.merchant || transaction.description} category={category?.name} direction={transaction.direction}/>
       <span className="af-entry-description"><strong>{transaction.description}</strong><small>{category?.name || "Uncategorized"} <span>· {account?.name || "Account"}</span></small></span>
       <span className={`af-entry-value ${transaction.direction === "inflow" ? "is-income" : ""} ${transaction.status === "reversed" ? "is-reversed" : ""}`}><strong>{transaction.direction === "inflow" ? "+" : "−"}{formatPaise(transaction.amountPaise)}</strong><small>{new Date(transaction.occurredAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}{transaction.status !== "posted" ? ` · ${transaction.status}` : ""}</small></span>
     </button>;
@@ -440,11 +443,11 @@ export default function FinanceDashboardPage() {
                 <section className="glass-wallet-preview"><div className="af-section-heading"><h3>Your wallet</h3><button className="af-text-button" onClick={()=>setActiveTab("ACCOUNTS")}>Open wallet <ChevronRight size={15}/></button></div>{accountView()}</section>
                 <section className="glass-recent"><div className="af-section-heading"><h3>Recent transactions</h3><button className="af-text-button" onClick={()=>setActiveTab("TRANSACTIONS")}>See all</button></div>{activityView(transactions.slice(0,5))}</section>
               </div>
-              <div className="glass-insights-column"><div className="glass-period"><span>Insights</span></div><CashFlowChart period={periodPreset} onPeriodChange={value=>setPeriodPreset(value as PeriodPreset)} startDate={periodPreset === "ALL_TIME" && timelinePoints.length ? timelinePoints[0].dateKey : startDate} endDate={endDate} periodLabel={periodLabel} timeline={timelinePoints} totalIncomePaise={periodIncomePaise} totalExpensesPaise={periodExpensePaise}/><CategorySpendingChart categories={spendingBreakdown} totalExpensesPaise={periodExpensePaise}/></div>
+              <div className="glass-insights-column"><div className="glass-period"><span>Insights</span></div><CashFlowChart period={periodPreset} onPeriodChange={value=>setPeriodPreset(value as PeriodPreset)} startDate={periodPreset === "ALL_TIME" && timelinePoints.length ? timelinePoints[0].dateKey : startDate} endDate={endDate} periodLabel={periodLabel} timeline={timelinePoints} totalIncomePaise={periodIncomePaise} totalExpensesPaise={periodExpensePaise}/><CategorySpendingChart transactions={categoryHistory} categories={categories} onViewCategory={(id,start,end,label)=>{setTxnCategoryFilter(id);setTxnAccountFilter("ALL");setTxnStatusFilter("posted");setTxnSearchQuery("");setCategoryDrilldown({start,end,label});setActiveTab("TRANSACTIONS");window.scrollTo({top:0});}}/></div>
             </div>
           </>}
           {activeTab !== "OVERVIEW" && <header className="glass-section-title"><p>YOUR FINANCIAL SPACE</p><h2>{activeTab==="ACCOUNTS" ? "Wallet" : activeTab==="TRANSACTIONS" ? "Transactions" : activeTab==="BUDGETS" ? "Spending plan" : "Dream it. Save for it."}</h2><span>{periodLabel}</span></header>}
-          {activeTab === "TRANSACTIONS" && <section className="af-section af-paper"><div className="af-filters"><label className="af-search"><Search size={18} /><input aria-label="Search transactions" placeholder="Find a transaction…" value={txnSearchQuery} onChange={e => setTxnSearchQuery(e.target.value)} /></label><FinanceSelect aria-label="Filter account" value={txnAccountFilter} onChange={e => setTxnAccountFilter(e.target.value)}><option value="ALL">All Accounts</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</FinanceSelect><FinanceSelect aria-label="Filter category" value={txnCategoryFilter} onChange={e => setTxnCategoryFilter(e.target.value)}><option value="ALL">All categories</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</FinanceSelect><FinanceSelect aria-label="Filter status" value={txnStatusFilter} onChange={e => setTxnStatusFilter(e.target.value)}><option value="ALL">Any status</option><option value="posted">Posted</option><option value="pending">Pending</option><option value="reversed">Reversed</option></FinanceSelect></div><div className="af-list-heading"><span>{filteredTransactions.length} transactions</span><FinanceSelect aria-label="Sort transactions" value={txnSortOrder} onChange={e => setTxnSortOrder(e.target.value as typeof txnSortOrder)}><option value="date_desc">Newest first</option><option value="date_asc">Oldest first</option><option value="amount_desc">Highest amount</option><option value="amount_asc">Lowest amount</option></FinanceSelect></div>{activityView(filteredTransactions)}</section>}
+          {activeTab === "TRANSACTIONS" && <section className="af-section af-paper">{categoryDrilldown && <div className="category-drilldown"><span>{categoryDrilldown.label} · approved spending</span><button onClick={()=>{setCategoryDrilldown(null);setTxnCategoryFilter("ALL");setTxnStatusFilter("ALL");}}>Clear period</button></div>}<div className="af-filters"><label className="af-search"><Search size={18} /><input aria-label="Search transactions" placeholder="Find a transaction…" value={txnSearchQuery} onChange={e => setTxnSearchQuery(e.target.value)} /></label><FinanceSelect aria-label="Filter account" value={txnAccountFilter} onChange={e => setTxnAccountFilter(e.target.value)}><option value="ALL">All Accounts</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</FinanceSelect><FinanceSelect aria-label="Filter category" value={txnCategoryFilter} onChange={e => {setTxnCategoryFilter(e.target.value);setCategoryDrilldown(null);}}><option value="ALL">All categories</option><option value="__uncategorized">Uncategorized</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</FinanceSelect><FinanceSelect aria-label="Filter status" value={txnStatusFilter} onChange={e => setTxnStatusFilter(e.target.value)}><option value="ALL">Any status</option><option value="posted">Posted</option><option value="pending">Pending</option><option value="reversed">Reversed</option></FinanceSelect></div><div className="af-list-heading"><span>{filteredTransactions.length} transactions</span><FinanceSelect aria-label="Sort transactions" value={txnSortOrder} onChange={e => setTxnSortOrder(e.target.value as typeof txnSortOrder)}><option value="date_desc">Newest first</option><option value="date_asc">Oldest first</option><option value="amount_desc">Highest amount</option><option value="amount_asc">Lowest amount</option></FinanceSelect></div>{activityView(filteredTransactions)}</section>}
           {activeTab === "BUDGETS" && <section className="af-section"><div className="af-section-heading"><h3>Your spending plan</h3><button className="af-primary" onClick={() => { setEditingBudgetId(undefined); setIsBudgetModalOpen(true); }}><Plus size={17} />Create budget</button></div>{budgets.length ? <div className="af-plan-grid">{budgets.map(b => <article className="af-plan" key={b.categoryId}><div className="af-section-heading"><span className="af-plan-icon"><Tag size={21} /></span><button className="af-icon-button" aria-label={`Edit ${b.categoryName} budget`} onClick={() => { setEditingBudgetId(b.categoryId); setIsBudgetModalOpen(true); }}><Edit3 size={17} /></button></div><h3>{b.categoryName}</h3><strong>{formatPaise(b.spentPaise)} <small>of {formatPaise(b.allocatedPaise)}</small></strong><div className={`af-progress ${b.isOverBudget ? "is-over" : ""}`} role="progressbar" aria-label={b.categoryName} aria-valuenow={Math.min(100,b.percentageUsed)} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${Math.min(100,Math.max(0,b.percentageUsed))}%` }} /></div><p>{b.isOverBudget ? `${formatPaise(Math.abs(b.remainingPaise))} over your plan` : `${formatPaise(b.remainingPaise)} left to spend`}</p></article>)}</div> : <div className="af-empty af-empty-large"><Tag size={36} /><h3>Spend with a plan.</h3><p>Create category limits to see what’s available before you spend.</p><button className="af-primary" onClick={() => setIsBudgetModalOpen(true)}>Create your first budget</button></div>}</section>}
           {activeTab === "GOALS" && <section className="af-section"><div className="af-section-heading"><h3>Something to look forward to</h3><button className="af-primary" onClick={() => { setEditingGoal(null); setSavingsGoalMode("create_or_edit"); setIsSavingsGoalModalOpen(true); }}><Plus size={17} />New goal</button></div>{savingsGoals.length ? <div className="af-plan-grid">{savingsGoals.map(g => <article className="af-plan af-goal" key={g.id}><div className="af-section-heading"><span className="af-goal-symbol"><Target size={25} /></span><span className="af-tag">{g.isCompleted ? "Reached" : `${g.percentComplete}% saved`}</span></div><span className="glass-goal-label">SAVING FOR</span><h3>{g.name}</h3><strong>{formatPaise(g.currentAmountPaise)}</strong><p>of {formatPaise(g.targetAmountPaise)}</p><div className="af-progress" role="progressbar" aria-label={g.name} aria-valuenow={g.percentComplete} aria-valuemin={0} aria-valuemax={100}><i style={{width:`${Math.min(100,g.percentComplete)}%`}} /></div><div className="af-goal-actions"><button className="af-primary" onClick={() => { setEditingGoal(g); setSavingsGoalMode("contribute"); setIsSavingsGoalModalOpen(true); }}>Add savings</button><button className="af-icon-button" aria-label={`Edit ${g.name}`} onClick={() => { setEditingGoal(g); setSavingsGoalMode("create_or_edit"); setIsSavingsGoalModalOpen(true); }}><Edit3 size={17} /></button></div></article>)}</div> : <div className="af-empty af-empty-large"><Target size={36} /><h3>Turn “one day” into a plan.</h3><p>A trip, a new home, or a rainy-day fund. Start with something that matters to you.</p><button className="af-primary" onClick={() => { setEditingGoal(null); setSavingsGoalMode("create_or_edit"); setIsSavingsGoalModalOpen(true); }}>Create your first goal</button></div>}</section>}
           {activeTab === "ACCOUNTS" && <section className="af-section"><div className="af-section-heading"><h3>One place for every balance</h3><button className="af-primary" onClick={newAccount}><Plus size={17} />Add account</button></div>{accounts.length ? accountView(true) : <div className="af-empty af-empty-large"><Wallet size={36} /><h3>Let’s bring your money together.</h3><p>Add an account to start tracking balances and payments.</p><button className="af-primary" onClick={newAccount}>Add account</button></div>}</section>}
@@ -453,7 +456,7 @@ export default function FinanceDashboardPage() {
             {label:"Import a statement",description:"Bring your past payments along",icon:FileUp,action:()=>setIsImportModalOpen(true)},
             {label:"Bills & subscriptions",description:`${detectedRecurringCount || "Review"} recurring payments`,icon:Repeat,action:()=>setIsRecurringModalOpen(true)},
             {label:"Category rules",description:`${uncategorizedCount} transactions to organise`,icon:Sparkles,action:()=>setIsCategorizationModalOpen(true)},
-            {label:"Cash flow forecast",description:hasLowBalanceWarning ? "Your cash buffer needs attention" : "See what might be ahead",icon:TrendingUp,action:()=>setIsForecastModalOpen(true)},
+            {label:"Cash flow forecast",description:hasLowBalanceWarning ? "Your cash buffer needs attention" : "Estimate your balance after bills and spending",icon:TrendingUp,action:()=>setIsForecastModalOpen(true)},
             {label:"Storage & sync",description:pendingOutboxCount ? `${pendingOutboxCount} changes saved locally` : "Your data, your device",icon:Cloud,action:()=>setIsSyncModalOpen(true)},
             {label:"Bank connections",description:"Connection options and imports",icon:Landmark,action:()=>setIsBankModalOpen(true)},
           ].map(tool => <button key={tool.label} onClick={tool.action}><tool.icon size={20} /><span><strong>{tool.label}</strong><small>{tool.description}</small></span>{tool.count ? <b>{tool.count}</b> : <ChevronRight size={16} />}</button>)}</div></details>
