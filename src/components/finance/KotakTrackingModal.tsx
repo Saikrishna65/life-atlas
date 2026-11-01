@@ -51,7 +51,7 @@ export default function KotakTrackingModal({
   onTransactionsUpdated,
   onOpenStatementImport,
 }: KotakTrackingModalProps) {
-  const [activeTab, setActiveTab] = useState<ModalTab>("AUTOMATIC");
+  const [activeTab, setActiveTab] = useState<ModalTab>("REVIEW");
   const [alertText, setAlertText] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -343,7 +343,7 @@ export default function KotakTrackingModal({
     <div role="dialog" aria-modal="true" aria-labelledby="message-import-title" className="finance-message fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
       <div className="relative w-full max-w-2xl max-h-[92vh] bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/80">
+        <div className="message-center-header">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
               <MessageSquare className="w-5 h-5" />
@@ -356,7 +356,7 @@ export default function KotakTrackingModal({
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Track Kotak transactions from Google Messages, automatically.
+                Your transactions. Checked by you.
               </p>
             </div>
           </div>
@@ -369,9 +369,10 @@ export default function KotakTrackingModal({
           </button>
         </div>
 
+        <div className="message-center-intro"><span>YOUR APPROVAL INBOX</span><h3>Every payment, in your control.</h3><p>Check the suggested category, choose an account and approve. Your balance updates only after you confirm.</p><div><b>{reviewItems.length}</b> waiting for your review <ShieldCheck size={17} /></div></div>
         {/* Tab Navigation */}
         <div className="flex items-center gap-1 px-6 pt-3 pb-2 border-b border-slate-200 bg-slate-50/50 text-xs overflow-x-auto no-scrollbar">
-          <button onClick={() => setActiveTab("AUTOMATIC")} className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap ${activeTab === "AUTOMATIC" ? "bg-white text-slate-900 border border-slate-200" : "text-slate-500"}`}>Automatic</button>
+          <button onClick={() => setActiveTab("AUTOMATIC")} className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap ${activeTab === "AUTOMATIC" ? "bg-white text-slate-900 border border-slate-200" : "text-slate-500"}`}>Capture settings</button>
           <button
             onClick={() => setActiveTab("PASTE")}
             className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer whitespace-nowrap ${
@@ -411,7 +412,7 @@ export default function KotakTrackingModal({
                   : "text-amber-700 hover:text-amber-800"
               }`}
             >
-              <span>Review Queue</span>
+              <span>Inbox</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-500 text-white font-bold">
                 {reviewItems.length}
               </span>

@@ -1,5 +1,6 @@
 "use client";
 
+import { openDemoDatabase, seedFinanceDemo, createDemoCapture } from "@/lib/finance/demo";
 import AnimatedMoney from "@/components/finance/AnimatedMoney";
 import { usePendingFinanceCount } from "@/lib/finance/usePendingFinanceCount";
 import FinanceSelect from "@/components/finance/FinanceSelect";
@@ -83,7 +84,8 @@ type DashboardTab = "OVERVIEW" | "TRANSACTIONS" | "BUDGETS" | "GOALS" | "ACCOUNT
 type PeriodPreset = "THIS_MONTH" | "LAST_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR" | "ALL_TIME";
 
 export default function FinanceDashboardPage() {
-  const pendingFinanceCount = usePendingFinanceCount();
+  const isDemo = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";
+  const realPendingCount = usePendingFinanceCount();
   const [activeTab, setActiveTab] = useState<DashboardTab>("OVERVIEW");
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("THIS_MONTH");
   const [isLoading, setIsLoading] = useState(true);
@@ -148,8 +150,10 @@ export default function FinanceDashboardPage() {
   const [txnStatusFilter, setTxnStatusFilter] = useState("ALL");
   const [txnSortOrder, setTxnSortOrder] = useState<"date_desc" | "date_asc" | "amount_desc" | "amount_asc">("date_desc");
 
+  const pendingFinanceCount = isDemo ? kotakReviewCount : realPendingCount;
+
   // Instances
-  const uow = useMemo(() => new IndexedDBUnitOfWork(), []);
+  const uow = useMemo(() => new IndexedDBUnitOfWork(isDemo ? openDemoDatabase() : undefined), [isDemo]);
   const accountService = useMemo(() => new AccountService(uow), [uow]);
   const transactionService = useMemo(() => new TransactionService(uow), [uow]);
   const balanceService = useMemo(() => new BalanceService(uow), [uow]);
@@ -164,8 +168,8 @@ export default function FinanceDashboardPage() {
   const cloudSyncAdapter = useMemo(() => new UnconfiguredCloudSyncAdapter(), []);
   const syncOutboxService = useMemo(() => new SyncOutboxService(uow, cloudSyncAdapter), [uow, cloudSyncAdapter]);
   const notificationTrackingService = useMemo(
-    () => new NotificationTrackingService(uow, transactionService, categorizationService),
-    [uow, transactionService, categorizationService]
+    () => new NotificationTrackingService(uow, transactionService, categorizationService, isDemo ? createDemoCapture() : undefined),
+    [uow, transactionService, categorizationService, isDemo]
   );
   const secureAdapter = useMemo(() => new WebIndexedDBSecureStorageAdapter(), []);
 
@@ -214,6 +218,8 @@ export default function FinanceDashboardPage() {
         setIsLoading(false);
         return;
       }
+
+      if (isDemo) await seedFinanceDemo(uow);
 
       // Ensure system categories exist
       let allCats = await uow.categories.getAll();
@@ -300,7 +306,7 @@ export default function FinanceDashboardPage() {
     document.addEventListener("visibilitychange", resume);
     window.addEventListener("focus", resume);
     const nativeResume = App.addListener("appStateChange", ({ isActive }) => { if (isActive) resume(); });
-    notificationTrackingService.initialize().catch(console.warn);
+    (async () => { if (isDemo) await seedFinanceDemo(uow); await notificationTrackingService.initialize(); await refreshAll(); })().catch(console.warn);
     return () => {
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("focus", resume);
@@ -395,6 +401,7 @@ export default function FinanceDashboardPage() {
         <div className="af-rail-bottom"><ShieldCheck size={18} /><div><strong>Yours. Privately.</strong><span>Saved on this device</span></div></div>
       </aside>
       <div className="af-workspace">
+        <div className="af-demo-banner"><span><strong>{isDemo ? "Demo workspace" : "Explore a fully populated Finance"}</strong> {isDemo ? "Sample data only · changes stay in this sandbox" : "Try sample accounts, budgets, goals and message approvals"}</span><a href={isDemo ? "?" : "?demo=1"}>{isDemo ? "Exit demo" : "Open demo"} <ArrowUpRight size={16} /></a></div>
         <header className="af-topbar"><Link href="/secret" className="af-back"><ArrowLeft size={17} /><span>Life Atlas</span></Link><span className="af-topbar-note"><i /> Personal finance, on your terms</span><button className="af-notification-button" aria-label={`${pendingFinanceCount} transactions awaiting approval`} onClick={() => setIsKotakModalOpen(true)}><BellRing size={20} />{pendingFinanceCount > 0 && <b>{pendingFinanceCount}</b>}</button></header>
         <div className="af-page-title"><div><p className="af-eyebrow">A LITTLE CLARITY GOES A LONG WAY</p><h1>Atlas Finance</h1></div><button className="af-primary af-top-entry" onClick={accounts.length ? newEntry : newAccount}><Plus size={18} />{accounts.length ? "Add transaction" : "Add your first account"}</button></div>
         <div className="af-context-bar"><div><h2>{tabs.find(tab => tab.id === activeTab)?.label}</h2><p>{activeTab === "OVERVIEW" ? "The big picture, down to the details." : activeTab === "TRANSACTIONS" ? "Every movement. One clear timeline." : activeTab === "BUDGETS" ? "Give every rupee a little direction." : activeTab === "GOALS" ? "Make space for what comes next." : "All your balances, together."}</p></div><div className="af-period"><FinanceSelect aria-label="Reporting period" value={periodPreset} onChange={e => setPeriodPreset(e.target.value as PeriodPreset)}><option value="THIS_MONTH">This month</option><option value="LAST_MONTH">Last month</option><option value="LAST_3_MONTHS">Last 3 months</option><option value="THIS_YEAR">This year</option><option value="ALL_TIME">All time</option></FinanceSelect></div></div>
