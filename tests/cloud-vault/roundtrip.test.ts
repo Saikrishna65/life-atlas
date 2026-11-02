@@ -41,7 +41,7 @@ test('all sections, large audio, attachments, finance and preferences survive a 
  const audio=new Uint8Array(9*1024*1024+17);for(let i=0;i<audio.length;i++)audio[i]=i%251;
  await saveTrack({id:'cloud-track',title:'Local song',artist:'Artist',album:'Album',genre:'',duration:120,size:audio.length,format:'audio/mpeg',audioBlob:new Blob([audio],{type:'audio/mpeg'}),source:'IMPORTED',isFavorite:true,playCount:4,addedAt:1,fileName:'local.mp3'});
  await savePlaylist({id:'cloud-playlist',title:'Travel music',trackIds:['cloud-track'],tripId:'cloud-trip',createdAt:1,updatedAt:1});
- const uow=new IndexedDBUnitOfWork();const account=await new AccountService(uow).createAccount({name:'My bank',accountType:'bank',openingBalancePaise:100000,currency:'INR'});
+ const uow=new IndexedDBUnitOfWork();const emptyFinance=(await compareSections()).find(s=>s.section==='finance')!;assert.equal(emptyFinance.records,0);assert.equal(emptyFinance.pending,0);const account=await new AccountService(uow).createAccount({name:'My bank',accountType:'bank',openingBalancePaise:100000,currency:'INR'});
  await put('studio','entries',{id:'studio-entry',section:'Memories',createdAt:now,fields:{title:'A local note',description:'Saved offline'}});
  await controlPut('settings',{id:'preferences',value:{cloudBudgetBytes:null,musicSyncPaused:false,tripRemindersPaused:true,mutedNotificationIds:[12]}});memory.set('atlas_music_theme','midnight');
  const code=newRecoveryCode();await createCloudLink(code);const accountBefore=await uploadSections();assert.equal(Object.keys(accountBefore.sections).length,5);assert.ok(accountBefore.sections.music!.chunks.length>=3);assert.equal((await compareSections(accountBefore)).reduce((n,s)=>n+s.pending,0),0);
