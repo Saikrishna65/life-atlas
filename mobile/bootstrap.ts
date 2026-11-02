@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { installMobileNetwork } from './network';
+import { installNativeDownloads } from './downloads';
 const RESET_VERSION = 'atlas-clean-offline-2026-11-01-v1';
 async function start() {
   // Runs before application imports open any connections, once for this clean test build.
@@ -20,6 +21,7 @@ async function start() {
   if ('caches' in window) for (const key of await caches.keys()) await caches.delete(key);
   if (!location.pathname.startsWith('/secret')) history.replaceState({}, '', '/secret');
   installMobileNetwork();
+  installNativeDownloads();
   const { flushStudioEntries } = await import('./studio-storage');
   window.addEventListener('online', () => { void flushStudioEntries(); });
   void flushStudioEntries();
