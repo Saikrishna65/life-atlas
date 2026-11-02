@@ -442,7 +442,7 @@ export default function AssistantPage() {
                 <span>{importSuccess}</span>
               </div>
               <Link
-                href={`/secret/vault/${tripId}/itinerary`}
+                href={`/secret/vault/${tripId}/plan`}
                 className="px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 text-xs font-sans transition-colors inline-flex items-center gap-1 font-medium"
               >
                 <span>View in Itinerary</span>
