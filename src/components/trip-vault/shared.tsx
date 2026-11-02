@@ -1,8 +1,9 @@
 "use client";
 import {useEffect,type ReactNode} from 'react';
 import {X} from 'lucide-react';
+import {tripCalendarLabel} from '@/lib/vault/dateLabels';
 import {useLockBodyScroll} from '@/lib/vault/useLockBodyScroll';
 export const tripCover=(cover?:string)=>cover||'/placeholder-image.jpg';
-export const tripDate=(value:string)=>new Date(value).toLocaleDateString(undefined,{day:'numeric',month:'short'});
+export const tripDate=tripCalendarLabel;
 export function TripSheet({title,onClose,children}:{title:string;onClose:()=>void;children:ReactNode}){useLockBodyScroll(true);useEffect(()=>{const previous=document.activeElement as HTMLElement;const dialog=document.querySelector<HTMLElement>('.tv-sheet:last-child');dialog?.focus();const key=(event:KeyboardEvent)=>{if(event.key==='Escape')onClose();if(event.key==='Tab'&&dialog){const nodes=[...dialog.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),textarea,select,a[href]')].filter(n=>n.getClientRects().length);if(!nodes.length){event.preventDefault();return;}const first=nodes[0],last=nodes[nodes.length-1];if(event.shiftKey&&(document.activeElement===first||document.activeElement===dialog)){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}};document.addEventListener('keydown',key);return()=>{document.removeEventListener('keydown',key);previous?.focus();};},[onClose]);return <div className="tv-sheet-overlay"><section className="tv-sheet" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}><header><h2>{title}</h2><button className="tv-round" aria-label={`Close ${title}`} onClick={onClose}><X size={20}/></button></header>{children}</section></div>;}
 export function EmptyTripState({title,children}:{title:string;children:ReactNode}){return <section className="tv-empty"><span className="tv-orbit"/><h2>{title}</h2><p>{children}</p></section>;}

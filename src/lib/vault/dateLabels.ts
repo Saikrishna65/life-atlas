@@ -1,0 +1,3 @@
+/** Trip dates are calendar days; booking timestamps are instants in a trip timezone. */
+export function tripCalendarLabel(value:string,locale?:string){return new Intl.DateTimeFormat(locale,{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(value.slice(0,10)+'T12:00:00Z'));}
+export function bookingCalendarDay(value:string,timeZone:string){const parts=new Intl.DateTimeFormat('en-CA',{year:'numeric',month:'2-digit',day:'2-digit',timeZone}).formatToParts(new Date(value));const get=(type:string)=>parts.find(p=>p.type===type)!.value;return `${get('year')}-${get('month')}-${get('day')}`;}
