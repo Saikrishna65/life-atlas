@@ -1,10 +1,12 @@
-Atlas Vault 1.3.1 — Android cloud sync fix
+Atlas Vault 1.4 — redesigned Trip Vault and Control Center
 
 Install
 1. Download and extract atlas-offline-online.zip, then install atlas-offline-online.apk.
-2. Try cloud setup again in your installed APK first: the server compatibility fix also supports the previous version. You may not need to reinstall.
-3. This update keeps the existing local-data epoch and does not repeat the database reset. Do not uninstall an app containing unsaved local data. If Android reports a signing conflict, keep your installed app and use its cloud setup after the server update; save the recovery code and upload before considering reinstalling.
-4. The native HTTP transport now preserves cloud authentication and app-origin headers. Automatic uploads turn on after cloud setup connects successfully.
+2. Install as an update when Android allows it. Existing database names and the data epoch are unchanged; this release does not clear app or cloud data.
+3. If Android reports a signing conflict, DO NOT uninstall while your app has unsaved local records. Preserve your current cloud snapshot at https://life-atlas-eight-five.vercel.app/cloud-recovery, return to your existing app and Upload all, and keep your recovery code outside the app before considering a reinstall. The ZIP includes signing-compatibility.json comparing this APK with v1.3.1.
+4. The new Trip Vault has an overview and five sections: Plan (days, travel, food, suggestions), Bookings (tickets, files, reminders), Money (shared Finance ledger), Checklist (packing and reminders), and Memories. Creating a trip starts with its name, destination and dates; more fields are optional.
+5. Earlier manual trip expenses remain available in Money. Linking one to Finance requires choosing an account and confirmation; the original stays saved. If already recorded, attach the existing payment instead.
+6. Control Center now uses a light monochrome design with compact rows and bottom navigation. Trip Vault uses a separate photo-led stone, midnight and cyan palette. Finance and Music themes are unchanged.
 
 Cloud upload and reinstall recovery
 1. Open Control Room → Cloud → Create cloud vault.

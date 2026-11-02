@@ -302,7 +302,7 @@ export default function PackingPage() {
             title="Import expedition gear presets"
           >
             <Sparkles className="w-3.5 h-3.5 text-accent" />
-            <span className="hidden sm:inline">Expedition</span> Presets
+            <span className="hidden sm:inline">Packing</span> suggestions
           </button>
 
           <button
@@ -565,7 +565,7 @@ export default function PackingPage() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-background border border-muted text-xs font-sans text-muted-foreground hover:text-foreground hover:border-amber-500/40 transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Seed Expedition Preset</span>
+              <span>Add packing suggestions</span>
             </button>
           </div>
         </div>

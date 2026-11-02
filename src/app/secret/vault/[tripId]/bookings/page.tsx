@@ -487,7 +487,7 @@ export default function TripBookingsPage() {
   if (!trip) {
     return (
       <div className="max-w-md mx-auto py-20 text-center space-y-4">
-        <h2 className="font-display text-2xl text-foreground font-normal">Expedition Not Found</h2>
+        <h2 className="font-display text-2xl text-foreground font-normal">Trip not found</h2>
         <Link
           href="/secret/vault"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-muted text-xs font-sans text-foreground"
@@ -514,10 +514,12 @@ export default function TripBookingsPage() {
         <div className="flex items-center gap-2.5">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-mono tracking-wider text-emerald-400 font-semibold uppercase">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Pillar 03 & 04</span>
+            <span>Bookings</span>
           </div>
         </div>
       </nav>
+
+      <Link className="tv-secondary" href={`/secret/vault/${trip.id}/checklist?view=reminders`}>Set a booking reminder</Link>
 
       {/* HEADER WITH FINANCIAL & DOCUMENT METRICS */}
       <header className="space-y-4">
@@ -525,24 +527,24 @@ export default function TripBookingsPage() {
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono text-emerald-400 uppercase tracking-widest mb-1.5 font-semibold">
               <Ticket className="w-3 h-3 text-emerald-400" />
-              <span>Consolidated Logistics Hub</span>
+              <span>TICKETS & STAYS</span>
             </div>
             <h1 className="font-display text-2xl sm:text-4xl text-foreground font-normal tracking-tight">
-              Bookings & Document Vault
+              Bookings
             </h1>
             <p className="font-body text-xs sm:text-sm text-muted-foreground mt-1">
-              One unified vault for IRCTC trains, flights, stays, pass tickets, ID documents, and offline PDFs.
+              Your tickets, stays and travel documents. Ready when you need them.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <Link
-              href={`/secret/vault/${trip.id}/assistant`}
+              href={`/secret/vault/${trip.id}/plan?view=assistant&tool=parser`}
               className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-purple-500/10 border border-purple-500/30 hover:border-purple-400 text-purple-300 font-medium text-xs font-sans tracking-wide transition-colors"
               title="Parse raw ticket confirmation SMS or email"
             >
               <Ticket className="w-3.5 h-3.5 text-purple-400" />
-              <span>Smart Parser</span>
+              <span>Paste a ticket</span>
             </Link>
 
             <button
@@ -550,7 +552,7 @@ export default function TripBookingsPage() {
               className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 hover:border-emerald-400 text-emerald-300 font-medium text-xs font-sans tracking-wide transition-colors cursor-pointer"
             >
               <Upload className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Upload Doc</span>
+              <span>Add file</span>
             </button>
 
             <button
@@ -567,7 +569,7 @@ export default function TripBookingsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-3xl border border-muted bg-surface/80 shadow-soft">
           <div className="p-3 rounded-2xl bg-background border border-muted/50">
             <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
-              Total Booking Tariff
+              Booking total
             </span>
             <span className="text-sm sm:text-base font-semibold font-mono text-cyan-400 mt-0.5 block">
               {trip.currency} {financials.totalCost.toLocaleString()}
@@ -1264,7 +1266,7 @@ export default function TripBookingsPage() {
           >
             <div className="flex items-center justify-between border-b border-muted pb-3">
               <h3 className="font-display text-lg text-foreground font-normal">
-                Upload Document to Offline Vault
+                Add fileument to Offline Vault
               </h3>
               <button
                 type="button"

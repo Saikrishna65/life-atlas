@@ -322,7 +322,7 @@ export default function TripFoodPlannerPage() {
     return (
       <div className="max-w-4xl mx-auto py-24 text-center text-xs font-mono text-muted-foreground flex items-center justify-center gap-2">
         <div className="w-4 h-4 rounded-full border border-muted border-t-amber-500 animate-spin" />
-        <span>Loading offline culinary roadmap...</span>
+        <span>Opening your food wishlist…</span>
       </div>
     );
   }
@@ -362,7 +362,7 @@ export default function TripFoodPlannerPage() {
         <div className="flex items-center gap-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-[11px] font-mono tracking-wider text-orange-400 font-semibold uppercase">
             <Utensils className="w-3 h-3 text-orange-500" />
-            <span>Pillar 05 • Food</span>
+            <span>Food wishlist</span>
           </div>
         </div>
       </nav>
@@ -376,7 +376,7 @@ export default function TripFoodPlannerPage() {
               <span>Gastronomic Roadmap</span>
             </div>
             <h1 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
-              Culinary & Food Roadmap
+              Food wishlist
             </h1>
             <p className="font-body text-xs text-muted-foreground max-w-xl leading-relaxed">
               Curate regional delicacies to taste, roadside dhabas, artisanal mountain cafes, and authentic local spots in{" "}
@@ -617,7 +617,7 @@ export default function TripFoodPlannerPage() {
               <ChefHat className="w-6 h-6 text-orange-400" />
             </div>
             <h3 className="font-display text-base text-foreground font-normal">
-              No Culinary Items Match Your Filter
+              No matches in your wishlist
             </h3>
             <p className="font-body text-xs text-muted-foreground max-w-sm mx-auto">
               Add a regional dish or restaurant wishlist item, or click &ldquo;Regional Presets&rdquo; to load authentic local recommendations.
@@ -880,7 +880,7 @@ export default function TripFoodPlannerPage() {
               <div className="flex items-center gap-2">
                 <ChefHat className="w-5 h-5 text-accent" />
                 <h3 className="font-display text-xl text-foreground font-normal">
-                  {editingItem ? "Edit Culinary Item" : "Add to Food Roadmap"}
+                  {editingItem ? "Edit food item" : "Add to food wishlist"}
                 </h3>
               </div>
               <button

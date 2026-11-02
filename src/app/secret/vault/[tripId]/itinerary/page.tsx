@@ -280,7 +280,7 @@ export default function TripItineraryPage() {
   if (!trip) {
     return (
       <div className="max-w-md mx-auto py-20 text-center space-y-4">
-        <h2 className="font-display text-2xl text-foreground font-normal">Expedition Not Found</h2>
+        <h2 className="font-display text-2xl text-foreground font-normal">Trip not found</h2>
         <Link
           href="/secret/vault"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-surface border border-muted text-xs font-sans text-foreground"
@@ -345,19 +345,19 @@ export default function TripItineraryPage() {
 
           <div className="flex items-center gap-2.5 shrink-0">
             <Link
-              href={`/secret/vault/${trip.id}/assistant`}
+              href={`/secret/vault/${trip.id}/plan?view=assistant`}
               className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-purple-50 border border-purple-200 hover:border-purple-300 text-purple-900 font-medium text-xs font-sans tracking-wide transition-colors shadow-xs"
               title="Generate full day-by-day itinerary with AI"
             >
               <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-              <span>AI Architect</span>
+              <span>Suggest a plan</span>
             </Link>
 
             {/* Quick Metrics Badge */}
             <div className="p-3 rounded-2xl bg-surface border border-muted flex items-center gap-4 shrink-0 shadow-soft">
               <div>
                 <span className="text-[10px] font-mono uppercase text-muted-foreground block">
-                  Expedition Progress
+                  Plan progress
                 </span>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-sm font-semibold font-mono text-accent">

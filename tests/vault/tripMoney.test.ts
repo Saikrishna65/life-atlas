@@ -1,0 +1,21 @@
+import 'fake-indexeddb/auto';
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {IndexedDBUnitOfWork} from '../../src/lib/finance/storage/indexeddb/unitOfWork';
+import {AccountService} from '../../src/lib/finance/application/accountService';
+import {assignedTripId} from '../../src/lib/finance/trips/policy';
+import {linkSavedTripExpense} from '../../src/lib/vault/tripMoney';
+import {saveTrip,saveExpense,getExpensesForTrip} from '../../src/lib/vault/storage';
+import type {TripRecord,ExpenseRecord} from '../../src/lib/vault/types';
+test('reviewed legacy trip expense links once, preserves its original and changes the real account balance once',async()=>{
+ const date='2026-11-02T10:00:00.000Z',trip:TripRecord={id:'money-redesign',title:'A real journey',destination:'Coast',startDate:date,endDate:date,status:'PLANNING',travelStyle:'LEISURE',currency:'INR',budgetTotal:3000,createdAt:date,updatedAt:date};await saveTrip(trip);
+ const original=await saveExpense({id:'saved-cafe',tripId:trip.id,title:'Cafe bill',amount:120.50,currency:'INR',category:'FOOD',paymentMode:'CASH',paidBy:'Me',date,isDeposit:false,notes:'Keep the original note',createdAt:date,updatedAt:date} as ExpenseRecord);
+ const uow=new IndexedDBUnitOfWork();await uow.categories.seedDefaults();const account=await new AccountService(uow).createAccount({name:'Actual travel cash',accountType:'cash',openingBalancePaise:100000,currency:'INR'});
+ const first=await linkSavedTripExpense(uow,trip,original,account.id);const repeated=await linkSavedTripExpense(uow,trip,original,account.id);
+ assert.equal(first.id,repeated.id);assert.equal(assignedTripId(first),trip.id);assert.equal(first.amountPaise,12050);assert.equal((await uow.transactions.query({})).length,1);assert.equal((await uow.accounts.getById(account.id))!.currentBalancePaise,87950);assert.deepEqual((await getExpensesForTrip(trip.id))[0],original);
+ await assert.rejects(()=>linkSavedTripExpense(uow,trip,{...original,amount:200},account.id),/different details/);
+ await assert.rejects(()=>linkSavedTripExpense(uow,trip,{...original,tripId:'another-trip'},account.id),/another trip/);
+ await assert.rejects(()=>linkSavedTripExpense(uow,trip,{...original,isDeposit:true},account.id),/deposits/);
+ const usd=await new AccountService(uow).createAccount({name:'Dollar cash',accountType:'cash',currency:'USD'});await assert.rejects(()=>linkSavedTripExpense(uow,trip,{...original,id:'other'},usd.id),/same currency/);
+ assert.equal((await uow.accounts.getById(account.id))!.currentBalancePaise,87950);
+});

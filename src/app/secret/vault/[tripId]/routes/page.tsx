@@ -278,7 +278,7 @@ export default function TripRoutesPage() {
         <div className="flex items-center gap-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-[11px] font-mono tracking-wider text-teal-400 font-semibold uppercase">
             <Compass className="w-3.5 h-3.5 text-teal-400" />
-            <span>Pillar 07 • Routes</span>
+            <span>Travel & places</span>
           </div>
         </div>
       </nav>
@@ -292,10 +292,10 @@ export default function TripRoutesPage() {
               <span>Offline Route Legs & Navigation Deck</span>
             </div>
             <h1 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
-              Route Legs & Offline Maps
+              Travel & places
             </h1>
             <p className="font-body text-xs text-muted-foreground max-w-xl leading-relaxed">
-              Curated road legs, driving durations, mountain pass crossings, and 1-tap offline navigation for{" "}
+              Saved journeys, travel notes and Google Maps links for{" "}
               <span className="text-foreground font-medium">{trip.destination}</span>.
             </p>
           </div>

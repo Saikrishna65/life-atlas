@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Sparkles,
@@ -53,7 +53,8 @@ export default function AssistantPage() {
 
   const [trip, setTrip] = useState<TripRecord | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<AssistantTab>("ITINERARY");
+  const query=useSearchParams();
+  const [activeTab, setActiveTab] = useState<AssistantTab>(query.get("tool")==="parser"?"PARSER":"ITINERARY");
 
   // Itinerary Generator Form State
   const [destInput, setDestInput] = useState("");
@@ -233,7 +234,7 @@ export default function AssistantPage() {
     return (
       <div className="max-w-4xl mx-auto py-24 text-center text-xs font-mono text-muted-foreground flex items-center justify-center gap-2">
         <div className="w-4 h-4 rounded-full border border-muted border-t-amber-500 animate-spin" />
-        <span>Initializing Expedition AI Assistant...</span>
+        <span>Opening planning tools…</span>
       </div>
     );
   }
@@ -252,13 +253,13 @@ export default function AssistantPage() {
               <span>{trip?.title || "Expedition"}</span>
             </Link>
             <span>/</span>
-            <span className="text-purple-700 font-medium">Pillar 13</span>
+            <span className="text-purple-700 font-medium">Suggestions</span>
           </div>
           <h1 className="font-display text-2xl sm:text-3xl text-foreground font-normal tracking-tight">
-            AI Expedition Assistant & Smart Parser
+            A little help with your plan.
           </h1>
           <p className="font-body text-xs text-muted-foreground mt-0.5">
-            Neon AI Gateway powered itinerary generator & offline PNR confirmation ticket extractor.
+            Get a starting plan or turn a ticket message into a saved booking.
           </p>
         </div>
       </div>
@@ -274,8 +275,8 @@ export default function AssistantPage() {
             }`}
         >
           <Sparkles className="w-4 h-4 shrink-0 text-purple-200" />
-          <span className="truncate">AI Itinerary Architect</span>
-          <span className="text-[10px] opacity-80 font-mono px-1.5 py-0.5 rounded-md bg-purple-700/60 hidden md:inline">Pillar 13</span>
+          <span className="truncate">Suggest a plan</span>
+          <span className="text-[10px] opacity-80 font-mono px-1.5 py-0.5 rounded-md bg-purple-700/60 hidden md:inline">Suggestions</span>
         </button>
 
         <button
@@ -311,7 +312,7 @@ export default function AssistantPage() {
                 </div>
                 <div>
                   <h3 className="font-display text-lg sm:text-xl text-foreground font-normal">
-                    Expedition Itinerary Architect
+                    Make a starting plan
                   </h3>
                   <p className="font-body text-xs text-muted-foreground mt-0.5">
                     Generate day-by-day itineraries, pass crossing timelines, and essential gear suggestions.
@@ -371,7 +372,7 @@ export default function AssistantPage() {
                     <option value="BACKPACKING">Backpacking & Public Transit</option>
                     <option value="ROADTRIP">Self-Drive 4x4 Roadtrip</option>
                     <option value="TREKKING">Alpine Trekking</option>
-                    <option value="MOTORCYCLE">Motorcycle Expedition</option>
+                    <option value="MOTORCYCLE">Motorcycle trip</option>
                     <option value="LEISURE">Leisure & Heritage</option>
                   </Select>
                 </div>
@@ -421,7 +422,7 @@ export default function AssistantPage() {
                   {isGenerating ? (
                     <>
                       <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                      <span>Synthesizing Expedition Plan...</span>
+                      <span>Making your plan…</span>
                     </>
                   ) : (
                     <>
@@ -567,7 +568,7 @@ export default function AssistantPage() {
                 <div className="p-4 rounded-2xl bg-background border border-muted space-y-2">
                   <div className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-muted-foreground">
                     <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Recommended Expedition Gear</span>
+                    <span>Suggested things to pack</span>
                   </div>
                   <ul className="space-y-1 text-xs text-muted-foreground font-body">
                     {generatedPlan.suggestedGear.map((item, idx) => (
