@@ -27,6 +27,7 @@ await fs.writeFile(path.join(output,'index.html'),'<!doctype html><html lang="en
 await fs.copyFile(path.join(output,'index.html'),path.join(output,'offline.html'));
 await fs.cp('public/finance',path.join(output,'finance'),{recursive:true});
 await fs.copyFile('public/placeholder-image.jpg',path.join(output,'placeholder-image.jpg'));
-const routes = (await fs.readFile('mobile/App.tsx','utf8')).match(/pattern: new RegExp/g) || [];
+const routes = (await fs.readdir('src/app/secret',{recursive:true})).filter(p=>p.endsWith('page.tsx'));
+if(Object.keys(result.metafile.inputs).some(p=>/finance\/demo(?:Transactions)?\.ts$/.test(p)))throw new Error('Finance demo code must not be included in the APK.');
 await fs.writeFile(path.join(output,'build-info.json'),JSON.stringify({mode:'bundled-offline',builtAt:new Date().toISOString(),screens:routes.length}));
 console.log(`Bundled offline app: ${Object.keys(result.metafile.outputs).length} assets`);

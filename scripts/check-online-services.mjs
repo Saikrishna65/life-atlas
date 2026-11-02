@@ -11,5 +11,5 @@ const report={checkedAt:new Date().toISOString(),origin,
  music:{status:music.status,available:music.status===200&&music.data?.success===true},
  controlRoom:{status:control.status,database:control.data?.database?.status||'unavailable',buckets:(control.data?.buckets||[]).map(b=>({name:b.name,status:b.status}))},
  studio:{status:studio.status,available:studio.status===400&&studio.data?.error==='Invalid Studio entry.'},
- notes:'Read-only probes and invalid-payload validation only. Live YouTube extraction, AI credentials and phone-specific permissions still require testing. Finance ledger cloud synchronization remains unconfigured; encrypted cloud backups are available through Control Room when storage is connected.'};
+ notes:'Read-only probes and invalid-payload validation only. Live YouTube extraction, AI credentials and phone-specific permissions still require testing. Private section upload and recovery-code restore are available through Cloud in Control Room.'};
 await fs.mkdir('apk-download',{recursive:true});await fs.writeFile('apk-download/service-health.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));

@@ -1,16 +1,27 @@
-Atlas Vault — offline and online Android test build
+Atlas Vault — Control Room cloud recovery update
 
-1. Download atlas-offline-online.zip from this GitHub release and extract it.
-2. If Android reports a signature conflict, uninstall the previous Atlas app first. Uninstalling removes its local data.
-3. Install atlas-offline-online.apk and allow installation from your browser/file manager when Android asks.
-4. On first launch this clean test build initializes empty local Trip Vault, Music, Finance, Studio and Control Room databases. New test data persists after relaunch.
-5. Test in airplane mode: trips and all trip subsections, local documents, imported music/playlists, manual finance and statement imports, Studio drafts, local storage inspection and encrypted backups.
-6. Reconnect to the internet to use the hosted Atlas APIs for YouTube, music cloud storage/sync, AI (if configured), Control Room cloud management and Studio publishing. Studio drafts stay on the device and retry publishing when connectivity returns. Imported songs and saved documents remain usable offline.
-7. For bank-alert capture, grant Atlas notification access in Android settings and enable tracking. Only supported Google Messages/Kotak notifications are captured; historical SMS are not read. Allow notification permission for reminder and finance-review alerts.
-8. Map directions open the device's map service and require the map service's own connectivity/offline downloads.
+Install
+1. Download and extract atlas-offline-online.zip, then install atlas-offline-online.apk.
+2. If Android reports a signing conflict, uninstall the previous test APK first. This release intentionally starts with clean test data; clean-start.json records the server reset.
+3. The first launch clears the old device test databases once. New records you add afterward persist normally. Built-in Finance categories remain; demo accounts and mock payments are not created, and ?demo=1 no longer enables a demo workspace.
 
-This APK is built from the current Android sources, including the bank-alert plugin. Browser automation checks the bundled screens and online API routing. Device-specific media background behavior, widgets, permissions and live external services still require testing on your phone. A working internet connection does not replace missing server credentials, storage permissions or external-service availability.
+Cloud upload and reinstall recovery
+1. Open Control Room → Cloud → Create cloud vault.
+2. Copy or save your recovery code outside the app and confirm you have saved it.
+3. Connect and upload. Automatic uploads save new local changes while online. Each section also has its own Upload and Restore buttons.
+4. To test reinstall recovery, wait until the sections show Up to date, then uninstall and reinstall the app.
+5. Open Control Room → Cloud → I already have a recovery code. Enter it or choose your saved code file, then Connect & restore.
+6. Trip Vault, Music, Finance, Studio and app preferences return from the cloud, including original local audio and attachments saved in that copy. You can restore again whenever needed. Restore replaces the selected device sections with their saved cloud copy.
+7. Keep the recovery code. It is required to unlock your encrypted cloud files and cannot be recovered from the server if lost. Android permissions are device-specific and must be granted again after reinstalling.
 
-The ZIP includes service-health.json with the hosted service probe results at build time. Finance's ledger sync adapter is not configured; use Control Room's encrypted backups for cloud backup of finance data.
+Access and rules
+- Music and audio: check/request Android audio-library access. The system file picker also supports importing chosen songs without broad library access.
+- Notifications: allow reminders and Finance review alerts.
+- Bank notification access: grant Atlas access in Android settings and enable tracking. Supported incoming Kotak messages from Google Messages can then be reviewed in Finance; historical SMS are not read.
+- Automatic uploads: enabled after cloud setup; local features remain available offline.
 
-Exports and downloaded files open Android's document picker. Choose a destination on your device to save offline documents, playlists, and encrypted backup files. Cloud-file links keep working after file operations in Control Room.
+Storage
+On-device records and media are measured separately from cloud files. Cloud-only music consumes cloud storage even when it has no local audio copy. Neon object storage stores files; the app database stores published records and Music metadata. Its allocated size includes indexes and internal overhead and does not become zero after clearing records.
+
+Validation
+The release workflow checks types and tests, recovery after two simulated reinstalls, live encrypted upload/download against the deployed cloud service, responsive Control Room screens, the current Android plugins and APK signatures. Phone-specific permissions, background playback and widgets still require device testing. Online YouTube, AI and publishing depend on their hosted services.

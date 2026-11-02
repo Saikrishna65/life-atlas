@@ -5,7 +5,7 @@ import type {CloudAsset} from './types';
 export const MANAGED_BUCKETS=['images','music'] as const;
 export const TRASH_PREFIX='control-room/trash/';
 export function cloudBucket(value:unknown):'images'|'music'{if(value!=='images'&&value!=='music')throw new ControlInputError('Choose a managed Atlas storage bucket.');return value;}
-export function cloudKey(value:unknown):string{if(typeof value!=='string'||!value||value.length>900||value.startsWith('/')||value.split('/').some(p=>p==='..'||p==='.')||/[\u0000-\u001f\\]/.test(value))throw new ControlInputError('Invalid file path.');return value;}
+export function cloudKey(value:unknown):string{if(typeof value!=='string'||!value||value.length>900||value.startsWith('/')||value.split('/').some(p=>p==='..'||p==='.')||/[\u0000-\u001f\\]/.test(value))throw new ControlInputError('Invalid file path.');if(value.startsWith('private-vault/')||value.startsWith('atlas-system/'))throw new ControlInputError('Private cloud vault files are managed through Cloud restore.');return value;}
 export function safeFilename(value:string){return value.normalize('NFKC').replace(/[^a-zA-Z0-9._ -]/g,'_').replace(/^\.+/,'').slice(0,150)||'file';}
 export function originalTrashKey(key:string){if(!key.startsWith(TRASH_PREFIX))return undefined;try{const encoded=key.slice(TRASH_PREFIX.length).split('/').slice(1).join('/');return cloudKey(decodeURIComponent(encoded));}catch{return undefined;}}
 export function newTrashKey(key:string,id:string){if(key.startsWith(TRASH_PREFIX))throw new ControlInputError('This file is already in Trash.');return `${TRASH_PREFIX}${id}/${encodeURIComponent(key)}`;}

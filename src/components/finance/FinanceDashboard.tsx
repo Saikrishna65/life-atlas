@@ -2,7 +2,6 @@
 import TripFinancePanel from "./trips/TripFinancePanel";
 import { TripFinanceService } from "@/lib/finance/trips/service";
 
-import { openDemoDatabase, seedFinanceDemo, createDemoCapture } from "@/lib/finance/demo";
 import { currentFinanceWeek, localFinanceDateKey } from "@/lib/finance/calendar";
 import MerchantImage from "@/components/finance/MerchantImage";
 import FinanceThemePicker, { FinanceTheme, THEME_STORAGE_KEY, isFinanceTheme } from "@/components/finance/FinanceThemePicker";
@@ -84,7 +83,6 @@ type DashboardTab = "OVERVIEW" | "TRANSACTIONS" | "BUDGETS" | "GOALS" | "ACCOUNT
 type PeriodPreset = "THIS_WEEK" | "LAST_6_MONTHS" | "THIS_MONTH" | "LAST_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR" | "ALL_TIME";
 
 export default function FinanceDashboardPage() {
-  const isDemo = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";
   const [theme, setTheme] = useState<FinanceTheme>(() => {
     try { const saved = localStorage.getItem(THEME_STORAGE_KEY); return isFinanceTheme(saved) ? saved : "ocean"; } catch { return "ocean"; }
   });
@@ -158,12 +156,12 @@ export default function FinanceDashboardPage() {
   const [txnStatusFilter, setTxnStatusFilter] = useState("ALL");
   const [txnSortOrder, setTxnSortOrder] = useState<"date_desc" | "date_asc" | "amount_desc" | "amount_asc">("date_desc");
 
-  const pendingFinanceCount = isDemo ? kotakReviewCount : realPendingCount;
+  const pendingFinanceCount = realPendingCount;
 
   // Instances
-  const uow = useMemo(() => new IndexedDBUnitOfWork(isDemo ? openDemoDatabase() : undefined), [isDemo]);
+  const uow = useMemo(() => new IndexedDBUnitOfWork(), []);
   const accountService = useMemo(() => new AccountService(uow), [uow]);
-  const transactionService = useMemo(() => new TransactionService(uow, isDemo ? async()=>[] : undefined), [uow,isDemo]);
+  const transactionService = useMemo(() => new TransactionService(uow), [uow]);
   const balanceService = useMemo(() => new BalanceService(uow), [uow]);
   const budgetService = useMemo(() => new BudgetService(uow), [uow]);
   const savingsGoalService = useMemo(() => new SavingsGoalService(uow), [uow]);
@@ -173,8 +171,8 @@ export default function FinanceDashboardPage() {
   const cloudSyncAdapter = useMemo(() => new UnconfiguredCloudSyncAdapter(), []);
   const syncOutboxService = useMemo(() => new SyncOutboxService(uow, cloudSyncAdapter), [uow, cloudSyncAdapter]);
   const notificationTrackingService = useMemo(
-    () => new NotificationTrackingService(uow, transactionService, categorizationService, isDemo ? createDemoCapture() : undefined),
-    [uow, transactionService, categorizationService, isDemo]
+    () => new NotificationTrackingService(uow, transactionService, categorizationService),
+    [uow, transactionService, categorizationService]
   );
   const secureAdapter = useMemo(() => new WebIndexedDBSecureStorageAdapter(), []);
 
@@ -237,7 +235,6 @@ export default function FinanceDashboardPage() {
         return;
       }
 
-      if (isDemo) await seedFinanceDemo(uow);
       else await new TripFinanceService(uow).reconcile();
 
       // Ensure system categories exist
@@ -318,7 +315,7 @@ export default function FinanceDashboardPage() {
     document.addEventListener("visibilitychange", resume);
     window.addEventListener("focus", resume);
     const nativeResume = App.addListener("appStateChange", ({ isActive }) => { if (isActive) resume(); });
-    (async () => { if (isDemo) await seedFinanceDemo(uow); await notificationTrackingService.initialize(); await refreshAll(); })().catch(console.warn);
+    (async () => { await notificationTrackingService.initialize(); await refreshAll(); })().catch(console.warn);
     return () => {
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("focus", resume);
@@ -415,7 +412,7 @@ export default function FinanceDashboardPage() {
           <FinanceThemePicker value={theme} onChange={setTheme}/>
           <button className="glass-bell" aria-label={`${pendingFinanceCount} transactions awaiting approval`} onClick={()=>setIsKotakModalOpen(true)}><BellRing size={18}/>{pendingFinanceCount>0 && <b>{pendingFinanceCount}</b>}</button>
         </header>
-        <div className="glass-demo-note"><span>{isDemo ? "Demo workspace" : "Personal finance"}</span><a href={isDemo ? "?" : "?demo=1"}>{isDemo ? "Exit demo" : "Try demo"}<ArrowUpRight size={13}/></a></div>
+        <div className="glass-demo-note"><span>Personal finance</span><Link href="/secret/control-room?tab=cloud">Cloud storage<ArrowUpRight size={13}/></Link></div>
         <nav role="tablist" aria-label="Finance sections" className="af-navigation">{tabs.map(tab=><button key={tab.id} role="tab" aria-selected={activeTab===tab.id} onClick={()=>{setActiveTab(tab.id);window.scrollTo({top:0});}}><tab.icon size={19}/><span>{tab.label}</span></button>)}</nav>
         <main className={`af-canvas glass-view-${activeTab.toLowerCase()}`} key={activeTab}>
           {activeTab === "OVERVIEW" && <>
@@ -439,7 +436,7 @@ export default function FinanceDashboardPage() {
           {activeTab === "BUDGETS" && <section className="af-section"><div className="af-section-heading"><h3>Your spending plan</h3><button className="af-primary" onClick={() => { setEditingBudgetId(undefined); setIsBudgetModalOpen(true); }}><Plus size={17} />Create budget</button></div>{budgets.length ? <div className="af-plan-grid">{budgets.map(b => <article className="af-plan" key={b.categoryId}><div className="af-section-heading"><span className="af-plan-icon"><Tag size={21} /></span><button className="af-icon-button" aria-label={`Edit ${b.categoryName} budget`} onClick={() => { setEditingBudgetId(b.categoryId); setIsBudgetModalOpen(true); }}><Edit3 size={17} /></button></div><h3>{b.categoryName}</h3><strong>{formatPaise(b.spentPaise)} <small>of {formatPaise(b.allocatedPaise)}</small></strong><div className={`af-progress ${b.isOverBudget ? "is-over" : ""}`} role="progressbar" aria-label={b.categoryName} aria-valuenow={Math.min(100,b.percentageUsed)} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${Math.min(100,Math.max(0,b.percentageUsed))}%` }} /></div><p>{b.isOverBudget ? `${formatPaise(Math.abs(b.remainingPaise))} over your plan` : `${formatPaise(b.remainingPaise)} left to spend`}</p></article>)}</div> : <div className="af-empty af-empty-large"><Tag size={36} /><h3>Spend with a plan.</h3><p>Create category limits to see what’s available before you spend.</p><button className="af-primary" onClick={() => setIsBudgetModalOpen(true)}>Create your first budget</button></div>}</section>}
           {activeTab === "GOALS" && <section className="af-section"><div className="af-section-heading"><h3>Something to look forward to</h3><button className="af-primary" onClick={() => { setEditingGoal(null); setSavingsGoalMode("create_or_edit"); setIsSavingsGoalModalOpen(true); }}><Plus size={17} />New goal</button></div>{savingsGoals.length ? <div className="af-plan-grid">{savingsGoals.map(g => <article className="af-plan af-goal" key={g.id}><div className="af-section-heading"><span className="af-goal-symbol"><Target size={25} /></span><span className="af-tag">{g.isCompleted ? "Reached" : `${g.percentComplete}% saved`}</span></div><span className="glass-goal-label">SAVING FOR</span><h3>{g.name}</h3><strong>{formatPaise(g.currentAmountPaise)}</strong><p>of {formatPaise(g.targetAmountPaise)}</p><div className="af-progress" role="progressbar" aria-label={g.name} aria-valuenow={g.percentComplete} aria-valuemin={0} aria-valuemax={100}><i style={{width:`${Math.min(100,g.percentComplete)}%`}} /></div><div className="af-goal-actions"><button className="af-primary" onClick={() => { setEditingGoal(g); setSavingsGoalMode("contribute"); setIsSavingsGoalModalOpen(true); }}>Add savings</button><button className="af-icon-button" aria-label={`Edit ${g.name}`} onClick={() => { setEditingGoal(g); setSavingsGoalMode("create_or_edit"); setIsSavingsGoalModalOpen(true); }}><Edit3 size={17} /></button></div></article>)}</div> : <div className="af-empty af-empty-large"><Target size={36} /><h3>Turn “one day” into a plan.</h3><p>A trip, a new home, or a rainy-day fund. Start with something that matters to you.</p><button className="af-primary" onClick={() => { setEditingGoal(null); setSavingsGoalMode("create_or_edit"); setIsSavingsGoalModalOpen(true); }}>Create your first goal</button></div>}</section>}
           {activeTab === "ACCOUNTS" && <section className="af-section"><div className="af-section-heading"><h3>One place for every balance</h3><button className="af-primary" onClick={newAccount}><Plus size={17} />Add account</button></div>{accounts.length ? accountView(true) : <div className="af-empty af-empty-large"><Wallet size={36} /><h3>Let’s bring your money together.</h3><p>Add an account to start tracking balances and payments.</p><button className="af-primary" onClick={newAccount}>Add account</button></div>}</section>}
-          <TripFinancePanel uow={uow} transactionService={transactionService} accounts={accounts} categories={categories} onChange={refreshAll} isDemo={isDemo} showCards={activeTab==="OVERVIEW"}/>
+          <TripFinancePanel uow={uow} transactionService={transactionService} accounts={accounts} categories={categories} onChange={refreshAll} showCards={activeTab==="OVERVIEW"}/>
           <details className="af-utility-section"><summary>More ways to manage your money <Plus size={17}/></summary><div className="af-section-heading"><h3>Make Finance work for you</h3><span className="af-eyebrow">YOUR TOOLKIT</span></div><div className="af-utility-grid">{[
             {label:"Bank messages",description:kotakTrackingActive ? "Capture is on · review your inbox" : "Capture, categorise, approve",icon:BellRing,action:()=>setIsKotakModalOpen(true),count:pendingFinanceCount},
             {label:"Trip spending",description:"Trips, advance bookings and travel budgets",icon:Wallet,action:()=>window.dispatchEvent(new Event("open-finance-trips"))},

@@ -29,5 +29,6 @@ const types={'.js':'text/javascript','.css':'text/css','.html':'text/html','.jso
  await page.evaluate(()=>Object.defineProperty(navigator,'onLine',{configurable:true,get:()=>false}));
  const offline=await page.evaluate(async()=>{const r=await fetch('/api/music');return r.status});assert.equal(offline,503);
  assert.deepEqual(errors,[]);console.log('Offline local routes, reload persistence and online API routing passed');
+ await new Promise((resolve,reject)=>{const child=require('node:child_process').spawn(process.execPath,['scripts/control-room-responsive.cjs'],{stdio:'inherit',env:{...process.env,CONTROL_ROOM_TEST_ORIGIN:origin}});child.on('exit',code=>code===0?resolve():reject(new Error('Control Room responsive checks failed')));child.on('error',reject);});
  }finally{await browser.close();await new Promise(r=>server.close(r));}
 })().catch(e=>{console.error(e);process.exitCode=1});
