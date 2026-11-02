@@ -27,3 +27,9 @@ test('forwards online requests with multipart bodies and provides a bounded offl
  await win.fetch('blob:local');assert.equal(calls[1].input,'blob:local');
  }finally{for(const [key,value]of [['window',originalWindow],['location',originalLocation]] as const){if(value)Object.defineProperty(globalThis,key,value);else Reflect.deleteProperty(globalThis,key)}if(originalOnline)Object.defineProperty(navigator,'onLine',originalOnline);else Reflect.deleteProperty(navigator,'onLine');}
 });
+test('native Control Room links retain their storage identity after rewriting to the service origin',async()=>{
+ const {stableCloudUrl,objectKeyFromUrl}=await import('../../src/lib/control-room/cloud-policy');
+ const previous=process.env.NEXT_PUBLIC_OFFLINE_APP;
+ try{process.env.NEXT_PUBLIC_OFFLINE_APP='true';const url=stableCloudUrl('music','control-room/uploads/song.mp3');assert.equal(url,service+'/api/control-room/file?bucket=music&key=control-room%2Fuploads%2Fsong.mp3');assert.equal(objectKeyFromUrl(url,'music'),'control-room/uploads/song.mp3');assert.equal(objectKeyFromUrl(url.replace(service,'https://evil.example'),'music'),undefined);}
+ finally{if(previous===undefined)delete process.env.NEXT_PUBLIC_OFFLINE_APP;else process.env.NEXT_PUBLIC_OFFLINE_APP=previous;}
+});

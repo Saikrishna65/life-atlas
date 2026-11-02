@@ -34,6 +34,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(MediaPlaybackPlugin.class);
+        registerPlugin(AtlasFileExportPlugin.class);
         registerPlugin(KotakNotificationTrackerPlugin.class);
         super.onCreate(savedInstanceState);
         handleSendIntent(getIntent());

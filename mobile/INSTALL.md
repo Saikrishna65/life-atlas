@@ -12,3 +12,5 @@ Atlas Vault — offline and online Android test build
 This APK is built from the current Android sources, including the bank-alert plugin. Browser automation checks the bundled screens and online API routing. Device-specific media background behavior, widgets, permissions and live external services still require testing on your phone. A working internet connection does not replace missing server credentials, storage permissions or external-service availability.
 
 The ZIP includes service-health.json with the hosted service probe results at build time. Finance's ledger sync adapter is not configured; use Control Room's encrypted backups for cloud backup of finance data.
+
+Exports and downloaded files open Android's document picker. Choose a destination on your device to save offline documents, playlists, and encrypted backup files. Cloud-file links keep working after file operations in Control Room.
