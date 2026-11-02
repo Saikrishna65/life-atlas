@@ -1,0 +1,76 @@
+name: Build offline and online Atlas APK
+on:
+  push:
+    branches: ['build/atlas-offline-online-*']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: atlas-offline-online-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install and validate all app sections
+        run: |
+          npm ci
+          npx prisma generate
+          npx tsc --noEmit
+          node --import tsx --test tests/**/*.test.ts
+          npm run build:mobile
+      - name: Verify bundled screens offline and service routing online
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install chromium --with-deps
+          mkdir -p mobile-test-results
+          node scripts/mobile-smoke.cjs
+      - name: Build current Android plugins
+        run: |
+          npx cap sync android
+          sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+          cd android
+          bash gradlew --no-daemon --max-workers=2 :app:testDebugUnitTest :app:assembleDebug
+      - name: Verify APK and prepare ZIP
+        run: |
+          mkdir -p apk-download
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-download/atlas-offline-online.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose apk-download/atlas-offline-online.apk
+          cp mobile/INSTALL.md apk-download/INSTALL.txt
+          cd apk-download
+          sha256sum atlas-offline-online.apk > SHA256SUMS.txt
+          zip -9 ../atlas-offline-online.zip atlas-offline-online.apk INSTALL.txt SHA256SUMS.txt
+      - name: Publish downloadable ZIP to GitHub
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs=require('fs');
+            const tag=`atlas-offline-online-${context.runId}`;
+            const release=await github.rest.repos.createRelease({...context.repo,tag_name:tag,target_commitish:context.sha,name:'Atlas offline + online APK',prerelease:true,body:'Download atlas-offline-online.zip below, extract it, and install the APK. This builds the current native plugins and bundles the app screens for offline use. Online features call the hosted Atlas service; their availability depends on that service and its configured connections. See INSTALL.txt inside the ZIP.'});
+            await github.rest.repos.uploadReleaseAsset({...context.repo,release_id:release.data.id,name:'atlas-offline-online.zip',data:fs.readFileSync('atlas-offline-online.zip'),headers:{'content-type':'application/zip'}});
+            core.summary.addHeading('Download APK ZIP').addLink('atlas-offline-online.zip',`https://github.com/${context.repo.owner}/${context.repo.repo}/releases/download/${tag}/atlas-offline-online.zip`).write();
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-offline-online-tests
+          path: |
+            mobile-test-results/
+            android/app/build/reports/tests/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atlas-offline-online-apk
+          path: apk-download/

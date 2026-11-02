@@ -42,3 +42,7 @@ yarn-error.log*
 next-env.d.ts
 .neon
 scratch/
+/mobile-dist/
+/artifacts/
+/mobile-test-results/
+__pycache__/

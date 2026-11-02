@@ -30,6 +30,17 @@ export function ImageUpload({
       setIsUploading(true);
       setError(null);
 
+      if (process.env.NEXT_PUBLIC_OFFLINE_APP === 'true') {
+        const url = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(file);
+        });
+        onChange(url);
+        return;
+      }
+
       const formData = new FormData();
       formData.append('file', file);
 
