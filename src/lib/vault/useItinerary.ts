@@ -82,6 +82,7 @@ export function useItinerary(tripId: string) {
   // Auto-generate days from trip date range if days list is empty
   const generateDaysFromTrip = useCallback(
     async (trip: TripRecord): Promise<ItineraryDayRecord[]> => {
+      if(!trip.startDate)return [];
       const start = new Date(trip.startDate);
       const end = trip.endDate ? new Date(trip.endDate) : new Date(start);
       const diffTime = Math.max(0, end.getTime() - start.getTime());

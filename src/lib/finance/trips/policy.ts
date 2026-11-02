@@ -29,10 +29,11 @@ export function zonedInstant(value: string, timeZone: string): string {
 export function defaultTripSettings(trip: TripRecord, timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'): TripFinanceSettings | null {
   if(trip.finance)return trip.finance;
   if(!trip.startDate || !trip.endDate)return null;
+  timeZone=trip.timeZone||timeZone;
   const departure={MORNING:'08:00',AFTERNOON:'13:00',EVENING:'18:00',NIGHT:'21:00',OVERNIGHT:'23:00'};
   const arrival={EARLY_MORNING:'05:00',MORNING:'08:00',AFTERNOON:'13:00',EVENING:'18:00',NIGHT:'22:00'};
   try {
-    const result:TripFinanceSettings={startAt:zonedInstant(`${trip.startDate.slice(0,10)}T${departure[trip.departureSlot || 'NIGHT']}`,timeZone),endAt:zonedInstant(`${trip.endDate.slice(0,10)}T${arrival[trip.returnSlot || 'MORNING']}`,timeZone),timeZone,confirmation:'planned'};
+    const result:TripFinanceSettings={startAt:zonedInstant(`${trip.startDate.slice(0,10)}T${trip.departureTime||departure[trip.departureSlot || 'NIGHT']}`,timeZone),endAt:zonedInstant(`${trip.endDate.slice(0,10)}T${trip.returnTime||arrival[trip.returnSlot || 'MORNING']}`,timeZone),timeZone,confirmation:'planned'};
     validateTripSettings(result);return result;
   }catch{return null;}
 }

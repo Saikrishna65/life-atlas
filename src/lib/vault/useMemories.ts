@@ -184,7 +184,7 @@ export function useMemories(tripId: string) {
     }
 
     // Days on road
-    let daysOnRoad = 1;
+    let daysOnRoad = 0;
     if (trip.startDate) {
       const startMs = new Date(trip.startDate).getTime();
       const endMs = trip.endDate

@@ -188,12 +188,12 @@ export default function AssistantPage() {
       const now = new Date().toISOString();
       const bookingId = `bkg_parse_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-      let depTimeIso = trip?.startDate || now;
+      let depTimeIso: string|undefined = trip?.startDate || undefined;
       if (parsedResult.departureDate) {
         try {
           depTimeIso = new Date(parsedResult.departureDate).toISOString();
         } catch {
-          depTimeIso = trip?.startDate || now;
+          depTimeIso = trip?.startDate || undefined;
         }
       }
 

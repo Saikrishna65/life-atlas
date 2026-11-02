@@ -43,6 +43,8 @@ jobs:
           node scripts/mobile-smoke.cjs
       - name: Verify real cloud upload and reinstall recovery
         run: node --import tsx scripts/verify-live-cloud.mts
+      - name: Prepare persistent private Android signing identity
+        run: node scripts/prepare-signing.mjs
       - name: Build current Android plugins
         run: |
           npx cap sync android
@@ -55,20 +57,20 @@ jobs:
         run: |
           mkdir -p apk-download
           cp android/app/build/outputs/apk/debug/app-debug.apk apk-download/atlas-offline-online.apk
-          cp android/app/build/outputs/apk/preview/app-preview.apk apk-download/atlas-preview.apk
-          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose apk-download/atlas-preview.apk
-          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging apk-download/atlas-preview.apk > /tmp/atlas-preview-package.txt
-          node -e 'const fs=require("fs");const info=fs.readFileSync("/tmp/atlas-preview-package.txt","utf8");const quote=String.fromCharCode(39);if(!info.includes("package: name="+quote+"com.lifeatlas.app.preview"+quote)||!info.includes("application-label:"+quote+"Atlas Preview"+quote))throw Error("Preview must have its own app id and label");console.log("SIDE_BY_SIDE_PREVIEW=com.lifeatlas.app.preview");'
+          cp android/app/build/outputs/apk/preview/app-preview.apk apk-download/atlas-next.apk
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose apk-download/atlas-next.apk
+          "$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging apk-download/atlas-next.apk > /tmp/atlas-preview-package.txt
+          node -e 'const fs=require("fs");const info=fs.readFileSync("/tmp/atlas-preview-package.txt","utf8");const quote=String.fromCharCode(39);if(!info.includes("package: name="+quote+"com.lifeatlas.app.next"+quote)||!info.includes("application-label:"+quote+"Atlas Next"+quote))throw Error("Preview must have its own app id and label");console.log("SIDE_BY_SIDE_PREVIEW=com.lifeatlas.app.next");'
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose apk-download/atlas-offline-online.apk
           curl -fsSL 'https://github.com/Saikrishna65/life-atlas/releases/download/atlas-offline-online-41396552543/atlas-offline-online.zip' -o /tmp/atlas-previous.zip
           unzip -p /tmp/atlas-previous.zip atlas-offline-online.apk > /tmp/atlas-previous.apk
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs apk-download/atlas-offline-online.apk > /tmp/atlas-current-certs.txt
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs /tmp/atlas-previous.apk > /tmp/atlas-previous-certs.txt
-          node -e "const fs=require('fs');const cert=p=>fs.readFileSync(p,'utf8').match(/certificate SHA-256 digest: (.+)/)[1];const compatible=cert('/tmp/atlas-current-certs.txt')===cert('/tmp/atlas-previous-certs.txt');console.log('SIGNING_COMPATIBILITY='+compatible);fs.writeFileSync('apk-download/signing-compatibility.json',JSON.stringify({previousVersion:'1.3.1',canUpdateWithoutUninstall:compatible,existingDatabasesPreserved:true,previewPackageId:'com.lifeatlas.app.preview',previewInstallsAlongsideExistingApp:true},null,2));"
+          node -e "const fs=require('fs');const cert=p=>fs.readFileSync(p,'utf8').match(/certificate SHA-256 digest: (.+)/)[1];const compatible=cert('/tmp/atlas-current-certs.txt')===cert('/tmp/atlas-previous-certs.txt');console.log('SIGNING_COMPATIBILITY='+compatible);fs.writeFileSync('apk-download/signing-compatibility.json',JSON.stringify({previousVersion:'1.3.1',canUpdateWithoutUninstall:compatible,existingDatabasesPreserved:true,previewPackageId:'com.lifeatlas.app.next',previewInstallsAlongsideExistingApp:true,persistentSigningIdentity:true},null,2));"
           cp mobile/INSTALL.md apk-download/INSTALL.txt
           cd apk-download
-          sha256sum atlas-offline-online.apk atlas-preview.apk > SHA256SUMS.txt
-          zip -9 ../atlas-offline-online.zip atlas-offline-online.apk atlas-preview.apk INSTALL.txt SHA256SUMS.txt service-health.json signing-compatibility.json
+          sha256sum atlas-offline-online.apk atlas-next.apk > SHA256SUMS.txt
+          zip -9 ../atlas-offline-online.zip atlas-offline-online.apk atlas-next.apk INSTALL.txt SHA256SUMS.txt service-health.json signing-compatibility.json
       - name: Publish downloadable ZIP to GitHub
         uses: actions/github-script@v7
         with:
@@ -77,7 +79,7 @@ jobs:
             const tag=`atlas-offline-online-${context.runId}`;
             const health=JSON.parse(fs.readFileSync('apk-download/service-health.json','utf8'));
             const healthNote=`\n\nLive checks: Music API ${health.music.status}; Control Room database ${health.controlRoom.database}; Studio endpoint ${health.studio.status}. See service-health.json inside the ZIP. Private Trip Vault, Music, Finance, Studio and preference data can upload and restore using a recovery code. This update preserves existing app and cloud data.`;
-            const release=await github.rest.repos.createRelease({...context.repo,tag_name:tag,target_commitish:context.sha,name:'Atlas 1.4 — Trip Vault and Control Center redesign',prerelease:true,body:'Download atlas-offline-online.zip below for the redesigned Trip Vault (overview plus five sections) and the light Control Center. Install atlas-preview.apk to test alongside your current app with separate local storage. Your existing app and its local data stay intact. Read INSTALL.txt before installing the standard APK. This builds the current native plugins and bundles the app screens for offline use. Online features call the hosted Atlas service; their availability depends on that service and its configured connections. See INSTALL.txt inside the ZIP.'+healthNote});
+            const release=await github.rest.repos.createRelease({...context.repo,tag_name:tag,target_commitish:context.sha,name:'Atlas 1.4.1 — undated trip ideas and exact travel times',prerelease:true,body:'Download atlas-offline-online.zip below for the redesigned Trip Vault (overview plus five sections) and the light Control Center. Install atlas-next.apk to test alongside your current app with separate local storage. Your existing app and its local data stay intact. Read INSTALL.txt before installing the standard APK. This builds the current native plugins and bundles the app screens for offline use. Online features call the hosted Atlas service; their availability depends on that service and its configured connections. See INSTALL.txt inside the ZIP.'+healthNote});
             await github.rest.repos.uploadReleaseAsset({...context.repo,release_id:release.data.id,name:'atlas-offline-online.zip',data:fs.readFileSync('atlas-offline-online.zip'),headers:{'content-type':'application/zip'}});
             for(const [path,name,type] of [['mobile-test-results/redesign-trip-library.jpg','trip-vault-preview.jpg','image/jpeg'],['mobile-test-results/control-room-overview-390.png','control-center-preview.png','image/png']]){if(fs.existsSync(path))await github.rest.repos.uploadReleaseAsset({...context.repo,release_id:release.data.id,name,data:fs.readFileSync(path),headers:{'content-type':type}});}
             core.summary.addHeading('Download APK ZIP').addLink('atlas-offline-online.zip',`https://github.com/${context.repo.owner}/${context.repo.repo}/releases/download/${tag}/atlas-offline-online.zip`).write();

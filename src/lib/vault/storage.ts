@@ -558,7 +558,7 @@ export async function getTrip(tripId: ID): Promise<TripRecord | null> {
 export async function getAllTrips(): Promise<TripRecord[]> {
   const trips = await getAllRecords("trips");
   // Sort descending by startDate
-  return trips.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+  return trips.sort((a,b)=>{if(!a.startDate&&!b.startDate)return b.createdAt.localeCompare(a.createdAt);if(!a.startDate)return 1;if(!b.startDate)return -1;return Date.parse(b.startDate)-Date.parse(a.startDate);});
 }
 
 export async function getTripsByStatus(status: TripStatus): Promise<TripRecord[]> {

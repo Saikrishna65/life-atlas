@@ -5,7 +5,7 @@ import {cloudVaultAction,type VaultDependencies} from '../../src/lib/cloud-vault
 import {vaultIdentity,newRecoveryCode,sha256,encryptChunk,decryptChunk} from '../../src/lib/cloud-vault/codec';
 import {createCloudLink,connectCloudLink,uploadSections,restoreSections,captureSection,sectionDB,compareSections,cloudStatus} from '../../src/lib/cloud-vault/client';
 import {CLOUD_SECTIONS,type CloudSection} from '../../src/lib/cloud-vault/protocol';
-import {saveTrip,saveDocument,getTrip,getDocument} from '../../src/lib/vault/storage';
+import {saveTrip,saveDocument,getTrip,getDocument,saveItineraryDay,getItinerariesForTrip} from '../../src/lib/vault/storage';
 import {saveTrack,getTrack,savePlaylist,getPlaylist} from '../../src/lib/music/storage';
 import {IndexedDBUnitOfWork,AccountService,TransactionService} from '../../src/lib/finance';
 import {controlPut,getControlSettings} from '../../src/lib/control-room/store';
@@ -92,6 +92,8 @@ test('all sections, large audio, attachments, finance and preferences survive a 
  const oldActive=await cloudVaultAction({action:'status',vaultId:identity.id},identity.token,deps) as any;
  await cloudVaultAction({action:'activate-saved-copy',vaultId:identity.id,baseVersion:oldActive.version,savedId:switched.preserved.id,confirm:'ACTIVATE SAVED CLOUD COPY'},identity.token,deps);
  await clearDevice();await connectCloudLink(code);await restoreSections();assert.equal((await getTrip('cloud-trip'))!.title,'Unsaved local edit');assert.equal((await getTrip('new-offline-trip'))!.title,'New offline trip');assert.equal((await captureSection('studio')).stores[0].rows.length,2);assert.equal((await getTrack('cloud-track'))!.audioBlob!.size,audio.length);assert.equal((await uow.accounts.getById(account.id))!.name,'My bank');
+
+ await saveTrip({id:'cloud-idea',title:'Someday in Japan',destination:'Japan',startDate:'',status:'DRAFT',travelStyle:'LEISURE',budgetTotal:0,currency:'INR',timeZone:'Asia/Kolkata',createdAt:now,updatedAt:now});await saveItineraryDay({id:'relative-day',tripId:'cloud-idea',dayIndex:1,date:'',title:'Explore Kyoto',activities:[],createdAt:now,updatedAt:now});await uploadSections(['trips']);await clearDevice();await connectCloudLink(code);await restoreSections();assert.equal((await getTrip('cloud-idea'))!.startDate,'');assert.equal((await getTrip('cloud-idea'))!.finance,undefined);assert.equal((await getItinerariesForTrip('cloud-idea'))[0].date,'');
 
  }finally{globalThis.fetch=originalFetch;}
 });

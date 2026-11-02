@@ -114,8 +114,12 @@ export interface TripRecord {
   subtitle?: string;
   destination: string;
   destinations?: DestinationStop[];
+  /** Empty when saved as an undated trip idea. */
   startDate: ISODateString;
   endDate?: ISODateString;
+  departureTime?: string;
+  returnTime?: string;
+  timeZone?: string;
   departureSlot?: DepartureTravelSlot;
   returnSlot?: ReturnTravelSlot;
   effectiveDays?: number;
@@ -159,6 +163,7 @@ export interface ItineraryDayRecord {
   id: ID;
   tripId: ID;
   dayIndex: number; // 1, 2, 3...
+  /** Empty for a relative Day 1 / Day 2 plan without travel dates. */
   date: ISODateString;
   title: string;
   description?: string;

@@ -477,14 +477,14 @@ export async function importPlanIntoVaultItinerary(
   startDateIso?: string
 ): Promise<{ daysCreated: number; gearCreated: number }> {
   const trip = await getTrip(tripId);
-  const baseDate = startDateIso || trip?.startDate || new Date().toISOString();
+  const baseDate = startDateIso || trip?.startDate;
 
   let daysCreated = 0;
   let gearCreated = 0;
 
   // 1. Create Itinerary Days & Activities
   for (const day of plan.generatedDays) {
-    const dayDate = new Date(new Date(baseDate).getTime() + (day.dayNumber - 1) * 24 * 60 * 60 * 1000).toISOString();
+    const dayDate = baseDate?new Date(new Date(baseDate).getTime() + (day.dayNumber - 1) * 24 * 60 * 60 * 1000).toISOString():'';
     const itinId = `itin_${tripId}_day_${day.dayNumber}`;
 
     const activities: ItineraryActivity[] = (day.activities || []).map((act, idx) => ({
@@ -511,7 +511,7 @@ export async function importPlanIntoVaultItinerary(
     const dayRecord: ItineraryDayRecord = {
       id: itinId,
       tripId,
-      dayIndex: day.dayNumber - 1,
+      dayIndex: day.dayNumber,
       date: dayDate,
       title: day.title,
       description: day.highlights?.join(" • ") || undefined,

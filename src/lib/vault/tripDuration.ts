@@ -39,7 +39,7 @@ export function getTripDayCount(
   endDateStr?: string
 ): { calendarDays: number; calendarNights: number; formatted: string } {
   if (!startDateStr) {
-    return { calendarDays: 1, calendarNights: 0, formatted: "1 Day" };
+    return { calendarDays: 0, calendarNights: 0, formatted: "Dates not set" };
   }
   const start = parseCalendarDate(startDateStr);
   const end = endDateStr ? parseCalendarDate(endDateStr) : parseCalendarDate(startDateStr);
@@ -64,13 +64,13 @@ export function computeTripDuration(
 ): TripDurationBreakdown {
   if (!startDateStr) {
     return {
-      calendarDays: 1,
+      calendarDays: 0,
       calendarNights: 0,
-      effectiveDays: 1,
+      effectiveDays: 0,
       transitDaysCount: 0,
-      summaryTitle: "1 Day Journey",
-      badgeLabel: "1 Day",
-      explanation: "Single-day expedition",
+      summaryTitle: "Dates not set",
+      badgeLabel: "Dates not set",
+      explanation: "Add travel dates whenever you know them.",
     };
   }
 
