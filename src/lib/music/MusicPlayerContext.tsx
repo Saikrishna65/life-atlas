@@ -1,4 +1,5 @@
 "use client";
+import { appServiceUrl } from "@/lib/appNetwork";
 
 import React, {
   createContext,
@@ -371,7 +372,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        audio.src = audioSrc;
+        audio.src = appServiceUrl(audioSrc);
         audio.playbackRate = playbackRateRef.current;
         audio.volume = volumeRef.current;
         await audio.play();

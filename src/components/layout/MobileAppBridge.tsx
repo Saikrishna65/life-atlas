@@ -16,7 +16,7 @@ export default function MobileAppBridge() {
     StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
 
     // Register offline Service Worker for caching application shell
-    if ("serviceWorker" in navigator) {
+    if (process.env.NEXT_PUBLIC_OFFLINE_APP !== 'true' && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
 

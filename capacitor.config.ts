@@ -3,14 +3,15 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.lifeatlas.app',
   appName: 'Atlas Vault',
-  webDir: 'mobile-shell',
+  webDir: 'mobile-dist',
   appendUserAgent: 'LifeAtlasApp/1.0',
   android: {
     allowMixedContent: true,
   },
+  plugins: {
+    CapacitorHttp: { enabled: true },
+  },
   server: {
-    url: 'https://life-atlas-eight-five.vercel.app/secret',
-    cleartext: true,
     androidScheme: 'https',
     errorPath: 'offline.html',
   },

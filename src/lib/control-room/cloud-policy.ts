@@ -1,3 +1,4 @@
+import {allowAtlasMutation} from '../mobileRequest';
 export class ControlInputError extends Error {constructor(message:string,public status=400){super(message);this.name="ControlInputError";}}
 import type {CloudAsset} from './types';
 export const MANAGED_BUCKETS=['images','music'] as const;
@@ -9,5 +10,5 @@ export function originalTrashKey(key:string){if(!key.startsWith(TRASH_PREFIX))re
 export function newTrashKey(key:string,id:string){if(key.startsWith(TRASH_PREFIX))throw new ControlInputError('This file is already in Trash.');return `${TRASH_PREFIX}${id}/${encodeURIComponent(key)}`;}
 export function objectKeyFromUrl(value:string,bucket:string,allowedOrigins:string[]=[]){try{const url=new URL(value,'https://atlas.invalid');if((value.startsWith('/')||allowedOrigins.includes(url.origin))&&url.pathname==='/api/control-room/file'&&url.searchParams.get('bucket')===bucket)return cloudKey(url.searchParams.get('key'));if(!allowedOrigins.includes(url.origin))return undefined;const prefix=`/${bucket}/`,path=decodeURIComponent(url.pathname),index=path.indexOf(prefix);return index>=0?cloudKey(path.slice(index+prefix.length)):undefined;}catch{return undefined;}}
 export function stableCloudUrl(bucket:string,key:string){return `/api/control-room/file?bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(key)}`;}
-export function allowControlMutation(request:Request){const origin=request.headers.get('origin');const url=new URL(request.url);return !!origin&&origin===url.origin&&request.headers.get('x-atlas-control')==='1'&&request.headers.get('sec-fetch-site')!=='cross-site';}
+export function allowControlMutation(request:Request){return allowAtlasMutation(request,'x-atlas-control');}
 export function cloudActionImpact(asset:CloudAsset){return {bytes:asset.bytes,referenceCount:asset.references.length,permanent:asset.trash};}
