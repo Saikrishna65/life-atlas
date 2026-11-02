@@ -6,6 +6,7 @@ on:
 permissions:
   contents: write
   actions: read
+  id-token: write
 concurrency:
   group: atlas-offline-online-${{ github.ref }}
   cancel-in-progress: true
@@ -49,8 +50,6 @@ jobs:
           cd android
           bash gradlew --no-daemon --max-workers=2 :app:testDebugUnitTest :app:assembleDebug
       - name: Clear the authorized test databases and cloud files once
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/reset-cloud-test.mjs
       - name: Check hosted online services without modifying data
         run: node scripts/check-online-services.mjs

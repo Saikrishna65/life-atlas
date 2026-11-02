@@ -181,8 +181,8 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
-    if (!id) {
-      return NextResponse.json({ success: false, error: 'Missing track ID' }, { status: 400 });
+    if (!id || /[\/\\\u0000-\u001f]/.test(id)) {
+      return NextResponse.json({ success: false, error: 'Missing or invalid track ID' }, { status: 400 });
     }
 
     const track = await prisma.musicTrack.findUnique({ where: { id } });
