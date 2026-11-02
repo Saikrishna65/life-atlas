@@ -10,3 +10,5 @@ Atlas Vault — offline and online Android test build
 8. Map directions open the device's map service and require the map service's own connectivity/offline downloads.
 
 This APK is built from the current Android sources, including the bank-alert plugin. Browser automation checks the bundled screens and online API routing. Device-specific media background behavior, widgets, permissions and live external services still require testing on your phone. A working internet connection does not replace missing server credentials, storage permissions or external-service availability.
+
+The ZIP includes service-health.json with the hosted service probe results at build time. Finance's ledger sync adapter is not configured; use Control Room's encrypted backups for cloud backup of finance data.

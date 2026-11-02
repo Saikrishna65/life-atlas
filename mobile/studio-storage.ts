@@ -23,9 +23,13 @@ export async function getEntries(): Promise<StudioEntry[]> {
  finally {db.close();}
 }
 let flushing: Promise<void>|undefined;
+let requested=false;
 export function flushStudioEntries(): Promise<void> {
  if(!navigator.onLine)return Promise.resolve();
- return flushing ??= (async()=>{
+ if(flushing){requested=true;return flushing;}
+ return flushing = (async()=>{
+ do {
+ requested=false;
   for(const entry of await getEntries()) {
    if(entry.syncedAt)continue;
    try {
@@ -40,6 +44,7 @@ export function flushStudioEntries(): Promise<void> {
     entry.syncedAt=new Date().toISOString();delete entry.syncError;await put(entry);
    } catch(error) {entry.syncError=error instanceof Error?error.message:'Publishing is pending.';await put(entry);}
   }
+ } while(requested&&navigator.onLine);
  })().finally(()=>{flushing=undefined;});
 }
 export const createTrip=(f:FormData)=>saveEntry('Trips',f);
