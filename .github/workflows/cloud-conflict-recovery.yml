@@ -1,0 +1,33 @@
+name: Verify cloud conflict recovery without replacing local data
+on:
+  push:
+    branches: ['verify/cloud-preserve-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install and test preservation safeguards
+        run: |
+          npm ci
+          npx prisma generate
+          npx tsc --noEmit
+          node --import tsx --test tests/**/*.test.ts
+      - name: Verify installed-client uploads and both preserved cloud snapshots
+        run: node --import tsx scripts/verify-live-cloud.mts
+      - name: Verify recovery page on mobile sizes
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.56.1
+          npx playwright install chromium --with-deps
+          node --import tsx scripts/recovery-page-smoke.mts
+      - name: Check deployed recovery page
+        run: |
+          node -e "fetch('https://life-atlas-eight-five.vercel.app/cloud-recovery').then(async r=>{if(r.status!==200||!(await r.text()).includes('Preserve cloud copy &amp; allow local upload'))process.exit(1);console.log('Deployed recovery page available; no reinstall required.');})"

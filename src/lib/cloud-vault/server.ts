@@ -1,5 +1,5 @@
 import type {Files} from 'files-sdk';
-import {createHash,timingSafeEqual} from 'node:crypto';
+import {createHash,timingSafeEqual,randomUUID} from 'node:crypto';
 import {CLOUD_PREFIX,cloudObjectKey,isHex,sectionName,validateCopy,type CloudAccount,type SectionCopy,type ChunkRef} from './protocol';
 export class VaultRequestError extends Error { constructor(message:string,public status=400){super(message);} }
 const hash=(value:string)=>createHash('sha256').update(value).digest('hex');
@@ -8,7 +8,7 @@ export interface VaultDependencies {files:VaultFiles;serialize:<T>(id:string,act
 export async function cloudVaultAction(body:Record<string,any>,token:string,deps?:VaultDependencies){
  if(!isHex(body.vaultId)||!isHex(token))throw new VaultRequestError('A valid recovery code is required.',403);
  const files=deps?.files||(await import('../control-room/cloud-server')).controlCloudFiles('music');const run=()=>executeAction(body,token,files);
- if(['create','commit','delete-vault'].includes(body.action)){
+ if(['create','commit','delete-vault','preserve-and-restart','activate-saved-copy'].includes(body.action)){
   if(deps)return deps.serialize(body.vaultId,run);
   const {default:prisma}=await import('../prisma');
   return prisma.$transaction(async db=>{await db.$queryRaw`SELECT 1::int AS acquired FROM pg_advisory_xact_lock(hashtextextended(${body.vaultId},0))`;return run();},{timeout:50000,maxWait:10000});
@@ -26,7 +26,35 @@ async function executeAction(body:Record<string,any>,token:string,files:VaultFil
   await files.upload(root,JSON.stringify(account),{contentType:'application/json',cacheControl:'no-store'});return {account};
  }
  if(!account)throw new VaultRequestError('No cloud vault was found for this recovery code.',404);
- if(body.action==='status')return {account};
+ const version=()=>hash(JSON.stringify(account!.sections));
+ const savedPrefix=`${CLOUD_PREFIX}${body.vaultId}/saved-copies/`;
+ const preserve=async()=>{const id=randomUUID(),savedAt=new Date().toISOString();await files.upload(`${savedPrefix}${id}.json`,JSON.stringify({format:'atlas-saved-cloud-v1',savedAt,account}),{contentType:'application/json',cacheControl:'no-store'});return {id,savedAt,sections:account!.sections};};
+ if(body.action==='status')return {account,version:version()};
+ if(body.action==='list-saved-copies'){
+  const copies:{id:string;savedAt:string;sections:CloudAccount['sections']}[]=[];let cursor:string|undefined;
+  do{const page=await files.list({prefix:savedPrefix,limit:1000,cursor});for(const item of page.items){const id=item.key.slice(savedPrefix.length).replace(/\.json$/,'');if(!/^[a-f0-9-]{36}$/.test(id))continue;const saved=JSON.parse(await(await files.download(item.key)).text());if(saved.format==='atlas-saved-cloud-v1')copies.push({id,savedAt:saved.savedAt,sections:saved.account.sections});}cursor=page.cursor;}while(cursor);
+  return {copies:copies.sort((a,b)=>b.savedAt.localeCompare(a.savedAt))};
+ }
+ if(body.action==='preserve-and-restart'||body.action==='activate-saved-copy'){
+  if(body.baseVersion!==version())throw new VaultRequestError('The cloud changed since you checked it. Check again before continuing.',409);
+  if(body.action==='preserve-and-restart'){
+   if(body.confirm!=='PRESERVE CLOUD AND KEEP DEVICE')throw new VaultRequestError('Confirm that you want to preserve the cloud copy and upload device data.');
+   if(!Object.keys(account.sections).length)return {account,version:version(),preserved:null};
+   const preserved=await preserve();account={...account,sections:{}};
+   await files.upload(root,JSON.stringify(account),{contentType:'application/json',cacheControl:'no-store'});
+   return {account,version:version(),preserved};
+  }
+  if(body.confirm!=='ACTIVATE SAVED CLOUD COPY')throw new VaultRequestError('Confirm the saved cloud copy selection.');
+  if(typeof body.savedId!=='string'||!/^[a-f0-9-]{36}$/.test(body.savedId))throw new VaultRequestError('Choose a saved cloud copy.');
+  const savedKey=`${savedPrefix}${body.savedId}.json`;if(!await files.exists(savedKey))throw new VaultRequestError('The saved cloud copy was not found.',404);
+  const saved=JSON.parse(await(await files.download(savedKey)).text());
+  if(saved.format!=='atlas-saved-cloud-v1'||saved.account.tokenHash!==account.tokenHash)throw new VaultRequestError('The saved cloud copy is invalid.');
+  for(const copy of Object.values(saved.account.sections))validateCopy(copy as SectionCopy);
+  const preserved=Object.keys(account.sections).length?await preserve():null;
+  account={...account,sections:saved.account.sections};
+  await files.upload(root,JSON.stringify(account),{contentType:'application/json',cacheControl:'no-store'});
+  return {account,version:version(),preserved};
+ }
  if(body.action==='delete-vault'){if(body.confirm!=='DELETE THIS CLOUD VAULT')throw new VaultRequestError('Confirm this private cloud vault deletion.');let cursor:string|undefined;const keys:string[]=[];do{const page=await files.list({prefix:`${CLOUD_PREFIX}${body.vaultId}/`,limit:1000,cursor});keys.push(...page.items.map(f=>f.key));cursor=page.cursor;}while(cursor);for(let n=0;n<keys.length;n+=50)await files.delete(keys.slice(n,n+50));return {deleted:true};}
  const section=sectionName(body.section),key=(id:string)=>cloudObjectKey(body.vaultId,section,id);
  if(body.action==='prepare'){

@@ -59,6 +59,39 @@ test('all sections, large audio, attachments, finance and preferences survive a 
  const chunk=finalAccount!.sections.music!.chunks[0],objectKey=`private-vault/${identity.id}/music/objects/${chunk.id}`,original=files.rows.get(objectKey)!;
  const broken=new Uint8Array(await original.blob.arrayBuffer());broken[20]^=1;files.rows.set(objectKey,{...original,blob:new Blob([broken])});
  await saveTrip({...(await getTrip('cloud-trip'))!,title:'Keep this local change'});await assert.rejects(()=>restoreSections(['music','trips']));assert.equal((await getTrip('cloud-trip'))!.title,'Keep this local change');assert.equal((await getTrack('cloud-track'))!.audioBlob!.size,audio.length);files.rows.set(objectKey,original);
+ // Resolve a real conflict through the recovery helper, with no local restore.
+ const checkpoint=memory.get('atlas_cloud_connection_v1')!;
+ await saveTrip({...(await getTrip('cloud-trip'))!,title:'Cloud-side edit'});await uploadSections(['trips']);
+ memory.set('atlas_cloud_connection_v1',checkpoint);
+ await saveTrip({...(await getTrip('cloud-trip'))!,title:'Unsaved local edit'});
+ await saveTrip({...(await getTrip('cloud-trip'))!,id:'new-offline-trip',title:'New offline trip'});
+ await put('studio','entries',{id:'new-offline-note',section:'Memories',createdAt:now,fields:{title:'New offline note'}});
+ await assert.rejects(()=>uploadSections(),/newer cloud copy/);
+ const status=await cloudVaultAction({action:'status',vaultId:identity.id},identity.token,deps) as any;
+ const request={action:'preserve-and-restart',vaultId:identity.id,baseVersion:status.version,confirm:'PRESERVE CLOUD AND KEEP DEVICE'};
+ await assert.rejects(()=>cloudVaultAction({...request,baseVersion:'stale'},identity.token,deps),/changed since/);
+ const beforeFailure=(await cloudStatus())!.sections.trips!.revision;
+ const failingDeps={...deps,files:{...files,upload:async()=>{throw new Error('Preservation failed');}}} as unknown as VaultDependencies;
+ await assert.rejects(()=>cloudVaultAction(request,identity.token,failingDeps),/Preservation failed/);
+ assert.equal((await cloudStatus())!.sections.trips!.revision,beforeFailure);
+ const preserved=await cloudVaultAction(request,identity.token,deps) as any;
+ assert.equal(Object.keys((await cloudStatus())!.sections).length,0);
+ assert.equal((await getTrip('new-offline-trip'))!.title,'New offline trip');
+ assert.equal((await getTrip('cloud-trip'))!.title,'Unsaved local edit');
+ assert.equal((await getTrack('cloud-track'))!.audioBlob!.size,audio.length);
+ await assert.rejects(()=>cloudVaultAction({...request,baseVersion:status.version},identity.token,deps),/changed since/);
+ const saved=await cloudVaultAction({action:'list-saved-copies',vaultId:identity.id},identity.token,deps) as any;
+ assert.equal(saved.copies.length,1);assert.equal(saved.copies[0].id,preserved.preserved.id);assert.equal(saved.copies[0].sections.trips.revision,beforeFailure);
+ // The unmodified installed client's Upload all now succeeds with new local data.
+ await uploadSections();const localSaved=await cloudStatus();assert.equal(localSaved!.sections.trips!.records,3);
+ const activeVersion=(await cloudVaultAction({action:'status',vaultId:identity.id},identity.token,deps) as any).version;
+ const switched=await cloudVaultAction({action:'activate-saved-copy',vaultId:identity.id,baseVersion:activeVersion,savedId:preserved.preserved.id,confirm:'ACTIVATE SAVED CLOUD COPY'},identity.token,deps) as any;
+ assert.ok(switched.preserved);assert.equal((await getTrip('new-offline-trip'))!.title,'New offline trip');
+ // Both complete cloud snapshots remain restorable, including audio and Finance.
+ await clearDevice();await connectCloudLink(code);await restoreSections();assert.equal((await getTrip('cloud-trip'))!.title,'Cloud-side edit');assert.equal(await getTrip('new-offline-trip'),null);
+ const oldActive=await cloudVaultAction({action:'status',vaultId:identity.id},identity.token,deps) as any;
+ await cloudVaultAction({action:'activate-saved-copy',vaultId:identity.id,baseVersion:oldActive.version,savedId:switched.preserved.id,confirm:'ACTIVATE SAVED CLOUD COPY'},identity.token,deps);
+ await clearDevice();await connectCloudLink(code);await restoreSections();assert.equal((await getTrip('cloud-trip'))!.title,'Unsaved local edit');assert.equal((await getTrip('new-offline-trip'))!.title,'New offline trip');assert.equal((await captureSection('studio')).stores[0].rows.length,2);assert.equal((await getTrack('cloud-track'))!.audioBlob!.size,audio.length);assert.equal((await uow.accounts.getById(account.id))!.name,'My bank');
 
  }finally{globalThis.fetch=originalFetch;}
 });

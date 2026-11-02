@@ -45,7 +45,20 @@ try{
   console.log('Native automatic uploads passed: switch enabled and local preferences saved to live cloud.');
  }finally{stopSync();}
 
- for(let cycle=0;cycle<2;cycle++){await clear();await connectCloudLink(code);await restoreSections();assert.equal((await getTrip('cloud-live-trip'))!.title,'Temporary cloud recovery check');assert.equal(await((await getDocument('cloud-live-doc'))!.blobData as Blob).text(),'ticket');const track=(await getTrack('cloud-live-audio'))!;assert.equal(track.audioBlob!.size,audio.length);assert.equal(await sha256(new Uint8Array(await track.audioBlob!.arrayBuffer())),await sha256(audio));assert.deepEqual((await getPlaylist('cloud-live-playlist'))!.trackIds,['cloud-live-audio']);assert.equal((await uow.accounts.getById(account.id))!.openingBalancePaise,12345);}
+
+ // Exercise recovery for the installed client without replacing local records.
+ const api=async(action:string,extra:any={})=>{const response=await globalThis.fetch('/api/cloud-vault',{method:'POST',headers:{'Content-Type':'application/json','X-Atlas-Cloud':'1','X-Atlas-Vault-Token':identity.token},body:JSON.stringify({action,vaultId:identity.id,...extra})});const result=await response.json();assert.equal(response.status,200,result.error);return result;};
+ const checkpoint=JSON.parse(data.get('atlas_cloud_connection_v1')!);checkpoint.copies.trips.revision='unconfirmed-checkpoint';data.set('atlas_cloud_connection_v1',JSON.stringify(checkpoint));
+ await saveTrip({...(await getTrip('cloud-live-trip'))!,id:'new-offline-trip',title:'New unsaved local trip'});
+ await assert.rejects(()=>uploadSections(),/newer cloud copy/);
+ const checked=await api('status');const saved=await api('preserve-and-restart',{baseVersion:checked.version,confirm:'PRESERVE CLOUD AND KEEP DEVICE'});assert.ok(saved.preserved);
+ assert.equal((await getTrip('new-offline-trip'))!.title,'New unsaved local trip');await uploadSections();
+ assert.equal((await api('list-saved-copies')).copies[0].id,saved.preserved.id);
+ const newActive=await api('status');const switched=await api('activate-saved-copy',{baseVersion:newActive.version,savedId:saved.preserved.id,confirm:'ACTIVATE SAVED CLOUD COPY'});
+ await clear();await connectCloudLink(code);await restoreSections();assert.equal(await getTrip('new-offline-trip'),null);assert.equal((await getTrack('cloud-live-audio'))!.audioBlob!.size,audio.length);
+ const oldActive=await api('status');await api('activate-saved-copy',{baseVersion:oldActive.version,savedId:switched.preserved.id,confirm:'ACTIVATE SAVED CLOUD COPY'});
+ console.log('Live conflict recovery passed: local records never replaced; previous cloud snapshot preserved; both copies independently restorable.');
+ for(let cycle=0;cycle<2;cycle++){await clear();await connectCloudLink(code);await restoreSections();assert.equal((await getTrip('cloud-live-trip'))!.title,'Temporary cloud recovery check');assert.equal((await getTrip('new-offline-trip'))!.title,'New unsaved local trip');assert.equal(await((await getDocument('cloud-live-doc'))!.blobData as Blob).text(),'ticket');const track=(await getTrack('cloud-live-audio'))!;assert.equal(track.audioBlob!.size,audio.length);assert.equal(await sha256(new Uint8Array(await track.audioBlob!.arrayBuffer())),await sha256(audio));assert.deepEqual((await getPlaylist('cloud-live-playlist'))!.trackIds,['cloud-live-audio']);assert.equal((await uow.accounts.getById(account.id))!.openingBalancePaise,12345);}
  console.log('Live cloud verification passed: all five sections uploaded; multi-chunk audio and document restored twice after clearing local data.');
 }finally{
  if(created){const response=await globalThis.fetch('/api/cloud-vault',{method:'POST',headers:{'Content-Type':'application/json','X-Atlas-Cloud':'1','X-Atlas-Vault-Token':identity.token},body:JSON.stringify({action:'delete-vault',confirm:'DELETE THIS CLOUD VAULT',vaultId:identity.id})});if(!response.ok)throw new Error('Temporary verification vault cleanup failed.');console.log('Temporary encrypted cloud verification files removed.');}
