@@ -5,6 +5,7 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.lifeatlas.app"
+        manifestPlaceholders = [atlasAppLabel: "Atlas Vault"]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 7
@@ -17,6 +18,13 @@ android {
         }
     }
     buildTypes {
+        preview {
+            initWith debug
+            applicationIdSuffix ".preview"
+            versionNameSuffix "-preview"
+            matchingFallbacks = ["debug"]
+            manifestPlaceholders = [atlasAppLabel: "Atlas Preview"]
+        }
         release {
             signingConfig signingConfigs.debug
             minifyEnabled false

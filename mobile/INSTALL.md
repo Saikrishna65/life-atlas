@@ -1,12 +1,17 @@
 Atlas Vault 1.4 — redesigned Trip Vault and Control Center
 
-Install
-1. Download and extract atlas-offline-online.zip, then install atlas-offline-online.apk.
-2. Install as an update when Android allows it. Existing database names and the data epoch are unchanged; this release does not clear app or cloud data.
-3. If Android reports a signing conflict, DO NOT uninstall while your app has unsaved local records. Preserve your current cloud snapshot at https://life-atlas-eight-five.vercel.app/cloud-recovery, return to your existing app and Upload all, and keep your recovery code outside the app before considering a reinstall. The ZIP includes signing-compatibility.json comparing this APK with v1.3.1.
-4. The new Trip Vault has an overview and five sections: Plan (days, travel, food, suggestions), Bookings (tickets, files, reminders), Money (shared Finance ledger), Checklist (packing and reminders), and Memories. Creating a trip starts with its name, destination and dates; more fields are optional.
-5. Earlier manual trip expenses remain available in Money. Linking one to Finance requires choosing an account and confirmation; the original stays saved. If already recorded, attach the existing payment instead.
-6. Control Center now uses a light monochrome design with compact rows and bottom navigation. Trip Vault uses a separate photo-led stone, midnight and cyan palette. Finance and Music themes are unchanged.
+Install safely
+1. Download and extract atlas-offline-online.zip.
+2. Install atlas-preview.apk (Atlas Preview). It uses com.lifeatlas.app.preview and installs ALONGSIDE the existing Atlas Vault app. You do not need to uninstall or clear your existing app. Local databases and Android permissions are separate between the two apps.
+3. You can test the redesign immediately with new data in Atlas Preview. To bring across existing records, first finish Upload all in the original app, save the recovery code outside both apps, then connect and restore that cloud copy in Atlas Preview. Neither app automatically imports the other app's local data.
+4. If the original app has a cloud conflict and new local records, first use https://life-atlas-eight-five.vercel.app/cloud-recovery to preserve the current cloud snapshot, then return to the original app and Upload all. Do not use Restore all over unsaved local data.
+5. atlas-offline-online.apk is the standard com.lifeatlas.app build. Its signing key differs from v1.3.1, so Android cannot update that version in place. Do not uninstall a standard app with unsaved local records; use the Preview APK for testing. See signing-compatibility.json for verification.
+6. No app or cloud databases are reset by this release. The existing data epoch is unchanged. Preview starts with its own empty local storage because it is a separate Android application.
+
+What changed
+- Trip Vault has an overview and five sections: Plan (days, travel, food, suggestions), Bookings (tickets, files, reminders), Money (shared Finance ledger), Checklist (packing and reminders), and Memories. Creating a trip starts with its name, destination and dates; more fields are optional.
+- Earlier manual trip expenses remain in Money. Linking one to Finance requires selecting an account and confirmation; the original stays saved. If already recorded, attach the existing payment instead. Saved deposits have separate refund-status controls.
+- Control Center uses a light monochrome design, compact rows and bottom navigation. Trip Vault has a separate photo-led stone, midnight and cyan palette. Finance and Music themes are unchanged.
 
 Cloud upload and reinstall recovery
 1. Open Control Room → Cloud → Create cloud vault.
