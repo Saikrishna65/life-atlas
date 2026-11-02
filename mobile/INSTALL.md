@@ -1,9 +1,10 @@
-Atlas Vault — Control Room cloud recovery update
+Atlas Vault 1.3.1 — Android cloud sync fix
 
 Install
 1. Download and extract atlas-offline-online.zip, then install atlas-offline-online.apk.
-2. If Android reports a signing conflict, uninstall the previous test APK first. This release intentionally starts with clean test data; clean-start.json records the server reset.
-3. The first launch clears the old device test databases once. New records you add afterward persist normally. Built-in Finance categories remain; demo accounts and mock payments are not created, and ?demo=1 no longer enables a demo workspace.
+2. Try cloud setup again in your installed APK first: the server compatibility fix also supports the previous version. You may not need to reinstall.
+3. This update keeps the existing local-data epoch and does not repeat the database reset. Do not uninstall an app containing unsaved local data. If Android reports a signing conflict, keep your installed app and use its cloud setup after the server update; save the recovery code and upload before considering reinstalling.
+4. The native HTTP transport now preserves cloud authentication and app-origin headers. Automatic uploads turn on after cloud setup connects successfully.
 
 Cloud upload and reinstall recovery
 1. Open Control Room → Cloud → Create cloud vault.

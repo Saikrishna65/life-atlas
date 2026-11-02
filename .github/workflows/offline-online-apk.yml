@@ -49,8 +49,6 @@ jobs:
           sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
           cd android
           bash gradlew --no-daemon --max-workers=2 :app:testDebugUnitTest :app:assembleDebug
-      - name: Clear the authorized test databases and cloud files once
-        run: node scripts/reset-cloud-test.mjs
       - name: Check hosted online services without modifying data
         run: node scripts/check-online-services.mjs
       - name: Verify APK and prepare ZIP
@@ -61,7 +59,7 @@ jobs:
           cp mobile/INSTALL.md apk-download/INSTALL.txt
           cd apk-download
           sha256sum atlas-offline-online.apk > SHA256SUMS.txt
-          zip -9 ../atlas-offline-online.zip atlas-offline-online.apk INSTALL.txt SHA256SUMS.txt service-health.json clean-start.json
+          zip -9 ../atlas-offline-online.zip atlas-offline-online.apk INSTALL.txt SHA256SUMS.txt service-health.json
       - name: Publish downloadable ZIP to GitHub
         uses: actions/github-script@v7
         with:
@@ -69,8 +67,8 @@ jobs:
             const fs=require('fs');
             const tag=`atlas-offline-online-${context.runId}`;
             const health=JSON.parse(fs.readFileSync('apk-download/service-health.json','utf8'));
-            const healthNote=`\n\nLive checks: Music API ${health.music.status}; Control Room database ${health.controlRoom.database}; Studio endpoint ${health.studio.status}. See service-health.json inside the ZIP. Private Trip Vault, Music, Finance, Studio and preference data can upload and restore using a recovery code. See clean-start.json for the authorized test reset.`;
-            const release=await github.rest.repos.createRelease({...context.repo,tag_name:tag,target_commitish:context.sha,name:'Atlas Control Room — cloud recovery update',prerelease:true,body:'Download atlas-offline-online.zip below, extract it, and install the APK. This builds the current native plugins and bundles the app screens for offline use. Online features call the hosted Atlas service; their availability depends on that service and its configured connections. See INSTALL.txt inside the ZIP.'+healthNote});
+            const healthNote=`\n\nLive checks: Music API ${health.music.status}; Control Room database ${health.controlRoom.database}; Studio endpoint ${health.studio.status}. See service-health.json inside the ZIP. Private Trip Vault, Music, Finance, Studio and preference data can upload and restore using a recovery code. This update preserves existing app and cloud data.`;
+            const release=await github.rest.repos.createRelease({...context.repo,tag_name:tag,target_commitish:context.sha,name:'Atlas 1.3.1 — Android cloud sync fix',prerelease:true,body:'Download atlas-offline-online.zip below, extract it, and install the APK. This builds the current native plugins and bundles the app screens for offline use. Online features call the hosted Atlas service; their availability depends on that service and its configured connections. See INSTALL.txt inside the ZIP.'+healthNote});
             await github.rest.repos.uploadReleaseAsset({...context.repo,release_id:release.data.id,name:'atlas-offline-online.zip',data:fs.readFileSync('atlas-offline-online.zip'),headers:{'content-type':'application/zip'}});
             core.summary.addHeading('Download APK ZIP').addLink('atlas-offline-online.zip',`https://github.com/${context.repo.owner}/${context.repo.repo}/releases/download/${tag}/atlas-offline-online.zip`).write();
       - uses: actions/upload-artifact@v4

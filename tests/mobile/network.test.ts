@@ -13,6 +13,9 @@ test('native mutation boundary accepts only known app origins with the platform 
  assert.equal(allowAtlasMutation(request(service),'x-atlas-control'),true);
  assert.equal(allowAtlasMutation(request('https://localhost',{'x-capacitor-platform':'android'}),'x-atlas-control'),true);
  assert.equal(allowAtlasMutation(request('capacitor://localhost',{'x-capacitor-platform':'android'}),'x-atlas-control'),true);
+ const legacy=new Request(service+'/api/cloud-vault',{method:'POST',headers:{'x-atlas-cloud':'1','x-capacitor-platform':'android'}});
+ assert.equal(allowAtlasMutation(legacy,'x-atlas-cloud'),true);
+ for(const extra of ([{'sec-fetch-site':'cross-site'},{'sec-fetch-site':'same-site'},{'x-capacitor-platform':'web'},{'x-atlas-cloud':'0'}] as Record<string,string>[]))assert.equal(allowAtlasMutation(new Request(legacy,{headers:{'x-atlas-cloud':'1','x-capacitor-platform':'android',...extra}}),'x-atlas-cloud'),false);
  for(const req of [request('https://evil.example',{'x-capacitor-platform':'android'}),request('https://localhost'),request(service,{'sec-fetch-site':'cross-site'}),request('https://localhost',{'x-capacitor-platform':'android','sec-fetch-site':'cross-site'})])assert.equal(allowAtlasMutation(req,'x-atlas-control'),false);
 });
 test('forwards online requests with multipart bodies and provides a bounded offline response',async()=>{
@@ -32,4 +35,17 @@ test('native Control Room links retain their storage identity after rewriting to
  const previous=process.env.NEXT_PUBLIC_OFFLINE_APP;
  try{process.env.NEXT_PUBLIC_OFFLINE_APP='true';const url=stableCloudUrl('music','control-room/uploads/song.mp3');assert.equal(url,service+'/api/control-room/file?bucket=music&key=control-room%2Fuploads%2Fsong.mp3');assert.equal(objectKeyFromUrl(url,'music'),'control-room/uploads/song.mp3');assert.equal(objectKeyFromUrl(url.replace(service,'https://evil.example'),'music'),undefined);}
  finally{if(previous===undefined)delete process.env.NEXT_PUBLIC_OFFLINE_APP;else process.env.NEXT_PUBLIC_OFFLINE_APP=previous;}
+});
+test('native JSON APIs bypass browser Request so cloud origin and token reach the server',async()=>{
+ const originalWindow=Object.getOwnPropertyDescriptor(globalThis,'window'),originalLocation=Object.getOwnPropertyDescriptor(globalThis,'location'),originalOnline=Object.getOwnPropertyDescriptor(navigator,'onLine');
+ const win={fetch:globalThis.fetch};Object.defineProperty(globalThis,'window',{configurable:true,value:win});Object.defineProperty(globalThis,'location',{configurable:true,value:{href:'https://localhost/secret',origin:'https://localhost'}});Object.defineProperty(navigator,'onLine',{configurable:true,value:true});
+ let nativeCalls=0;
+ try{
+  installMobileNetwork(async()=>{throw new Error('JSON API must bypass patched fetch');},{enabled:true,request:async options=>{
+   nativeCalls++;assert.equal(options.url,service+'/api/cloud-vault');assert.equal(options.headers?.origin,'https://localhost');assert.equal(options.headers?.['x-capacitor-platform'],'android');assert.equal(options.headers?.['x-atlas-vault-token'],'test-token');assert.equal(JSON.parse(options.data).action,'create');
+   assert.equal(allowAtlasMutation(new Request(options.url,{method:options.method,headers:options.headers}),'x-atlas-cloud'),true);
+   return {status:200,headers:{'Content-Type':'application/json'},data:{connected:true},url:options.url};
+  }});
+  const response=await win.fetch('/api/cloud-vault',{method:'POST',headers:{'Content-Type':'application/json','X-Atlas-Cloud':'1','X-Atlas-Vault-Token':'test-token'},body:JSON.stringify({action:'create'})});assert.deepEqual(await response.json(),{connected:true});assert.equal(nativeCalls,1);
+ }finally{for(const [key,value]of [['window',originalWindow],['location',originalLocation]] as const){if(value)Object.defineProperty(globalThis,key,value);else Reflect.deleteProperty(globalThis,key)}if(originalOnline)Object.defineProperty(navigator,'onLine',originalOnline);else Reflect.deleteProperty(navigator,'onLine');}
 });
