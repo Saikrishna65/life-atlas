@@ -35,14 +35,14 @@ jobs:
           npx tsc --noEmit
           node --import tsx --test tests/**/*.test.ts
           npm run build:mobile
-      - name: Verify real cloud upload and reinstall recovery
-        run: node --import tsx scripts/verify-live-cloud.mts
       - name: Verify bundled screens offline and service routing online
         run: |
           npm install --no-save --package-lock=false @playwright/test@1.56.1
           npx playwright install chromium --with-deps
           mkdir -p mobile-test-results
           node scripts/mobile-smoke.cjs
+      - name: Verify real cloud upload and reinstall recovery
+        run: node --import tsx scripts/verify-live-cloud.mts
       - name: Build current Android plugins
         run: |
           npx cap sync android
