@@ -17,7 +17,6 @@ import {
   useLibraryRefresh,
 } from "@/components/music/ui";
 import { triggerHaptic } from "@/lib/deviceAuth";
-import CategoryTabs from "@/components/music/CategoryTabs";
 
 type View = "songs" | "albums" | "artists";
 type Filter = "all" | "liked" | "offline" | "cloud" | "recent" | "top";
@@ -115,8 +114,7 @@ function LibraryContent() {
   };
 
   return (
-    <div className="space-y-5 animate-fade-in pb-28">
-      <CategoryTabs />
+    <div className="space-y-5 animate-fade-in">
       <header className="flex items-center gap-2 px-1 pt-1">
         {group && (
           <button

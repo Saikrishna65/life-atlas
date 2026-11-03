@@ -28,7 +28,6 @@ import {
   useLibraryRefresh,
 } from "@/components/music/ui";
 import { triggerHaptic } from "@/lib/deviceAuth";
-import CategoryTabs from "@/components/music/CategoryTabs";
 
 export default function PlaylistDetailPage() {
   const params = useParams();
@@ -98,8 +97,7 @@ export default function PlaylistDetailPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-28">
-      <CategoryTabs />
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <button
           onClick={() => router.push("/secret/music/playlists")}

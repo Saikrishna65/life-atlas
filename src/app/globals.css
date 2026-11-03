@@ -88,58 +88,32 @@
 
 .music-theme {
   color-scheme: dark;
-  --mv-bg: #050507;
-  --mv-bg-elevated: #101014;
-  --mv-dock: rgba(14, 14, 18, 0.94);
-  --mv-card: #121215;
-  --mv-card-hover: #18181d;
+  --mv-bg: #0b0d12;
+  --mv-bg-elevated: rgba(20, 23, 31, 0.97);
+  --mv-dock: rgba(17, 20, 27, 0.94);
+  --mv-card: rgba(255, 250, 240, 0.055);
+  --mv-card-hover: rgba(255, 250, 240, 0.095);
   --mv-input: rgba(255, 255, 255, 0.065);
-  --mv-border: rgba(255, 255, 255, 0.08);
-  --mv-border-strong: rgba(249, 87, 33, 0.45);
-  --mv-text: #ffffff;
-  --mv-text-muted: rgba(255, 255, 255, 0.65);
-  --mv-text-subtle: rgba(255, 255, 255, 0.4);
-  --mv-accent: #f95721;
-  --mv-accent-2: #ff6b35;
-  --mv-accent-soft: rgba(249, 87, 33, 0.16);
-  --mv-accent-fg: #ffffff;
-  --mv-primary-bg: #f95721;
-  --mv-primary-fg: #ffffff;
-  --mv-aura-1: rgba(249, 87, 33, 0.28);
-  --mv-aura-2: rgba(255, 107, 53, 0.18);
-  --mv-glow: rgba(249, 87, 33, 0.5);
+  --mv-border: rgba(235, 214, 178, 0.13);
+  --mv-border-strong: rgba(229, 184, 105, 0.38);
+  --mv-text: #f8f6f1;
+  --mv-text-muted: rgba(248, 246, 241, 0.6);
+  --mv-text-subtle: rgba(248, 246, 241, 0.4);
+  --mv-accent: #e5b869;
+  --mv-accent-2: #c9963b;
+  --mv-accent-soft: rgba(229, 184, 105, 0.15);
+  --mv-accent-fg: #0b0d12;
+  --mv-primary-bg: #f5efe4;
+  --mv-primary-fg: #0b0d12;
+  --mv-aura-1: rgba(229, 184, 105, 0.22);
+  --mv-aura-2: rgba(148, 163, 184, 0.14);
+  --mv-glow: rgba(229, 184, 105, 0.4);
   --mv-track: rgba(255, 255, 255, 0.16);
-  --mv-shadow: rgba(0, 0, 0, 0.75);
+  --mv-shadow: rgba(0, 0, 0, 0.65);
 
   --background: var(--mv-bg);
   --foreground: var(--mv-text);
   color: var(--mv-text);
-}
-
-html[data-music-theme="gold"] .music-theme {
-  color-scheme: dark;
-  --mv-bg: #050507;
-  --mv-bg-elevated: #101014;
-  --mv-dock: rgba(14, 14, 18, 0.94);
-  --mv-card: #121215;
-  --mv-card-hover: #18181d;
-  --mv-input: rgba(255, 255, 255, 0.065);
-  --mv-border: rgba(255, 255, 255, 0.08);
-  --mv-border-strong: rgba(249, 87, 33, 0.45);
-  --mv-text: #ffffff;
-  --mv-text-muted: rgba(255, 255, 255, 0.65);
-  --mv-text-subtle: rgba(255, 255, 255, 0.4);
-  --mv-accent: #f95721;
-  --mv-accent-2: #ff6b35;
-  --mv-accent-soft: rgba(249, 87, 33, 0.16);
-  --mv-accent-fg: #ffffff;
-  --mv-primary-bg: #f95721;
-  --mv-primary-fg: #ffffff;
-  --mv-aura-1: rgba(249, 87, 33, 0.28);
-  --mv-aura-2: rgba(255, 107, 53, 0.18);
-  --mv-glow: rgba(249, 87, 33, 0.5);
-  --mv-track: rgba(255, 255, 255, 0.16);
-  --mv-shadow: rgba(0, 0, 0, 0.75);
 }
 
 html[data-music-theme="emerald"] .music-theme {
