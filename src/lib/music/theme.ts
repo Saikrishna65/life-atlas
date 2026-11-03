@@ -16,9 +16,9 @@ export interface MusicThemeOption {
 export const MUSIC_THEMES: MusicThemeOption[] = [
   {
     id: "gold",
-    name: "Champagne Gold",
-    subtitle: "Midnight slate & warm brushed gold",
-    swatches: ["#0b0d12", "#1c202b", "#e5b869"],
+    name: "Radiant Ember",
+    subtitle: "OLED dark & radiant sunset orange",
+    swatches: ["#070709", "#141418", "#f95721"],
   },
   {
     id: "emerald",

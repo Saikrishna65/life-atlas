@@ -6,6 +6,7 @@ import { Play, Pause, SkipForward } from "lucide-react";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
 import { Artwork } from "@/components/music/ui";
 import { useMusicTheme } from "@/lib/music/theme";
+import { triggerHaptic } from "@/lib/deviceAuth";
 
 /**
  * Compact now-playing bar.
@@ -34,60 +35,59 @@ export default function MiniPlayer({ embedded = false }: { embedded?: boolean })
       }`}
     >
       <div
-        onClick={() => setIsNowPlayingOpen(true)}
-        style={{
-          background: "var(--mv-dock)",
-          borderColor: "var(--mv-border)",
-          boxShadow: "0 18px 45px var(--mv-shadow)",
+        onClick={() => {
+          triggerHaptic("tap");
+          setIsNowPlayingOpen(true);
         }}
-        className="relative overflow-hidden rounded-[24px] backdrop-blur-2xl border cursor-pointer active:scale-[0.99] transition-transform"
+        className="relative overflow-hidden rounded-[26px] bg-[#121215]/95 border border-white/10 backdrop-blur-2xl shadow-[0_16px_40px_rgba(0,0,0,0.7)] cursor-pointer active:scale-[0.99] transition-transform"
         role="button"
-        aria-label="Open player"
+        aria-label="Open full screen player"
       >
         <div className="flex items-center gap-3 p-2.5 pr-3">
           <Artwork
             track={currentTrack}
-            className="w-12 h-12 rounded-2xl shrink-0"
+            className="w-12 h-12 rounded-2xl shrink-0 shadow-md"
             iconClass="w-5 h-5"
           />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[var(--mv-text)] truncate">{currentTrack.title}</p>
-            <p className="text-xs text-[var(--mv-text-muted)] truncate">
+            <p className="text-sm font-bold text-white truncate">{currentTrack.title}</p>
+            <p className="text-xs text-neutral-400 truncate mt-0.5">
               {currentTrack.artist || "Unknown Artist"}
             </p>
           </div>
           <button
             onClick={(e) => {
               e.stopPropagation();
+              triggerHaptic("tap");
               togglePlayPause();
             }}
-            style={{
-              background: "var(--mv-primary-bg)",
-              color: "var(--mv-primary-fg)",
-            }}
-            className="w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer shadow"
+            className="w-11 h-11 rounded-full bg-gradient-to-br from-[#f95721] to-[#ff5500] text-white flex items-center justify-center active:scale-90 transition-transform cursor-pointer shadow-[0_4px_16px_rgba(249,87,33,0.4)]"
             aria-label={isPlaying ? "Pause" : "Play"}
           >
-            {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current ml-0.5" />}
+            {isPlaying ? (
+              <Pause className="w-5 h-5 fill-current" />
+            ) : (
+              <Play className="w-5 h-5 fill-current ml-0.5" />
+            )}
           </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
+              triggerHaptic("tap");
               nextTrack();
             }}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--mv-text-muted)] active:bg-[var(--mv-card-hover)] cursor-pointer"
-            aria-label="Next"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-neutral-400 hover:text-white active:bg-white/10 cursor-pointer transition-colors"
+            aria-label="Next track"
           >
             <SkipForward className="w-5 h-5 fill-current" />
           </button>
         </div>
-        <div className="absolute left-0 bottom-0 h-[3px] w-full bg-[var(--mv-track)]">
+        <div className="absolute left-0 bottom-0 h-[2.5px] w-full bg-white/10">
           <div
             style={{
               width: `${progress}%`,
-              background: "linear-gradient(to right, var(--mv-accent), var(--mv-accent-2))",
             }}
-            className="h-full"
+            className="h-full bg-gradient-to-r from-[#f95721] to-[#ff6b35] transition-all duration-300"
           />
         </div>
       </div>
