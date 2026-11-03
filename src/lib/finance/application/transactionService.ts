@@ -20,7 +20,7 @@ import {
   TransactionSource,
   CurrencyCode,
 } from "../domain/models";
-import { assertSafePaise, DEFAULT_CURRENCY } from "../domain/money";
+import { assertSafePaise, DEFAULT_CURRENCY, addPaise, subtractPaise } from "../domain/money";
 import {
   computeAccountBalances,
   generateTransactionFingerprint,
@@ -33,6 +33,7 @@ export interface RecordTransactionDTO {
   tripAssignment?: TripAssignment;
   recurringRuleId?: string;
   originalTransactionId?: string;
+  pocketId?: string;
   accountId: ID;
   description: string;
   merchant?: string;
@@ -63,6 +64,7 @@ export interface RecordTransferDTO {
 
 export interface CorrectTransactionDTO {
   tripAssignment?: TripAssignment;
+  pocketId?: string | null;
   description?: string;
   merchant?: string;
   amountPaise?: Paise;
@@ -172,6 +174,40 @@ export class TransactionService {
       updatedAt: now,
       version: 1,
     };
+
+    if (dto.pocketId && dto.direction === "outflow") {
+      const pocket = await this.uow.savingsGoals.getById(dto.pocketId);
+      if (!pocket) {
+        throw new FinanceError(`Pocket ${dto.pocketId} not found`, "POCKET_NOT_FOUND");
+      }
+      if (pocket.linkedAccountId && pocket.linkedAccountId !== dto.accountId) {
+        throw new FinanceError("Selected pocket is not linked to this account", "ACCOUNT_MISMATCH");
+      }
+      const deductionPaise = Math.min(pocket.allocatedPaise || 0, dto.amountPaise);
+      if (deductionPaise > 0) {
+        const newAllocated = subtractPaise(pocket.allocatedPaise || 0, deductionPaise);
+        pocket.allocatedPaise = newAllocated;
+        pocket.currentAmountPaise = newAllocated;
+        pocket.history = [
+          ...(pocket.history || []),
+          {
+            id: `pkh_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            pocketId: pocket.id,
+            type: "spend",
+            amountPaise: deductionPaise,
+            balanceAfterPaise: newAllocated,
+            occurredAt,
+            note: `Spent on: ${dto.description.trim()}`,
+            transactionId: id,
+          },
+        ];
+        pocket.updatedAt = now;
+        pocket.version = (pocket.version || 1) + 1;
+        await this.uow.savingsGoals.save(pocket);
+        transaction.pocketId = pocket.id;
+        transaction.pocketDeductionPaise = deductionPaise;
+      }
+    }
 
     const tripContext=await new TripFinanceService(this.uow,this.loadTrips).context();
     if(transaction.tripAssignment?.mode==='manual') {
@@ -347,6 +383,32 @@ export class TransactionService {
     await this.uow.transactions.save(existing);
     await this.recalculateBalance(existing.accountId);
 
+    // Restore pocket allocation if this transaction spent from a savings pocket
+    if (existing.pocketId && existing.pocketDeductionPaise && existing.pocketDeductionPaise > 0) {
+      const pocket = await this.uow.savingsGoals.getById(existing.pocketId);
+      if (pocket) {
+        const restored = addPaise(pocket.allocatedPaise || 0, existing.pocketDeductionPaise);
+        pocket.allocatedPaise = restored;
+        pocket.currentAmountPaise = restored;
+        pocket.history = [
+          ...(pocket.history || []),
+          {
+            id: `pkh_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            pocketId: pocket.id,
+            type: "refund",
+            amountPaise: existing.pocketDeductionPaise,
+            balanceAfterPaise: restored,
+            occurredAt: now,
+            note: `Restored from reversed payment: ${existing.description}`,
+            transactionId: existing.id,
+          },
+        ];
+        pocket.updatedAt = now;
+        pocket.version = (pocket.version || 1) + 1;
+        await this.uow.savingsGoals.save(pocket);
+      }
+    }
+
     // Audit log
     await this.uow.audit.record({
       id: `aud_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
@@ -377,6 +439,43 @@ export class TransactionService {
 
     if(typeof window!=="undefined")window.dispatchEvent(new Event("finance-ledger-updated"));
     return existing;
+  }
+
+  /**
+   * Deletes a transaction while safely restoring any pocket allocation.
+   */
+  async deleteTransaction(id: ID): Promise<void> {
+    const existing = await this.uow.transactions.getById(id);
+    if (!existing) return;
+
+    if (existing.pocketId && existing.pocketDeductionPaise && existing.pocketDeductionPaise > 0) {
+      const pocket = await this.uow.savingsGoals.getById(existing.pocketId);
+      if (pocket) {
+        const restored = addPaise(pocket.allocatedPaise || 0, existing.pocketDeductionPaise);
+        pocket.allocatedPaise = restored;
+        pocket.currentAmountPaise = restored;
+        pocket.history = [
+          ...(pocket.history || []),
+          {
+            id: `pkh_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            pocketId: pocket.id,
+            type: "refund",
+            amountPaise: existing.pocketDeductionPaise,
+            balanceAfterPaise: restored,
+            occurredAt: new Date().toISOString(),
+            note: `Restored from deleted payment: ${existing.description}`,
+            transactionId: existing.id,
+          },
+        ];
+        pocket.updatedAt = new Date().toISOString();
+        pocket.version = (pocket.version || 1) + 1;
+        await this.uow.savingsGoals.save(pocket);
+      }
+    }
+
+    await this.uow.transactions.delete(id);
+    await this.recalculateBalance(existing.accountId);
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("finance-ledger-updated"));
   }
 
   /**
@@ -458,6 +557,73 @@ export class TransactionService {
     else delete changes.tripAssignment;
     if(previous.categoryId!==existing.categoryId)changes.categoryId={oldVal:previous.categoryId,newVal:existing.categoryId};
     else delete changes.categoryId;
+
+    // Handle pocket allocation adjustments if pocket linkage was changed
+    if (updates.pocketId !== undefined) {
+      const oldPocketId = existing.pocketId;
+      const newPocketId = updates.pocketId || undefined;
+      if (oldPocketId !== newPocketId) {
+        if (oldPocketId && existing.pocketDeductionPaise) {
+          const oldPocket = await this.uow.savingsGoals.getById(oldPocketId);
+          if (oldPocket) {
+            const restored = addPaise(oldPocket.allocatedPaise || 0, existing.pocketDeductionPaise);
+            oldPocket.allocatedPaise = restored;
+            oldPocket.currentAmountPaise = restored;
+            oldPocket.history = [
+              ...(oldPocket.history || []),
+              {
+                id: `pkh_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                pocketId: oldPocket.id,
+                type: "refund",
+                amountPaise: existing.pocketDeductionPaise,
+                balanceAfterPaise: restored,
+                occurredAt: now,
+                note: `Restored allocation from payment correction: ${existing.description}`,
+                transactionId: existing.id,
+              },
+            ];
+            oldPocket.updatedAt = now;
+            oldPocket.version = (oldPocket.version || 1) + 1;
+            await this.uow.savingsGoals.save(oldPocket);
+          }
+        }
+        if (newPocketId) {
+          const newPocket = await this.uow.savingsGoals.getById(newPocketId);
+          if (newPocket) {
+            const deductionPaise = Math.min(newPocket.allocatedPaise || 0, existing.amountPaise);
+            if (deductionPaise > 0) {
+              const newAllocated = subtractPaise(newPocket.allocatedPaise || 0, deductionPaise);
+              newPocket.allocatedPaise = newAllocated;
+              newPocket.currentAmountPaise = newAllocated;
+              newPocket.history = [
+                ...(newPocket.history || []),
+                {
+                  id: `pkh_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+                  pocketId: newPocket.id,
+                  type: "spend",
+                  amountPaise: deductionPaise,
+                  balanceAfterPaise: newAllocated,
+                  occurredAt: now,
+                  note: `Spent on: ${existing.description}`,
+                  transactionId: existing.id,
+                },
+              ];
+              newPocket.updatedAt = now;
+              newPocket.version = (newPocket.version || 1) + 1;
+              await this.uow.savingsGoals.save(newPocket);
+              existing.pocketId = newPocketId;
+              existing.pocketDeductionPaise = deductionPaise;
+              changes.pocketId = { oldVal: oldPocketId, newVal: newPocketId };
+            }
+          }
+        } else {
+          existing.pocketId = undefined;
+          existing.pocketDeductionPaise = undefined;
+          changes.pocketId = { oldVal: oldPocketId, newVal: null };
+        }
+      }
+    }
+
     if (Object.keys(changes).length === 0) {
       return existing; // No modifications
     }

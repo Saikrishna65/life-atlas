@@ -41,7 +41,7 @@ export default function SavingsGoalModal({
   useEffect(() => {
     if (editingGoal) {
       setName(editingGoal.name);
-      setTargetAmountStr(paiseToDecimalString(editingGoal.targetAmountPaise));
+      setTargetAmountStr(editingGoal.targetAmountPaise ? paiseToDecimalString(editingGoal.targetAmountPaise) : "");
       setCurrentAmountStr(paiseToDecimalString(editingGoal.currentAmountPaise));
       setTargetDate(editingGoal.targetDate?.split("T")[0] || "");
       setColor(editingGoal.color || "#10B981");

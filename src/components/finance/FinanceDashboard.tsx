@@ -27,6 +27,9 @@ import {
   CheckCircle2,
   Tag,
   Target,
+  PiggyBank,
+  History,
+  AlertTriangle,
   ChevronRight,
   Archive,
   Edit3,
@@ -60,6 +63,7 @@ import {
   CashFlowTimelinePoint,
   CategoryBudgetStatus,
   GoalProgressView,
+  SavingsPocket,
   isIndexedDBAvailable,
   WebIndexedDBSecureStorageAdapter,
 } from "@/lib/finance";
@@ -70,6 +74,8 @@ import TransferModal from "@/components/finance/TransferModal";
 import TransactionDetailModal from "@/components/finance/TransactionDetailModal";
 import BudgetModal from "@/components/finance/BudgetModal";
 import SavingsGoalModal from "@/components/finance/SavingsGoalModal";
+import SavingsPocketModal, { PocketModalMode } from "@/components/finance/SavingsPocketModal";
+import PocketHistoryModal from "@/components/finance/PocketHistoryModal";
 import CategorizationReviewModal from "@/components/finance/CategorizationReviewModal";
 import RecurringPaymentsModal from "@/components/finance/RecurringPaymentsModal";
 import StatementImportModal from "@/components/finance/StatementImportModal";
@@ -131,6 +137,12 @@ export default function FinanceDashboardPage() {
   const [isSavingsGoalModalOpen, setIsSavingsGoalModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<GoalProgressView | null>(null);
   const [savingsGoalMode, setSavingsGoalMode] = useState<"create_or_edit" | "contribute">("create_or_edit");
+
+  // Savings Pockets State
+  const [isPocketModalOpen, setIsPocketModalOpen] = useState(false);
+  const [editingPocket, setEditingPocket] = useState<SavingsPocket | null>(null);
+  const [pocketModalMode, setPocketModalMode] = useState<PocketModalMode>("create");
+  const [historyPocket, setHistoryPocket] = useState<SavingsPocket | null>(null);
 
   // Phase 3 Modal & Engine State
   const [isCategorizationModalOpen, setIsCategorizationModalOpen] = useState(false);
@@ -374,23 +386,83 @@ export default function FinanceDashboardPage() {
     return result;
   }, [transactions, categoryHistory, categoryDrilldown, categories, txnSearchQuery, txnAccountFilter, txnCategoryFilter, txnStatusFilter, txnSortOrder]);
 
+  const accountPocketSummaries = useMemo(() => {
+    const map = new Map<string, {
+      recordedBalancePaise: number;
+      allocatedPaise: number;
+      availableBalancePaise: number;
+      shortfallPaise: number;
+      activePockets: GoalProgressView[];
+    }>();
+
+    for (const acc of accounts) {
+      const active = savingsGoals.filter(
+        (g) => g.linkedAccountId === acc.id && g.status !== "archived" && !g.isLegacyGoal
+      );
+      const allocated = active.reduce((sum, g) => sum + (g.allocatedPaise || 0), 0);
+      const recorded = acc.currentBalancePaise;
+      const available = recorded - allocated;
+      const shortfall = available < 0 ? -available : 0;
+
+      map.set(acc.id, {
+        recordedBalancePaise: recorded,
+        allocatedPaise: allocated,
+        availableBalancePaise: available,
+        shortfallPaise: shortfall,
+        activePockets: active,
+      });
+    }
+    return map;
+  }, [accounts, savingsGoals]);
+
   const tabs = [
     { id: "OVERVIEW", label: "Overview", icon: LayoutDashboard },
     { id: "TRANSACTIONS", label: "Activity", icon: ArrowRightLeft },
     { id: "BUDGETS", label: "Budgets", icon: Tag },
-    { id: "GOALS", label: "Goals", icon: Target },
+    { id: "GOALS", label: "Pockets", icon: PiggyBank },
     { id: "ACCOUNTS", label: "Accounts", icon: Wallet },
   ] as const;
   const newAccount = () => { setEditingAccount(null); setIsAccountModalOpen(true); };
   const newEntry = () => { setEditingTransaction(null); setIsTransactionModalOpen(true); };
   const accountView = (all = false) => <div className={all ? "af-account-grid" : "af-account-strip"}>
-    {(all ? accounts : accounts.filter(a => a.status === "active").slice(0, 4)).map((account, index) => <article key={account.id} className={`af-account af-account-${index % 3}`}>
-      <div className="af-account-top"><span className="af-account-icon">{account.accountType === "credit" ? <CreditCard size={20} /> : <Landmark size={20} />}</span><span>{account.metadata?.institutionName || "ATLAS"} · {account.accountType}{account.status === "archived" ? " · archived" : ""}</span>
-        {all && <button aria-label={`Edit ${account.name}`} onClick={() => { setEditingAccount(account); setIsAccountModalOpen(true); }}><Edit3 size={16} /></button>}
-      </div>
-      <button className="af-account-open" onClick={() => { setTxnAccountFilter(account.id); setActiveTab("TRANSACTIONS"); }}><strong>{account.name}</strong><span className="af-account-number">{account.metadata?.accountNumberLast4 ? `•••• ${account.metadata.accountNumberLast4}` : account.metadata?.institutionName || "Personal account"}</span><b>{formatPaise(account.currentBalancePaise)}</b><span className="glass-card-bottom"><span>ATLAS / PERSONAL</span><CreditCard size={20}/></span></button>
-      {all && account.status !== "archived" && <button className="af-text-button" onClick={async () => { if (confirm(`Archive ${account.name}? Existing transactions will be kept.`)) { await accountService.archiveAccount(account.id); await refreshAll(); } }}>Archive account</button>}
-    </article>)}
+    {(all ? accounts : accounts.filter(a => a.status === "active").slice(0, 4)).map((account, index) => {
+      const summary = accountPocketSummaries.get(account.id);
+      const isShortfall = !!summary && summary.shortfallPaise > 0;
+      const isAllocated = !!summary && summary.allocatedPaise > 0;
+      return (
+        <article key={account.id} className={`af-account af-account-${index % 3}`}>
+          <div className="af-account-top"><span className="af-account-icon">{account.accountType === "credit" ? <CreditCard size={20} /> : <Landmark size={20} />}</span><span>{account.metadata?.institutionName || "ATLAS"} · {account.accountType}{account.status === "archived" ? " · archived" : ""}</span>
+            {all && <button aria-label={`Edit ${account.name}`} onClick={() => { setEditingAccount(account); setIsAccountModalOpen(true); }}><Edit3 size={16} /></button>}
+          </div>
+          <button className="af-account-open" onClick={() => { setTxnAccountFilter(account.id); setActiveTab("TRANSACTIONS"); }}>
+            <strong>{account.name}</strong>
+            <span className="af-account-number">{account.metadata?.accountNumberLast4 ? `•••• ${account.metadata.accountNumberLast4}` : account.metadata?.institutionName || "Personal account"}</span>
+            <b>{formatPaise(summary?.availableBalancePaise ?? account.currentBalancePaise)}</b>
+            <span className="af-balance-sublabel">{isAllocated ? "Available to spend" : "Recorded balance"}</span>
+            <div className="af-account-breakdown">
+              <div className="af-breakdown-row">
+                <span>Recorded balance:</span>
+                <strong>{formatPaise(account.currentBalancePaise)}</strong>
+              </div>
+              {isAllocated && (
+                <div className="af-breakdown-row">
+                  <span>Set aside in pockets:</span>
+                  <strong>{formatPaise(summary.allocatedPaise)}</strong>
+                </div>
+              )}
+              {isShortfall && (
+                <div className="af-shortfall-alert">
+                  <AlertTriangle size={13} />
+                  <span>Shortfall: {formatPaise(summary.shortfallPaise)} (Allocations exceed balance)</span>
+                </div>
+              )}
+            </div>
+            <span className="glass-card-bottom"><span>ATLAS / RECORDED</span><CreditCard size={20}/></span>
+          </button>
+          {all && account.status !== "archived" && <button className="af-text-button" onClick={async () => { if (confirm(`Archive ${account.name}? Existing transactions will be kept.`)) { await accountService.archiveAccount(account.id); await refreshAll(); } }}>Archive account</button>}
+        </article>
+      );
+    })}
     {!all && <button className="af-add-account" onClick={newAccount} title="Add a new bank, cash, or credit account"><Plus size={22} /><span>Add account</span></button>}
   </div>;
   const activityView = (items: Transaction[]) => <div className="af-activity-list">{items.length ? items.map(transaction => {
@@ -431,10 +503,227 @@ export default function FinanceDashboardPage() {
               <div className="glass-insights-column"><div className="glass-period"><span>Insights</span></div><CashFlowChart period={periodPreset} onPeriodChange={value=>setPeriodPreset(value as PeriodPreset)} startDate={periodPreset === "ALL_TIME" && timelinePoints.length ? timelinePoints[0].dateKey : startDate} endDate={endDate} periodLabel={periodLabel} timeline={timelinePoints} totalIncomePaise={periodIncomePaise} totalExpensesPaise={periodExpensePaise}/><CategorySpendingChart transactions={categoryHistory} categories={categories} onViewCategory={(id,start,end,label)=>{setTxnCategoryFilter(id);setTxnAccountFilter("ALL");setTxnStatusFilter("posted");setTxnSearchQuery("");setCategoryDrilldown({start,end,label});setActiveTab("TRANSACTIONS");window.scrollTo({top:0});}}/></div>
             </div>
           </>}
-          {activeTab !== "OVERVIEW" && <header className="glass-section-title"><p>YOUR FINANCIAL SPACE</p><h2>{activeTab==="ACCOUNTS" ? "Wallet" : activeTab==="TRANSACTIONS" ? "Transactions" : activeTab==="BUDGETS" ? "Spending plan" : "Dream it. Save for it."}</h2><span>{activeTab === "TRANSACTIONS" && categoryDrilldown ? categoryDrilldown.label : periodLabel}</span></header>}
+          {activeTab !== "OVERVIEW" && <header className="glass-section-title"><p>YOUR FINANCIAL SPACE</p><h2>{activeTab==="ACCOUNTS" ? "Wallet" : activeTab==="TRANSACTIONS" ? "Transactions" : activeTab==="BUDGETS" ? "Spending plan" : "Savings Pockets"}</h2><span>{activeTab === "TRANSACTIONS" && categoryDrilldown ? categoryDrilldown.label : periodLabel}</span></header>}
           {activeTab === "TRANSACTIONS" && <section className="af-section af-paper">{categoryDrilldown && <div className="category-drilldown"><span>{categoryDrilldown.label}</span><button onClick={()=>{setCategoryDrilldown(null);setTxnCategoryFilter("ALL");setTxnStatusFilter("ALL");}}>Clear period</button></div>}<div className="af-filters"><label className="af-search"><Search size={18} /><input aria-label="Search transactions" placeholder="Find a transaction…" value={txnSearchQuery} onChange={e => setTxnSearchQuery(e.target.value)} /></label><FinanceSelect aria-label="Filter account" value={txnAccountFilter} onChange={e => setTxnAccountFilter(e.target.value)}><option value="ALL">All Accounts</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</FinanceSelect><FinanceSelect aria-label="Filter category" value={txnCategoryFilter} onChange={e => {setTxnCategoryFilter(e.target.value);setCategoryDrilldown(null);}}><option value="ALL">All categories</option><option value="__uncategorized">Uncategorized</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</FinanceSelect><FinanceSelect aria-label="Filter status" value={txnStatusFilter} onChange={e => setTxnStatusFilter(e.target.value)}><option value="ALL">Any status</option><option value="posted">Posted</option><option value="pending">Pending</option><option value="reversed">Reversed</option></FinanceSelect></div><div className="af-list-heading"><span>{filteredTransactions.length} transactions</span><FinanceSelect aria-label="Sort transactions" value={txnSortOrder} onChange={e => setTxnSortOrder(e.target.value as typeof txnSortOrder)}><option value="date_desc">Newest first</option><option value="date_asc">Oldest first</option><option value="amount_desc">Highest amount</option><option value="amount_asc">Lowest amount</option></FinanceSelect></div>{activityView(filteredTransactions)}</section>}
           {activeTab === "BUDGETS" && <section className="af-section"><div className="af-section-heading"><h3>Your spending plan</h3><button className="af-primary" onClick={() => { setEditingBudgetId(undefined); setIsBudgetModalOpen(true); }}><Plus size={17} />Create budget</button></div>{budgets.length ? <div className="af-plan-grid">{budgets.map(b => <article className="af-plan" key={b.categoryId}><div className="af-section-heading"><span className="af-plan-icon"><Tag size={21} /></span><button className="af-icon-button" aria-label={`Edit ${b.categoryName} budget`} onClick={() => { setEditingBudgetId(b.categoryId); setIsBudgetModalOpen(true); }}><Edit3 size={17} /></button></div><h3>{b.categoryName}</h3><strong>{formatPaise(b.spentPaise)} <small>of {formatPaise(b.allocatedPaise)}</small></strong><div className={`af-progress ${b.isOverBudget ? "is-over" : ""}`} role="progressbar" aria-label={b.categoryName} aria-valuenow={Math.min(100,b.percentageUsed)} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${Math.min(100,Math.max(0,b.percentageUsed))}%` }} /></div><p>{b.isOverBudget ? `${formatPaise(Math.abs(b.remainingPaise))} over your plan` : `${formatPaise(b.remainingPaise)} left to spend`}</p></article>)}</div> : <div className="af-empty af-empty-large"><Tag size={36} /><h3>Spend with a plan.</h3><p>Create category limits to see what’s available before you spend.</p><button className="af-primary" onClick={() => setIsBudgetModalOpen(true)}>Create your first budget</button></div>}</section>}
-          {activeTab === "GOALS" && <section className="af-section"><div className="af-section-heading"><h3>Something to look forward to</h3><button className="af-primary" onClick={() => { setEditingGoal(null); setSavingsGoalMode("create_or_edit"); setIsSavingsGoalModalOpen(true); }}><Plus size={17} />New goal</button></div>{savingsGoals.length ? <div className="af-plan-grid">{savingsGoals.map(g => <article className="af-plan af-goal" key={g.id}><div className="af-section-heading"><span className="af-goal-symbol"><Target size={25} /></span><span className="af-tag">{g.isCompleted ? "Reached" : `${g.percentComplete}% saved`}</span></div><span className="glass-goal-label">SAVING FOR</span><h3>{g.name}</h3><strong>{formatPaise(g.currentAmountPaise)}</strong><p>of {formatPaise(g.targetAmountPaise)}</p><div className="af-progress" role="progressbar" aria-label={g.name} aria-valuenow={g.percentComplete} aria-valuemin={0} aria-valuemax={100}><i style={{width:`${Math.min(100,g.percentComplete)}%`}} /></div><div className="af-goal-actions"><button className="af-primary" onClick={() => { setEditingGoal(g); setSavingsGoalMode("contribute"); setIsSavingsGoalModalOpen(true); }}>Add savings</button><button className="af-icon-button" aria-label={`Edit ${g.name}`} onClick={() => { setEditingGoal(g); setSavingsGoalMode("create_or_edit"); setIsSavingsGoalModalOpen(true); }}><Edit3 size={17} /></button></div></article>)}</div> : <div className="af-empty af-empty-large"><Target size={36} /><h3>Turn “one day” into a plan.</h3><p>A trip, a new home, or a rainy-day fund. Start with something that matters to you.</p><button className="af-primary" onClick={() => { setEditingGoal(null); setSavingsGoalMode("create_or_edit"); setIsSavingsGoalModalOpen(true); }}>Create your first goal</button></div>}</section>}
+          {activeTab === "GOALS" && (
+            <section className="af-section">
+              <div className="af-section-heading">
+                <div>
+                  <h3>Savings Pockets</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Money stays in your account. Atlas tracks what you’ve set aside.
+                  </p>
+                </div>
+                <button
+                  className="af-primary"
+                  onClick={() => {
+                    setEditingPocket(null);
+                    setPocketModalMode("create");
+                    setIsPocketModalOpen(true);
+                  }}
+                >
+                  <Plus size={17} />New pocket
+                </button>
+              </div>
+
+              {/* Account summary strip */}
+              {accounts.filter(a => a.status === "active" && (a.accountType === "bank" || a.accountType === "cash" || a.accountType === "savings")).length > 0 && (
+                <div className="af-pocket-account-strip">
+                  {accounts
+                    .filter(a => a.status === "active" && (a.accountType === "bank" || a.accountType === "cash" || a.accountType === "savings"))
+                    .map(acc => {
+                      const s = accountPocketSummaries.get(acc.id);
+                      const isShortfall = !!s && s.shortfallPaise > 0;
+                      return (
+                        <div key={acc.id} className={`af-pocket-acc-card ${isShortfall ? "has-shortfall" : ""}`}>
+                          <div className="af-pocket-acc-name">
+                            <Landmark size={14} />
+                            <span>{acc.name}</span>
+                          </div>
+                          <div className="af-pocket-acc-nums">
+                            <span>Recorded: <b>{formatPaise(acc.currentBalancePaise)}</b></span>
+                            <span>Set aside: <b className="text-emerald-500">{formatPaise(s?.allocatedPaise || 0)}</b></span>
+                            <span className={isShortfall ? "text-rose-500 font-semibold" : ""}>
+                              {isShortfall ? `Shortfall: -${formatPaise(s.shortfallPaise)}` : `Available: ${formatPaise(s?.availableBalancePaise ?? acc.currentBalancePaise)}`}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {/* Active Pockets Grid */}
+              {savingsGoals.filter(g => !g.isLegacyGoal && g.status !== "archived").length > 0 ? (
+                <div className="af-plan-grid">
+                  {savingsGoals
+                    .filter(g => !g.isLegacyGoal && g.status !== "archived")
+                    .map(pocket => {
+                      const linkedAccount = accounts.find(a => a.id === pocket.linkedAccountId);
+                      return (
+                        <article className="af-plan af-goal" key={pocket.id} style={{ borderTop: `3px solid ${pocket.color || "#10B981"}` }}>
+                          <div className="af-section-heading">
+                            <span className="af-goal-symbol" style={{ color: pocket.color || "#10B981" }}>
+                              <PiggyBank size={25} />
+                            </span>
+                            <span className="af-tag">{linkedAccount?.name || "Account linked"}</span>
+                          </div>
+                          <span className="glass-goal-label">SAVINGS POCKET</span>
+                          <h3>{pocket.name}</h3>
+                          <strong>{formatPaise(pocket.allocatedPaise || 0)}</strong>
+                          {pocket.targetAmountPaise ? (
+                            <>
+                              <p>of {formatPaise(pocket.targetAmountPaise)} ({pocket.percentComplete}% target)</p>
+                              <div className="af-progress" role="progressbar" aria-label={pocket.name} aria-valuenow={pocket.percentComplete} aria-valuemin={0} aria-valuemax={100}>
+                                <i style={{ width: `${Math.min(100, pocket.percentComplete)}%`, background: pocket.color || undefined }} />
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-muted-foreground text-xs">Flexible pocket (no target)</p>
+                          )}
+                          {pocket.targetDate && (
+                            <small className="text-muted-foreground block text-[11px] mt-2">
+                              Target date: {new Date(pocket.targetDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                            </small>
+                          )}
+                          <div className="af-goal-actions">
+                            <button
+                              className="af-primary"
+                              onClick={() => {
+                                setEditingPocket(pocket);
+                                setPocketModalMode("allocate");
+                                setIsPocketModalOpen(true);
+                              }}
+                            >
+                              Set aside
+                            </button>
+                            <button
+                              className="af-secondary-btn"
+                              onClick={() => {
+                                setEditingPocket(pocket);
+                                setPocketModalMode("release");
+                                setIsPocketModalOpen(true);
+                              }}
+                            >
+                              Release
+                            </button>
+                            <button
+                              className="af-icon-button"
+                              aria-label={`Move allocation from ${pocket.name}`}
+                              title="Move allocation"
+                              onClick={() => {
+                                setEditingPocket(pocket);
+                                setPocketModalMode("move");
+                                setIsPocketModalOpen(true);
+                              }}
+                            >
+                              <ArrowRightLeft size={16} />
+                            </button>
+                            <button
+                              className="af-icon-button"
+                              aria-label={`View history for ${pocket.name}`}
+                              title="History"
+                              onClick={() => setHistoryPocket(pocket)}
+                            >
+                              <History size={16} />
+                            </button>
+                            <button
+                              className="af-icon-button"
+                              aria-label={`Edit ${pocket.name}`}
+                              title="Edit pocket"
+                              onClick={() => {
+                                setEditingPocket(pocket);
+                                setPocketModalMode("edit");
+                                setIsPocketModalOpen(true);
+                              }}
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                </div>
+              ) : savingsGoals.filter(g => g.isLegacyGoal).length === 0 ? (
+                <div className="af-empty af-empty-large">
+                  <PiggyBank size={36} />
+                  <h3>Put money aside for what matters.</h3>
+                  <p>Set aside small amounts (₹50, ₹100, ₹500) from your bank or cash accounts without locking funds or changing your net worth.</p>
+                  <p className="text-xs text-muted-foreground mt-1">“Money stays in your account. Atlas tracks what you’ve set aside.”</p>
+                  <button
+                    className="af-primary"
+                    onClick={() => {
+                      setEditingPocket(null);
+                      setPocketModalMode("create");
+                      setIsPocketModalOpen(true);
+                    }}
+                  >
+                    Create your first pocket
+                  </button>
+                </div>
+              ) : null}
+
+              {/* Legacy Goals Section */}
+              {savingsGoals.filter(g => g.isLegacyGoal).length > 0 && (
+                <div className="af-legacy-goals-section">
+                  <div className="af-section-heading">
+                    <div>
+                      <h3>Legacy Tracked Goals</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Existing Savings Goals contain manually entered progress that does not represent reserved account funds. Choose an account whenever you want to allocate funds.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="af-plan-grid">
+                    {savingsGoals
+                      .filter(g => g.isLegacyGoal)
+                      .map(g => (
+                        <article className="af-plan af-goal af-legacy-goal" key={g.id}>
+                          <div className="af-section-heading">
+                            <span className="af-goal-symbol"><Target size={24} /></span>
+                            <span className="af-tag af-tag-legacy">Legacy Tracked</span>
+                          </div>
+                          <span className="glass-goal-label">MANUAL GOAL</span>
+                          <h3>{g.name}</h3>
+                          <strong>{formatPaise(g.legacyTrackedPaise || g.currentAmountPaise || 0)}</strong>
+                          {g.targetAmountPaise ? (
+                            <p>of {formatPaise(g.targetAmountPaise)} ({g.percentComplete}%)</p>
+                          ) : null}
+                          <div className="af-legacy-badge">
+                            <span>Not reserved from any account</span>
+                          </div>
+                          <div className="af-goal-actions">
+                            <button
+                              className="af-primary"
+                              onClick={() => {
+                                setEditingPocket(g);
+                                setPocketModalMode("migrate_legacy");
+                                setIsPocketModalOpen(true);
+                              }}
+                            >
+                              Choose account &amp; allocate
+                            </button>
+                            <button
+                              className="af-icon-button"
+                              aria-label={`Edit ${g.name}`}
+                              title="Edit goal"
+                              onClick={() => {
+                                setEditingPocket(g);
+                                setPocketModalMode("edit");
+                                setIsPocketModalOpen(true);
+                              }}
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                          </div>
+                        </article>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
           {activeTab === "ACCOUNTS" && <section className="af-section"><div className="af-section-heading"><h3>One place for every balance</h3><button className="af-primary" onClick={newAccount}><Plus size={17} />Add account</button></div>{accounts.length ? accountView(true) : <div className="af-empty af-empty-large"><Wallet size={36} /><h3>Let’s bring your money together.</h3><p>Add an account to start tracking balances and payments.</p><button className="af-primary" onClick={newAccount}>Add account</button></div>}</section>}
           <TripFinancePanel uow={uow} transactionService={transactionService} accounts={accounts} categories={categories} onChange={refreshAll} showCards={activeTab==="OVERVIEW"}/>
           <details className="af-utility-section"><summary>More ways to manage your money <Plus size={17}/></summary><div className="af-section-heading"><h3>Make Finance work for you</h3><span className="af-eyebrow">YOUR TOOLKIT</span></div><div className="af-utility-grid">{[
@@ -465,6 +754,7 @@ export default function FinanceDashboardPage() {
         transactionService={transactionService}
         accounts={accounts.filter((a) => a.status === "active")}
         categories={categories}
+        pockets={savingsGoals}
         editingTransaction={editingTransaction}
       />
 
@@ -488,6 +778,7 @@ export default function FinanceDashboardPage() {
         transaction={selectedTxnForDetail}
         accounts={accounts}
         categories={categories}
+        pockets={savingsGoals}
         transactionService={transactionService}
       />
 
@@ -498,6 +789,26 @@ export default function FinanceDashboardPage() {
         budgetService={budgetService}
         categories={categories}
         editingCategoryId={editingBudgetId}
+      />
+
+      <SavingsPocketModal
+        isOpen={isPocketModalOpen}
+        onClose={() => {
+          setIsPocketModalOpen(false);
+          setEditingPocket(null);
+        }}
+        onSuccess={refreshAll}
+        savingsGoalService={savingsGoalService}
+        accounts={accounts}
+        allPockets={savingsGoals}
+        editingPocket={editingPocket}
+        mode={pocketModalMode}
+      />
+
+      <PocketHistoryModal
+        isOpen={!!historyPocket}
+        onClose={() => setHistoryPocket(null)}
+        pocket={historyPocket}
       />
 
       <SavingsGoalModal

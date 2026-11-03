@@ -10,6 +10,7 @@ import {
   Transaction,
   FinanceAccount,
   FinanceCategory,
+  SavingsPocket,
   TransactionService,
   rupeesToPaise,
   paiseToDecimalString,
@@ -24,6 +25,7 @@ interface TransactionModalProps {
   transactionService: TransactionService;
   accounts: FinanceAccount[];
   categories: FinanceCategory[];
+  pockets?: SavingsPocket[];
   editingTransaction?: Transaction | null;
   defaultAccountId?: string;
   defaultTripId?: string;
@@ -36,6 +38,7 @@ export default function TransactionModal({
   transactionService,
   accounts,
   categories,
+  pockets,
   editingTransaction,
   defaultAccountId,
   defaultTripId,
@@ -47,6 +50,7 @@ export default function TransactionModal({
   const [amountStr, setAmountStr] = useState("");
   const [accountId, setAccountId] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
+  const [pocketId, setPocketId] = useState<string>("");
   const [description, setDescription] = useState("");
   const [merchant, setMerchant] = useState("");
   const [occurredAt, setOccurredAt] = useState("");
@@ -63,6 +67,7 @@ export default function TransactionModal({
       setAmountStr(paiseToDecimalString(editingTransaction.amountPaise));
       setAccountId(editingTransaction.accountId);
       setCategoryId(tripDetailCategoryId(editingTransaction) || "");
+      setPocketId(editingTransaction.pocketId || "");
       setDescription(editingTransaction.description);
       setMerchant(editingTransaction.merchant || "");
       setOccurredAt(new Date(Date.parse(editingTransaction.occurredAt)-new Date(editingTransaction.occurredAt).getTimezoneOffset()*60000).toISOString().slice(0,16));
@@ -74,6 +79,7 @@ export default function TransactionModal({
       setAmountStr("");
       setAccountId(defaultAccountId || accounts[0]?.id || "");
       setCategoryId("");
+      setPocketId("");
       setDescription("");
       setMerchant("");
       // Current local ISO string for datetime-local
@@ -131,6 +137,7 @@ export default function TransactionModal({
             status,
             notes: notes.trim() || undefined,
             occurredAt: new Date(occurredAt).toISOString(),
+            pocketId: direction === "outflow" ? (pocketId || undefined) : undefined,
           },
           correctionReason.trim() || "User manual correction"
         );
@@ -147,6 +154,7 @@ export default function TransactionModal({
           notes: notes.trim() || undefined,
           occurredAt: new Date(occurredAt).toISOString(),
           source: "manual",
+          pocketId: direction === "outflow" ? (pocketId || undefined) : undefined,
         });
       }
 
@@ -163,6 +171,10 @@ export default function TransactionModal({
   // Filter categories matching the selected direction (or all)
   const availableCategories = categories.filter(
     (c) => c.type === (direction === "inflow" ? "income" : "expense")
+  );
+
+  const availablePockets = (pockets || []).filter(
+    (p) => p.linkedAccountId === accountId && p.status !== "archived" && !p.isLegacyGoal
   );
 
   const tripDetail=direction==="outflow"&&tripChoice!=="__normal"&&(tripChoice!=="__auto"||!!editingTransaction?.tripAssignment?.tripId);
@@ -262,6 +274,32 @@ export default function TransactionModal({
             {tripDetail&&<p>Finance category: Travel &amp; Leisure. This detail is kept for the trip breakdown.</p>}
           </div>
         </div>
+
+        {/* Savings Pocket Selector (for expense/outflow only) */}
+        {direction === "outflow" && availablePockets.length > 0 && (
+          <div className="space-y-1">
+            <label className="text-xs font-sans font-medium text-muted-foreground flex items-center justify-between">
+              <span>Spend from Savings Pocket (Optional)</span>
+              <span className="text-[10px] text-emerald-400 font-mono">Deducts from pocket allocation</span>
+            </label>
+            <FinanceSelect
+              aria-label="Spend from savings pocket"
+              value={pocketId}
+              onChange={(e) => setPocketId(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
+            >
+              <option value="">None (Spend from general unallocated funds)</option>
+              {availablePockets.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} · ₹{((p.allocatedPaise || 0) / 100).toFixed(2)} allocated
+                </option>
+              ))}
+            </FinanceSelect>
+            <p className="text-[11px] text-muted-foreground">
+              Money stays in your account. The pocket allocation will reduce by the expense amount.
+            </p>
+          </div>
+        )}
 
         {/* Description & Merchant */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

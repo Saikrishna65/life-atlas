@@ -74,9 +74,12 @@ export interface IFinanceCategoryRepository {
 export interface ISavingsGoalRepository {
   getById(id: ID): Promise<SavingsGoal | null>;
   getAll(): Promise<SavingsGoal[]>;
+  getByAccountId?(accountId: ID): Promise<SavingsGoal[]>;
   save(goal: SavingsGoal): Promise<void>;
   delete(id: ID): Promise<void>;
 }
+
+export type ISavingsPocketRepository = ISavingsGoalRepository;
 
 export interface IBudgetRepository {
   getById(id: ID): Promise<Budget | null>;

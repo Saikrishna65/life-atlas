@@ -186,6 +186,14 @@ export function validateTransaction(txn: unknown): Transaction {
     throw new FinanceError("Transaction updatedAt must be a valid ISO date", "VALIDATION_FAILED");
   }
 
+  if (t.pocketId !== undefined && (typeof t.pocketId !== "string" || !t.pocketId.trim())) {
+    throw new FinanceError("Transaction pocketId must be a non-empty string when provided", "VALIDATION_FAILED");
+  }
+
+  if (t.pocketDeductionPaise !== undefined && (!isSafePaise(t.pocketDeductionPaise) || t.pocketDeductionPaise < 0)) {
+    throw new FinanceError("Transaction pocketDeductionPaise must be non-negative integer paise", "VALIDATION_FAILED");
+  }
+
   if (typeof t.version !== "number" || t.version < 1) {
     throw new FinanceError("Transaction version must be an integer >= 1", "VALIDATION_FAILED");
   }
@@ -224,8 +232,17 @@ export function validateFinanceCategory(cat: unknown): FinanceCategory {
 }
 
 // -----------------------------------------------------------------------------
-// SavingsGoal Validation
+// SavingsGoal & SavingsPocket Validation
 // -----------------------------------------------------------------------------
+
+const VALID_POCKET_STATUSES: ReadonlySet<string> = new Set([
+  "active",
+  "archived",
+  "completed",
+  "in_progress",
+  "reached",
+  "abandoned",
+]);
 
 export function validateSavingsGoal(goal: unknown): SavingsGoal {
   if (!goal || typeof goal !== "object") {
@@ -242,20 +259,33 @@ export function validateSavingsGoal(goal: unknown): SavingsGoal {
     throw new FinanceError("SavingsGoal name must be a non-empty string", "VALIDATION_FAILED");
   }
 
-  if (!isSafePaise(g.targetAmountPaise) || g.targetAmountPaise <= 0) {
-    throw new FinanceError("SavingsGoal targetAmountPaise must be a positive integer", "VALIDATION_FAILED");
+  // targetAmountPaise is optional for Savings Pockets, but if present must be positive safe integer
+  if (g.targetAmountPaise !== undefined && g.targetAmountPaise !== null) {
+    if (!isSafePaise(g.targetAmountPaise) || g.targetAmountPaise <= 0) {
+      throw new FinanceError("SavingsGoal targetAmountPaise must be a positive integer", "VALIDATION_FAILED");
+    }
   }
 
-  if (!isSafePaise(g.currentAmountPaise) || g.currentAmountPaise < 0) {
+  if (g.allocatedPaise !== undefined && (!isSafePaise(g.allocatedPaise) || g.allocatedPaise < 0)) {
+    throw new FinanceError("SavingsPocket allocatedPaise must be non-negative integer paise", "VALIDATION_FAILED");
+  }
+
+  if (g.currentAmountPaise !== undefined && (!isSafePaise(g.currentAmountPaise) || g.currentAmountPaise < 0)) {
     throw new FinanceError("SavingsGoal currentAmountPaise must be non-negative integer paise", "VALIDATION_FAILED");
   }
 
-  if (!g.status || (g.status !== "in_progress" && g.status !== "reached" && g.status !== "abandoned")) {
-    throw new FinanceError("SavingsGoal status must be 'in_progress', 'reached', or 'abandoned'", "VALIDATION_FAILED");
+  if (!g.status || !VALID_POCKET_STATUSES.has(g.status)) {
+    throw new FinanceError("SavingsGoal status must be a valid pocket or goal status", "VALIDATION_FAILED");
+  }
+
+  if (g.history !== undefined && !Array.isArray(g.history)) {
+    throw new FinanceError("SavingsPocket history must be an array", "VALIDATION_FAILED");
   }
 
   return g as SavingsGoal;
 }
+
+export const validateSavingsPocket = validateSavingsGoal;
 
 export function validateBudget(budget: unknown): Budget {
   if (!budget || typeof budget !== "object") {

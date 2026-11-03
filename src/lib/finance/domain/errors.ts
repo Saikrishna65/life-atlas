@@ -24,7 +24,11 @@ export type FinanceErrorCode =
   | "NOT_FOUND"
   | "INVARIANT_VIOLATION"
   | "UNSUPPORTED_FORMAT"
-  | "INVALID_OPERATION";
+  | "INVALID_OPERATION"
+  | "POCKET_NOT_FOUND"
+  | "POCKET_NOT_EMPTY"
+  | "ACCOUNT_NOT_LINKED"
+  | "ACCOUNT_MISMATCH";
 
 export class FinanceError extends Error {
   readonly code: FinanceErrorCode;

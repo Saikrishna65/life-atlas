@@ -14,8 +14,8 @@ const result = await build({
  define:{'process.env.NODE_ENV':'"production"','process.env.NEXT_PUBLIC_OFFLINE_APP':'"true"','process.env.npm_lifecycle_event':'""','process.env.NEXT_PUBLIC_MOBILE_API_ORIGIN':JSON.stringify(process.env.NEXT_PUBLIC_MOBILE_API_ORIGIN || 'https://life-atlas-eight-five.vercel.app')},
  plugins:[{name:'mobile-adapters',setup(build){
    build.onResolve({filter:/^next\/(navigation|link|image|dynamic)$/},args => ({path:path.join(root,'mobile',aliases[args.path])}));
-   build.onResolve({filter:/^\.\/actions$/},args => args.importer.endsWith('/app/admin/Studio.tsx') ? {path:path.join(root,'mobile/studio-storage.ts')} : null);
-   build.onLoad({filter:/\/src\/app\/globals\.css$/},async args => {
+   build.onResolve({filter:/^\.\/actions$/},args => args.importer.replace(/\\/g, '/').endsWith('/app/admin/Studio.tsx') ? {path:path.join(root,'mobile/studio-storage.ts')} : null);
+   build.onLoad({filter:/[/\\]src[/\\]app[/\\]globals\.css$/},async args => {
      const css = await fs.readFile(args.path,'utf8');
      const compiler = await compile(css,{base:path.dirname(args.path),onDependency:()=>{}});
      const scanner = new Scanner({sources:[{base:path.join(root,'src'),pattern:'**/*.{ts,tsx}',negated:false},{base:path.join(root,'mobile'),pattern:'**/*.{ts,tsx}',negated:false}]});

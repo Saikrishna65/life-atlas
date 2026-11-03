@@ -8,6 +8,21 @@ import { validateSavingsGoal } from "../../domain/validation";
 import { StorageError } from "../../domain/errors";
 import { getFinanceDB } from "./database";
 
+function normalizeGoal(raw: any): SavingsGoal {
+  if (!raw) return raw;
+  const isLegacy = raw.allocatedPaise === undefined && (raw.isLegacyGoal === undefined || raw.isLegacyGoal === true);
+  const currentAmount = raw.currentAmountPaise ?? raw.allocatedPaise ?? 0;
+  return {
+    ...raw,
+    allocatedPaise: raw.allocatedPaise ?? (raw.linkedAccountId ? currentAmount : 0),
+    currentAmountPaise: currentAmount,
+    legacyTrackedPaise: raw.legacyTrackedPaise ?? (isLegacy ? currentAmount : undefined),
+    isLegacyGoal: isLegacy,
+    history: Array.isArray(raw.history) ? raw.history : [],
+    status: raw.status || "active",
+  };
+}
+
 export class IndexedDBSavingsGoalRepository implements ISavingsGoalRepository {
   private dbPromise: Promise<IDBDatabase>;
 
@@ -22,7 +37,7 @@ export class IndexedDBSavingsGoalRepository implements ISavingsGoalRepository {
       const store = tx.objectStore("savings_goals");
       const req = store.get(id);
 
-      req.onsuccess = () => resolve(req.result ? (req.result as SavingsGoal) : null);
+      req.onsuccess = () => resolve(req.result ? normalizeGoal(req.result) : null);
       req.onerror = () => reject(new StorageError(`Failed to get savings goal ${id}`, "PERSISTENCE_FAILED", req.error));
     });
   }
@@ -35,7 +50,7 @@ export class IndexedDBSavingsGoalRepository implements ISavingsGoalRepository {
       const req = store.getAll();
 
       req.onsuccess = () => {
-        const goals = (req.result as SavingsGoal[]) || [];
+        const goals = ((req.result as SavingsGoal[]) || []).map(normalizeGoal);
         goals.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
         resolve(goals);
       };
@@ -43,8 +58,14 @@ export class IndexedDBSavingsGoalRepository implements ISavingsGoalRepository {
     });
   }
 
+  async getByAccountId(accountId: ID): Promise<SavingsGoal[]> {
+    const all = await this.getAll();
+    return all.filter((g) => g.linkedAccountId === accountId);
+  }
+
   async save(goal: SavingsGoal): Promise<void> {
-    const validated = validateSavingsGoal(goal);
+    const normalized = normalizeGoal(goal);
+    const validated = validateSavingsGoal(normalized);
     const db = await this.dbPromise;
 
     return new Promise<void>((resolve, reject) => {

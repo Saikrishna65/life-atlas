@@ -13,11 +13,13 @@ import {
   ShieldCheck,
   AlertTriangle,
   ArrowLeftRight,
+  PiggyBank,
 } from "lucide-react";
 import {
   Transaction,
   FinanceAccount,
   FinanceCategory,
+  SavingsPocket,
   TransactionService,
   formatPaise,
 } from "@/lib/finance";
@@ -30,6 +32,7 @@ interface TransactionDetailModalProps {
   transaction: Transaction | null;
   accounts: FinanceAccount[];
   categories: FinanceCategory[];
+  pockets?: SavingsPocket[];
   transactionService: TransactionService;
 }
 
@@ -41,6 +44,7 @@ export default function TransactionDetailModal({
   transaction,
   accounts,
   categories,
+  pockets,
   transactionService,
 }: TransactionDetailModalProps) {
   const [isReversing, setIsReversing] = useState(false);
@@ -52,6 +56,7 @@ export default function TransactionDetailModal({
 
   const account = accounts.find((a) => a.id === transaction.accountId);
   const category = categories.find((c) => c.id === transaction.categoryId);
+  const pocket = pockets?.find((p) => p.id === transaction.pocketId);
   const isTransfer = !!transaction.transferGroupId;
   const isReversed = transaction.status === "reversed";
 
@@ -139,6 +144,19 @@ export default function TransactionDetailModal({
             </span>
             <span className="font-semibold text-foreground">{account?.name || transaction.accountId}</span>
           </div>
+
+          {transaction.pocketId && (
+            <div className="flex items-center justify-between py-1 border-b border-muted/50">
+              <span className="flex items-center gap-1.5 text-emerald-400">
+                <PiggyBank className="w-3.5 h-3.5" />
+                <span>Savings Pocket</span>
+              </span>
+              <span className="font-semibold text-emerald-300">
+                {pocket?.name || "Savings Pocket"}
+                {transaction.pocketDeductionPaise ? ` (₹${(transaction.pocketDeductionPaise / 100).toFixed(2)} deducted)` : ""}
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between py-1 border-b border-muted/50">
             <span className="flex items-center gap-1.5 text-muted-foreground">

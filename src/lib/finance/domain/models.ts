@@ -83,6 +83,10 @@ export interface Transaction {
   tripAssignment?: import("../trips/policy").TripAssignment;
   /** Explicit provenance for generated or user-marked automatic bills. */
   recurringRuleId?: ID;
+  /** Optional reference to a Savings Pocket if spent from an allocated pocket */
+  pocketId?: ID;
+  /** Exact amount deducted from the savings pocket allocation (in integer paise) */
+  pocketDeductionPaise?: Paise;
   /** Immutable unique identifier (e.g. "txn_...") */
   id: ID;
   /** Associated account ID */
@@ -209,25 +213,63 @@ export interface Budget {
 }
 
 // -----------------------------------------------------------------------------
-// SavingsGoal
+// Savings Pocket (Account-Linked Savings Allocation)
 // -----------------------------------------------------------------------------
 
-export type SavingsGoalStatus = "in_progress" | "reached" | "abandoned";
+export type PocketStatus = "active" | "archived" | "completed";
+export type SavingsGoalStatus = "in_progress" | "reached" | "abandoned" | "active" | "archived" | "completed";
 
-export interface SavingsGoal {
+export type PocketHistoryType =
+  | "allocate"
+  | "release"
+  | "move_in"
+  | "move_out"
+  | "spend"
+  | "refund"
+  | "legacy_import";
+
+export interface PocketHistoryEntry {
+  id: ID;
+  pocketId: ID;
+  type: PocketHistoryType;
+  amountPaise: Paise;
+  balanceAfterPaise: Paise;
+  occurredAt: ISODateString;
+  note?: string;
+  relatedPocketId?: ID;
+  relatedPocketName?: string;
+  transactionId?: ID;
+}
+
+export interface SavingsPocket {
   id: ID;
   name: string;
-  targetAmountPaise: Paise;
-  currentAmountPaise: Paise;
-  targetDate?: ISODateString;
+  /** Linked Finance account ID holding these allocated funds */
   linkedAccountId?: ID;
+  /** Actual amount currently allocated / set aside in this pocket */
+  allocatedPaise: Paise;
+  /** Optional target amount */
+  targetAmountPaise?: Paise;
+  /** Backwards-compatible current amount */
+  currentAmountPaise: Paise;
+  /** Optional target date */
+  targetDate?: ISODateString;
   color?: string;
   icon?: string;
-  status: SavingsGoalStatus;
+  status: PocketStatus | SavingsGoalStatus;
+  /** Indicates legacy manually-tracked goal awaiting account allocation */
+  isLegacyGoal?: boolean;
+  /** Preserved manually-entered progress from the legacy system */
+  legacyTrackedPaise?: Paise;
+  /** Chronological history log of allocations, releases, moves, and expenses */
+  history: PocketHistoryEntry[];
   createdAt: ISODateString;
   updatedAt: ISODateString;
   version: number;
 }
+
+/** Backwards-compatible type alias */
+export type SavingsGoal = SavingsPocket;
 
 // -----------------------------------------------------------------------------
 // CategorizationRule
