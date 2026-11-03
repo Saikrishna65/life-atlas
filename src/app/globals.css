@@ -88,11 +88,11 @@
 
 .music-theme {
   color-scheme: dark;
-  --mv-bg: #070709;
-  --mv-bg-elevated: rgba(18, 18, 22, 0.97);
+  --mv-bg: #050507;
+  --mv-bg-elevated: #101014;
   --mv-dock: rgba(14, 14, 18, 0.94);
-  --mv-card: rgba(255, 255, 255, 0.05);
-  --mv-card-hover: rgba(255, 255, 255, 0.085);
+  --mv-card: #121215;
+  --mv-card-hover: #18181d;
   --mv-input: rgba(255, 255, 255, 0.065);
   --mv-border: rgba(255, 255, 255, 0.08);
   --mv-border-strong: rgba(249, 87, 33, 0.45);
@@ -118,11 +118,11 @@
 
 html[data-music-theme="gold"] .music-theme {
   color-scheme: dark;
-  --mv-bg: #070709;
-  --mv-bg-elevated: rgba(18, 18, 22, 0.97);
+  --mv-bg: #050507;
+  --mv-bg-elevated: #101014;
   --mv-dock: rgba(14, 14, 18, 0.94);
-  --mv-card: rgba(255, 255, 255, 0.05);
-  --mv-card-hover: rgba(255, 255, 255, 0.085);
+  --mv-card: #121215;
+  --mv-card-hover: #18181d;
   --mv-input: rgba(255, 255, 255, 0.065);
   --mv-border: rgba(255, 255, 255, 0.08);
   --mv-border-strong: rgba(249, 87, 33, 0.45);

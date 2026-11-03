@@ -20,11 +20,13 @@ const CATEGORY_TABS: CategoryTabItem[] = [
     id: "your-space",
     label: "Your Space",
     href: "/secret/music",
+    badge: { text: "New Track", variant: "orange" },
   },
   {
-    id: "library",
-    label: "Library",
-    href: "/secret/music/library",
+    id: "podcast",
+    label: "Podcast",
+    href: "/secret/music/library?filter=recent",
+    badge: { text: "Live", variant: "subtle" },
   },
   {
     id: "playlists",
@@ -50,6 +52,9 @@ export default function CategoryTabs({ className = "" }: { className?: string })
     if (item.id === "your-space") {
       return pathname === "/secret/music";
     }
+    if (item.id === "podcast") {
+      return pathname.includes("filter=recent");
+    }
     return pathname.startsWith(item.href);
   };
 
@@ -71,8 +76,8 @@ export default function CategoryTabs({ className = "" }: { className?: string })
             role="tab"
             aria-selected={active}
           >
-            {/* Top Micro-badge if present */}
-            {tab.badge && (
+            {/* Top Micro-badge */}
+            {tab.badge ? (
               <span
                 className={`text-[10px] font-semibold tracking-wider uppercase mb-0.5 ${
                   tab.badge.variant === "orange"
@@ -82,8 +87,9 @@ export default function CategoryTabs({ className = "" }: { className?: string })
               >
                 {tab.badge.text}
               </span>
+            ) : (
+              <span className="h-[15px]" aria-hidden="true" />
             )}
-            {!tab.badge && <span className="h-[10px]" aria-hidden="true" />}
 
             {/* Tab Label */}
             <span

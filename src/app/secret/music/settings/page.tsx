@@ -16,6 +16,7 @@ import { syncCloudToLocalStorage, downloadTrackToLocalStorage, uploadTrackToClou
 import { Sheet, notifyLibraryChanged, hasLocalAudio, hasCloudCopy } from "@/components/music/ui";
 import { MUSIC_THEMES, useMusicTheme } from "@/lib/music/theme";
 import { triggerHaptic } from "@/lib/deviceAuth";
+import CategoryTabs from "@/components/music/CategoryTabs";
 
 function Row({
   icon: Icon,
@@ -159,7 +160,8 @@ export default function MusicVaultSettingsPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-28">
+      <CategoryTabs />
       <header className="px-1 pt-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--mv-accent)]">
           Theme · Storage · Cloud
