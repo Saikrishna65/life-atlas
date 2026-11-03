@@ -144,7 +144,7 @@ export default function ForecastViewModal({
   const balanceRange = Math.max(1, maxBalance - minBalance);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-background/80 backdrop-blur-xs overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)] bg-background/80 backdrop-blur-xs overflow-y-auto">
       <div className="w-full max-w-3xl bg-surface border border-muted rounded-2xl p-5 sm:p-6 shadow-2xl relative my-auto animate-fade-in max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="flex items-start justify-between pb-4 border-b border-muted">
