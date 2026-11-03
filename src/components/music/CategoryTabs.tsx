@@ -11,7 +11,7 @@ export interface CategoryTabItem {
   href: string;
   badge?: {
     text: string;
-    variant: "orange" | "live";
+    variant: "orange" | "subtle";
   };
 }
 
@@ -20,13 +20,11 @@ const CATEGORY_TABS: CategoryTabItem[] = [
     id: "your-space",
     label: "Your Space",
     href: "/secret/music",
-    badge: { text: "New Track", variant: "orange" },
   },
   {
-    id: "podcast",
-    label: "Podcast",
-    href: "/secret/music/library?filter=podcast",
-    badge: { text: "Live", variant: "live" },
+    id: "library",
+    label: "Library",
+    href: "/secret/music/library",
   },
   {
     id: "playlists",
@@ -51,9 +49,6 @@ export default function CategoryTabs({ className = "" }: { className?: string })
   const isActive = (item: CategoryTabItem) => {
     if (item.id === "your-space") {
       return pathname === "/secret/music";
-    }
-    if (item.id === "podcast") {
-      return pathname.includes("filter=podcast");
     }
     return pathname.startsWith(item.href);
   };
@@ -88,7 +83,7 @@ export default function CategoryTabs({ className = "" }: { className?: string })
                 {tab.badge.text}
               </span>
             )}
-            {!tab.badge && <span className="h-[15px]" aria-hidden="true" />}
+            {!tab.badge && <span className="h-[10px]" aria-hidden="true" />}
 
             {/* Tab Label */}
             <span
@@ -106,4 +101,3 @@ export default function CategoryTabs({ className = "" }: { className?: string })
     </div>
   );
 }
-

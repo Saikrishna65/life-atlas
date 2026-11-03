@@ -7,74 +7,31 @@ import {
   Play,
   Pause,
   Plus,
-  Mic,
   Search,
   ChevronRight,
-  Disc3,
-  SlidersHorizontal,
   Flame,
   Clock,
   Heart,
   HardDriveDownload,
   Music,
+  X,
 } from "lucide-react";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
 import { getAllTracks } from "@/lib/music/storage";
 import { MusicTrack } from "@/lib/music/types";
 import {
   Artwork,
-  Equalizer,
   TrackRow,
   TrackActionSheet,
   EmptyState,
   formatTime,
+  hasLocalAudio,
   openAddSheet,
   useLibraryRefresh,
 } from "@/components/music/ui";
 import { triggerHaptic } from "@/lib/deviceAuth";
 import CategoryTabs from "@/components/music/CategoryTabs";
 import MusicWidgetsSection from "@/components/music/MusicWidgetsSection";
-
-// Reference spotlight cards matching the exact visual assets in Image 2
-interface HeroSlide {
-  id: string;
-  title: string;
-  artist: string;
-  artworkUrl: string;
-  contextNote: string;
-  tracksCountText?: string;
-  colorTheme?: string;
-  isDemo?: boolean;
-}
-
-const DEFAULT_HERO_SLIDES: HeroSlide[] = [
-  {
-    id: "hero_the_weeknd",
-    title: "Starboy",
-    artist: "The Weeknd",
-    artworkUrl: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=700&auto=format&fit=crop&q=80",
-    contextNote: "Late night drives & pulse rhythms",
-    tracksCountText: "28 Tracks",
-    isDemo: true,
-  },
-  {
-    id: "hero_billie",
-    title: "Birds of a feather",
-    artist: "Billie Eilish",
-    artworkUrl: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80",
-    contextNote: "Based on your 8AM gym session",
-    isDemo: true,
-  },
-  {
-    id: "hero_rema",
-    title: "Calm Down",
-    artist: "Rema",
-    artworkUrl: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=700&auto=format&fit=crop&q=80",
-    contextNote: "Golden hour energy & sunlit beats",
-    tracksCountText: "16 Tracks",
-    isDemo: true,
-  },
-];
 
 function getGreeting(): string {
   const hr = new Date().getHours();
@@ -102,14 +59,14 @@ function NebulaPlanetIcon({ className = "w-6 h-6" }: { className?: string }) {
 
 export default function MusicHomePage() {
   const router = useRouter();
-  const { playTrack, currentTrack, isPlaying, togglePlayPause, setIsNowPlayingOpen } = useMusicPlayer();
+  const { playTrack, currentTrack, isPlaying, togglePlayPause } = useMusicPlayer();
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [sheetTrack, setSheetTrack] = useState<MusicTrack | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchActive, setIsSearchActive] = useState(false);
   const [greeting] = useState(getGreeting);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     try {
@@ -130,257 +87,308 @@ export default function MusicHomePage() {
     [tracks]
   );
 
-  // Combine user tracks with hero slides for the rich interactive carousel
-  const heroSlides = useMemo<HeroSlide[]>(() => {
-    if (sortedTracks.length === 0) {
-      return DEFAULT_HERO_SLIDES;
+  const counts = useMemo(
+    () => ({
+      liked: tracks.filter((t) => t.isFavorite).length,
+      offline: tracks.filter(hasLocalAudio).length,
+      recent: tracks.filter((t) => t.lastPlayedAt).length,
+      top: tracks.filter((t) => (t.playCount || 0) > 0).length,
+    }),
+    [tracks]
+  );
+
+  // Real-time search filtered tracks
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return sortedTracks.filter(
+      (t) =>
+        t.title.toLowerCase().includes(q) ||
+        (t.artist || "").toLowerCase().includes(q) ||
+        (t.album || "").toLowerCase().includes(q)
+    );
+  }, [sortedTracks, searchQuery]);
+
+  // Real library tracks for the Hero Carousel
+  const heroTracks = useMemo<MusicTrack[]>(() => {
+    if (sortedTracks.length === 0) return [];
+    const list: MusicTrack[] = [];
+    if (currentTrack) {
+      list.push(currentTrack);
     }
-
-    const slides: HeroSlide[] = [];
-
-    // Active playing or latest track as featured center
-    const primary = currentTrack || sortedTracks[0];
-    slides.push({
-      id: primary.id,
-      title: primary.title,
-      artist: primary.artist || "Unknown Artist",
-      artworkUrl: primary.artworkUrl || DEFAULT_HERO_SLIDES[1].artworkUrl,
-      contextNote: "Based on your 8AM gym session",
-      isDemo: false,
-    });
-
-    // Add 2nd track
-    if (sortedTracks[1]) {
-      slides.unshift({
-        id: sortedTracks[1].id,
-        title: sortedTracks[1].title,
-        artist: sortedTracks[1].artist || "Unknown Artist",
-        artworkUrl: sortedTracks[1].artworkUrl || DEFAULT_HERO_SLIDES[0].artworkUrl,
-        contextNote: "Recent high-energy spin",
-        tracksCountText: `${sortedTracks.length} Tracks`,
-        isDemo: false,
-      });
-    } else {
-      slides.unshift(DEFAULT_HERO_SLIDES[0]);
+    for (const t of sortedTracks) {
+      if (!list.some((existing) => existing.id === t.id)) {
+        list.push(t);
+      }
+      if (list.length >= 5) break;
     }
-
-    // Add 3rd track
-    if (sortedTracks[2]) {
-      slides.push({
-        id: sortedTracks[2].id,
-        title: sortedTracks[2].title,
-        artist: sortedTracks[2].artist || "Unknown Artist",
-        artworkUrl: sortedTracks[2].artworkUrl || DEFAULT_HERO_SLIDES[2].artworkUrl,
-        contextNote: "Sunset acoustic session",
-        tracksCountText: "14 Tracks",
-        isDemo: false,
-      });
-    } else {
-      slides.push(DEFAULT_HERO_SLIDES[2]);
-    }
-
-    return slides;
+    return list;
   }, [sortedTracks, currentTrack]);
 
-  // Center the hero carousel on mount
+  // Center hero carousel if there are items
   useEffect(() => {
-    if (carouselRef.current) {
+    if (carouselRef.current && heroTracks.length > 1) {
       const container = carouselRef.current;
       const cardWidth = container.offsetWidth * 0.75;
-      container.scrollLeft = cardWidth * 0.8;
+      container.scrollLeft = cardWidth * 0.5;
     }
-  }, [heroSlides]);
+  }, [heroTracks]);
 
-  const handleHeroPlay = (slide: HeroSlide) => {
+  const handleHeroPlay = (track: MusicTrack) => {
     triggerHaptic("tap");
-    const matchingTrack = tracks.find((t) => t.id === slide.id);
-    if (matchingTrack) {
-      if (currentTrack?.id === matchingTrack.id) {
-        togglePlayPause();
-      } else {
-        playTrack(matchingTrack, sortedTracks, { type: "LIBRARY", title: "Spotlight" });
-      }
-    } else if (sortedTracks.length > 0) {
-      playTrack(sortedTracks[0], sortedTracks, { type: "LIBRARY", title: "Spotlight" });
+    if (currentTrack?.id === track.id) {
+      togglePlayPause();
     } else {
-      openAddSheet();
+      playTrack(track, sortedTracks, { type: "LIBRARY", title: "Spotlight" });
     }
   };
 
   const handlePlayAllDayStarter = () => {
     triggerHaptic("tap");
     if (sortedTracks.length > 0) {
-      playTrack(sortedTracks[0], sortedTracks, { type: "LIBRARY", title: "Day-Starter Beats" });
+      playTrack(sortedTracks[0], sortedTracks, {
+        type: "LIBRARY",
+        title: "Day-Starter Beats",
+      });
     } else {
       openAddSheet();
     }
   };
 
+  const smartCollections = [
+    {
+      key: "liked",
+      label: "Favorites",
+      sub: counts.liked === 1 ? "1 favorite" : `${counts.liked} favorites`,
+      icon: Heart,
+      tint: "from-rose-500 to-red-600",
+    },
+    {
+      key: "offline",
+      label: "On Device",
+      sub: counts.offline === 1 ? "1 offline" : `${counts.offline} offline`,
+      icon: HardDriveDownload,
+      tint: "from-emerald-500 to-teal-600",
+    },
+    {
+      key: "recent",
+      label: "Recently Played",
+      sub: counts.recent === 1 ? "1 played" : `${counts.recent} played`,
+      icon: Clock,
+      tint: "from-sky-500 to-cyan-600",
+    },
+    {
+      key: "top",
+      label: "Heavy Rotation",
+      sub: counts.top === 1 ? "1 top track" : `${counts.top} top tracks`,
+      icon: Flame,
+      tint: "from-amber-500 to-orange-600",
+    },
+  ];
+
   return (
     <div className="space-y-6 pb-28 animate-fade-in select-none">
-      {/* 1. Brand Top Bar: 🪐 NEBULA + Profile Avatar */}
+      {/* 1. Brand Top Bar: 🪐 NEBULA + Profile Link */}
       <header className="flex items-center justify-between px-1 pt-1">
         <div className="flex items-center gap-2 text-white">
-          <NebulaPlanetIcon className="w-6 h-6 text-white" />
+          <NebulaPlanetIcon className="w-6 h-6 text-[#f95721]" />
           <span className="font-extrabold text-lg tracking-[0.2em] uppercase text-white font-display">
             NEBULA
           </span>
         </div>
 
-        {/* Circular Profile Avatar with glowing ambient ring */}
         <Link
           href="/secret"
           onClick={() => triggerHaptic("tap")}
           className="relative group p-0.5 rounded-full"
-          aria-label="User Profile"
+          aria-label="Private Atlas Hub"
         >
-          <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-[#f95721]/50 shadow-[0_0_12px_rgba(249,87,33,0.4)]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
-              alt="Avatar"
-              className="w-full h-full object-cover"
-            />
+          <div className="w-9 h-9 rounded-full bg-white/[0.08] border border-white/10 flex items-center justify-center text-xs font-bold text-neutral-300 group-hover:text-white group-hover:border-[#f95721]/50 shadow-md transition-all">
+            ATLAS
           </div>
         </Link>
       </header>
 
-      {/* 2. Search / Voice Capsule Pill */}
+      {/* 2. Real Search Capsule Pill */}
       <div className="relative">
-        <div className="h-14 rounded-full bg-[#121215]/90 border border-[#f95721]/30 backdrop-blur-xl px-5 flex items-center justify-between shadow-[0_0_24px_rgba(249,87,33,0.08)] transition-all focus-within:border-[#f95721] focus-within:shadow-[0_0_28px_rgba(249,87,33,0.18)]">
+        <div className="h-14 rounded-full bg-[#121215]/90 border border-[#f95721]/30 backdrop-blur-xl px-5 flex items-center justify-between shadow-[0_0_24px_rgba(249,87,33,0.08)] transition-all focus-within:border-[#f95721] focus-within:shadow-[0_0_28px_rgba(249,87,33,0.2)]">
           <div className="flex-1 flex items-center gap-2 min-w-0 pr-3">
             <input
+              ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setIsSearchActive(true)}
-              placeholder={`${greeting}, Anu!, What's your pick?`}
+              placeholder={`${greeting}! Search songs or artists…`}
               className="w-full bg-transparent text-sm font-medium text-white placeholder:text-neutral-500 focus:outline-none"
             />
           </div>
 
-          {/* Glowing Radial Gradient Mic Button */}
-          <button
-            onClick={() => {
-              triggerHaptic("tap");
-              if (!isSearchActive) {
-                setIsSearchActive(true);
-              } else {
-                openAddSheet();
-              }
-            }}
-            className="w-10 h-10 rounded-full bg-gradient-to-br from-white via-[#ff7a45] to-[#f95721] p-[2px] shadow-[0_0_16px_rgba(249,87,33,0.45)] active:scale-90 transition-transform cursor-pointer shrink-0 flex items-center justify-center"
-            aria-label="Voice Search"
-          >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-[#ff6b35] to-[#f95721] flex items-center justify-center">
-              <Mic className="w-4.5 h-4.5 text-white stroke-[2.2]" />
-            </div>
-          </button>
+          {searchQuery ? (
+            <button
+              onClick={() => {
+                triggerHaptic("tap");
+                setSearchQuery("");
+              }}
+              className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-neutral-400 hover:text-white cursor-pointer active:scale-90"
+              aria-label="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                triggerHaptic("tap");
+                searchInputRef.current?.focus();
+              }}
+              className="w-10 h-10 rounded-full bg-gradient-to-br from-[#ff6b35] to-[#f95721] shadow-[0_0_16px_rgba(249,87,33,0.45)] active:scale-90 transition-transform cursor-pointer shrink-0 flex items-center justify-center"
+              aria-label="Search"
+            >
+              <Search className="w-4.5 h-4.5 text-white stroke-[2.4]" />
+            </button>
+          )}
         </div>
+
+        {/* Real-time search results drop-down when searching */}
+        {searchQuery.trim().length > 0 && (
+          <div className="mt-3 rounded-[24px] bg-[#141418] border border-white/10 p-2 space-y-1 shadow-2xl">
+            {searchResults.length > 0 ? (
+              searchResults.slice(0, 5).map((track, idx) => (
+                <TrackRow
+                  key={track.id}
+                  track={track}
+                  index={idx}
+                  onPlay={() => {
+                    playTrack(track, searchResults, {
+                      type: "LIBRARY",
+                      title: `Search: ${searchQuery}`,
+                    });
+                    setSearchQuery("");
+                  }}
+                  onMore={() => setSheetTrack(track)}
+                />
+              ))
+            ) : (
+              <p className="text-center py-4 text-xs text-neutral-400">
+                No songs found matching &ldquo;{searchQuery}&rdquo;
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 3. Category Navigation Tabs */}
       <CategoryTabs />
 
-      {/* 4. Hero Carousel Section */}
-      <section className="relative -mx-4 px-4 overflow-hidden">
-        <div
-          ref={carouselRef}
-          className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {heroSlides.map((slide, idx) => {
-            const isCenterCard = idx === 1;
-            const isTrackCurrentlyPlaying =
-              currentTrack && currentTrack.id === slide.id && isPlaying;
+      {/* 4. Hero Carousel Section (Displays Actual Library Tracks or Empty State) */}
+      {heroTracks.length > 0 ? (
+        <section className="relative -mx-4 px-4 overflow-hidden">
+          <div
+            ref={carouselRef}
+            className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {heroTracks.map((track, idx) => {
+              const isCenterCard = idx === 0;
+              const isTrackCurrentlyPlaying =
+                currentTrack && currentTrack.id === track.id && isPlaying;
 
-            return (
-              <div
-                key={slide.id}
-                className={`shrink-0 snap-center transition-all duration-300 ${
-                  isCenterCard
-                    ? "w-[78vw] max-w-[340px]"
-                    : "w-[65vw] max-w-[270px] opacity-75 scale-95"
-                }`}
-              >
-                {/* Hero Card Container */}
+              return (
                 <div
-                  className="relative aspect-[4/5] rounded-[32px] overflow-hidden bg-neutral-900 border border-white/10 shadow-2xl group cursor-pointer"
-                  onClick={() => handleHeroPlay(slide)}
+                  key={track.id}
+                  className={`shrink-0 snap-center transition-all duration-300 ${
+                    isCenterCard
+                      ? "w-[78vw] max-w-[340px]"
+                      : "w-[65vw] max-w-[270px] opacity-75 scale-95"
+                  }`}
                 >
-                  {/* Artwork Image */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={slide.artworkUrl}
-                    alt={slide.title}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                  />
+                  <div
+                    className="relative aspect-[4/5] rounded-[32px] overflow-hidden bg-neutral-900 border border-white/10 shadow-2xl group cursor-pointer"
+                    onClick={() => handleHeroPlay(track)}
+                  >
+                    {track.artworkUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={track.artworkUrl}
+                        alt={track.title}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center text-white/20">
+                        <Music className="w-16 h-16" />
+                      </div>
+                    )}
 
-                  {/* Gradient Vignette Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/30 pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/30 pointer-events-none" />
 
-                  {/* Top Right: Glass Circular '+' Button */}
-                  <div className="absolute top-4 right-4 z-10">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        triggerHaptic("tap");
-                        openAddSheet();
-                      }}
-                      className="w-10 h-10 rounded-full bg-black/40 border border-white/20 backdrop-blur-md text-white flex items-center justify-center active:scale-90 transition-transform shadow-lg cursor-pointer hover:bg-black/60"
-                      aria-label="Add Track"
-                    >
-                      <Plus className="w-5 h-5 stroke-[2.2]" />
-                    </button>
+                    {/* Top Right: Glass Circular '+' Button */}
+                    <div className="absolute top-4 right-4 z-10">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          triggerHaptic("tap");
+                          openAddSheet();
+                        }}
+                        className="w-10 h-10 rounded-full bg-black/40 border border-white/20 backdrop-blur-md text-white flex items-center justify-center active:scale-90 transition-transform shadow-lg cursor-pointer hover:bg-black/60"
+                        aria-label="Add Track"
+                      >
+                        <Plus className="w-5 h-5 stroke-[2.2]" />
+                      </button>
+                    </div>
+
+                    {/* Center: Frosted Glass Circular Play Button */}
+                    <div className="absolute inset-0 flex items-center justify-center z-10">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleHeroPlay(track);
+                        }}
+                        className="w-16 h-16 rounded-full bg-white/85 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center justify-center text-black active:scale-90 group-hover:scale-105 transition-all cursor-pointer"
+                        aria-label={isTrackCurrentlyPlaying ? "Pause" : "Play"}
+                      >
+                        {isTrackCurrentlyPlaying ? (
+                          <Pause className="w-7 h-7 fill-black text-black" />
+                        ) : (
+                          <Play className="w-7 h-7 fill-black text-black ml-1" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Bottom Text Overlay */}
+                    <div className="absolute inset-x-0 bottom-0 p-5 z-10">
+                      <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-tight truncate">
+                        {track.title}
+                      </h3>
+                      <p className="text-sm font-medium text-neutral-300 truncate mt-1">
+                        {track.artist || "Unknown Artist"}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Center: Frosted Glass Circular Play Button */}
-                  <div className="absolute inset-0 flex items-center justify-center z-10">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleHeroPlay(slide);
-                      }}
-                      className="w-16 h-16 rounded-full bg-white/85 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center justify-center text-black active:scale-90 group-hover:scale-105 transition-all cursor-pointer"
-                      aria-label={isTrackCurrentlyPlaying ? "Pause" : "Play"}
-                    >
-                      {isTrackCurrentlyPlaying ? (
-                        <Pause className="w-7 h-7 fill-black text-black" />
-                      ) : (
-                        <Play className="w-7 h-7 fill-black text-black ml-1" />
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Bottom Text Overlay */}
-                  <div className="absolute inset-x-0 bottom-0 p-5 z-10">
-                    <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight leading-tight truncate">
-                      {slide.title}
-                    </h3>
-                    <p className="text-sm font-medium text-neutral-300 truncate mt-1">
-                      {slide.artist}
+                  <div className="mt-3 px-1 text-center">
+                    <p className="text-xs font-semibold text-neutral-400">
+                      {track.album || (hasLocalAudio(track) ? "Offline Hi-Fi" : "Vault Audio")}
                     </p>
-                  </div>
-                </div>
-
-                {/* Subtitle / Context Note Underneath the Card */}
-                <div className="mt-3 px-1 text-center">
-                  <p className="text-xs font-semibold text-neutral-400">
-                    {slide.contextNote}
-                  </p>
-                  {slide.tracksCountText && (
                     <p className="text-[11px] text-neutral-500 font-mono mt-0.5">
-                      {slide.tracksCountText}
+                      {formatTime(track.duration)} · {track.playCount || 0} plays
                     </p>
-                  )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+              );
+            })}
+          </div>
+        </section>
+      ) : (
+        <section className="rounded-[32px] bg-[#121215] border border-white/[0.06] p-6 text-center">
+          <EmptyState
+            title="Your sonic vault awaits"
+            body="Tap below to pull audio from YouTube, import songs from your phone, or restore your cloud library."
+            cta="Add your first song"
+            onCta={openAddSheet}
+          />
+        </section>
+      )}
 
       {/* 5. Section: "Day-Starter Beats" */}
-      <section className="space-y-4 pt-2">
+      <section className="space-y-4 pt-1">
         <div className="flex items-center justify-between px-1">
           <div>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-none">
@@ -391,7 +399,6 @@ export default function MusicHomePage() {
             </h3>
           </div>
 
-          {/* Radiant Sunset Orange Pill: ▶ Play All */}
           <button
             onClick={handlePlayAllDayStarter}
             className="h-11 px-5 rounded-full bg-gradient-to-r from-[#f95721] to-[#ff6b35] text-white font-bold text-sm shadow-[0_6px_22px_rgba(249,87,33,0.45)] active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
@@ -401,7 +408,6 @@ export default function MusicHomePage() {
           </button>
         </div>
 
-        {/* Day-Starter Track Cards List */}
         {sortedTracks.length > 0 ? (
           <div className="rounded-[28px] bg-[#121215] border border-white/[0.06] p-2 space-y-1">
             {sortedTracks.slice(0, 5).map((track, idx) => (
@@ -421,37 +427,55 @@ export default function MusicHomePage() {
           </div>
         ) : (
           <div className="rounded-[28px] bg-[#121215] border border-white/[0.06] p-5 text-center">
-            <p className="text-sm font-semibold text-white">Your library is ready</p>
+            <p className="text-sm font-semibold text-white">No tracks added yet</p>
             <p className="text-xs text-neutral-400 mt-1">
-              Add your favorite tunes or sync your cloud vault to activate Day-Starter Beats.
+              Add music to your vault to activate Day-Starter Beats.
             </p>
-            <button
-              onClick={openAddSheet}
-              className="mt-3.5 px-4.5 py-2 rounded-full bg-white/[0.08] hover:bg-white/[0.14] border border-white/10 text-xs font-semibold text-white cursor-pointer active:scale-95 transition-all"
-            >
-              Add Music
-            </button>
           </div>
         )}
       </section>
 
-      {/* 6. Section: "Podcast Picks" Card */}
-      <section className="pt-1">
-        <div className="rounded-[28px] bg-[#121215] border border-white/[0.06] p-4.5 flex items-center justify-between shadow-xl">
-          <div>
-            <h4 className="text-lg font-bold text-white tracking-tight">Podcast Picks</h4>
-            <p className="text-xs text-neutral-400 mt-0.5">
-              {sortedTracks.length > 0 ? `${sortedTracks.length} Tracks` : "28 Tracks"}
-            </p>
-          </div>
-
+      {/* 6. Smart Collections Bento Grid (Real Functional Collections) */}
+      <section className="space-y-3 pt-1">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-xl font-bold text-white tracking-tight">Collections</h3>
           <Link
-            href="/secret/music/library?filter=podcast"
+            href="/secret/music/library"
             onClick={() => triggerHaptic("tap")}
-            className="px-4.5 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.12] border border-white/10 text-xs font-semibold text-white transition-all active:scale-95 cursor-pointer"
+            className="text-xs font-semibold text-[#f95721] hover:underline flex items-center gap-0.5"
           >
-            View All
+            Full Library <ChevronRight className="w-3.5 h-3.5" />
           </Link>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          {smartCollections.map((c) => {
+            const Icon = c.icon;
+            return (
+              <button
+                key={c.key}
+                onClick={() => {
+                  triggerHaptic("tap");
+                  router.push(`/secret/music/library?filter=${c.key}`);
+                }}
+                className="group flex items-center gap-3.5 p-3.5 rounded-3xl bg-[#121215] border border-white/[0.06] hover:border-white/20 active:scale-[0.97] transition-all text-left cursor-pointer shadow-lg"
+              >
+                <span
+                  className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${c.tint} flex items-center justify-center shrink-0 shadow-md ring-1 ring-inset ring-white/25`}
+                >
+                  <Icon className="w-5 h-5 text-white" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-white truncate">
+                    {c.label}
+                  </span>
+                  <span className="block text-[11px] text-neutral-400 font-mono truncate mt-0.5">
+                    {c.sub}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </section>
 

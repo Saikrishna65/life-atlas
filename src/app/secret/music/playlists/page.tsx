@@ -23,30 +23,8 @@ export default function PlaylistsPage() {
     try {
       const [pls, tracks] = await Promise.all([getAllPlaylists(), getAllTracks()]);
       setAllTracks(tracks);
-      const map = new Map(tracks.map((t) => [t.id, t]));
-      setTracksById(map);
-
-      // If library has songs but no playlists exist, auto-seed starter playlists like "Road Trip Anthems" & "Desert Mirage Fusion"
-      if (pls.length === 0 && tracks.length > 0) {
-        const starter1: MusicPlaylist = {
-          id: `pl_road_trip_${Date.now()}`,
-          title: "Road Trip Anthems",
-          trackIds: tracks.slice(0, 8).map((t) => t.id),
-          createdAt: Date.now() - 86400000,
-          updatedAt: Date.now() - 86400000,
-        };
-        const starter2: MusicPlaylist = {
-          id: `pl_desert_mirage_${Date.now() + 1}`,
-          title: "Desert Mirage Fusion",
-          trackIds: tracks.slice(2, 10).map((t) => t.id),
-          createdAt: Date.now() - 43200000,
-          updatedAt: Date.now() - 43200000,
-        };
-        await Promise.all([savePlaylist(starter1), savePlaylist(starter2)]);
-        setPlaylists([starter1, starter2]);
-      } else {
-        setPlaylists(pls);
-      }
+      setTracksById(new Map(tracks.map((t) => [t.id, t])));
+      setPlaylists(pls);
     } finally {
       setLoaded(true);
     }
@@ -135,11 +113,11 @@ export default function PlaylistsPage() {
               .map((id) => tracksById.get(id))
               .filter(Boolean) as MusicTrack[];
 
-            // Pick 3 tracks for the thumbnail collage (or fallback to general tracks if playlist is empty)
+            // Pick up to 3 tracks for the thumbnail collage
             const previewTracks: (MusicTrack | null)[] = [
-              plTracks[0] || allTracks[0] || null,
-              plTracks[1] || allTracks[1] || null,
-              plTracks[2] || allTracks[2] || null,
+              plTracks[0] || null,
+              plTracks[1] || null,
+              plTracks[2] || null,
             ];
 
             const isThisPlaylistPlaying =
@@ -157,9 +135,8 @@ export default function PlaylistsPage() {
                 return;
               }
 
-              const tracksToPlay = plTracks.length > 0 ? plTracks : allTracks;
-              if (tracksToPlay.length > 0) {
-                playTrack(tracksToPlay[0], tracksToPlay, {
+              if (plTracks.length > 0) {
+                playTrack(plTracks[0], plTracks, {
                   type: "PLAYLIST",
                   title: pl.title,
                 });
@@ -175,67 +152,83 @@ export default function PlaylistsPage() {
                 className="relative overflow-hidden rounded-[28px] bg-[#121215] border border-white/[0.06] p-4.5 space-y-4 shadow-xl hover:border-white/[0.12] transition-colors"
               >
                 {/* 3 Square Track Thumbnails Collage Side by Side */}
-                <div className="grid grid-cols-3 gap-2.5">
-                  {previewTracks.map((trk, idx) => {
-                    const isTrackActive = currentTrack && trk && currentTrack.id === trk.id;
-                    const isThisTrackPlaying = isTrackActive && isPlaying;
+                {plTracks.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2.5">
+                    {previewTracks.map((trk, idx) => {
+                      if (!trk) {
+                        return (
+                          <div
+                            key={`empty_${idx}`}
+                            className="aspect-square rounded-2xl bg-white/[0.02] border border-dashed border-white/10 flex items-center justify-center text-neutral-600"
+                          >
+                            <Music className="w-5 h-5 opacity-30" />
+                          </div>
+                        );
+                      }
+                      const isTrackActive = currentTrack && currentTrack.id === trk.id;
+                      const isThisTrackPlaying = isTrackActive && isPlaying;
 
-                    return (
-                      <div
-                        key={trk?.id || `preview_${idx}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (trk) {
+                      return (
+                        <div
+                          key={trk.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
                             triggerHaptic("tap");
-                            const playListContext = plTracks.length > 0 ? plTracks : allTracks;
-                            playTrack(trk, playListContext, {
+                            playTrack(trk, plTracks, {
                               type: "PLAYLIST",
                               title: pl.title,
                             });
-                          }
-                        }}
-                        className="group relative aspect-square rounded-2xl overflow-hidden bg-neutral-900 border border-white/[0.08] cursor-pointer active:scale-95 transition-transform"
-                      >
-                        {trk?.artworkUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={trk.artworkUrl}
-                            alt={trk.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-900">
-                            <Music className="w-6 h-6 text-white/30" />
-                          </div>
-                        )}
-
-                        {/* Center Icon Overlay (Play or Equalizer Waveform) */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          {isThisTrackPlaying ? (
-                            <div className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-[#f95721]/50 flex items-center justify-center shadow-lg">
-                              <Equalizer className="h-3" />
-                            </div>
+                          }}
+                          className="group relative aspect-square rounded-2xl overflow-hidden bg-neutral-900 border border-white/[0.08] cursor-pointer active:scale-95 transition-transform"
+                        >
+                          {trk.artworkUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={trk.artworkUrl}
+                              alt={trk.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              loading="lazy"
+                            />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-md shadow-lg flex items-center justify-center text-black group-hover:bg-white group-hover:scale-110 transition-all">
-                              <Play className="w-3.5 h-3.5 fill-black ml-0.5" />
+                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-900">
+                              <Music className="w-6 h-6 text-white/30" />
                             </div>
                           )}
-                        </div>
 
-                        {/* Bottom Track Title & Artist Overlay */}
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-2 pt-4">
-                          <p className="text-[11px] font-bold text-white truncate leading-tight">
-                            {trk?.title || `Track ${idx + 1}`}
-                          </p>
-                          <p className="text-[9px] text-white/70 truncate mt-0.5 leading-tight">
-                            {trk?.artist || "Artist"}
-                          </p>
+                          {/* Center Icon Overlay (Play or Equalizer Waveform) */}
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            {isThisTrackPlaying ? (
+                              <div className="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-[#f95721]/50 flex items-center justify-center shadow-lg">
+                                <Equalizer className="h-3" />
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-md shadow-lg flex items-center justify-center text-black group-hover:bg-white group-hover:scale-110 transition-all">
+                                <Play className="w-3.5 h-3.5 fill-black ml-0.5" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Bottom Track Title & Artist Overlay */}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent p-2 pt-4">
+                            <p className="text-[11px] font-bold text-white truncate leading-tight">
+                              {trk.title}
+                            </p>
+                            <p className="text-[9px] text-white/70 truncate mt-0.5 leading-tight">
+                              {trk.artist || "Artist"}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Link
+                    href={`/secret/music/playlists/${pl.id}`}
+                    className="block py-6 rounded-2xl bg-white/[0.02] border border-dashed border-white/10 text-center text-xs text-neutral-400 hover:border-white/20 hover:text-neutral-300 transition-colors"
+                  >
+                    Playlist is empty · Tap to view and add songs
+                  </Link>
+                )}
 
                 {/* Playlist Title */}
                 <Link
