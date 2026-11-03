@@ -4,27 +4,28 @@ import React, { useEffect, useState, useRef } from "react";
 import { Capacitor, PluginListenerHandle } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import {
-  ChevronDown,
+  ChevronLeft,
+  Upload,
   Play,
   Pause,
   SkipBack,
   SkipForward,
+  SlidersHorizontal,
   Shuffle,
   Repeat,
   Repeat1,
   Heart,
-  ListMusic,
   X,
   Loader2,
   DownloadCloud,
   Moon,
   Gauge,
+  Music,
 } from "lucide-react";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
 import {
   Artwork,
   Equalizer,
-  SpectrumBars,
   formatTime,
   gradientFor,
   hasLocalAudio,
@@ -34,6 +35,7 @@ import { triggerHaptic } from "@/lib/deviceAuth";
 import { useMusicTheme } from "@/lib/music/theme";
 
 const SLEEP_OPTIONS = [0, 15, 30, 45, 60] as const;
+const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 2] as const;
 
 export default function NowPlayingModal() {
   useMusicTheme();
@@ -66,26 +68,47 @@ export default function NowPlayingModal() {
   } = useMusicPlayer();
 
   const [showQueue, setShowQueue] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [sleepEndsAt, setSleepEndsAt] = useState<number | null>(null);
   const [sleepLabel, setSleepLabel] = useState<string | null>(null);
-  const touchStartYRef = useRef<number | null>(null);
-  const showQueueRef = useRef(showQueue);
 
+  // Scrubber drag state
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [scrubTime, setScrubTime] = useState(0);
+  const scrubberRef = useRef<HTMLDivElement>(null);
+
+  const showQueueRef = useRef(showQueue);
+  const showSettingsRef = useRef(showSettings);
   useEffect(() => {
     showQueueRef.current = showQueue;
   }, [showQueue]);
+  useEffect(() => {
+    showSettingsRef.current = showSettings;
+  }, [showSettings]);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((prev) => (prev === msg ? null : prev));
+    }, 2800);
+  };
 
   // Handle Android Hardware / Gesture Back Navigation & browser popstate
   useEffect(() => {
     if (!isNowPlayingOpen) return;
 
-    // Push modal state to history so Android back gesture or browser back stays inside Music Vault
     const modalState = { musicModal: "now-playing" };
     window.history.pushState(modalState, "");
 
     const onPopState = () => {
       if (showQueueRef.current) {
         setShowQueue(false);
+        return;
+      }
+      if (showSettingsRef.current) {
+        setShowSettings(false);
+        return;
       }
       setIsNowPlayingOpen(false);
     };
@@ -96,6 +119,10 @@ export default function NowPlayingModal() {
       App.addListener("backButton", () => {
         if (showQueueRef.current) {
           setShowQueue(false);
+          return;
+        }
+        if (showSettingsRef.current) {
+          setShowSettings(false);
           return;
         }
         if (typeof window !== "undefined" && window.history.state?.musicModal === "now-playing") {
@@ -122,6 +149,10 @@ export default function NowPlayingModal() {
       setShowQueue(false);
       return;
     }
+    if (showSettings) {
+      setShowSettings(false);
+      return;
+    }
     if (typeof window !== "undefined" && window.history.state?.musicModal === "now-playing") {
       window.history.back();
     } else {
@@ -129,19 +160,7 @@ export default function NowPlayingModal() {
     }
   };
 
-  const handleHeaderTouchStart = (e: React.TouchEvent) => {
-    touchStartYRef.current = e.touches[0].clientY;
-  };
-
-  const handleHeaderTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartYRef.current === null) return;
-    const deltaY = e.changedTouches[0].clientY - touchStartYRef.current;
-    if (deltaY > 60) {
-      handleMinimize();
-    }
-    touchStartYRef.current = null;
-  };
-
+  // Sleep timer ticker
   useEffect(() => {
     if (!sleepEndsAt) {
       setSleepLabel(null);
@@ -165,128 +184,337 @@ export default function NowPlayingModal() {
   if (!isNowPlayingOpen || !currentTrack) return null;
 
   const total = duration || currentTrack.duration || 0;
-  const pct = total > 0 ? Math.min(100, (currentTime / total) * 100) : 0;
+  const activeTime = isScrubbing ? scrubTime : currentTime;
+  const pct = total > 0 ? Math.min(100, Math.max(0, (activeTime / total) * 100)) : 0;
   const local = hasLocalAudio(currentTrack);
   const canSave = !local && hasCloudCopy(currentTrack);
 
-  const cycleSpeed = () => {
-    triggerHaptic("tap");
-    const speeds = [0.75, 1, 1.25, 1.5, 2];
-    const i = speeds.indexOf(playbackRate);
-    setPlaybackRate(speeds[(i + 1) % speeds.length]);
+  const calculateTimeFromEvent = (clientX: number) => {
+    if (!scrubberRef.current) return 0;
+    const rect = scrubberRef.current.getBoundingClientRect();
+    const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return pos * total;
   };
 
-  const cycleSleepTimer = () => {
+  const handlePointerDown = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+    setIsScrubbing(true);
+    const newTime = calculateTimeFromEvent(e.clientX);
+    setScrubTime(newTime);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isScrubbing) return;
+    const newTime = calculateTimeFromEvent(e.clientX);
+    setScrubTime(newTime);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isScrubbing) return;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
+    const newTime = calculateTimeFromEvent(e.clientX);
+    seek(newTime);
+    setIsScrubbing(false);
+  };
+
+  const handleShare = async () => {
     triggerHaptic("tap");
-    if (!sleepEndsAt) {
-      setSleepEndsAt(Date.now() + 15 * 60000);
-      return;
+    const shareText = `${currentTrack.title} — ${currentTrack.artist || "Unknown Artist"}`;
+    if (typeof navigator !== "undefined" && navigator.share && navigator.canShare && navigator.canShare({ title: currentTrack.title, text: shareText })) {
+      try {
+        await navigator.share({
+          title: currentTrack.title,
+          text: shareText,
+        });
+        return;
+      } catch (err: unknown) {
+        if ((err as Error)?.name === "AbortError") return;
+      }
     }
-    const remMin = Math.round((sleepEndsAt - Date.now()) / 60000);
-    const next = SLEEP_OPTIONS.find((m) => m > remMin + 2) ?? 0;
-    setSleepEndsAt(next > 0 ? Date.now() + next * 60000 : null);
+    try {
+      await navigator.clipboard.writeText(shareText);
+      showToast("Track details copied to clipboard");
+    } catch {
+      showToast("Sharing not supported on this device");
+    }
   };
 
   return (
     <div
-      style={{ background: "var(--mv-bg)", color: "var(--mv-text)" }}
-      className="music-theme fixed inset-0 z-50 flex flex-col select-none overflow-hidden animate-fade-in"
+      className="fixed inset-0 z-50 flex flex-col bg-[#070709] text-white select-none overflow-hidden animate-fade-in font-sans"
       role="dialog"
       aria-modal="true"
       aria-label="Now playing"
     >
-      {/* Artwork-reactive blurred aura */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        {currentTrack.artworkUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={currentTrack.artworkUrl}
-            alt=""
-            className="w-full h-full object-cover scale-125 blur-[85px] opacity-30"
-          />
-        ) : (
-          <div
-            style={{ background: "var(--mv-aura-1)" }}
-            className="w-full h-full blur-3xl scale-125"
-          />
-        )}
-        <div
-          style={{
-            background: "linear-gradient(to bottom, transparent 0%, var(--mv-bg) 82%)",
-          }}
-          className="absolute inset-0"
-        />
-      </div>
-
-      {/* Top Drag Handle & Gesture Bar - generous padding clears selfie camera & punch holes */}
-      <div
-        onTouchStart={handleHeaderTouchStart}
-        onTouchEnd={handleHeaderTouchEnd}
-        className="relative z-20 pt-[max(env(safe-area-inset-top),3.25rem)] pb-2 flex justify-center cursor-pointer"
-        onClick={handleMinimize}
-        aria-label="Swipe or tap to minimize"
-      >
-        <div className="w-14 h-1.5 rounded-full bg-[var(--mv-border-strong)] active:scale-95 transition-transform opacity-75 hover:opacity-100 shadow-sm" />
-      </div>
-
-      {/* Top bar */}
-      <header
-        onTouchStart={handleHeaderTouchStart}
-        onTouchEnd={handleHeaderTouchEnd}
-        className="relative z-10 flex items-center justify-between px-4 pt-1 pb-2"
-      >
-        <button
-          onClick={handleMinimize}
-          className="w-11 h-11 rounded-full sonic-glass flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-          aria-label="Back to Music Vault"
-        >
-          <ChevronDown className="w-6 h-6 text-[var(--mv-text)]" />
-        </button>
-        <div className="text-center min-w-0 px-3">
-          <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--mv-text-subtle)] font-semibold">
-            Playing from
-          </p>
-          <p className="text-sm font-semibold text-[var(--mv-text)] truncate max-w-[200px]">
-            {sourceContext?.title || "Your library"}
-          </p>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-[#1c1c1e]/95 backdrop-blur-md border border-white/10 text-xs font-semibold text-white shadow-2xl animate-fade-in pointer-events-none">
+          {toastMessage}
         </div>
-        <button
-          onClick={() => {
-            triggerHaptic("tap");
-            setShowQueue((v) => !v);
-          }}
-          style={
-            showQueue
-              ? {
-                  background: "var(--mv-primary-bg)",
-                  color: "var(--mv-primary-fg)",
-                }
-              : undefined
-          }
-          className={`w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer ${
-            showQueue ? "shadow-md" : "sonic-glass text-[var(--mv-text)]"
-          }`}
-          aria-label="Queue"
-        >
-          <ListMusic className="w-5 h-5" />
-        </button>
-      </header>
+      )}
 
-      {showQueue ? (
-        /* Integrated Up-Next Queue */
-        <div className="relative z-10 flex-1 overflow-y-auto px-4 pt-5 pb-8">
-          <div className="flex items-baseline justify-between px-1 mb-3">
-            <h3 className="font-display text-2xl text-[var(--mv-text)]">Up next</h3>
-            <span className="text-xs font-mono text-[var(--mv-text-muted)]">{queue.length} songs</span>
+      {/* Main Screen: Exact layout matching the requested design */}
+      <div className="relative flex-1 flex flex-col w-full h-full min-h-0 overflow-hidden">
+        {/* Upper Hero Artwork Section (Full-bleed with subtle top/bottom gradients) */}
+        <div className="relative flex-1 w-full min-h-0 overflow-hidden">
+          {/* Blurred Background Glow */}
+          {currentTrack.artworkUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={currentTrack.artworkUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover scale-125 blur-3xl opacity-40 pointer-events-none"
+              aria-hidden="true"
+            />
+          ) : (
+            <div
+              className={`absolute inset-0 w-full h-full bg-gradient-to-b ${gradientFor(
+                currentTrack.id || currentTrack.title
+              )} blur-3xl opacity-35 pointer-events-none`}
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Foreground Hero Artwork */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            {currentTrack.artworkUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={currentTrack.artworkUrl}
+                alt={currentTrack.title}
+                className="w-full h-full object-cover object-center"
+                draggable={false}
+              />
+            ) : (
+              <div
+                className={`w-full h-full bg-gradient-to-br ${gradientFor(
+                  currentTrack.id || currentTrack.title
+                )} flex items-center justify-center`}
+              >
+                <Music className="w-24 h-24 text-white/30" />
+              </div>
+            )}
           </div>
-          <div className="space-y-1">
+
+          {/* Smooth Dark Vignette / Bottom Gradient to seamlessly merge into the black control area */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                "linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.2) 65%, rgba(7,7,9,0.85) 88%, #070709 100%)",
+            }}
+            aria-hidden="true"
+          />
+
+          {/* Top Bar Buttons: Back `<` on left, Share on right */}
+          <header className="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top),1.25rem)]">
+            <button
+              onClick={handleMinimize}
+              className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform cursor-pointer shadow-lg hover:bg-black/55"
+              aria-label="Back to Music Vault"
+            >
+              <ChevronLeft className="w-5 h-5 text-white stroke-[2.5]" />
+            </button>
+
+            <button
+              onClick={handleShare}
+              className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform cursor-pointer shadow-lg hover:bg-black/55"
+              aria-label="Share track"
+            >
+              <Upload className="w-5 h-5 text-white" />
+            </button>
+          </header>
+        </div>
+
+        {/* Lower Controls Section: Exact matching components */}
+        <div className="relative z-10 w-full px-5 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2 space-y-4 shrink-0 bg-[#070709]">
+          {/* Row 1: Track Information (Left) + Floating Action Buttons (Right) */}
+          <div className="flex items-end justify-between gap-4">
+            {/* Left: Track Title & Artist */}
+            <div className="min-w-0 flex-1 pb-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight leading-tight truncate drop-shadow-md">
+                {currentTrack.title}
+              </h1>
+              <p className="text-sm sm:text-base text-zinc-400 font-medium truncate mt-1">
+                {currentTrack.artist || "Unknown Artist"}
+              </p>
+            </div>
+
+            {/* Right: 3 Circular Buttons Stack */}
+            <div className="flex flex-col gap-2.5 items-center shrink-0">
+              {/* Button 1 (Top): Equalizer / Audio Settings */}
+              <button
+                onClick={() => {
+                  triggerHaptic("tap");
+                  setShowSettings((v) => !v);
+                }}
+                className={`w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-lg border border-white/10 ${
+                  showSettings ? "bg-[#f95721] text-black" : "bg-[#1c1c1e]/90 backdrop-blur-md text-[#f95721] hover:bg-[#28282c]"
+                }`}
+                aria-label="Playback speed and audio settings"
+              >
+                <SlidersHorizontal className="w-5 h-5" />
+              </button>
+
+              {/* Button 2 (Middle): Lyrics / Queue */}
+              <button
+                onClick={() => {
+                  triggerHaptic("tap");
+                  setShowQueue((v) => !v);
+                }}
+                className={`w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-lg border border-white/10 ${
+                  showQueue ? "bg-[#f95721] text-black" : "bg-[#1c1c1e]/90 backdrop-blur-md text-[#f95721] hover:bg-[#28282c]"
+                }`}
+                aria-label="Up next queue"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="6" width="16" height="14" rx="4" />
+                  <line x1="7" y1="11" x2="13" y2="11" />
+                  <line x1="7" y1="15" x2="15" y2="15" />
+                  <path d="M19 3v4M21 5h-4" />
+                </svg>
+              </button>
+
+              {/* Button 3 (Bottom): Orange 3D Cube (Favorites & Spatial Audio) */}
+              <button
+                onClick={() => {
+                  triggerHaptic("tap");
+                  toggleFavorite(currentTrack.id);
+                  showToast(currentTrack.isFavorite ? "Removed from Favorites" : "Added to Favorites ❤️");
+                }}
+                className={`w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shadow-[0_4px_22px_rgba(249,87,33,0.5)] ${
+                  currentTrack.isFavorite
+                    ? "bg-[#ff6835] ring-2 ring-white/30"
+                    : "bg-[#f95721] hover:brightness-110"
+                }`}
+                aria-label={currentTrack.isFavorite ? "Favorited song" : "Add to favorites"}
+                title={currentTrack.isFavorite ? "Favorited" : "Add to favorites"}
+              >
+                <svg className="w-6 h-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                  <circle cx="16.5" cy="15.5" r="1.5" fill="currentColor" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {error && <p className="text-xs text-rose-500 font-medium">{error}</p>}
+
+          {/* Row 2: Capsule Scrubber Bar */}
+          <div className="w-full bg-[#18181a] border border-white/5 rounded-xl h-9 px-3.5 flex items-center justify-between gap-3 shadow-inner">
+            <span className="text-[11px] font-mono font-medium text-zinc-400 select-none shrink-0 w-8 text-left">
+              {formatTime(activeTime)}
+            </span>
+
+            {/* Interactive Scrubber Bar */}
+            <div
+              ref={scrubberRef}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              className="relative flex-1 h-6 flex items-center cursor-pointer touch-none"
+            >
+              {/* Background Track Rail */}
+              <div className="w-full h-1 bg-zinc-700/60 rounded-full overflow-hidden">
+                {/* Played Progress Line */}
+                <div
+                  className="h-full bg-[#f95721] rounded-full transition-[width] duration-75"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+
+              {/* Vertical Orange Pill Slider Thumb */}
+              <div
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1.5 h-3.5 bg-[#f95721] rounded-[2px] shadow-[0_0_8px_rgba(249,87,33,0.9)] pointer-events-none transition-[left] duration-75"
+                style={{ left: `${pct}%` }}
+              />
+            </div>
+
+            <span className="text-[11px] font-mono font-medium text-zinc-400 select-none shrink-0 w-8 text-right">
+              {formatTime(total)}
+            </span>
+          </div>
+
+          {/* Row 3: Bottom Transport Controls (3 Large Charcoal Circles with Vibrant Orange Icons) */}
+          <div className="flex items-center justify-center gap-3.5 sm:gap-4 pt-1">
+            {/* Previous Track */}
+            <button
+              onClick={() => {
+                triggerHaptic("tap");
+                previousTrack();
+              }}
+              className="w-[74px] h-[74px] sm:w-[84px] sm:h-[84px] rounded-full bg-[#18181a] border border-white/[0.06] flex items-center justify-center active:scale-95 transition-all cursor-pointer shadow-lg hover:bg-[#202024]"
+              aria-label="Previous track"
+            >
+              <SkipBack className="w-7 h-7 sm:w-8 sm:h-8 fill-[#f95721] text-[#f95721]" />
+            </button>
+
+            {/* Play / Pause (Center, Slightly Larger) */}
+            <button
+              onClick={() => {
+                triggerHaptic("tap");
+                togglePlayPause();
+              }}
+              className="w-[86px] h-[86px] sm:w-[98px] sm:h-[98px] rounded-full bg-[#18181a] border border-white/[0.06] flex items-center justify-center active:scale-95 transition-all cursor-pointer shadow-xl hover:bg-[#202024]"
+              aria-label={isPlaying ? "Pause" : "Play"}
+            >
+              {isBuffering ? (
+                <Loader2 className="w-9 h-9 sm:w-10 sm:h-10 text-[#f95721] animate-spin" />
+              ) : isPlaying ? (
+                <Pause className="w-9 h-9 sm:w-10 sm:h-10 fill-[#f95721] text-[#f95721]" />
+              ) : (
+                <Play className="w-9 h-9 sm:w-10 sm:h-10 fill-[#f95721] text-[#f95721] ml-1" />
+              )}
+            </button>
+
+            {/* Next Track */}
+            <button
+              onClick={() => {
+                triggerHaptic("tap");
+                nextTrack();
+              }}
+              className="w-[74px] h-[74px] sm:w-[84px] sm:h-[84px] rounded-full bg-[#18181a] border border-white/[0.06] flex items-center justify-center active:scale-95 transition-all cursor-pointer shadow-lg hover:bg-[#202024]"
+              aria-label="Next track"
+            >
+              <SkipForward className="w-7 h-7 sm:w-8 sm:h-8 fill-[#f95721] text-[#f95721]" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Up Next Queue Slide-over Sheet */}
+      {showQueue && (
+        <div className="absolute inset-0 z-40 flex flex-col bg-[#070709]/95 backdrop-blur-xl animate-fade-in">
+          <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top),1.25rem)] pb-4 border-b border-white/10">
+            <div>
+              <h2 className="text-xl font-bold text-white">Up next</h2>
+              <p className="text-xs text-zinc-400 font-mono mt-0.5">{queue.length} songs in queue</p>
+            </div>
+            <button
+              onClick={() => setShowQueue(false)}
+              className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform cursor-pointer"
+              aria-label="Close queue"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1">
             {queue.map((t, i) => {
               const active = i === queueIndex;
               return (
                 <div
                   key={`${t.id}-${i}`}
-                  className={`flex items-center gap-3 pl-2 pr-1 py-2 rounded-2xl ${
-                    active ? "bg-[var(--mv-accent-soft)] border border-[var(--mv-border-strong)]" : ""
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-colors ${
+                    active
+                      ? "bg-white/10 border border-[#f95721]/30 shadow-md"
+                      : "hover:bg-white/5"
                   }`}
                 >
                   <button
@@ -301,19 +529,19 @@ export default function NowPlayingModal() {
                     <span className="min-w-0 flex-1">
                       <span
                         className={`block text-sm font-semibold truncate ${
-                          active ? "text-[var(--mv-accent)]" : "text-[var(--mv-text)]"
+                          active ? "text-[#f95721]" : "text-white"
                         }`}
                       >
                         {t.title}
                       </span>
-                      <span className="block text-xs text-[var(--mv-text-muted)] truncate">{t.artist}</span>
+                      <span className="block text-xs text-zinc-400 truncate mt-0.5">{t.artist}</span>
                     </span>
                     {active && isPlaying && <Equalizer className="mr-2" />}
                   </button>
                   {!active && (
                     <button
                       onClick={() => removeFromQueue(i)}
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-[var(--mv-text-subtle)] active:bg-[var(--mv-card-hover)] cursor-pointer"
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-zinc-400 hover:text-white active:bg-white/10 cursor-pointer"
                       aria-label="Remove from queue"
                     >
                       <X className="w-4 h-4" />
@@ -323,215 +551,144 @@ export default function NowPlayingModal() {
               );
             })}
             {queue.length === 0 && (
-              <p className="text-sm text-[var(--mv-text-muted)] p-4 text-center">The queue is empty.</p>
+              <p className="text-sm text-zinc-400 p-8 text-center">The queue is currently empty.</p>
             )}
           </div>
         </div>
-      ) : (
-        <div className="relative z-10 flex-1 flex flex-col justify-end px-6 pb-[max(env(safe-area-inset-bottom),1.5rem)]">
-          {/* Hero Artwork + Vinyl Disc Halo */}
-          <div className="flex-1 flex items-center justify-center py-4 min-h-0">
-            <div
-              className={`relative aspect-square w-full max-w-[300px] sm:max-w-[330px] transition-transform duration-700 ${
-                isPlaying ? "scale-100" : "scale-[0.92]"
-              }`}
-            >
-              <div
-                style={{ background: "var(--mv-aura-1)" }}
-                className="absolute inset-3 rounded-[40px] blur-2xl opacity-75"
-                aria-hidden="true"
-              />
-              {/* Subtle vinyl disc peeking from right when playing */}
-              <div
-                className={`pointer-events-none absolute -right-4 top-5 bottom-5 aspect-square rounded-full vinyl-grooves border border-white/15 shadow-2xl transition-transform duration-700 flex items-center justify-center ${
-                  isPlaying ? "translate-x-2 animate-vinyl opacity-90" : "-translate-x-6 opacity-0"
-                }`}
-                aria-hidden="true"
-              >
-                <div
-                  className={`w-16 h-16 rounded-full bg-gradient-to-br ${gradientFor(
-                    currentTrack.id
-                  )} border-4 border-[#090910]`}
-                />
+      )}
+
+      {/* Audio Settings & Playback Controls Sheet */}
+      {showSettings && (
+        <div className="absolute inset-0 z-40 flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowSettings(false)}>
+          <div
+            className="w-full bg-[#141416] border-t border-white/10 rounded-t-3xl p-5 space-y-5 shadow-2xl animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-1 border-b border-white/5">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-[#f95721]" />
+                <h3 className="text-base font-bold text-white">Audio &amp; Playback</h3>
               </div>
-
-              <Artwork
-                track={currentTrack}
-                className="relative z-10 w-full h-full rounded-[36px] shadow-[0_28px_65px_rgba(0,0,0,0.48)]"
-                iconClass="w-1/4 h-1/4"
-              />
-            </div>
-          </div>
-
-          {/* Quality badge + Live Spectrum */}
-          <div className="flex items-center justify-between mb-3">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full sonic-glass text-[10px] font-mono uppercase tracking-[0.16em] text-[var(--mv-text-muted)]">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  local ? "bg-emerald-500" : "bg-sky-500"
-                }`}
-              />
-              {local ? "Offline · Hi-Fi" : "Cloud Stream"}
-            </span>
-            <SpectrumBars playing={isPlaying} />
-          </div>
-
-          {/* Title + Actions */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="min-w-0 flex-1">
-              <h2 className="font-display text-[26px] text-[var(--mv-text)] leading-tight truncate">
-                {currentTrack.title}
-              </h2>
-              <p className="text-[var(--mv-text-muted)] truncate mt-0.5">
-                {currentTrack.artist || "Unknown Artist"}
-              </p>
-            </div>
-            {canSave && (
               <button
-                onClick={() => downloadTrack(currentTrack)}
-                className="w-11 h-11 rounded-full sonic-glass flex items-center justify-center active:scale-90 cursor-pointer"
-                aria-label="Save to phone"
+                onClick={() => setShowSettings(false)}
+                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 transition-transform cursor-pointer"
               >
-                <DownloadCloud className="w-5 h-5 text-[var(--mv-text)]" />
+                <X className="w-4 h-4" />
               </button>
-            )}
-            <button
-              onClick={() => toggleFavorite(currentTrack.id)}
-              className="w-11 h-11 rounded-full sonic-glass flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-              aria-label={currentTrack.isFavorite ? "Unlike" : "Like"}
-            >
-              <Heart
-                className={`w-5 h-5 ${
-                  currentTrack.isFavorite
-                    ? "fill-[var(--mv-accent)] text-[var(--mv-accent)]"
-                    : "text-[var(--mv-text)]"
-                }`}
-              />
-            </button>
-          </div>
-
-          {error && <p className="text-xs text-rose-500 mb-2">{error}</p>}
-
-          {/* Tactile Scrubber */}
-          <div className="mb-4">
-            <input
-              type="range"
-              min={0}
-              max={total || 100}
-              step={0.1}
-              value={Math.min(currentTime, total || 100)}
-              onChange={(e) => seek(parseFloat(e.target.value))}
-              aria-label="Seek"
-              className="w-full h-1.5 rounded-full appearance-none cursor-pointer"
-              style={{
-                accentColor: "var(--mv-accent)",
-                background: `linear-gradient(to right, var(--mv-accent) 0%, var(--mv-accent-2) ${pct}%, var(--mv-track) ${pct}%)`,
-              }}
-            />
-            <div className="flex justify-between text-[11px] font-mono text-[var(--mv-text-subtle)] mt-1.5">
-              <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(total)}</span>
             </div>
-          </div>
 
-          {/* Primary Transport Controls */}
-          <div className="flex items-center justify-between">
-            <button
-              onClick={toggleShuffle}
-              className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-colors ${
-                isShuffle
-                  ? "text-[var(--mv-accent)] bg-[var(--mv-accent-soft)]"
-                  : "text-[var(--mv-text-subtle)]"
-              }`}
-              aria-label="Shuffle"
-            >
-              <Shuffle className="w-5 h-5" />
-            </button>
-            <button
-              onClick={previousTrack}
-              className="w-14 h-14 rounded-full flex items-center justify-center text-[var(--mv-text)] active:scale-90 transition-transform cursor-pointer"
-              aria-label="Previous"
-            >
-              <SkipBack className="w-7 h-7 fill-current" />
-            </button>
-            <button
-              onClick={togglePlayPause}
-              style={{
-                background: "var(--mv-primary-bg)",
-                color: "var(--mv-primary-fg)",
-                boxShadow: "0 14px 40px -6px var(--mv-glow)",
-              }}
-              className="w-[76px] h-[76px] rounded-full flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-              aria-label={isPlaying ? "Pause" : "Play"}
-            >
-              {isBuffering ? (
-                <Loader2 className="w-8 h-8 animate-spin" />
-              ) : isPlaying ? (
-                <Pause className="w-9 h-9 fill-current" />
+            {/* Playback Speed */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Gauge className="w-3.5 h-3.5 text-[#f95721]" />
+                Playback Speed
+              </label>
+              <div className="grid grid-cols-5 gap-2">
+                {SPEED_OPTIONS.map((speed) => (
+                  <button
+                    key={speed}
+                    onClick={() => {
+                      triggerHaptic("tap");
+                      setPlaybackRate(speed);
+                    }}
+                    className={`py-2 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer ${
+                      playbackRate === speed
+                        ? "bg-[#f95721] text-black shadow-md font-bold"
+                        : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                    }`}
+                  >
+                    {speed}×
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Sleep Timer */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Moon className="w-3.5 h-3.5 text-[#f95721]" />
+                Sleep Timer {sleepLabel && <span className="text-[#f95721]">({sleepLabel} remaining)</span>}
+              </label>
+              <div className="grid grid-cols-5 gap-2">
+                {SLEEP_OPTIONS.map((mins) => {
+                  const active = mins === 0 ? !sleepEndsAt : (sleepEndsAt !== null && Math.round((sleepEndsAt - Date.now()) / 60000) === mins);
+                  return (
+                    <button
+                      key={mins}
+                      onClick={() => {
+                        triggerHaptic("tap");
+                        if (mins === 0) {
+                          setSleepEndsAt(null);
+                          setSleepLabel(null);
+                        } else {
+                          setSleepEndsAt(Date.now() + mins * 60000);
+                          setSleepLabel(`${mins}m`);
+                        }
+                      }}
+                      className={`py-2 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer ${
+                        active
+                          ? "bg-[#f95721] text-black shadow-md font-bold"
+                          : "bg-white/5 text-zinc-300 hover:bg-white/10"
+                      }`}
+                    >
+                      {mins === 0 ? "Off" : `${mins}m`}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modes: Shuffle & Repeat & Offline Save */}
+            <div className="grid grid-cols-3 gap-2.5 pt-1">
+              <button
+                onClick={() => {
+                  triggerHaptic("tap");
+                  toggleShuffle();
+                }}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border text-xs font-semibold transition-all cursor-pointer ${
+                  isShuffle
+                    ? "bg-[#f95721]/20 border-[#f95721] text-[#f95721]"
+                    : "bg-white/5 border-white/5 text-zinc-400 hover:text-white"
+                }`}
+              >
+                <Shuffle className="w-4 h-4" />
+                <span>Shuffle</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  triggerHaptic("tap");
+                  cycleRepeatMode();
+                }}
+                className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border text-xs font-semibold transition-all cursor-pointer ${
+                  repeatMode !== "OFF"
+                    ? "bg-[#f95721]/20 border-[#f95721] text-[#f95721]"
+                    : "bg-white/5 border-white/5 text-zinc-400 hover:text-white"
+                }`}
+              >
+                {repeatMode === "ONE" ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
+                <span>{repeatMode === "ONE" ? "Repeat 1" : repeatMode === "ALL" ? "Repeat All" : "Repeat"}</span>
+              </button>
+
+              {canSave ? (
+                <button
+                  onClick={() => {
+                    triggerHaptic("tap");
+                    downloadTrack(currentTrack);
+                    showToast("Saving track to phone...");
+                  }}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-white/5 bg-white/5 text-zinc-300 hover:text-white text-xs font-semibold cursor-pointer"
+                >
+                  <DownloadCloud className="w-4 h-4 text-emerald-400" />
+                  <span>Download</span>
+                </button>
               ) : (
-                <Play className="w-9 h-9 fill-current ml-1" />
+                <div className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-2xl border border-white/5 bg-white/5 text-zinc-500 text-[11px] font-mono">
+                  <span className={`w-1.5 h-1.5 rounded-full ${local ? "bg-emerald-500" : "bg-sky-500"}`} />
+                  <span>{local ? "Offline" : "Cloud"}</span>
+                </div>
               )}
-            </button>
-            <button
-              onClick={nextTrack}
-              className="w-14 h-14 rounded-full flex items-center justify-center text-[var(--mv-text)] active:scale-90 transition-transform cursor-pointer"
-              aria-label="Next"
-            >
-              <SkipForward className="w-7 h-7 fill-current" />
-            </button>
-            <button
-              onClick={cycleRepeatMode}
-              className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-colors ${
-                repeatMode !== "OFF"
-                  ? "text-[var(--mv-accent)] bg-[var(--mv-accent-soft)]"
-                  : "text-[var(--mv-text-subtle)]"
-              }`}
-              aria-label="Repeat"
-            >
-              {repeatMode === "ONE" ? (
-                <Repeat1 className="w-5 h-5" />
-              ) : (
-                <Repeat className="w-5 h-5" />
-              )}
-            </button>
-          </div>
-
-          {/* Utility Pills: Speed + Sleep Timer + Queue */}
-          <div className="flex items-center justify-center gap-2.5 mt-5">
-            <button
-              onClick={cycleSpeed}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full sonic-glass text-xs font-mono font-semibold text-[var(--mv-text-muted)] active:scale-95 cursor-pointer"
-            >
-              <Gauge className="w-3.5 h-3.5 text-[var(--mv-accent)]" />
-              {playbackRate}×
-            </button>
-
-            <button
-              onClick={cycleSleepTimer}
-              style={
-                sleepLabel
-                  ? {
-                      background: "var(--mv-accent-soft)",
-                      borderColor: "var(--mv-border-strong)",
-                      color: "var(--mv-accent)",
-                    }
-                  : undefined
-              }
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border text-xs font-mono font-semibold active:scale-95 cursor-pointer ${
-                sleepLabel ? "" : "sonic-glass text-[var(--mv-text-muted)]"
-              }`}
-            >
-              <Moon className="w-3.5 h-3.5 text-[var(--mv-accent)]" />
-              {sleepLabel ? `Sleep ${sleepLabel}` : "Sleep"}
-            </button>
-
-            <button
-              onClick={() => setShowQueue(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full sonic-glass text-xs font-mono font-semibold text-[var(--mv-text-muted)] active:scale-95 cursor-pointer"
-            >
-              <ListMusic className="w-3.5 h-3.5 text-[var(--mv-accent)]" />
-              Queue ({queue.length})
-            </button>
+            </div>
           </div>
         </div>
       )}
