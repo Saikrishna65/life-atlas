@@ -27,7 +27,7 @@ class MemoryFiles {
 const files=new MemoryFiles();let queue=Promise.resolve();const deps:VaultDependencies={files:files as any,serialize:async(_id,fn)=>{const next=queue.then(fn);queue=next.then(()=>{},()=>{});return next;}};
 let failUpload=false;
 const originalFetch=globalThis.fetch;
-globalThis.fetch=(async(input:any,init:any={})=>{
+const testFetch=(async(input:any,init:any={})=>{
  const url=String(input);if(url==='/api/cloud-vault'){try{const result=await cloudVaultAction(JSON.parse(init.body),new Headers(init.headers).get('x-atlas-vault-token')!,deps);return Response.json(result);}catch(e:any){return Response.json({error:e.message},{status:e.status||503});}}
  if(url.startsWith('https://memory.invalid/')){const key=url.slice('https://memory.invalid/'.length);if(init.method==='PUT'){if(failUpload)return new Response('offline',{status:503});await files.upload(key,init.body);return new Response(null,{status:200});}const item=files.rows.get(key);return item?new Response(item.blob):new Response(null,{status:404});}
  throw new Error('Unexpected request '+url);
@@ -35,6 +35,7 @@ globalThis.fetch=(async(input:any,init:any={})=>{
 async function clearDevice(){for(const section of CLOUD_SECTIONS){const db=await sectionDB(section);const names=Array.from(db.objectStoreNames);await new Promise<void>((resolve,reject)=>{const tx=db.transaction(names,'readwrite');for(const name of names)tx.objectStore(name).clear();tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});if(section==='studio')db.close();}memory.clear();}
 async function put(section:CloudSection,store:string,value:unknown){const db=await sectionDB(section);await new Promise<void>((resolve,reject)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).put(value);tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error);});if(section==='studio')db.close();}
 test('all sections, large audio, attachments, finance and preferences survive a fresh installation',async()=>{
+ globalThis.fetch=testFetch;
  try{
  const now=new Date().toISOString();await saveTrip({id:'cloud-trip',title:'Real test trip',destination:'Coast',startDate:now,endDate:now,status:'PLANNING',travelStyle:'LEISURE',budgetTotal:1000,currency:'INR',createdAt:now,updatedAt:now});
  await saveDocument({id:'cloud-doc',tripId:'cloud-trip',title:'Ticket',fileName:'ticket.pdf',fileType:'PDF',mimeType:'application/pdf',sizeBytes:6,blobData:new Blob(['ticket'],{type:'application/pdf'}),createdAt:now,updatedAt:now});
@@ -98,3 +99,19 @@ test('all sections, large audio, attachments, finance and preferences survive a 
  }finally{globalThis.fetch=originalFetch;}
 });
 test('encrypted chunk rejects a different recovery key and changed ciphertext',async()=>{const a=await vaultIdentity(newRecoveryCode()),b=await vaultIdentity(newRecoveryCode()),plain=new TextEncoder().encode('Private Finance data'),id=await sha256(plain),blob=await encryptChunk(plain,a.key);await assert.rejects(()=>decryptChunk(blob,b.key,id));const damaged=new Uint8Array(await blob.arrayBuffer());damaged[20]^=1;await assert.rejects(()=>decryptChunk(new Blob([damaged]),a.key,id));});
+test('direct cloud sync and recovery works directly without asking for any recovery code',async()=>{
+ globalThis.fetch=testFetch;
+ try{
+  await clearDevice();
+  const now=new Date().toISOString();
+  await saveTrip({id:'direct-trip',title:'Direct recovery trip',destination:'Mountains',startDate:now,endDate:now,status:'PLANNING',travelStyle:'LEISURE',budgetTotal:5000,currency:'INR',createdAt:now,updatedAt:now});
+  await uploadSections(['trips']);
+  const status=await cloudStatus();
+  assert.ok(status?.sections.trips);
+  assert.equal(status.sections.trips.records,1);
+  await clearDevice();
+  assert.equal(await getTrip('direct-trip'),null);
+  await restoreSections(['trips']);
+  assert.equal((await getTrip('direct-trip'))!.title,'Direct recovery trip');
+ }finally{globalThis.fetch=originalFetch;}
+});
