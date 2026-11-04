@@ -6,12 +6,13 @@ import {setControlRestoreActive,isControlRestoreActive} from '../control-room/ma
 import {validateBackup} from '../control-room/backup';
 import type {StoreSnapshot} from '../control-room/types';
 export {newRecoveryCode};
-export const DEFAULT_VAULT_CODE='ATLAS-e9b4c021-88f24a1b-93de198c-7f5b3a20-41dc89e2-5701bcf3-692a4e8d-17f03ca5';
+export const DEFAULT_VAULT_CODE='ATLAS-01ae92e5-fcefe509-4972b00b-e4f70daa-8c3be522-0b138301-87899df5-6282fb6b';
+const LEGACY_VAULT_CODES=['ATLAS-e9b4c021-88f24a1b-93de198c-7f5b3a20-41dc89e2-5701bcf3-692a4e8d-17f03ca5'];
 export interface LocalCopy {section:CloudSection;version:number;stores:StoreSnapshot[];preferences?:Record<string,string>;}
 export interface CloudLink {code:string;automatic:boolean;ready:boolean;copies:Partial<Record<CloudSection,{sourceHash:string;revision:string;rows:Record<string,string>}>>;}
 export interface SectionComparison {section:CloudSection;records:number;bytes:number;pending:number;sourceHash:string;rows:Record<string,string>;cloud?:SectionCopy;}
 const LINK_KEY='atlas_cloud_connection_v1';
-export function getCloudLink():CloudLink|null{try{return JSON.parse(localStorage.getItem(LINK_KEY)||'null');}catch{return null;}}
+export function getCloudLink():CloudLink|null{try{const raw=localStorage.getItem(LINK_KEY);if(!raw)return null;const link=JSON.parse(raw) as CloudLink;if(link&&LEGACY_VAULT_CODES.includes(link.code)){link.code=DEFAULT_VAULT_CODE;localStorage.setItem(LINK_KEY,JSON.stringify(link));}return link;}catch{return null;}}
 function saveLink(link:CloudLink,connectionChanged=false){localStorage.setItem(LINK_KEY,JSON.stringify(link));window.dispatchEvent(new Event(connectionChanged?'atlas-cloud-link':'atlas-cloud-state'));}
 export function setAutomaticUploads(value:boolean){const link=getCloudLink();if(link){link.automatic=value;saveLink(link,true);}}
 export function disconnectCloud(){localStorage.removeItem(LINK_KEY);window.dispatchEvent(new Event('atlas-cloud-link'));}
@@ -22,7 +23,7 @@ function exclusive<T>(fn:()=>Promise<T>):Promise<T>{const next=serial.catch(()=>
 async function api(code:string,body:Record<string,unknown>){if(typeof navigator!=='undefined'&&navigator.onLine===false)throw new Error('You are offline. Your changes remain on this device.');const identity=await vaultIdentity(code);const response=await fetch('/api/cloud-vault',{method:'POST',headers:{'Content-Type':'application/json','X-Atlas-Cloud':'1','X-Atlas-Vault-Token':identity.token},body:JSON.stringify({...body,vaultId:identity.id})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Cloud operation failed.');return data as {account:CloudAccount;signed?:any;exists?:boolean;url?:string};}
 export async function createCloudLink(code:string){await api(code,{action:'create'});saveLink({code,automatic:true,ready:true,copies:{}},true);return code;}
 export async function connectCloudLink(code:string){const {account}=await api(code,{action:'status'});saveLink({code,automatic:true,ready:false,copies:{}},true);return account;}
-export async function ensureCloudLink(explicitCode?:string):Promise<CloudLink>{const existing=getCloudLink();if(existing&&!explicitCode)return existing;const targetCode=explicitCode||existing?.code||DEFAULT_VAULT_CODE;try{await api(targetCode,{action:'status'});const link:CloudLink={code:targetCode,automatic:true,ready:true,copies:existing?.copies||{}};saveLink(link,true);return link;}catch{try{await api(targetCode,{action:'create'});}catch{/* offline */}const link:CloudLink={code:targetCode,automatic:true,ready:true,copies:existing?.copies||{}};saveLink(link,true);return link;}}
+export async function ensureCloudLink(explicitCode?:string):Promise<CloudLink>{const existing=getCloudLink();if(existing&&!explicitCode&&!LEGACY_VAULT_CODES.includes(existing.code))return existing;const targetCode=explicitCode||DEFAULT_VAULT_CODE;try{await api(targetCode,{action:'status'});const link:CloudLink={code:targetCode,automatic:true,ready:true,copies:existing?.copies||{}};saveLink(link,true);return link;}catch{try{await api(targetCode,{action:'create'});}catch{/* offline */}const link:CloudLink={code:targetCode,automatic:true,ready:true,copies:existing?.copies||{}};saveLink(link,true);return link;}}
 export async function cloudStatus(){const link=getCloudLink();const targetCode=link?.code||DEFAULT_VAULT_CODE;try{return (await api(targetCode,{action:'status'})).account;}catch{return null;}}
 async function studioDB(){return new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open('life_atlas_studio_db',1);r.onupgradeneeded=()=>r.result.createObjectStore('entries',{keyPath:'id'});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
 export async function sectionDB(section:CloudSection){if(section==='studio')return studioDB();if(section==='preferences')return getControlDB();return vaultDB(section);}
