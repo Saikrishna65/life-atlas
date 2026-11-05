@@ -281,4 +281,145 @@ describe("Trip Vault Phase 13: Completed Trip Archives & Photo Memories Flow", (
     const afterList = await getMemoriesForTrip(tripId);
     assert.strictEqual(afterList.length, 0);
   });
+
+  test("5. Multi-Photo Support and Specific Place Association (Devprayag & Custom Places)", async () => {
+    const tripId = "trip-tungnath-multi-photo";
+    const trip: TripRecord = {
+      id: tripId,
+      title: "Chopta Tungnath Chandrashila Trek",
+      destination: "Chopta, Tungnath & Chandrashila",
+      startDate: "2026-11-06T00:00:00.000Z",
+      endDate: "2026-11-10T00:00:00.000Z",
+      status: "ACTIVE",
+      travelStyle: "TREKKING",
+      budgetTotal: 5500,
+      currency: "INR",
+      waypoints: [
+        {
+          id: "wp-devprayag",
+          tripId,
+          title: "Devprayag Sangam",
+          category: "VIEWPOINT",
+          latitude: 30.1458,
+          longitude: 78.5989,
+          createdAt: "2026-11-06T00:00:00.000Z",
+        },
+        {
+          id: "wp-tungnath",
+          tripId,
+          title: "Tungnath Shiva Temple",
+          category: "VIEWPOINT",
+          latitude: 30.4883,
+          longitude: 79.2167,
+          createdAt: "2026-11-06T00:00:00.000Z",
+        },
+      ],
+      createdAt: "2026-11-05T00:00:00.000Z",
+      updatedAt: "2026-11-05T00:00:00.000Z",
+    };
+    await saveTrip(trip);
+
+    // Memory 1: Devprayag with 4 photos
+    const devprayagPhotos = [
+      "data:image/webp;base64,devprayag_sangam_confluence_1",
+      "data:image/webp;base64,devprayag_bhagirathi_river_2",
+      "data:image/webp;base64,devprayag_alaknanda_river_3",
+      "data:image/webp;base64,devprayag_ghat_view_4",
+    ];
+
+    const mem1: TripMemoryRecord = {
+      id: "mem-devprayag-sangam",
+      tripId,
+      title: "Holy Sangam at Devprayag",
+      date: "2026-11-06T23:30:00.000Z",
+      location: "Devprayag Sangam",
+      placeId: "wp-devprayag",
+      placeName: "Devprayag Sangam",
+      caption: "Mesmerizing meeting point of turquoise Bhagirathi and muddy Alaknanda forming Ganga.",
+      imageDataUrl: devprayagPhotos[0],
+      images: devprayagPhotos,
+      isHighlight: true,
+      rating: 5,
+      createdAt: "2026-11-06T23:30:00.000Z",
+    };
+    await saveMemory(tripId, mem1);
+
+    // Memory 2: Tungnath with 2 photos
+    const tungnathPhotos = [
+      "data:image/webp;base64,tungnath_ancient_temple_shrine_1",
+      "data:image/webp;base64,tungnath_himalayan_backdrop_2",
+    ];
+
+    const mem2: TripMemoryRecord = {
+      id: "mem-tungnath-darshan",
+      tripId,
+      title: "Morning Darshan at Tungnath",
+      date: "2026-11-08T09:00:00.000Z",
+      location: "Tungnath Shiva Temple",
+      placeId: "wp-tungnath",
+      placeName: "Tungnath Shiva Temple",
+      caption: "World's highest Shiva temple at 3,460m. Absolute peace and spiritual energy.",
+      imageDataUrl: tungnathPhotos[0],
+      images: tungnathPhotos,
+      isHighlight: true,
+      rating: 5,
+      createdAt: "2026-11-08T09:00:00.000Z",
+    };
+    await saveMemory(tripId, mem2);
+
+    // Memory 3: Custom place added on the fly (Sari Village homestay)
+    const mem3: TripMemoryRecord = {
+      id: "mem-sari-homestay",
+      tripId,
+      title: "Local Himalayan Garhwali Dinner",
+      date: "2026-11-09T19:00:00.000Z",
+      location: "Sari Village",
+      placeName: "Sari Village",
+      caption: "Warm Mandua ki Roti and Gahat ki Dal prepared by friendly locals.",
+      imageDataUrl: "data:image/webp;base64,sari_village_meal_1",
+      images: ["data:image/webp;base64,sari_village_meal_1"],
+      isHighlight: false,
+      rating: 5,
+      createdAt: "2026-11-09T19:00:00.000Z",
+    };
+    await saveMemory(tripId, mem3);
+
+    // Verify all 3 memories retrieved
+    const list = await getMemoriesForTrip(tripId);
+    assert.strictEqual(list.length, 3);
+
+    // Verify multi-photo persistence for Devprayag
+    const savedDevprayag = list.find((m) => m.id === "mem-devprayag-sangam");
+    assert.ok(savedDevprayag);
+    assert.strictEqual(savedDevprayag.images?.length, 4);
+    assert.strictEqual(savedDevprayag.imageDataUrl, devprayagPhotos[0]);
+    assert.strictEqual(savedDevprayag.placeName, "Devprayag Sangam");
+    assert.strictEqual(savedDevprayag.placeId, "wp-devprayag");
+
+    // Verify Tungnath photos
+    const savedTungnath = list.find((m) => m.id === "mem-tungnath-darshan");
+    assert.ok(savedTungnath);
+    assert.strictEqual(savedTungnath.images?.length, 2);
+    assert.strictEqual(savedTungnath.placeName, "Tungnath Shiva Temple");
+
+    // Verify Place-based filtering logic
+    const devprayagMemories = list.filter(
+      (m) => (m.placeName || m.location)?.toLowerCase() === "devprayag sangam"
+    );
+    assert.strictEqual(devprayagMemories.length, 1);
+    assert.strictEqual(devprayagMemories[0].title, "Holy Sangam at Devprayag");
+
+    const tungnathMemories = list.filter(
+      (m) => (m.placeName || m.location)?.toLowerCase() === "tungnath shiva temple"
+    );
+    assert.strictEqual(tungnathMemories.length, 1);
+    assert.strictEqual(tungnathMemories[0].title, "Morning Darshan at Tungnath");
+
+    const sariMemories = list.filter(
+      (m) => (m.placeName || m.location)?.toLowerCase() === "sari village"
+    );
+    assert.strictEqual(sariMemories.length, 1);
+    assert.strictEqual(sariMemories[0].title, "Local Himalayan Garhwali Dinner");
+  });
+
 });

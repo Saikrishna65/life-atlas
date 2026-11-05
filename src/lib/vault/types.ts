@@ -411,8 +411,11 @@ export interface TripMemoryRecord {
   title: string;
   date: ISODateString;
   location?: string;
+  placeId?: string;
+  placeName?: string;
   caption?: string;
   imageDataUrl?: string;
+  images?: string[];
   isHighlight: boolean;
   rating?: number;
   createdAt: ISODateString;

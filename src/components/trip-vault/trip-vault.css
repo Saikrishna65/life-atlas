@@ -1715,3 +1715,194 @@
 .atlas-private-shell:has(.control-orbit):has(> .music-theme) > div.relative {
   padding-bottom: 180px;
 }
+
+/* Trip Vault Memories Multi-Photo & Place Tagging */
+.tv-memory-photos-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(8px);
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  z-index: 2;
+}
+
+.tv-memory-place-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--tv-cyan, #06b6d4);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.tv-memory-multi-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+  margin: 10px 0 14px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  border: 1px dashed var(--tv-line);
+}
+
+.tv-preview-thumb {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--tv-line);
+}
+
+.tv-preview-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tv-preview-thumb-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.75);
+  color: #ffffff;
+  border: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  z-index: 3;
+}
+
+.tv-memory-carousel {
+  position: relative;
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000000;
+  margin-bottom: 12px;
+}
+
+.tv-carousel-main {
+  width: 100%;
+  max-height: 52vh;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+.tv-carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.7);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  z-index: 3;
+}
+
+.tv-carousel-nav.prev {
+  left: 10px;
+}
+
+.tv-carousel-nav.next {
+  right: 10px;
+}
+
+.tv-carousel-counter {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 2;
+}
+
+.tv-carousel-thumbs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 12px;
+}
+
+.tv-carousel-thumb-btn {
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid transparent;
+  opacity: 0.6;
+  cursor: pointer;
+  background: none;
+}
+
+.tv-carousel-thumb-btn[aria-current="true"] {
+  border-color: var(--tv-cyan, #06b6d4);
+  opacity: 1;
+}
+
+.tv-carousel-thumb-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tv-place-chips-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 10px;
+}
+
+.tv-place-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  background: var(--tv-panel, #f8fafc);
+  border: 1px solid var(--tv-line, #e2e8f0);
+  color: var(--tv-text, #0f172a);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tv-place-chip[aria-pressed="true"],
+.tv-place-chip.active {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: var(--tv-cyan, #06b6d4);
+  color: var(--tv-cyan, #0891b2);
+  font-weight: 600;
+}

@@ -10,10 +10,13 @@ import {
   FoodPlannerRecord,
   PackingItemRecord,
   ID,
+  WaypointRecord,
+  WaypointCategory,
 } from "./types";
 import {
   getTrip,
   getMemoriesForTrip,
+  saveTrip,
   saveMemory,
   deleteMemory,
   completeTripAndArchive,
@@ -279,28 +282,141 @@ export function useMemories(tripId: string) {
     };
   }, [trip, rentals, expenses, itineraries, foodItems, packingItems, memories]);
 
+  // Derived: All known places for this trip (from waypoints, destinations, itineraries, memories)
+  const tripPlaces = useMemo(() => {
+    const map = new Map<string, { id?: string; name: string }>();
+    if (trip?.destination) {
+      map.set(trip.destination.trim().toLowerCase(), { name: trip.destination.trim() });
+    }
+    if (trip?.waypoints) {
+      for (const wp of trip.waypoints) {
+        const wpTitle = (wp.title || (wp as any).name)?.trim();
+        if (wpTitle) {
+          map.set(wpTitle.toLowerCase(), { id: wp.id, name: wpTitle });
+        }
+      }
+    }
+    if (trip?.destinations) {
+      for (const d of trip.destinations) {
+        if (d.name?.trim()) {
+          map.set(d.name.trim().toLowerCase(), { id: d.id, name: d.name.trim() });
+        }
+      }
+    }
+    for (const itn of itineraries) {
+      for (const act of itn.activities || []) {
+        if (act.location?.trim()) {
+          map.set(act.location.trim().toLowerCase(), { name: act.location.trim() });
+        }
+      }
+    }
+    for (const mem of memories) {
+      const p = (mem.placeName || mem.location)?.trim();
+      if (p) {
+        map.set(p.toLowerCase(), { id: mem.placeId, name: p });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [trip, itineraries, memories]);
+
+  // Action: Add custom place to trip waypoints
+  const addTripPlace = useCallback(
+    async (name: string, category: WaypointCategory = "VIEWPOINT"): Promise<WaypointRecord> => {
+      const trimmed = name.trim();
+      if (!trimmed) throw new Error("Place name cannot be empty.");
+      const currentTrip = trip || (await getTrip(tripId));
+      if (!currentTrip) throw new Error("Trip not found.");
+
+      const existing = currentTrip.waypoints?.find(
+        (w) => (w.title || (w as any).name)?.toLowerCase() === trimmed.toLowerCase()
+      );
+      if (existing) return existing;
+
+      const newWp: WaypointRecord = {
+        id: "wp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+        tripId,
+        title: trimmed,
+        category,
+        latitude: 0,
+        longitude: 0,
+        createdAt: new Date().toISOString(),
+      };
+
+      const updatedTrip: TripRecord = {
+        ...currentTrip,
+        waypoints: [...(currentTrip.waypoints || []), newWp],
+        updatedAt: new Date().toISOString(),
+      };
+
+      await saveTrip(updatedTrip);
+      setTrip(updatedTrip);
+      notifyVaultChange();
+      return newWp;
+    },
+    [trip, tripId]
+  );
+
   // Action: Add Memory (REQ-MEM-02)
   const addMemory = useCallback(
     async (params: {
       title: string;
       date?: string;
       location?: string;
+      placeId?: string;
+      placeName?: string;
       caption?: string;
       imageDataUrl?: string;
+      images?: string[];
       isHighlight?: boolean;
       rating?: number;
     }): Promise<TripMemoryRecord> => {
       const id = "mem_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
       const now = new Date().toISOString();
 
+      const images = params.images && params.images.length > 0
+        ? params.images
+        : params.imageDataUrl
+        ? [params.imageDataUrl]
+        : [];
+      const primaryImage = images[0] || params.imageDataUrl || undefined;
+      const placeName = (params.placeName || params.location)?.trim() || undefined;
+
+      // Auto-register place into trip waypoints if not already present
+      if (placeName && trip) {
+        const hasWaypoint = trip.waypoints?.some(
+          (w) => (w.title || (w as any).name)?.toLowerCase() === placeName.toLowerCase()
+        );
+        if (!hasWaypoint) {
+          const newWp: WaypointRecord = {
+            id: params.placeId || "wp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+            tripId,
+            title: placeName,
+            category: "VIEWPOINT",
+            latitude: 0,
+            longitude: 0,
+            createdAt: now,
+          };
+          const updatedTrip: TripRecord = {
+            ...trip,
+            waypoints: [...(trip.waypoints || []), newWp],
+            updatedAt: now,
+          };
+          await saveTrip(updatedTrip);
+          setTrip(updatedTrip);
+        }
+      }
+
       const newRecord: TripMemoryRecord = {
         id,
         tripId,
         title: params.title.trim(),
         date: params.date || now,
-        location: params.location?.trim() || undefined,
+        location: placeName,
+        placeId: params.placeId || undefined,
+        placeName: placeName,
         caption: params.caption?.trim() || undefined,
-        imageDataUrl: params.imageDataUrl || undefined,
+        imageDataUrl: primaryImage,
+        images: images.length > 0 ? images : undefined,
         isHighlight: !!params.isHighlight,
         rating: params.rating || 5,
         createdAt: now,
@@ -311,7 +427,7 @@ export function useMemories(tripId: string) {
       notifyVaultChange();
       return saved;
     },
-    [tripId]
+    [tripId, trip]
   );
 
   // Action: Remove Memory
@@ -423,6 +539,8 @@ export function useMemories(tripId: string) {
     markTripCompleted,
     reopenTripStatus,
     exportToPublicJournal,
+    tripPlaces,
+    addTripPlace,
     refresh: loadData,
   };
 }
