@@ -50,5 +50,13 @@ public class AtlasWebView extends CapacitorWebView {
         }
         super.onPause();
     }
+
+    @Override
+    public void destroy() {
+        if (MediaPlaybackService.shouldKeepWebViewAwake()) {
+            return;
+        }
+        super.destroy();
+    }
 }
 

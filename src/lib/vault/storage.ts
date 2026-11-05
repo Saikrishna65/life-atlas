@@ -22,6 +22,7 @@ import {
   MedicalCardInfo,
   ContingencyPlan,
   TripMemoryRecord,
+  LiveExpeditionSession,
   ID,
 } from "./types";
 
@@ -994,6 +995,24 @@ export async function deleteMemory(tripId: ID, memoryId: ID): Promise<boolean> {
 /**
  * REQ-MEM-01: Transitions trip status to COMPLETED and stamps completion timestamp
  */
+// --- Live Expedition & Hybrid GPS Route Tracking ---
+
+export async function getLiveExpedition(tripId: ID): Promise<LiveExpeditionSession | null> {
+  const trip = await getTrip(tripId);
+  return trip?.liveExpedition || null;
+}
+
+export async function saveLiveExpedition(tripId: ID, session: LiveExpeditionSession): Promise<LiveExpeditionSession> {
+  const trip = await getTrip(tripId);
+  if (!trip) throw new VaultStorageError(`Trip ${tripId} not found`, "NOT_FOUND");
+  await saveTrip({
+    ...trip,
+    liveExpedition: session,
+    updatedAt: new Date().toISOString(),
+  });
+  return session;
+}
+
 export async function completeTripAndArchive(tripId: ID): Promise<TripRecord> {
   const trip = await getTrip(tripId);
   if (!trip) throw new VaultStorageError(`Trip ${tripId} not found`, "NOT_FOUND");

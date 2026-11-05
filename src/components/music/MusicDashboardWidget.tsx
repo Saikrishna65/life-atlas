@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Play,
   Pause,
@@ -30,6 +31,7 @@ import {
 import { triggerHaptic } from "@/lib/deviceAuth";
 
 export default function MusicDashboardWidget() {
+  const router = useRouter();
   const {
     currentTrack,
     isPlaying,
@@ -96,7 +98,13 @@ export default function MusicDashboardWidget() {
   const isOfflineTrack = currentTrack ? hasLocalAudio(currentTrack) : false;
 
   return (
-    <div className="relative rounded-3xl border border-cyan-500/25 bg-surface/90 hover:border-cyan-400/40 p-5 sm:p-6 transition-all duration-300 shadow-soft overflow-hidden group">
+    <div
+      onClick={() => {
+        triggerHaptic("tap");
+        router.push("/secret/music");
+      }}
+      className="relative rounded-3xl border border-cyan-500/25 bg-surface/90 hover:border-cyan-400/40 p-5 sm:p-6 transition-all duration-300 shadow-soft overflow-hidden group cursor-pointer active:scale-[0.99]"
+    >
       {/* Ambient reactive background glow */}
       <div
         className={`absolute -top-16 -right-16 w-56 h-56 rounded-full blur-3xl pointer-events-none transition-all duration-700 ${
@@ -156,7 +164,8 @@ export default function MusicDashboardWidget() {
         <div className="relative z-10 space-y-4 pt-1">
           {/* Track Hero Card - Tap opens NowPlayingModal */}
           <div
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               triggerHaptic("tap");
               setIsNowPlayingOpen(true);
             }}

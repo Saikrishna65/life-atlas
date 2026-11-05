@@ -7,6 +7,7 @@ import MerchantImage from "@/components/finance/MerchantImage";
 import FinanceThemePicker, { FinanceTheme, THEME_STORAGE_KEY, isFinanceTheme } from "@/components/finance/FinanceThemePicker";
 import AnimatedMoney from "@/components/finance/AnimatedMoney";
 import { usePendingFinanceCount } from "@/lib/finance/usePendingFinanceCount";
+import { syncFinanceWidget } from "@/lib/finance/financeWidgetSync";
 import FinanceSelect from "@/components/finance/FinanceSelect";
 
 import "@/app/secret/finance/finance.css";
@@ -262,7 +263,15 @@ export default function FinanceDashboardPage() {
       if (isCurrent()) setAccounts(allAccounts);
 
       const nw = await balanceService.getNetWorth();
-      if (isCurrent()) setNetWorthPaise(nw.netWorthPaise);
+      if (isCurrent()) {
+        setNetWorthPaise(nw.netWorthPaise);
+        syncFinanceWidget({
+          balance: formatPaise(nw.netWorthPaise),
+          account: allAccounts.length === 1 ? allAccounts[0].name : "Total Net Worth",
+          subtext: allAccounts.length === 1 ? "1 active account" : `${allAccounts.length} active accounts`,
+          pendingCount: pendingFinanceCount,
+        });
+      }
       if (isCurrent()) setTotalAssetsPaise(nw.totalAssetsPaise);
       if (isCurrent()) setTotalLiabilitiesPaise(nw.totalLiabilitiesPaise);
 

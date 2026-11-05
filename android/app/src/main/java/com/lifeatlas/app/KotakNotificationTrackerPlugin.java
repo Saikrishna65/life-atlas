@@ -82,6 +82,7 @@ public class KotakNotificationTrackerPlugin extends Plugin {
             Set<String> selected = new HashSet<>();
             for (int i = 0; i < ids.length(); i++) selected.add(ids.getString(i));
             int remaining = BankNotificationStore.acknowledge(getContext(), selected);
+            try { FinanceAppWidgetProvider.updateAllWidgets(getContext(), null, null, null, remaining); } catch (Exception ignored) {}
             call.resolve(new JSObject().put("success", true).put("remainingCount", remaining));
         } catch (Exception e) { call.reject("Could not acknowledge bank alerts", e); }
     }
@@ -93,6 +94,19 @@ public class KotakNotificationTrackerPlugin extends Plugin {
         try { call.resolve(new JSObject().put("success", true).put("count", BankNotificationStore.increment(getContext(), "duplicatesIgnoredCount"))); }
         catch (Exception e) { call.reject("Could not update tracking status", e); }
     }
+    @PluginMethod public void updateFinanceWidget(PluginCall call) {
+        try {
+            String balance = call.getString("balance", "₹0.00");
+            String account = call.getString("account", "Total Net Worth");
+            String subtext = call.getString("subtext", "Private Local Ledger");
+            Integer pending = call.getInt("pendingCount", null);
+            FinanceAppWidgetProvider.updateAllWidgets(getContext(), balance, account, subtext, pending);
+            call.resolve(new JSObject().put("success", true));
+        } catch (Exception e) {
+            call.reject("Could not update Finance widget", e);
+        }
+    }
+
     @PluginMethod public void clearTrackingData(PluginCall call) {
         try { BankNotificationStore.clear(getContext()); call.resolve(new JSObject().put("success", true)); }
         catch (Exception e) { call.reject("Could not clear bank alerts", e); }

@@ -6,4 +6,6 @@
     <string name="custom_url_scheme">com.lifeatlas.app</string>
     <string name="widget_music_name">Music Vault</string>
     <string name="widget_music_description">Control Life Atlas background playback and view live track artwork directly from your home screen.</string>
+    <string name="widget_finance_name">Finance Vault</string>
+    <string name="widget_finance_description">Glance at your current account balance, savings pockets, and pending transactions directly from your home screen.</string>
 </resources>

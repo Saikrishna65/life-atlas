@@ -133,6 +133,7 @@ export interface TripRecord {
   categoryBudgets?: Partial<Record<ExpenseCategory, number>>;
   waypoints?: WaypointRecord[];
   routeSegments?: RouteSegment[];
+  liveExpedition?: LiveExpeditionSession;
   medicalCard?: MedicalCardInfo;
   contingencies?: ContingencyPlan[];
   memories?: TripMemoryRecord[];
@@ -466,6 +467,59 @@ export interface PNRParseResult {
 }
 
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Live Expedition & Hybrid GPS Route Tracking Models
+// -----------------------------------------------------------------------------
+
+export interface BreadcrumbPoint {
+  latitude: number;
+  longitude: number;
+  altitude: number | null; // Elevation in meters
+  speed: number | null;    // Speed in km/h
+  accuracy: number;        // GPS fix accuracy in meters
+  timestamp: number;       // Epoch time in ms
+}
+
+export type ExpeditionLegCategory = "TREK" | "DRIVE" | "WALK" | "CYCLE" | "OTHER";
+export type ExpeditionStatus = "IDLE" | "ACTIVE" | "PAUSED" | "COMPLETED";
+
+export interface ExpeditionLeg {
+  id: ID;
+  tripId: ID;
+  title: string;
+  category: ExpeditionLegCategory;
+  startedAt: ISODateString;
+  endedAt?: ISODateString;
+  status: "ACTIVE" | "PAUSED" | "COMPLETED";
+  distanceKm: number;
+  durationSeconds: number;
+  movingSeconds: number;
+  maxSpeedKmh: number;
+  avgSpeedKmh: number;
+  startElevationMeters?: number;
+  maxElevationMeters?: number;
+  minElevationMeters?: number;
+  elevationGainMeters: number;
+  coordinates: BreadcrumbPoint[];
+}
+
+export interface LiveExpeditionSession {
+  tripId: ID;
+  status: ExpeditionStatus;
+  startedAt?: ISODateString;
+  endedAt?: ISODateString;
+  totalDistanceKm: number;
+  totalDurationSeconds: number;
+  movingSeconds: number;
+  currentSpeedKmh?: number;
+  currentElevationMeters?: number;
+  elevationGainMeters: number;
+  maxElevationMeters?: number;
+  currentLocation?: BreadcrumbPoint;
+  activeLegId?: ID;
+  legs: ExpeditionLeg[];
+}
+
 // Store Name Mapping Type
 // -----------------------------------------------------------------------------
 

@@ -24,6 +24,8 @@ import { useRoutesAndWaypoints } from "@/lib/vault/useRoutesAndWaypoints";
 import { TripRecord, RouteSegment } from "@/lib/vault/types";
 import { useLockBodyScroll } from "@/lib/vault/useLockBodyScroll";
 import { Select } from "@/components/ui/Select";
+import { useLiveExpedition } from "@/lib/vault/useLiveExpedition";
+import ExpeditionRouteMap from "@/components/trip-vault/ExpeditionRouteMap";
 
 export default function TripRoutesPage() {
   const params = useParams();
@@ -32,6 +34,7 @@ export default function TripRoutesPage() {
 
   const [trip, setTrip] = useState<TripRecord | null>(null);
   const [isTripLoading, setIsTripLoading] = useState(true);
+  const { session: liveExpedition } = useLiveExpedition(tripId);
 
   const {
     routeSegments,
@@ -282,6 +285,24 @@ export default function TripRoutesPage() {
           </div>
         </div>
       </nav>
+
+      {/* LIVE EXPEDITION TOPOGRAPHIC ROUTE MAP */}
+      {liveExpedition && (
+        <section className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse" />
+              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
+                Satellite GPS Route Tracker
+              </h3>
+            </div>
+            <span className="text-xs font-semibold text-slate-500">
+              Status: <b className="text-slate-800">{liveExpedition.status}</b>
+            </span>
+          </div>
+          <ExpeditionRouteMap session={liveExpedition} />
+        </section>
+      )}
 
       {/* MAPS HERO COMMAND BANNER */}
       <section className="relative rounded-3xl border border-teal-500/30 bg-surface/80 overflow-hidden shadow-soft p-6 sm:p-8 backdrop-blur-xs">

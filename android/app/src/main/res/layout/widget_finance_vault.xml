@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_finance_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingStart="16dp"
+    android:paddingTop="14dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="14dp">
+
+    <!-- Dynamic Theme Background (renders luxury gradient + 24dp rounded corners + subtle border) -->
+    <ImageView
+        android:id="@+id/widget_finance_bg_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:contentDescription="@null" />
+
+    <!-- Top Row: Icon + Label + Pending Review Badge -->
+    <LinearLayout
+        android:id="@+id/widget_finance_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_finance_tag"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="ATLAS FINANCE"
+            android:textColor="#34D399"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.15" />
+
+        <TextView
+            android:id="@+id/widget_finance_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#2034D399"
+            android:paddingStart="8dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="2dp"
+            android:text="Up to date"
+            android:textColor="#A7F3D0"
+            android:textSize="9sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <!-- Center Section: Balance & Subtitle -->
+    <LinearLayout
+        android:id="@+id/widget_finance_body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/widget_finance_header"
+        android:layout_marginTop="8dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_finance_account"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Total Net Worth"
+            android:textColor="#94A3B8"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/widget_finance_balance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="₹0.00"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_finance_subtext"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="Private Local Ledger"
+            android:textColor="#64748B"
+            android:textSize="10sp" />
+
+    </LinearLayout>
+
+    <!-- Bottom Actions Row -->
+    <LinearLayout
+        android:id="@+id/widget_finance_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:gravity="end|center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/widget_finance_btn_review"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:background="#30F59E0B"
+            android:paddingStart="12dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="5dp"
+            android:text="Review Alerts"
+            android:textColor="#FBBF24"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/widget_finance_btn_open"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#2034D399"
+            android:paddingStart="12dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="5dp"
+            android:text="Open Vault →"
+            android:textColor="#6EE7B7"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</RelativeLayout>
+

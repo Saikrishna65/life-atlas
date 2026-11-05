@@ -60,6 +60,10 @@ public class BankNotificationListener extends NotificationListenerService {
         if (BankNotificationStore.enqueue(this, event)) {
             FinanceReviewNotifications.show(this, event);
             KotakNotificationTrackerPlugin.signalNotification();
+            try {
+                FinanceAppWidgetProvider.updateAllWidgets(this, null, null, null, BankNotificationStore.pending(this).length());
+            } catch (Exception ignored) {
+            }
         }
     }
     private static String value(CharSequence text) { return text == null ? "" : text.toString(); }

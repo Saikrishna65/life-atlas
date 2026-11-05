@@ -37,6 +37,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AtlasFileExportPlugin.class);
         registerPlugin(AtlasPermissionsPlugin.class);
         registerPlugin(KotakNotificationTrackerPlugin.class);
+        registerPlugin(ExpeditionTrackingPlugin.class);
         super.onCreate(savedInstanceState);
         handleSendIntent(getIntent());
 
@@ -126,6 +127,14 @@ public class MainActivity extends BridgeActivity {
             String eventId = intent.getStringExtra("finance_event_id");
             String eventQuery = eventId != null && eventId.matches("gmsg_[0-9a-f]{64}") ? "&event=" + eventId : "";
             pendingTargetRoute = "/secret/finance?review=1" + eventQuery;
+            dispatchPendingRoute();
+            return;
+        }
+
+        // Check if intent was triggered by Finance Vault Home Screen Widget
+        if ("com.lifeatlas.app.ACTION_OPEN_FINANCE_VAULT".equals(action)
+            || (intent.hasExtra("target_route") && "/secret/finance".equals(intent.getStringExtra("target_route")))) {
+            pendingTargetRoute = "/secret/finance";
             dispatchPendingRoute();
             return;
         }
@@ -242,7 +251,6 @@ public class MainActivity extends BridgeActivity {
                 } catch (Exception ignored) {
                 }
             }
-            return;
         }
         super.onDestroy();
     }

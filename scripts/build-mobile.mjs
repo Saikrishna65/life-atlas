@@ -10,7 +10,7 @@ await fs.mkdir(output,{recursive:true});
 const aliases = {'next/navigation':'navigation.tsx','next/link':'link.tsx','next/image':'image.tsx','next/dynamic':'dynamic.tsx'};
 const result = await build({
  entryPoints:['mobile/bootstrap.ts'],bundle:true,splitting:true,format:'esm',jsx:'automatic',outdir:output,
- target:['chrome89'],minify:true,metafile:true,chunkNames:'chunks/[name]-[hash]',
+ loader:{'.png':'dataurl','.jpg':'dataurl','.svg':'dataurl','.gif':'dataurl'},target:['chrome89'],minify:true,metafile:true,chunkNames:'chunks/[name]-[hash]',
  define:{'process.env.NODE_ENV':'"production"','process.env.NEXT_PUBLIC_OFFLINE_APP':'"true"','process.env.npm_lifecycle_event':'""','process.env.NEXT_PUBLIC_MOBILE_API_ORIGIN':JSON.stringify(process.env.NEXT_PUBLIC_MOBILE_API_ORIGIN || 'https://life-atlas-eight-five.vercel.app')},
  plugins:[{name:'mobile-adapters',setup(build){
    build.onResolve({filter:/^next\/(navigation|link|image|dynamic)$/},args => ({path:path.join(root,'mobile',aliases[args.path])}));
