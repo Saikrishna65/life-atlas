@@ -24,6 +24,7 @@ import {
   formatDuration,
 } from "./liveTrackingEngine";
 import { notifyVaultChange } from "./useTripVault";
+import { syncActiveTripToWidget } from "./tripWidgetSync";
 import { triggerHaptic } from "@/lib/deviceAuth";
 
 // Native Capacitor Plugins Bridge helper
@@ -74,11 +75,12 @@ export function useLiveExpedition(tripId: ID) {
         await saveLiveExpedition(tripId, updated);
         notifyVaultChange();
 
-        // Sync with Native Android Notification Service
+        // Sync with Native Android Notification Service & Home Screen Widget
         const plugins = getCapacitorPlugins();
         if (plugins?.ExpeditionTracking && updated.status === "ACTIVE") {
           void plugins.ExpeditionTracking.updateStats({ distanceKm: updated.totalDistanceKm });
         }
+        void syncActiveTripToWidget(tripId);
       } catch (err) {
         console.error("Failed to save expedition:", err);
       }

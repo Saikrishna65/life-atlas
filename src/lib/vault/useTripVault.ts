@@ -14,6 +14,7 @@ import {
   deleteTripCascade,
   isIndexedDBAvailable,
 } from "./storage";
+import { syncActiveTripToWidget } from "./tripWidgetSync";
 
 const VAULT_CHANGE_EVENT = "life_atlas_vault_change";
 
@@ -42,6 +43,7 @@ export function useTripVault() {
       setError(null);
       const data = await getAllTrips();
       setTrips(data);
+      void syncActiveTripToWidget();
     } catch (err) {
       console.error("Failed loading trips from vault:", err);
       setError("Unable to load expeditions from local storage.");
@@ -67,6 +69,7 @@ export function useTripVault() {
         if (mounted) {
           setTrips(data);
           setError(null);
+          void syncActiveTripToWidget();
         }
       } catch (err) {
         if (mounted) {
@@ -117,6 +120,7 @@ export function useTripVault() {
       newTrip.finance = newTrip.finance || defaultTripSettings(newTrip) || undefined;
       const saved = await saveTrip(newTrip);
       notifyVaultChange();
+      void syncActiveTripToWidget();
       return saved;
     },
     []
@@ -126,6 +130,7 @@ export function useTripVault() {
   const updateTrip = useCallback(async (trip: TripRecord): Promise<TripRecord> => {
     const saved = await saveTrip(trip);
     notifyVaultChange();
+    void syncActiveTripToWidget();
     return saved;
   }, []);
 
@@ -145,6 +150,7 @@ export function useTripVault() {
 
       const saved = await saveTrip(updated);
       notifyVaultChange();
+      void syncActiveTripToWidget();
       return saved;
     },
     []
@@ -155,6 +161,7 @@ export function useTripVault() {
     const success = await deleteTripCascade(tripId);
     if (success) {
       notifyVaultChange();
+      void syncActiveTripToWidget();
     }
     return success;
   }, []);

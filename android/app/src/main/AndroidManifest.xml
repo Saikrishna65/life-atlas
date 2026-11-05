@@ -88,6 +88,20 @@
                 android:resource="@xml/widget_finance_info" />
         </receiver>
 
+        <!-- Trip Vault Android Home Screen Widget Provider -->
+        <receiver
+            android:name=".TripAppWidgetProvider"
+            android:label="@string/widget_trip_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.lifeatlas.app.ACTION_OPEN_TRIP_VAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_trip_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

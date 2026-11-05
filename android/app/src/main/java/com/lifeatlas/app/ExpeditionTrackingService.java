@@ -65,6 +65,11 @@ public class ExpeditionTrackingService extends Service implements LocationListen
                 double km = intent.getDoubleExtra(EXTRA_DISTANCE_KM, 0.0);
                 totalDistanceMeters = km * 1000.0;
                 updateNotification();
+                try {
+                    String distanceStr = String.format(Locale.US, "%.1f km", km);
+                    TripAppWidgetProvider.updateLiveTracking(this, currentTripId, currentLegTitle, distanceStr, null, null);
+                } catch (Exception ignored) {
+                }
             }
             return START_STICKY;
         }
@@ -80,6 +85,19 @@ public class ExpeditionTrackingService extends Service implements LocationListen
         startForeground(NOTIFICATION_ID, buildNotification());
         isServiceRunning = true;
         startLocationUpdates();
+
+        // Update home screen widget on expedition start
+        try {
+            TripAppWidgetProvider.updateLiveTracking(
+                this,
+                currentTripId,
+                currentLegTitle,
+                String.format(Locale.US, "%.1f km", totalDistanceMeters / 1000.0),
+                "--",
+                "--"
+            );
+        } catch (Exception ignored) {
+        }
 
         return START_STICKY;
     }
@@ -137,6 +155,16 @@ public class ExpeditionTrackingService extends Service implements LocationListen
         broadcast.putExtra("distKm", totalDistanceMeters / 1000.0);
         broadcast.putExtra(EXTRA_TRIP_ID, currentTripId);
         sendBroadcast(broadcast);
+
+        // Also update Trip Vault Home Screen Widget in real time
+        try {
+            double km = totalDistanceMeters / 1000.0;
+            String distanceStr = String.format(Locale.US, "%.1f km", km);
+            String altStr = location.hasAltitude() ? String.format(Locale.US, "%,d m", Math.round(location.getAltitude())) : "--";
+            String speedStr = location.hasSpeed() ? String.format(Locale.US, "%.1f km/h", location.getSpeed() * 3.6f) : "--";
+            TripAppWidgetProvider.updateLiveTracking(this, currentTripId, currentLegTitle, distanceStr, altStr, speedStr);
+        } catch (Exception ignored) {
+        }
     }
 
     private void updateNotification() {

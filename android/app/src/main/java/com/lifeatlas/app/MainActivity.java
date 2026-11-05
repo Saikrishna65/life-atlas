@@ -147,6 +147,15 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
+        // Check if intent was triggered by Trip Vault Home Screen Widget
+        if ("com.lifeatlas.app.ACTION_OPEN_TRIP_VAULT".equals(action)
+            || (intent.hasExtra("target_route") && intent.getStringExtra("target_route") != null && intent.getStringExtra("target_route").startsWith("/secret/vault"))) {
+            String route = intent.getStringExtra("target_route");
+            pendingTargetRoute = (route != null && !route.isEmpty()) ? route : "/secret/vault";
+            dispatchPendingRoute();
+            return;
+        }
+
         if (Intent.ACTION_SEND.equals(action) && type != null && "text/plain".equals(type)) {
             String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
             if (sharedText != null && (sharedText.contains("youtube.com") || sharedText.contains("youtu.be"))) {

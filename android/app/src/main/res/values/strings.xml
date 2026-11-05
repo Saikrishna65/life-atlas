@@ -8,4 +8,6 @@
     <string name="widget_music_description">Control Life Atlas background playback and view live track artwork directly from your home screen.</string>
     <string name="widget_finance_name">Finance Vault</string>
     <string name="widget_finance_description">Glance at your current account balance, savings pockets, and pending transactions directly from your home screen.</string>
+    <string name="widget_trip_name">Trip Vault</string>
+    <string name="widget_trip_description">Glance at your active expedition, live GPS distance, mountain elevation, and upcoming treks directly from your home screen.</string>
 </resources>
