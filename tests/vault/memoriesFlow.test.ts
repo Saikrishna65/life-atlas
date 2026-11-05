@@ -15,6 +15,7 @@ import {
   completeTripAndArchive,
   reopenTrip,
 } from "../../src/lib/vault/storage";
+import { publishTripToWebsite } from "../../src/lib/vault/publishTrip";
 import {
   TripRecord,
   TripMemoryRecord,
@@ -420,6 +421,94 @@ describe("Trip Vault Phase 13: Completed Trip Archives & Photo Memories Flow", (
     );
     assert.strictEqual(sariMemories.length, 1);
     assert.strictEqual(sariMemories[0].title, "Local Himalayan Garhwali Dinner");
+  });
+
+
+  test("6. publishTripToWebsite Gathers Places, Multi-Photos, Distance and Sets publishedSlug", async () => {
+    const tripId = "trip-tungnath-multi-photo";
+    await saveTrip({
+      id: tripId,
+      title: "Chopta Tungnath Chandrashila Trek",
+      destination: "Chopta, Tungnath & Chandrashila",
+      startDate: "2026-11-06T00:00:00.000Z",
+      endDate: "2026-11-10T00:00:00.000Z",
+      status: "COMPLETED",
+      travelStyle: "TREKKING",
+      budgetTotal: 5500,
+      currency: "INR",
+      waypoints: [
+        {
+          id: "wp-devprayag",
+          tripId,
+          title: "Devprayag Sangam",
+          category: "VIEWPOINT",
+          latitude: 30.1458,
+          longitude: 78.5989,
+          createdAt: "2026-11-06T00:00:00.000Z",
+        },
+      ],
+      memories: [
+        {
+          id: "mem-devprayag-sangam",
+          tripId,
+          title: "Holy Sangam at Devprayag",
+          date: "2026-11-06T23:30:00.000Z",
+          location: "Devprayag Sangam",
+          placeName: "Devprayag Sangam",
+          caption: "Confluence of Bhagirathi and Alaknanda",
+          imageDataUrl: "data:image/webp;base64,sangam1",
+          images: ["data:image/webp;base64,sangam1", "data:image/webp;base64,sangam2", "data:image/webp;base64,sangam3", "data:image/webp;base64,sangam4"],
+          isHighlight: true,
+          rating: 5,
+          createdAt: "2026-11-06T23:30:00.000Z",
+        },
+      ],
+      createdAt: "2026-11-05T00:00:00.000Z",
+      updatedAt: "2026-11-05T00:00:00.000Z",
+    });
+
+    const originalFetch = globalThis.fetch;
+
+    let interceptedPayload: any = null;
+    globalThis.fetch = (async (url: any, init: any) => {
+      if (String(url).includes("/api/vault/export")) {
+        interceptedPayload = JSON.parse(init.body);
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            success: true,
+            tripId,
+            slug: "chopta-tungnath-chandrashila-trek",
+            publicUrl: "/trips/chopta-tungnath-chandrashila-trek",
+            placesCount: interceptedPayload.places.length,
+            photoCount: interceptedPayload.memories.reduce((acc: number, m: any) => acc + (m.images?.length || 1), 0),
+            memoryCount: interceptedPayload.memories.length,
+            message: "Expedition successfully published!",
+          }),
+        } as any;
+      }
+      return originalFetch(url, init);
+    }) as any;
+
+    try {
+      const result = await publishTripToWebsite(tripId);
+
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.slug, "chopta-tungnath-chandrashila-trek");
+      assert.strictEqual(result.publicUrl, "/trips/chopta-tungnath-chandrashila-trek");
+      assert.ok(interceptedPayload);
+      assert.strictEqual(interceptedPayload.title, "Chopta Tungnath Chandrashila Trek");
+      assert.ok(interceptedPayload.places.some((p: any) => p.name.includes("Devprayag")));
+      assert.ok(interceptedPayload.memories.some((m: any) => m.images?.length === 4));
+
+      // Verify trip record in IndexedDB has publishedSlug stamped
+      const updatedTrip = await getTrip(tripId);
+      assert.strictEqual(updatedTrip?.publishedSlug, "chopta-tungnath-chandrashila-trek");
+      assert.ok(updatedTrip?.publishedAt);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
 });

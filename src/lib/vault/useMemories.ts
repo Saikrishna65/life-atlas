@@ -29,6 +29,7 @@ import {
   isIndexedDBAvailable,
 } from "./storage";
 import { notifyVaultChange } from "./useTripVault";
+import { publishTripToWebsite } from "./publishTrip";
 
 export interface ExpeditionDossierStats {
   isCompleted: boolean;
@@ -478,48 +479,9 @@ export function useMemories(tripId: string) {
   // Action: Export to Public Journal (REQ-MEM-03)
   const exportToPublicJournal = useCallback(
     async (selectedMemoryIds?: string[]) => {
-      if (!trip) throw new Error("No trip available to export.");
-
-      const memoriesToExport = selectedMemoryIds?.length
-        ? memories.filter((m) => selectedMemoryIds.includes(m.id))
-        : memories;
-
-      const payload = {
-        tripId: trip.id,
-        title: trip.title,
-        destination: trip.destination,
-        startDate: trip.startDate,
-        endDate: trip.endDate || trip.completedAt,
-        description: trip.notes || `Expedition across ${trip.destination}. Exported from Life Atlas Trip Vault.`,
-        coverImage: trip.coverImage || memoriesToExport.find((m) => m.imageDataUrl)?.imageDataUrl,
-        memories: memoriesToExport.map((m) => ({
-          title: m.title,
-          caption: m.caption,
-          date: m.date,
-          imageUrl: m.imageDataUrl,
-        })),
-        itineraryDays: itineraries.map((d) => ({
-          dayIndex: d.dayIndex,
-          date: d.date,
-          title: d.title || `Day ${d.dayIndex + 1}`,
-          description: d.description || d.activities?.map((a) => `${a.startTime || ""} ${a.title}`).join(", "),
-        })),
-      };
-
-      const res = await fetch("/api/vault/export", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.error || `Server responded with status ${res.status}`);
-      }
-
-      return await res.json();
+      return publishTripToWebsite(tripId, selectedMemoryIds);
     },
-    [trip, memories, itineraries]
+    [tripId]
   );
 
   return {

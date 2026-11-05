@@ -12,8 +12,12 @@ export async function POST(request: Request) {
       endDate,
       description,
       coverImage,
+      duration,
+      places = [],
       memories = [],
       itineraryDays = [],
+      totalDistanceKm,
+      existingSlug,
     } = body;
 
     if (!title || !destination || !startDate) {
@@ -41,43 +45,134 @@ export async function POST(request: Request) {
       });
     }
 
-    // 2. Generate unique slug
+    // 2. Resolve Slug & Existing Trip Check (Upsert support)
     const rawSlug = (title || destination)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)+/g, "") || "vault-expedition";
 
-    let slug = rawSlug;
-    let suffix = 1;
-    while (await prisma.trip.findUnique({ where: { slug } })) {
-      slug = `${rawSlug}-${suffix++}`;
+    let slug = existingSlug || rawSlug;
+    let existingTrip = null;
+
+    if (existingSlug) {
+      existingTrip = await prisma.trip.findUnique({ where: { slug: existingSlug } });
+    }
+    if (!existingTrip) {
+      existingTrip = await prisma.trip.findUnique({ where: { slug: rawSlug } });
+      if (existingTrip) {
+        slug = rawSlug;
+      }
     }
 
-    // 3. Compute duration string
-    let durationStr: string | null = null;
+    // Compute duration string
+    let durationStr: string | null = duration || null;
     const startObj = new Date(startDate);
     const endObj = endDate ? new Date(endDate) : null;
-    if (endObj) {
+    if (!durationStr && endObj) {
       const days = Math.max(1, Math.round((endObj.getTime() - startObj.getTime()) / (1000 * 60 * 60 * 24)) + 1);
       durationStr = `${days} Days`;
     }
 
-    // 4. Create public Trip in Prisma Postgres (REQ-MEM-03)
-    const trip = await prisma.trip.create({
-      data: {
-        title,
-        slug,
-        destination,
-        startDate: startObj,
-        endDate: endObj,
-        duration: durationStr,
-        description: description || `Expedition across ${destination}. Published from Life Atlas Trip Vault.`,
-        coverImage: coverImage || null,
-        userId: user.id,
-      },
-    });
+    let fullDescription = description || `Expedition across ${destination}. Published from Life Atlas Trip Vault.`;
+    if (totalDistanceKm && Number(totalDistanceKm) > 0 && !fullDescription.includes("Distance Traveled")) {
+      fullDescription += `\n\nTotal Expedition Distance Traveled: ${Number(totalDistanceKm).toFixed(1)} km.`;
+    }
 
-    // 5. Create TripDays if present
+    let trip;
+    if (existingTrip) {
+      // Update existing public trip
+      trip = await prisma.trip.update({
+        where: { id: existingTrip.id },
+        data: {
+          title,
+          destination,
+          startDate: startObj,
+          endDate: endObj,
+          duration: durationStr,
+          description: fullDescription,
+          coverImage: coverImage || existingTrip.coverImage,
+        },
+      });
+      // Clear previous child records to perform a clean refresh
+      await prisma.tripDay.deleteMany({ where: { tripId: trip.id } });
+      await prisma.tripPlace.deleteMany({ where: { tripId: trip.id } });
+      await prisma.photo.deleteMany({ where: { tripId: trip.id } });
+    } else {
+      // Generate guaranteed unique slug for new trip
+      let suffix = 1;
+      while (await prisma.trip.findUnique({ where: { slug } })) {
+        slug = `${rawSlug}-${suffix++}`;
+      }
+      trip = await prisma.trip.create({
+        data: {
+          title,
+          slug,
+          destination,
+          startDate: startObj,
+          endDate: endObj,
+          duration: durationStr,
+          description: fullDescription,
+          coverImage: coverImage || null,
+          userId: user.id,
+        },
+      });
+    }
+
+    // 3. Link / Create Places in Prisma and connect TripPlaces
+    const placeMap = new Map<string, string>(); // placeName.toLowerCase() -> placeId
+    let placesExportCount = 0;
+
+    if (Array.isArray(places) && places.length > 0) {
+      for (const pl of places) {
+        const plName = typeof pl === "string" ? pl.trim() : (pl?.title || pl?.name)?.trim();
+        if (!plName) continue;
+
+        const plSlug = plName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "") || "place";
+        let place = await prisma.place.findFirst({
+          where: {
+            OR: [
+              { slug: plSlug },
+              { name: { equals: plName, mode: "insensitive" } },
+            ],
+          },
+        });
+
+        if (!place) {
+          place = await prisma.place.create({
+            data: {
+              name: plName,
+              slug: plSlug,
+              country: "India",
+              region: typeof pl === "object" ? pl.region || "Uttarakhand" : null,
+              latitude: typeof pl === "object" && typeof pl.latitude === "number" ? pl.latitude : null,
+              longitude: typeof pl === "object" && typeof pl.longitude === "number" ? pl.longitude : null,
+              userId: user.id,
+            },
+          });
+        }
+
+        placeMap.set(plName.toLowerCase(), place.id);
+
+        // Link TripPlace
+        await prisma.tripPlace.upsert({
+          where: {
+            tripId_placeId: {
+              tripId: trip.id,
+              placeId: place.id,
+            },
+          },
+          create: {
+            tripId: trip.id,
+            placeId: place.id,
+            visitDate: startObj,
+          },
+          update: {},
+        });
+        placesExportCount++;
+      }
+    }
+
+    // 4. Create TripDays if present
     if (Array.isArray(itineraryDays) && itineraryDays.length > 0) {
       for (const day of itineraryDays) {
         await prisma.tripDay.create({
@@ -92,7 +187,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 6. Create Memories and Photos
+    // 5. Create Memories and Photos (Supports multiple images per memory!)
     let memoryExportCount = 0;
     let photoExportCount = 0;
 
@@ -100,6 +195,8 @@ export async function POST(request: Request) {
       if (!mem.title) continue;
 
       const memDate = mem.date ? new Date(mem.date) : startObj;
+      const memPlaceName = (mem.placeName || mem.location)?.trim();
+      const memPlaceId = memPlaceName ? placeMap.get(memPlaceName.toLowerCase()) : undefined;
 
       // Create Prisma Memory
       const createdMem = await prisma.memory.create({
@@ -125,14 +222,24 @@ export async function POST(request: Request) {
       });
       memoryExportCount++;
 
-      // Create Photo attached to Trip if image is present
-      if (mem.imageUrl) {
+      // Collect all photo URLs from memory (multi-image support!)
+      const photoUrls: string[] = Array.isArray(mem.images) && mem.images.length > 0
+        ? mem.images
+        : mem.imageUrl
+        ? [mem.imageUrl]
+        : [];
+
+      for (let pIdx = 0; pIdx < photoUrls.length; pIdx++) {
+        const photoUrl = photoUrls[pIdx];
+        if (!photoUrl) continue;
+
         await prisma.photo.create({
           data: {
-            url: mem.imageUrl,
-            caption: mem.caption || mem.title,
+            url: photoUrl,
+            caption: mem.caption ? `${mem.title} — ${mem.caption}` : mem.title,
             date: memDate,
             tripId: trip.id,
+            placeId: memPlaceId || null,
             userId: user.id,
           },
         });
@@ -140,13 +247,14 @@ export async function POST(request: Request) {
       }
     }
 
-    // 7. Revalidate Next.js cache for public routes
+    // 6. Revalidate Next.js cache for public routes
     try {
       revalidatePath("/");
       revalidatePath("/trips");
-      revalidatePath(`/trips/${slug}`);
+      revalidatePath(`/trips/${trip.slug}`);
       revalidatePath("/timeline");
       revalidatePath("/photography");
+      revalidatePath("/explore");
     } catch (e) {
       console.warn("Revalidation notice:", e);
     }
@@ -156,6 +264,7 @@ export async function POST(request: Request) {
       tripId: trip.id,
       slug: trip.slug,
       publicUrl: `/trips/${trip.slug}`,
+      placesCount: placesExportCount,
       memoryCount: memoryExportCount,
       photoCount: photoExportCount,
       message: `Expedition successfully published to Life Atlas Public Journal!`,
@@ -166,7 +275,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: `Could not export to public journal. If you are offline, please connect to network and try again. Details: ${msg}`,
+        error: `Could not export to public journal. Details: ${msg}`,
       },
       { status: 500 }
     );
