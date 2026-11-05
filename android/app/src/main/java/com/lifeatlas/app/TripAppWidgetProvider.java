@@ -283,3 +283,4 @@ public class TripAppWidgetProvider extends AppWidgetProvider {
         }
     }
 }
+
