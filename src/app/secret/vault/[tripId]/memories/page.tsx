@@ -177,18 +177,15 @@ export default function Memories() {
       {/* Filter Chips: All, Highlights, and Place-specific chips */}
       <div className="tv-section-heading">
         <div className="tv-chips">
-          <button
-            aria-pressed={filter === "All moments"}
-            onClick={() => setFilter("All moments")}
-          >
-            All moments ({memories.length})
-          </button>
-          <button
-            aria-pressed={filter === "Highlights"}
-            onClick={() => setFilter("Highlights")}
-          >
-            ⭐ Highlights ({memories.filter((m) => m.isHighlight).length})
-          </button>
+          {["All moments", "Highlights"].map((value) => (
+            <button
+              key={value}
+              aria-pressed={filter === value}
+              onClick={() => setFilter(value)}
+            >
+              {value}
+            </button>
+          ))}
           {placesWithMemories.map(({ name, count }) => {
             const key = `place:${name}`;
             return (
@@ -444,7 +441,7 @@ export default function Memories() {
             </div>
 
             <label>
-              Story / Notes <small>optional</small>
+              A few words <small>optional</small>
               <textarea
                 rows={3}
                 placeholder="What made this moment unforgettable?"
