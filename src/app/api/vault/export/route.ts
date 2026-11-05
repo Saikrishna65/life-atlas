@@ -17,6 +17,9 @@ export async function POST(request: Request) {
       memories = [],
       itineraryDays = [],
       totalDistanceKm,
+      elevationGainMeters,
+      maxElevationMeters,
+      routeData,
       existingSlug,
     } = body;
 
@@ -91,6 +94,10 @@ export async function POST(request: Request) {
           duration: durationStr,
           description: fullDescription,
           coverImage: coverImage || existingTrip.coverImage,
+          totalDistanceKm: typeof totalDistanceKm === "number" ? totalDistanceKm : (totalDistanceKm ? parseFloat(totalDistanceKm) : null),
+          elevationGainMeters: typeof elevationGainMeters === "number" ? elevationGainMeters : (elevationGainMeters ? parseFloat(elevationGainMeters) : null),
+          maxElevationMeters: typeof maxElevationMeters === "number" ? maxElevationMeters : (maxElevationMeters ? parseFloat(maxElevationMeters) : null),
+          routeData: routeData || undefined,
         },
       });
       // Clear previous child records to perform a clean refresh
@@ -113,6 +120,10 @@ export async function POST(request: Request) {
           duration: durationStr,
           description: fullDescription,
           coverImage: coverImage || null,
+          totalDistanceKm: typeof totalDistanceKm === "number" ? totalDistanceKm : (totalDistanceKm ? parseFloat(totalDistanceKm) : null),
+          elevationGainMeters: typeof elevationGainMeters === "number" ? elevationGainMeters : (elevationGainMeters ? parseFloat(elevationGainMeters) : null),
+          maxElevationMeters: typeof maxElevationMeters === "number" ? maxElevationMeters : (maxElevationMeters ? parseFloat(maxElevationMeters) : null),
+          routeData: routeData || undefined,
           userId: user.id,
         },
       });

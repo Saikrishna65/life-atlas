@@ -32,6 +32,10 @@ model Trip {
   duration    String?
   description String?
   coverImage  String?
+  totalDistanceKm     Float?
+  elevationGainMeters Float?
+  maxElevationMeters  Float?
+  routeData           Json?
   
   userId      String
   user        User     @relation(fields: [userId], references: [id])

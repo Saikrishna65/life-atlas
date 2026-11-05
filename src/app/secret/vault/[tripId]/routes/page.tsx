@@ -288,16 +288,16 @@ export default function TripRoutesPage() {
 
       {/* LIVE EXPEDITION TOPOGRAPHIC ROUTE MAP */}
       {liveExpedition && (
-        <section className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
+        <section className="bg-surface/90 border border-muted/80 shadow-soft p-3.5 sm:p-5 rounded-3xl space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-sky-500 animate-pulse" />
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-                Satellite GPS Route Tracker
+              <span className="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse" />
+              <h3 className="text-xs sm:text-sm font-bold text-foreground uppercase tracking-wider font-mono">
+                Satellite GPS Route Visualizer
               </h3>
             </div>
-            <span className="text-xs font-semibold text-slate-500">
-              Status: <b className="text-slate-800">{liveExpedition.status}</b>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider bg-sky-500/10 border border-sky-500/20 text-sky-400">
+              Status: {liveExpedition.status}
             </span>
           </div>
           <ExpeditionRouteMap session={liveExpedition} />
@@ -331,8 +331,8 @@ export default function TripRoutesPage() {
         </div>
 
         {/* METRICS GRID */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-muted/50">
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-muted/50">
+          <div className="p-2.5 sm:p-3.5 rounded-2xl bg-background/80 border border-muted/60 min-w-0">
             <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
               Total Route Distance
             </span>
@@ -346,7 +346,7 @@ export default function TripRoutesPage() {
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+          <div className="p-2.5 sm:p-3.5 rounded-2xl bg-background/80 border border-muted/60 min-w-0">
             <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
               Est. Driving Time
             </span>
@@ -360,7 +360,7 @@ export default function TripRoutesPage() {
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+          <div className="p-2.5 sm:p-3.5 rounded-2xl bg-background/80 border border-muted/60 min-w-0">
             <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
               Mountain Passes
             </span>
@@ -375,7 +375,7 @@ export default function TripRoutesPage() {
             </span>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-background/80 border border-muted/60">
+          <div className="p-2.5 sm:p-3.5 rounded-2xl bg-background/80 border border-muted/60 min-w-0">
             <span className="text-[10px] font-mono uppercase text-muted-foreground tracking-wider block">
               Challenging Terrain
             </span>

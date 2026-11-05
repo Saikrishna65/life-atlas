@@ -83,6 +83,9 @@ export async function publishTripToWebsite(
       `Expedition across ${trip.destination}. Published directly from Life Atlas Trip Vault.`,
     coverImage: cover,
     totalDistanceKm: trip.liveExpedition?.totalDistanceKm,
+    elevationGainMeters: trip.liveExpedition?.elevationGainMeters,
+    maxElevationMeters: trip.liveExpedition?.maxElevationMeters,
+    routeData: trip.liveExpedition || undefined,
     existingSlug: trip.publishedSlug,
     places: Array.from(placesMap.values()),
     memories: memoriesToExport.map((m) => ({

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTripBySlug, getNextTrip, getAllTripSlugs } from "@/lib/queries/trips";
 import TripHero from "@/components/trips/TripHero";
 import TripOverview from "@/components/trips/TripOverview";
+import PublicTripRouteMap from "@/components/trips/PublicTripRouteMap";
 import TripDays from "@/components/trips/TripDays";
 import TripExperiences from "@/components/trips/TripExperiences";
 import TripGallery from "@/components/trips/TripGallery";
@@ -54,17 +55,20 @@ export default async function TripDetailPage({
       <TripHero trip={trip} />
       <TripOverview trip={trip} photoCount={trip.photos.length} />
       
-      {/* Route map placeholder */}
-      <section className="py-24 px-6 max-w-7xl mx-auto border-t border-muted">
-        <div className="aspect-[21/9] bg-surface border border-muted flex items-center justify-center rounded-sm">
-          <span className="font-sans text-xs uppercase tracking-widest text-muted-foreground/80">Route Map Visualizer (Coming Soon)</span>
-        </div>
-      </section>
+      {/* Interactive Expedition Route Map */}
+      <PublicTripRouteMap
+        tripTitle={trip.title}
+        destination={trip.destination}
+        totalDistanceKm={trip.totalDistanceKm}
+        elevationGainMeters={trip.elevationGainMeters}
+        maxElevationMeters={trip.maxElevationMeters}
+        routeData={trip.routeData}
+        tripPlaces={trip.tripPlaces}
+      />
 
       <TripDays days={trip.tripDays} />
       
       <TripExperiences experiences={trip.experiences} />
-      
       
       <TripGallery photos={trip.photos} />
       

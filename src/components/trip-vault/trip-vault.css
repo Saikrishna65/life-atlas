@@ -1666,6 +1666,36 @@
   }
 }
 
+@media (max-width: 400px) {
+  .tv-publish-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .tv-publish-actions {
+    width: 100%;
+  }
+  .tv-publish-btn,
+  .tv-publish-link {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .tv-overview-metrics {
+    grid-template-columns: 1fr;
+  }
+  .tv-overview-metrics > a {
+    border-right: none;
+    border-bottom: 1px solid var(--tv-line);
+    padding: 12px 14px;
+  }
+  .tv-overview-metrics > a:last-child {
+    border-bottom: none;
+  }
+}
+
 @media (max-width: 350px) {
   .trip-voyage h1 {
     font-size: 24px;
