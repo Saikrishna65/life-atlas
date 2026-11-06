@@ -20,6 +20,25 @@ try {
   });
   const page = await context.newPage();
   const errors = []; page.on('pageerror', e => errors.push(e.message));
+  for(const route of ['/secret/music','/secret/finance','/secret/vault']) {
+    await page.goto('https://atlas.test'+route);
+    const orb=page.getByRole('link',{name:'Open Atlas local assistant'});
+    await orb.waitFor();
+    const rect=await orb.boundingBox();assert.ok(rect&&rect.y+rect.height<844-75,'Orb clears bottom navigation');
+    await orb.click();
+    await page.getByRole('heading',{name:'Create encrypted Atlas storage'}).waitFor();
+    assert.equal(await page.getByRole('link',{name:'Open Atlas local assistant'}).count(),0);
+    await page.getByRole('button',{name:'Back to vault',exact:true}).click();
+    await page.waitForURL('https://atlas.test'+route);
+    await page.getByRole('link',{name:'Open Atlas local assistant'}).waitFor();
+    await page.evaluate(()=>{const input=document.createElement('input');input.id='keyboard-probe';document.body.append(input);input.focus();});
+    await page.getByRole('link',{name:'Open Atlas local assistant'}).waitFor({state:'detached'});
+    await page.evaluate(()=>document.getElementById('keyboard-probe').remove());
+    await page.getByRole('link',{name:'Open Atlas local assistant'}).waitFor();
+    await page.evaluate(()=>{const dialog=document.createElement('div');dialog.id='security-probe';dialog.setAttribute('data-atlas-security-screen','');document.body.append(dialog);});
+    await page.getByRole('link',{name:'Open Atlas local assistant'}).waitFor({state:'detached'});
+    await page.evaluate(()=>document.getElementById('security-probe').remove());
+  }
   await page.goto('https://atlas.test/secret/atlas');
   await page.getByRole('heading',{name:'Create encrypted Atlas storage'}).waitFor();
   await page.getByLabel('Passphrase',{exact:true}).fill('synthetic browser recovery phrase');

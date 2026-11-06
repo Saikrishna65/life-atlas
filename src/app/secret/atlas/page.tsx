@@ -1,5 +1,5 @@
 'use client';
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState, useSyncExternalStore} from 'react';
 import {useRouter} from 'next/navigation';
 import {Capacitor, type PluginListenerHandle} from '@capacitor/core';
 import {App} from '@capacitor/app';
@@ -16,7 +16,18 @@ import styles from './atlas.module.css';
 type OrbState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error';
 const permissionsList: Permission[] = ['music.read','music.control','finance.read','finance.write','trips.read','trips.write','navigate'];
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'The local operation failed.';
+const subscribePlatform=()=>()=>{};
 export default function AtlasPage() {
+  const router=useRouter();
+  const native=useSyncExternalStore(subscribePlatform,()=>Capacitor.isNativePlatform(),()=>null);
+  const [verified,setVerified]=useState(false),[checking,setChecking]=useState(false),[failure,setFailure]=useState('');
+  useEffect(()=>{let alive=true;let handle:PluginListenerHandle|undefined;if(Capacitor.isNativePlatform())void App.addListener('appStateChange',event=>{if(alive&&!event.isActive)setVerified(false);}).then(h=>{if(alive)handle=h;else void h.remove();});return()=>{alive=false;if(handle)void handle.remove();};},[]);
+  function close(){if(window.history.length>1)router.back();else router.replace('/secret');}
+  if(native===null)return <p role="status">Opening Atlas…</p>;
+  if(native&&!verified)return <section data-atlas-security-screen className={styles.shell}><button onClick={close}>Back to vault</button><h1>Unlock Atlas on this device</h1><p>Verify device ownership before accessing the assistant. Your encrypted conversations still require their passphrase.</p><button disabled={checking} onClick={()=>{setChecking(true);setFailure('');void requireNativeTrust().then(()=>setVerified(true)).catch(e=>setFailure(errorText(e))).finally(()=>setChecking(false));}}>Verify device</button>{failure&&<p role="alert">{failure}</p>}</section>;
+  return <><div className={styles.back}><button onClick={close}>Back to vault</button></div><AtlasContent/></>;
+}
+function AtlasContent() {
   const router = useRouter();
   const player = useMusicPlayer();
   const playerRef = useRef(player);
