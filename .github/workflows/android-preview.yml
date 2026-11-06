@@ -76,7 +76,7 @@ jobs:
         run: |
           set -o pipefail
           npx --no-install cap sync android 2>&1 | tee preview-diagnostics/capacitor-sync.log
-          sdkmanager "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}"
+          sdkmanager "platforms;android-${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}"
           sdkmanager --list_installed > preview-diagnostics/sdk-packages.txt
           test -f android/app/src/main/assets/public/index.html
       - name: Run preview JVM unit tests
