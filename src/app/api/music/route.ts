@@ -1,8 +1,11 @@
+import {sensitiveApiDenial} from '@/lib/security/api-authorization';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getMusicFiles } from '@/lib/music/cloudFiles';
 
-export async function GET() {
+export async function GET(request:Request) {
+ const denial=await sensitiveApiDenial(request);if(denial)return denial;
+
   try {
     const rawTracks = await prisma.musicTrack.findMany({
       orderBy: { createdAt: 'desc' },
@@ -38,6 +41,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+ const denial=await sensitiveApiDenial(request);if(denial)return denial;
+
   try {
     const contentType = request.headers.get('content-type') || '';
 
@@ -177,6 +182,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+ const denial=await sensitiveApiDenial(request);if(denial)return denial;
+
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

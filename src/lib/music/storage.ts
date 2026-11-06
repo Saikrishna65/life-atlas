@@ -186,8 +186,7 @@ export async function getTrack(id: string): Promise<MusicTrack | null> {
 }
 
 export async function getAllTracks(): Promise<MusicTrack[]> {
-  // Always ensure default sample songs are purged
-  await purgeDefaultSampleTracks().catch(() => {});
+  // Reads preserve all local tracks, including imported or edited sample records.
 
   const db = await getMusicDB();
   return new Promise((resolve, reject) => {
@@ -196,18 +195,7 @@ export async function getAllTracks(): Promise<MusicTrack[]> {
     const req = store.getAll();
 
     req.onsuccess = () => {
-      let tracks = (req.result || []) as MusicTrack[];
-      // Extra safety filter against default sample tracks
-      tracks = tracks.filter(
-        (t) =>
-          !SAMPLE_DEFAULT_TRACK_TITLES.includes(t.title) &&
-          !(t.streamUrl && t.streamUrl.includes("soundhelix.com")) &&
-          !(t.artist &&
-            (t.artist.includes("Himalayan Wind") ||
-              t.artist.includes("Kasol Acoustic") ||
-              t.artist.includes("Thar Dune") ||
-              t.artist.includes("Ladakh Monastic")))
-      );
+      const tracks = (req.result || []) as MusicTrack[];
       // Sort newest first by default
       tracks.sort((a, b) => b.addedAt - a.addedAt);
       resolve(tracks);

@@ -1,8 +1,11 @@
+import {sensitiveApiDenial} from '@/lib/security/api-authorization';
 import { NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export async function GET(request: Request) {
+ const denial=await sensitiveApiDenial(request);if(denial)return denial;
+
   try {
     const { searchParams } = new URL(request.url);
     const rawFilename = searchParams.get('filename') || `track_${Date.now()}.mp3`;

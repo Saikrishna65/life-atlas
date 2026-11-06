@@ -1,8 +1,11 @@
+import {sensitiveApiDenial} from '@/lib/security/api-authorization';
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function POST(request: Request) {
+ const denial=await sensitiveApiDenial(request);if(denial)return denial;
+
   try {
     const body = await request.json();
     const {

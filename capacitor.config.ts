@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'mobile-dist',
   appendUserAgent: 'LifeAtlasApp/1.0',
   android: {
-    allowMixedContent: true,
+    allowMixedContent: false,
   },
   plugins: {
     CapacitorHttp: { enabled: true },

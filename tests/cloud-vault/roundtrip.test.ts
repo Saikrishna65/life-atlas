@@ -45,6 +45,8 @@ test('all sections, large audio, attachments, finance and preferences survive a 
  const uow=new IndexedDBUnitOfWork();const emptyFinance=(await compareSections()).find(s=>s.section==='finance')!;assert.equal(emptyFinance.records,0);assert.equal(emptyFinance.pending,0);const account=await new AccountService(uow).createAccount({name:'My bank',accountType:'bank',openingBalancePaise:100000,currency:'INR'});
  await put('studio','entries',{id:'studio-entry',section:'Memories',createdAt:now,fields:{title:'A local note',description:'Saved offline'}});
  await controlPut('settings',{id:'preferences',value:{cloudBudgetBytes:null,musicSyncPaused:false,tripRemindersPaused:true,mutedNotificationIds:[12]}});memory.set('atlas_music_theme','midnight');
+ // Upload a stale cached balance to verify cloud restore performs explicit normalization.
+ await put('finance','accounts',{...account,currentBalancePaise:17});
  const code=newRecoveryCode();await createCloudLink(code);const accountBefore=await uploadSections();assert.equal(Object.keys(accountBefore.sections).length,5);assert.ok(accountBefore.sections.music!.chunks.length>=3);assert.equal((await compareSections(accountBefore)).reduce((n,s)=>n+s.pending,0),0);
  // Binary payloads and all user text are encrypted; the object store contains no readable private records.
  const storedText=await Promise.all([...files.rows.entries()].filter(([key])=>key.includes('/objects/')).map(async([,row])=>new TextDecoder().decode(await row.blob.arrayBuffer())));assert.ok(storedText.every(t=>!t.includes('A local note')&&!t.includes('My bank')));
@@ -52,8 +54,9 @@ test('all sections, large audio, attachments, finance and preferences survive a 
  // An interrupted upload never replaces the last complete section copy.
  await saveTrip({...(await getTrip('cloud-trip'))!,title:'Updated title',updatedAt:new Date().toISOString()});failUpload=true;await assert.rejects(()=>uploadSections(['trips']),/upload/);assert.equal((await cloudStatus())!.sections.trips!.revision,accountBefore.sections.trips!.revision);failUpload=false;await uploadSections(['trips']);
  await clearDevice();assert.equal(await getTrip('cloud-trip'),null);await connectCloudLink(code);await restoreSections();
+ assert.equal((await uow.accounts.getById(account.id))!.currentBalancePaise,100000);
  assert.equal((await getTrip('cloud-trip'))!.title,'Updated title');assert.equal(await ((await getDocument('cloud-doc'))!.blobData as Blob).text(),'ticket');const restored=(await getTrack('cloud-track'))!;assert.equal(restored.audioBlob!.size,audio.length);assert.equal(await sha256(new Uint8Array(await restored.audioBlob!.arrayBuffer())),await sha256(audio));assert.deepEqual((await getPlaylist('cloud-playlist'))!.trackIds,['cloud-track']);assert.equal((await uow.accounts.getById(account.id))!.name,'My bank');assert.equal((await captureSection('studio')).stores[0].rows.length,1);assert.equal((await getControlSettings()).tripRemindersPaused,true);assert.equal(memory.get('atlas_music_theme'),'midnight');
- const after=await cloudStatus();assert.equal((await compareSections(after)).reduce((n,s)=>n+s.pending,0),0);
+ const after=await cloudStatus();const comparison=await compareSections(after);assert.equal(comparison.filter(s=>s.section!=='finance').reduce((n,s)=>n+s.pending,0),0);assert.equal(comparison.find(s=>s.section==='finance')!.pending,1); // Normalized balance differs from the original encrypted snapshot.
  // Repeat restore on another installation using exactly the same recovery code.
  await clearDevice();await connectCloudLink(code);await restoreSections();assert.equal((await getTrack('cloud-track'))!.audioBlob!.size,audio.length);
  const finalAccount=await cloudStatus();await assert.rejects(()=>cloudVaultAction({action:'commit',vaultId:identity.id,section:'trips',baseRevision:accountBefore.sections.trips!.revision,copy:accountBefore.sections.trips},identity.token,deps),/changed on another device/);
@@ -99,19 +102,15 @@ test('all sections, large audio, attachments, finance and preferences survive a 
  }finally{globalThis.fetch=originalFetch;}
 });
 test('encrypted chunk rejects a different recovery key and changed ciphertext',async()=>{const a=await vaultIdentity(newRecoveryCode()),b=await vaultIdentity(newRecoveryCode()),plain=new TextEncoder().encode('Private Finance data'),id=await sha256(plain),blob=await encryptChunk(plain,a.key);await assert.rejects(()=>decryptChunk(blob,b.key,id));const damaged=new Uint8Array(await blob.arrayBuffer());damaged[20]^=1;await assert.rejects(()=>decryptChunk(new Blob([damaged]),a.key,id));});
-test('direct cloud sync and recovery works directly without asking for any recovery code',async()=>{
+test('cloud sync without an enrolled vault is denied and preserves local records',async()=>{
  globalThis.fetch=testFetch;
  try{
   await clearDevice();
   const now=new Date().toISOString();
-  await saveTrip({id:'direct-trip',title:'Direct recovery trip',destination:'Mountains',startDate:now,endDate:now,status:'PLANNING',travelStyle:'LEISURE',budgetTotal:5000,currency:'INR',createdAt:now,updatedAt:now});
-  await uploadSections(['trips']);
-  const status=await cloudStatus();
-  assert.ok(status?.sections.trips);
-  assert.equal(status.sections.trips.records,1);
-  await clearDevice();
-  assert.equal(await getTrip('direct-trip'),null);
-  await restoreSections(['trips']);
-  assert.equal((await getTrip('direct-trip'))!.title,'Direct recovery trip');
+  await saveTrip({id:'direct-trip',title:'Preserved local trip',destination:'Mountains',startDate:now,endDate:now,status:'PLANNING',travelStyle:'LEISURE',budgetTotal:5000,currency:'INR',createdAt:now,updatedAt:now});
+  await assert.rejects(()=>uploadSections(['trips']),/enrolled private cloud vault/);
+  await assert.rejects(()=>restoreSections(['trips']),/enrolled private cloud vault/);
+  assert.equal((await getTrip('direct-trip'))!.title,'Preserved local trip');
+  assert.equal(await cloudStatus(),null);
  }finally{globalThis.fetch=originalFetch;}
 });
