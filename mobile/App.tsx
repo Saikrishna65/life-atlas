@@ -8,6 +8,7 @@ import { getEntries, flushStudioEntries, type StudioEntry } from './studio-stora
 import '../src/app/globals.css';
 const lazyPage = (load: () => Promise<any>) => lazy(load);
 const routes = [
+  { pattern: /^\/secret\/atlas\/?$/, params: [], Page: lazyPage(() => import("../src/app/secret/atlas/page")) },
   { pattern: new RegExp("^/secret/vault/([^/]+)/plan/?$"), params: ["tripId"], Page: lazyPage(() => import("../src/app/secret/vault/[tripId]/plan/page")) },
   { pattern: new RegExp("^/secret/vault/([^/]+)/money/?$"), params: ["tripId"], Page: lazyPage(() => import("../src/app/secret/vault/[tripId]/money/page")) },
   { pattern: new RegExp("^/secret/vault/([^/]+)/checklist/?$"), params: ["tripId"], Page: lazyPage(() => import("../src/app/secret/vault/[tripId]/checklist/page")) },

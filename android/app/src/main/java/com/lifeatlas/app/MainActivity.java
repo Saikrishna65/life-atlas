@@ -33,6 +33,8 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(AtlasModelsPlugin.class);
+        registerPlugin(AtlasLocalAIPlugin.class);
         registerPlugin(MediaPlaybackPlugin.class);
         registerPlugin(AtlasFileExportPlugin.class);
         registerPlugin(AtlasPermissionsPlugin.class);
