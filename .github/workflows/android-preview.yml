@@ -1,0 +1,189 @@
+name: Android preview APK (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      native_integration:
+        description: 'Reserved native build stage (disabled until reviewed source pin is committed)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-preview-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22.14.0'
+  JAVA_VERSION: '17.0.14+7'
+  ANDROID_PLATFORM: '34'
+  ANDROID_BUILD_TOOLS: '34.0.0'
+  NDK_VERSION: '26.3.11579264'
+  CMAKE_VERSION: '3.22.1'
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-java@v4.7.1
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '11076708'
+          packages: ''
+          log-accepted-android-sdk-licenses: false
+      - uses: actions/cache@v4.2.3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: preview-gradle-${{ runner.os }}-jdk17-${{ hashFiles('android/**/*.gradle', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'package-lock.json') }}
+          restore-keys: preview-gradle-${{ runner.os }}-jdk17-
+      - name: Initialize diagnostics
+        run: |
+          mkdir -p preview-diagnostics preview-artifacts
+          printf 'Commit: %s\nRun: %s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > preview-diagnostics/build.txt
+          node --version >> preview-diagnostics/build.txt
+          java -version 2>> preview-diagnostics/build.txt
+      - name: Install locked dependencies and check project
+        timeout-minutes: 12
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee preview-diagnostics/npm-ci.log
+          npx --no-install prisma generate
+          npx --no-install tsc --noEmit --incremental false
+          for test in tests/atlas-ai/*.test.ts tests/security/*.test.ts; do
+            node --import tsx "$test"
+          done
+          npm run build:mobile 2>&1 | tee preview-diagnostics/mobile-build.log
+      - name: Sync bundled assets and install pinned Android tools
+        run: |
+          set -o pipefail
+          npx --no-install cap sync android 2>&1 | tee preview-diagnostics/capacitor-sync.log
+          sdkmanager "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}"
+          sdkmanager --list_installed > preview-diagnostics/sdk-packages.txt
+          test -f android/app/src/main/assets/public/index.html
+      - name: Run preview JVM unit tests
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          bash android/gradlew -p android --no-daemon --max-workers=2 --console=plain --stacktrace :app:testPreviewUnitTest 2>&1 | tee preview-diagnostics/gradle-unit-tests.log
+          python3 - <<'PYTEST'
+          import xml.etree.ElementTree as ET
+          report = 'android/app/build/test-results/testPreviewUnitTest/TEST-com.lifeatlas.app.AtlasModelTransferTest.xml'
+          suite = ET.parse(report).getroot()
+          assert int(suite.attrib.get('tests', 0)) >= 2, 'Expected model-transfer JVM tests did not run'
+          assert int(suite.attrib.get('failures', 0)) == 0
+          assert int(suite.attrib.get('errors', 0)) == 0
+          assert int(suite.attrib.get('skipped', 0)) == 0, 'Model-transfer tests must not be skipped'
+          PYTEST
+      - name: Build preview only
+        timeout-minutes: 20
+        run: |
+          set -o pipefail
+          bash android/gradlew -p android --version > preview-diagnostics/gradle-version.txt
+          bash android/gradlew -p android --no-daemon --max-workers=2 --console=plain --stacktrace :app:assemblePreview 2>&1 | tee preview-diagnostics/gradle-build.log
+      - name: Verify preview identity and signature
+        run: |
+          set -euo pipefail
+          apk=android/app/build/outputs/apk/preview/app-preview.apk
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/aapt" dump badging "$apk" > preview-diagnostics/apk-badging.txt
+          package_id=$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" preview-diagnostics/apk-badging.txt)
+          test "$package_id" = com.lifeatlas.app.next
+          "$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/apksigner" verify --verbose --print-certs "$apk" > preview-diagnostics/signature.txt
+          cp "$apk" preview-artifacts/atlas-next-preview.apk
+          sha256sum preview-artifacts/atlas-next-preview.apk > preview-artifacts/SHA256SUMS.txt
+          printf 'Preview only: com.lifeatlas.app.next\nCommit: %s\nUses ephemeral debug signing. No production signing keys.\n' "$GITHUB_SHA" > preview-artifacts/BUILD.txt
+      - name: Upload verified preview APK
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: atlas-preview-apk-${{ github.run_id }}-${{ github.run_attempt }}
+          path: preview-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: atlas-preview-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            preview-diagnostics/
+            android/app/build/reports/
+            android/app/build/test-results/testPreviewUnitTest/
+            android/app/build/outputs/logs/
+            mobile-dist/build-info.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  native-integration:
+    # Intentionally unreachable. Remove the literal false only in a reviewed change
+    # that fills the immutable pin and verifies toolchain/runtime compatibility.
+    if: ${{ inputs.native_integration && false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4.7.1
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '11076708'
+          packages: ''
+          log-accepted-android-sdk-licenses: false
+      - name: Validate reviewed native source pin
+        run: |
+          python3 - <<'PY'
+          import json, re
+          pin = json.load(open('android/llama-source.json'))
+          assert pin['repository'] == 'https://github.com/ggml-org/llama.cpp.git'
+          assert pin['reviewed'] is True
+          assert re.fullmatch(r'[0-9a-f]{40}', pin['revision'] or '')
+          assert pin['review_evidence']
+          PY
+      - name: Compile upstream ARM64 library (not an inference test)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager "ndk;$NDK_VERSION" "cmake;$CMAKE_VERSION"
+          revision=$(python3 -c "import json; print(json.load(open('android/llama-source.json'))['revision'])")
+          git init native-source
+          git -C native-source remote add origin https://github.com/ggml-org/llama.cpp.git
+          git -C native-source fetch --depth=1 origin "$revision"
+          git -C native-source checkout --detach FETCH_HEAD
+          test "$(git -C native-source rev-parse HEAD)" = "$revision"
+          mkdir -p native-diagnostics
+          "$ANDROID_HOME/cmake/$CMAKE_VERSION/bin/cmake" -S native-source -B native-build \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/$NDK_VERSION/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 \
+            -DCMAKE_BUILD_TYPE=Release -DGGML_OPENMP=OFF -DLLAMA_CURL=OFF \
+            -DLLAMA_BUILD_TESTS=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF \
+            2>&1 | tee native-diagnostics/configure.log
+          "$ANDROID_HOME/cmake/$CMAKE_VERSION/bin/cmake" --build native-build --target llama --parallel 2 2>&1 | tee native-diagnostics/build.log
+      - uses: actions/upload-artifact@v4.6.2
+        if: always()
+        with:
+          name: native-integration-diagnostics-${{ github.run_id }}
+          path: native-diagnostics/
+          if-no-files-found: warn
+          retention-days: 14
