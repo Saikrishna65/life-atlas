@@ -16,12 +16,13 @@ trip routes and scoped image parallax. No pinned horizontal passage is mounted.
 Decorative SVG curves draw with scroll, with a moving point following the same
 curve. Reduced motion displays completed routes and static text.
 
-`JourneyStory` gives sample trips cinematic covers, selectable stops, map zoom and
-existing detailed itinerary/packing/budget controls. Geographic centers remain the
-existing rounded fixture values. Co-located centers use explicitly labeled
-itinerary schematics, never invented GPS tracks. Real published trips retain the
-existing `PublicTripRouteMap` rendering of their published recorded route data,
-inside the new cinematic page frame. No private local store is read by these pages.
+`JourneyStory` gives sample trips cinematic covers, actual geographic street/terrain
+maps, selectable destination markers, photo lightboxes and itinerary/packing/budget
+controls. Samples do not invent travelled paths or telemetry. Published trips draw
+their actual GPS segments and show recorded distance, moving/elapsed time, altitude,
+ascent and speed. Missing values stay explicitly unavailable. Published photographs
+include their linked place names. Map tiles require connectivity and have a visible
+failure state. No private local store is read by these pages.
 
 The final doorway starts open and closes as its section reaches the viewport's
 bottom, accompanied by return-home copy. Return navigation still uses the shared

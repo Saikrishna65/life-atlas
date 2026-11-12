@@ -63,7 +63,9 @@ try {
   attach(page);
   await page.goto(origin, { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.__heroReady);
-  await page.getByRole("status",{name:"Loading",exact:true}).waitFor({state:"detached"});
+  await page
+    .getByRole("status", { name: "Loading", exact: true })
+    .waitFor({ state: "detached" });
   await check("door image sequence remains scroll driven", async () => {
     const canvas = page.locator("[data-hero] canvas").first();
     const first = await canvas.evaluate((el) => el.toDataURL());
@@ -114,6 +116,9 @@ try {
     await page.locator("#expeditions input[type=search]").fill("Himalayan");
     assert.equal(await page.locator(".expedition-panel").count(), 1);
     await page.locator("#expeditions input[type=search]").fill("");
+    await page.waitForFunction(
+      () => document.querySelectorAll(".expedition-panel").length === 3,
+    );
     const boxes = await page
       .locator(".expedition-panel")
       .evaluateAll((items) =>
@@ -133,14 +138,23 @@ try {
       assert.ok((await buttons.count()) > 0);
       await buttons.last().click();
       assert.equal(await buttons.last().getAttribute("aria-pressed"), "true");
-      await page.getByRole("button", { name: "Zoom route in" }).click();
+      await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+      assert.ok(await page.locator(".leaflet-container").isVisible());
+      await page.getByRole("button", { name: "Terrain", exact: true }).click();
       assert.equal(
-        await page.getByRole("button", { name: "Zoom route out" }).isDisabled(),
-        false,
+        await page
+          .getByRole("button", { name: "Terrain", exact: true })
+          .getAttribute("aria-pressed"),
+        "true",
       );
       await page.locator(".journey-route-section").scrollIntoViewIfNeeded();
       await page.waitForTimeout(1500);
       await page.screenshot({ path: "work/qa-travel/trip-route.png" });
+      const photos = page.locator(".trip-photo-wall>button");
+      assert.ok((await photos.count()) > 0);
+      await photos.first().click();
+      await page.getByRole("dialog").waitFor();
+      await page.keyboard.press("Escape");
       await page.getByRole("tab", { name: "Packing", exact: true }).click();
       await page.getByRole("checkbox").first().check();
       assert.ok(await page.getByRole("checkbox").first().isChecked());
@@ -148,18 +162,26 @@ try {
   );
   await page.goto(origin + "/#beyond", { waitUntil: "networkidle" });
   await page.waitForFunction(() => window.__heroReady);
-  await page.getByRole("status",{name:"Loading",exact:true}).waitFor({state:"detached"});
+  await page
+    .getByRole("status", { name: "Loading", exact: true })
+    .waitFor({ state: "detached" });
   await scene(page, "beyond");
   await check("return-home door closes as the journey finishes", async () => {
-    const top = await page
-      .locator("#beyond")
-      .evaluate((el) => el.getBoundingClientRect().top + scrollY);
-    await scroll(page, top - 700);
-    const before = await page
-      .locator(".door-leaf")
-      .evaluate((el) =>
-        Math.abs(new DOMMatrix(getComputedStyle(el).transform).m13),
-      );
+    let before = 0;
+    // Deep-link navigation and deferred chapters may still be settling above us.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const top = await page
+        .locator("#beyond")
+        .evaluate((el) => el.getBoundingClientRect().top + scrollY);
+      await scroll(page, top - 700);
+      before = await page
+        .locator(".door-leaf")
+        .evaluate((el) =>
+          Math.abs(new DOMMatrix(getComputedStyle(el).transform).m13),
+        );
+      if (before > 0.3) break;
+    }
+    assert.ok(before > 0.3, "The ending must start with an open door");
     const finish = await page
       .locator("#beyond")
       .evaluate(
