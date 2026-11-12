@@ -14,6 +14,7 @@ const MemoryArchive = dynamic(() => import("./MemoryArchive"));
 const SoundDimension = dynamic(() => import("./SoundDimension"));
 const Intelligence = dynamic(() => import("./Intelligence"));
 const AtlasSystem = dynamic(() => import("./AtlasSystem"));
+const PublishedMedia = dynamic(() => import("./PublishedMedia"));
 const Beyond = dynamic(() => import("./Beyond"));
 function Deferred({
   id,
@@ -120,6 +121,7 @@ export default function LivingWorld() {
           title="The Memory Archive"
           component={MemoryArchive}
         />
+        <PublishedMedia />
         <Deferred
           id="sound"
           title="The Sound Dimension"

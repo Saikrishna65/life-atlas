@@ -35,6 +35,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(MediaPlaybackPlugin.class);
         registerPlugin(AtlasFileExportPlugin.class);
+        registerPlugin(com.lifeatlas.app.r2.R2StoragePlugin.class);
         registerPlugin(AtlasPermissionsPlugin.class);
         registerPlugin(KotakNotificationTrackerPlugin.class);
         registerPlugin(ExpeditionTrackingPlugin.class);

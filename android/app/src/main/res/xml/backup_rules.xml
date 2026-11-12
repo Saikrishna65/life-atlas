@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
     <exclude domain="sharedpref" path="bank_notification_tracker.xml" />
+    <exclude domain="file" path="r2/" />
+    <exclude domain="sharedpref" path="atlas_r2.xml" />
 </full-backup-content>
