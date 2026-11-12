@@ -1,5 +1,6 @@
 "use client";
 import { KineticHeading, RouteDrawing } from "./EditorialElements";
+import Link from "next/link";
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import {
@@ -10,21 +11,12 @@ import {
 } from "lucide-react";
 import { expeditions } from "@/data/demo/expeditions";
 import { searchRecords } from "@/data/demo/selectors";
-import {
-  ChapterLabel,
-  DemoNote,
-  Empty,
-  Modal,
-  SearchField,
-} from "./primitives";
-import ExpeditionDetail from "./ExpeditionDetail";
-import { useExpeditionSequence } from "./useExpeditionSequence";
+import { ChapterLabel, DemoNote, Empty, SearchField } from "./primitives";
 export default function Expeditions() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All terrains");
   const [sort, setSort] = useState("Curated");
   const [page, setPage] = useState(0);
-  const [selected, setSelected] = useState<string | null>(null);
   const items = useMemo(() => {
     const list = searchRecords(
       expeditions,
@@ -39,18 +31,11 @@ export default function Expeditions() {
   }, [query, category, sort]);
   const offset =
     Math.min(page, Math.max(0, Math.ceil(items.length / 3) - 1)) * 3;
-  const current = expeditions.find((e) => e.id === selected);
-  const { passage, focusFrame, rewind } = useExpeditionSequence(
-    items
-      .slice(offset, offset + 3)
-      .map((e) => e.id)
-      .join("|"),
-  );
   return (
     <section id="expeditions" className="world-expeditions world-scene">
       <RouteDrawing className="expedition-route-background" />
       <div className="world-section-bar">
-        <ChapterLabel number="04">The Expeditions</ChapterLabel>
+        <ChapterLabel number="03">The Expeditions</ChapterLabel>
         <span className="world-eyebrow">24 ways to take the long way</span>
       </div>
       <header className="world-editorial-header" data-world-reveal>
@@ -115,25 +100,25 @@ export default function Expeditions() {
           </label>
         </div>
       </div>
-      <div className="expedition-passage" ref={passage}>
+      <div className="expedition-passage expedition-atlas-stack">
         <div className="expedition-stage-index">
           <span>TAKE THE LONG WAY</span>
           <span className="passage-instruction">
-            Scroll to unfold the journey ↘
+            Follow the road, one story at a time
           </span>
           <span>FIELD JOURNALS / {String(items.length).padStart(2, "0")}</span>
         </div>
         <div className="expedition-viewport">
           <div className="expedition-cinema">
             {items.slice(offset, offset + 3).map((e, i) => (
-              <button
+              <Link
+                href={`/trips/${e.slug}`}
                 className={`expedition-panel panel-${i}`}
                 key={e.id}
-                onFocus={() => focusFrame(i)}
-                onClick={() => setSelected(e.id)}
               >
                 <div className="expedition-image-plane">
                   <Image
+                    data-world-parallax="3"
                     width={1600}
                     height={1000}
                     sizes="(max-width: 700px) 90vw, 50vw"
@@ -160,7 +145,7 @@ export default function Expeditions() {
                     {e.duration} days <i /> {e.category} <i /> {e.difficulty}
                   </p>
                 </div>
-              </button>
+              </Link>
             ))}
           </div>
         </div>
@@ -193,7 +178,6 @@ export default function Expeditions() {
             className="world-icon"
             onClick={() => {
               setPage((p) => Math.max(0, p - 1));
-              rewind();
             }}
             disabled={offset === 0}
             aria-label="Previous journeys"
@@ -204,7 +188,6 @@ export default function Expeditions() {
             className="world-icon"
             onClick={() => {
               setPage((p) => p + 1);
-              rewind();
             }}
             disabled={offset + 3 >= items.length}
             aria-label="Next journeys"
@@ -213,15 +196,6 @@ export default function Expeditions() {
           </button>
         </div>
       </footer>
-      {current && (
-        <Modal title={current.name} onClose={() => setSelected(null)}>
-          <ExpeditionDetail
-            key={current.id}
-            expedition={current}
-            onNavigate={() => setSelected(null)}
-          />
-        </Modal>
-      )}
     </section>
   );
 }

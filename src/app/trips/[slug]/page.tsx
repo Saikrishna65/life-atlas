@@ -1,6 +1,5 @@
 import { expeditions } from "@/data/demo/expeditions";
-import PublicPage from "@/components/world/PublicPage";
-import ExpeditionDetail from "@/components/world/ExpeditionDetail";
+import JourneyStory, { JourneyFrame } from "@/components/world/JourneyStory";
 import { notFound } from "next/navigation";
 import { getTripBySlug, getNextTrip } from "@/lib/queries/trips";
 import TripOverview from "@/components/trips/TripOverview";
@@ -48,17 +47,7 @@ export default async function TripDetailPage({
 }) {
   const { slug } = await params;
   const demo = expeditions.find((e) => e.slug === slug);
-  if (demo)
-    return (
-      <PublicPage
-        title={demo.name}
-        kicker="An imagined journey. A real sense of possibility."
-      >
-        <div className="public-detail-wrap">
-          <ExpeditionDetail expedition={demo} />
-        </div>
-      </PublicPage>
-    );
+  if (demo) return <JourneyStory expedition={demo} />;
   const trip = await getTripBySlug(slug);
 
   if (!trip) {
@@ -68,9 +57,10 @@ export default async function TripDetailPage({
   const nextTrip = await getNextTrip(trip.startDate, trip.id);
 
   return (
-    <PublicPage
+    <JourneyFrame
       title={trip.title}
-      kicker={trip.description || `A journey through ${trip.destination}.`}
+      image={trip.coverImage || "/images/world/mountains.webp"}
+      intro={trip.description || `A journey through ${trip.destination}.`}
     >
       <TripOverview trip={trip} photoCount={trip.photos.length} />
 
@@ -92,6 +82,6 @@ export default async function TripDetailPage({
       <TripGallery photos={trip.photos} />
 
       {nextTrip && <NextJourney trip={nextTrip} />}
-    </PublicPage>
+    </JourneyFrame>
   );
 }

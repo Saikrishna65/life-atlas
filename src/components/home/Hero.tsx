@@ -1,5 +1,7 @@
 "use client";
 
+import HeroEditorial from "./HeroEditorial";
+import "./hero-editorial.css";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import Image from "next/image";
@@ -341,12 +343,10 @@ export default function Hero({ onReady }: HeroProps) {
               </span>
             </div>
 
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl text-white tracking-[-0.025em] font-light leading-[1.06] mb-5">
-              All my travels and <span className="italic font-normal">memories</span>, in one place.
-            </h1>
+            <HeroEditorial primary lines={["Every life is", <em key="world">a world to explore.</em>]} />
 
             <p className="font-body text-xs sm:text-sm text-white/85 leading-relaxed mb-6 max-w-sm">
-              Welcome to my travel journal. Here you will find the trips I&apos;ve taken, photos from the road, and the favorite places I never want to forget.
+              A journal of unfamiliar roads, small discoveries, and the places that stay with you.
             </p>
 
             <Link
@@ -371,9 +371,7 @@ export default function Hero({ onReady }: HeroProps) {
               </span>
             </div>
 
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl text-white tracking-[-0.025em] font-light leading-[1.1] mb-4">
-              Fresh air and <span className="italic font-normal">quiet trails</span>.
-            </h2>
+            <HeroEditorial stage={1} lines={["Take the long way.", <em key="trails">Find the quiet trails.</em>]} />
 
             <p className="font-body text-xs sm:text-sm text-white/85 leading-relaxed mb-6 max-w-sm">
               There is nothing quite like taking a break from the daily routine to hike through the hills, see new places, and enjoy nature.
@@ -404,9 +402,7 @@ export default function Hero({ onReady }: HeroProps) {
               </span>
             </div>
 
-            <h2 className="font-display text-4xl sm:text-5xl lg:text-6xl text-white tracking-[-0.025em] font-light leading-[1.08] mb-5 max-w-xl">
-              Every trip has a <span className="italic font-normal">story</span> to tell.
-            </h2>
+            <HeroEditorial stage={2} lines={["Step into the world.", <em key="story">Bring a story home.</em>]} />
 
             <p className="font-body text-xs sm:text-sm md:text-base text-white/85 leading-relaxed mb-6 max-w-md">
               Whether it is a weekend road trip or an adventure far from home, the best part of traveling is the good memories and photos you bring back.

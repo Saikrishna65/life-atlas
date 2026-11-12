@@ -40,6 +40,7 @@ export function RouteDrawing({
     >
       <path className="route-underlay" d={path} />
       <path className="route-draw" pathLength="1" d={path} />
+      <circle className="route-traveler" r="7" cx="-40" cy="500" />
       <circle
         cx={variant === "journey" ? 355 : 390}
         cy={variant === "journey" ? 130 : 450}

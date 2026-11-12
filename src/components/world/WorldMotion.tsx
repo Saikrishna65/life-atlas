@@ -119,6 +119,44 @@ export default function WorldMotion({ children }: { children: ReactNode }) {
               },
             );
         });
+        select(".journey-route-ink", (el) => {
+          gsap.fromTo(
+            el,
+            { strokeDashoffset: 1 },
+            {
+              strokeDashoffset: 0,
+              ease: "none",
+              scrollTrigger: {
+                trigger: el.closest(".journey-route-section"),
+                start: "top 80%",
+                end: "center 45%",
+                scrub: 1.2,
+              },
+            },
+          );
+        });
+        select(".route-traveler", (head) => {
+          const svg = head.closest("svg");
+          const path = svg?.querySelector<SVGPathElement>(".route-draw");
+          if (!path) return;
+          const distance = path.getTotalLength();
+          const travel = { progress: 0 };
+          gsap.to(travel, {
+            progress: 1,
+            ease: "none",
+            scrollTrigger: {
+              trigger: svg?.closest(".world-scene"),
+              start: "top 80%",
+              end: "bottom 35%",
+              scrub: 1.1,
+            },
+            onUpdate: () => {
+              const point = path.getPointAtLength(distance * travel.progress);
+              head.setAttribute("cx", String(point.x));
+              head.setAttribute("cy", String(point.y));
+            },
+          });
+        });
         select("[data-world-parallax]", (el) => {
           const distance = Number(el.dataset.worldParallax) || 7;
           gsap.fromTo(
@@ -129,7 +167,8 @@ export default function WorldMotion({ children }: { children: ReactNode }) {
               ease: "none",
               scrollTrigger: {
                 trigger:
-                  el.closest("figure,button,.world-scene") ?? el.parentElement,
+                  el.closest("figure,button,a,.world-scene") ??
+                  el.parentElement,
                 start: "top bottom",
                 end: "bottom top",
                 scrub: 1.2,
@@ -161,10 +200,10 @@ export default function WorldMotion({ children }: { children: ReactNode }) {
         select(".sound-art-stack", (el) =>
           gsap.fromTo(
             el,
-            { rotateY: -18, rotateZ: -6, y: 55 },
+            { rotationY: -18, rotationZ: -6, y: 55 },
             {
-              rotateY: 8,
-              rotateZ: 5,
+              rotationY: 8,
+              rotationZ: 5,
               y: -30,
               ease: "none",
               scrollTrigger: {
@@ -234,10 +273,10 @@ export default function WorldMotion({ children }: { children: ReactNode }) {
         select(".beyond-door", (el) => {
           gsap.fromTo(
             el,
-            { y: 80, rotateX: 7, scale: 0.75 },
+            { y: 80, rotationX: 7, scale: 0.75 },
             {
               y: 0,
-              rotateX: 0,
+              rotationX: 0,
               scale: 1.06,
               ease: "none",
               scrollTrigger: {
@@ -250,14 +289,14 @@ export default function WorldMotion({ children }: { children: ReactNode }) {
           );
           gsap.fromTo(
             el.querySelector(".door-leaf"),
-            { rotateY: 0 },
+            { rotationY: -72 },
             {
-              rotateY: -62,
+              rotationY: 0,
               ease: "none",
               scrollTrigger: {
                 trigger: el.closest(".world-beyond"),
                 start: "top 75%",
-                end: "70% 50%",
+                end: "bottom bottom",
                 scrub: 1.4,
               },
             },

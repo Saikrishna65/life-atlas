@@ -138,7 +138,7 @@ export default function PublishedMedia() {
         />
         <p>
           Independent photographs, moving images and places, published from Life
-          Atlas. The private archive stays private.
+          Atlas. Photographs and moving images, shared with intention.
         </p>
       </header>
       {error && (

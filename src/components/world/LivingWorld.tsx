@@ -1,7 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type ComponentType } from "react";
-import Arrival from "./Arrival";
 import { useLenis } from "lenis/react";
 import { navigateChapter } from "./navigation";
 import WorldNavigation from "./WorldNavigation";
@@ -12,8 +11,6 @@ const Observatory = dynamic(() => import("./Observatory"));
 const Expeditions = dynamic(() => import("./Expeditions"));
 const MemoryArchive = dynamic(() => import("./MemoryArchive"));
 const SoundDimension = dynamic(() => import("./SoundDimension"));
-const Intelligence = dynamic(() => import("./Intelligence"));
-const AtlasSystem = dynamic(() => import("./AtlasSystem"));
 const PublishedMedia = dynamic(() => import("./PublishedMedia"));
 const Beyond = dynamic(() => import("./Beyond"));
 function Deferred({
@@ -105,7 +102,6 @@ export default function LivingWorld() {
     >
       <WorldNavigation />
       <WorldMotion>
-        <Arrival />
         <Deferred
           id="observatory"
           title="The Observatory"
@@ -126,16 +122,6 @@ export default function LivingWorld() {
           id="sound"
           title="The Sound Dimension"
           component={SoundDimension}
-        />
-        <Deferred
-          id="intelligence"
-          title="The Intelligence"
-          component={Intelligence}
-        />
-        <Deferred
-          id="system"
-          title="The Atlas System"
-          component={AtlasSystem}
         />
         <Deferred id="beyond" title="The Beyond" component={Beyond} />
       </WorldMotion>

@@ -1,5 +1,6 @@
 "use client";
 import { KineticHeading, ObservatoryDial } from "./EditorialElements";
+import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,11 +10,9 @@ import { searchRecords, formatMoney } from "@/data/demo/selectors";
 import {
   ChapterLabel,
   DemoNote,
-  Modal,
   SearchField,
   Empty,
 } from "./primitives";
-import ExpeditionDetail from "./ExpeditionDetail";
 const Globe = dynamic(() => import("@/components/home/InteractiveGlobe"), {
   ssr: false,
 });
@@ -26,7 +25,6 @@ export default function Observatory() {
   };
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
-  const [detail, setDetail] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [fallback, setFallback] = useState(false);
   const root = useRef<HTMLElement>(null);
@@ -52,7 +50,6 @@ export default function Observatory() {
       })),
     [],
   );
-  const expedition = expeditions.find((e) => e.id === detail);
   useEffect(() => {
     const element = root.current;
     if (!element) return;
@@ -79,7 +76,7 @@ export default function Observatory() {
       className="world-observatory world-scene"
     >
       <div className="world-section-bar">
-        <ChapterLabel number="03">The Observatory</ChapterLabel>
+        <ChapterLabel number="02">The Observatory</ChapterLabel>
         <span className="world-eyebrow">A whole world of somewhere</span>
       </div>
       <header className="observatory-heading" data-world-reveal>
@@ -169,12 +166,12 @@ export default function Observatory() {
               <span>{formatMoney(current.budget.amount)}</span>
             </div>
           </div>
-          <button
+          <Link
             className="world-link"
-            onClick={() => setDetail(current.expeditionIds[0])}
+            href={"/trips/"+expeditions.find(e=>e.id===current.expeditionIds[0])?.slug}
           >
             Open the journey <ArrowUpRight size={17} />
-          </button>
+          </Link>
           <div className="location-directory">
             <SearchField
               value={query}
@@ -242,14 +239,7 @@ export default function Observatory() {
           Approximate map centers. Example itineraries & budgets.
         </DemoNote>
       </footer>
-      {expedition && (
-        <Modal title={expedition.name} onClose={() => setDetail(null)}>
-          <ExpeditionDetail
-            expedition={expedition}
-            onNavigate={() => setDetail(null)}
-          />
-        </Modal>
-      )}
+
     </section>
   );
 }

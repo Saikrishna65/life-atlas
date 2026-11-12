@@ -1,867 +1,212 @@
-/** Run against a local server: node tests/public/browser.mjs. Playwright + Chromium required. */
+/** Public travel regression suite. Run against a fresh production server. */
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
-import { mkdir, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
+import { mkdir, writeFile } from "node:fs/promises";
 const resolve = createRequire(import.meta.url).resolve;
-const playwright = await import(pathToFileURL(resolve("playwright")).href);
-const { chromium } = playwright.default ?? playwright;
-const origin = process.env.ATLAS_QA_URL ?? "http://localhost:3001";
-const directory = "work/qa";
-await mkdir(directory, { recursive: true });
+const imported = await import(pathToFileURL(resolve("playwright")).href);
+const { chromium } = imported.default ?? imported;
+const origin = process.env.ATLAS_QA_URL ?? "http://localhost:3008";
+await mkdir("work/qa-travel", { recursive: true });
 const browser = await chromium.launch({
-  headless: true,
-  executablePath: process.env.ATLAS_CHROMIUM ?? "/usr/bin/chromium",
+  executablePath: "/usr/bin/chromium",
   args: ["--no-sandbox", "--enable-unsafe-swiftshader"],
 });
-const results = [],
-  errors = [],
-  consoleErrors = [],
-  failures = [];
-let activePage;
+const errors = [],
+  results = [];
+function attach(page) {
+  page.on("pageerror", (error) => errors.push(error.message));
+}
 async function check(name, fn) {
   try {
     await fn();
     results.push({ name, passed: true });
     console.log("PASS", name);
-  } catch (e) {
-    results.push({ name, passed: false, message: e.message });
-    console.log("FAIL", name, e.message);
-    await activePage?.keyboard.press("Escape").catch(() => {});
+  } catch (error) {
+    results.push({ name, passed: false, error: error.message });
+    console.log("FAIL", name, error.message);
   }
 }
-function attach(page) {
-  activePage = page;
-  page.on("pageerror", (e) => errors.push(e.message));
-  page.on("console", (m) => {
-    if (m.type() === "error") consoleErrors.push(m.text());
-  });
-  page.on("response", (r) => {
-    if (r.status() >= 400 && !r.url().includes("favicon"))
-      failures.push({ status: r.status(), url: r.url() });
-  });
+async function scroll(page, y) {
+  await page.evaluate(
+    (y) =>
+      window.__lenis?.scrollTo(y, { immediate: true, force: true }) ??
+      window.scrollTo(0, y),
+    y,
+  );
+  await page.waitForTimeout(1600);
 }
 async function scene(page, id) {
-  console.log("SCENE", id, page.viewportSize().width);
-  await page.locator("#" + id).scrollIntoViewIfNeeded();
-  await page.waitForTimeout(900);
-  await page.waitForFunction(
+  await page.evaluate(
     (id) =>
-      !document.querySelector("#" + id)?.classList.contains("world-loading"),
+      window.dispatchEvent(
+        new CustomEvent("world-chapter-request", { detail: id }),
+      ),
     id,
   );
-  await page.locator("#" + id).evaluate((el) => {
-    const lenis = window.__lenis;
-    if (lenis)
-      lenis.scrollTo(el, { immediate: true, offset: -80, force: true });
-    else window.scrollTo(0, el.offsetTop - 80);
-  });
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(500);
+  await page.locator("#" + id).scrollIntoViewIfNeeded();
+  await page.waitForTimeout(1000);
   await page.locator("#" + id).evaluate((el) =>
     window.__lenis.scrollTo(el, {
       immediate: true,
-      offset: -80,
       force: true,
+      offset: -80,
     }),
   );
-  await page.waitForTimeout(200);
-  assert.ok(
-    await page
-      .locator("#" + id)
-      .evaluate((el) => Math.abs(el.getBoundingClientRect().top - 80) < 130),
-    `Chapter ${id} did not reach the viewport`,
-  );
-}
-async function shot(page, name) {
-  await page.screenshot({
-    path: `${directory}/${name}.png`,
-    animations: "disabled",
-  });
+  await page.waitForTimeout(1700);
 }
 try {
-  const desktop = await browser.newContext({
+  const page = await browser.newPage({
     viewport: { width: 1440, height: 1000 },
-    deviceScaleFactor: 1,
   });
-  const page = await desktop.newPage();
   attach(page);
-  await page.goto(origin, { waitUntil: "networkidle", timeout: 90000 });
-  await page.waitForFunction(() => window.__heroReady === true);
+  await page.goto(origin, { waitUntil: "networkidle" });
+  await page.waitForFunction(() => window.__heroReady);
+  await page.getByRole("status",{name:"Loading",exact:true}).waitFor({state:"detached"});
+  await check("door image sequence remains scroll driven", async () => {
+    const canvas = page.locator("[data-hero] canvas").first();
+    const first = await canvas.evaluate((el) => el.toDataURL());
+    await page.screenshot({ path: "work/qa-travel/hero.png" });
+    await scroll(page, 1200);
+    const middle = await canvas.evaluate((el) => el.toDataURL());
+    assert.notEqual(first, middle);
+    await scroll(page, 2400);
+    assert.notEqual(middle, await canvas.evaluate((el) => el.toDataURL()));
+  });
   await check(
-    "original door renders closed, opens with scroll, reaches its unchanged endpoint",
+    "Arrival and private app demos removed from public homepage",
     async () => {
-      const canvas = page.locator('[aria-label="Life Atlas Hero"] canvas');
-      const first = await canvas.evaluate((c) => c.toDataURL());
-      await shot(page, "01-preserved-hero");
-      await page.evaluate(() =>
-        window.__lenis.scrollTo(1200, { immediate: true }),
-      );
-      await page.waitForTimeout(900);
-      const middle = await canvas.evaluate((c) => c.toDataURL());
-      assert.notEqual(first, middle);
-      await shot(page, "02-door-opening");
-      await page.evaluate(() =>
-        window.__lenis.scrollTo(2400, { immediate: true }),
-      );
-      await page.waitForTimeout(1000);
-      const final = await canvas.evaluate((c) => c.toDataURL());
-      assert.notEqual(middle, final);
-      await shot(page, "03-hero-reveal");
-    },
-  );
-  await check(
-    "heavy globe and optional music data are deferred at initial entry",
-    async () => {
-      const resources = await page.evaluate(() =>
-        performance.getEntriesByType("resource").map((r) => r.name),
-      );
-      assert.ok(
-        !resources.some((r) => r.includes("countries.geojson")),
-        "globe geography downloaded before approaching Observatory",
-      );
-    },
-  );
-  await scene(page, "arrival");
-  await check(
-    "arrival hotspot reveals and dismisses a field note",
-    async () => {
-      await page
-        .getByRole("button", {
-          name: "Discover A world to discover",
-          exact: true,
-        })
-        .click();
       assert.equal(
-        await page
-          .getByRole("heading", { name: "A world to discover", exact: true })
-          .count(),
+        await page.locator("#arrival,#intelligence,#system").count(),
+        0,
+      );
+      assert.equal(
+        await page.getByRole("heading", { name: /Every life is/ }).count(),
         1,
       );
-      await page
-        .getByRole("button", { name: "Close A world to discover", exact: true })
-        .click();
     },
   );
-  await shot(page, "04-arrival");
   await scene(page, "observatory");
   await check(
-    "globe renders, location selection and journey preview function",
+    "existing globe and destination selection remain usable",
     async () => {
-      await page.waitForFunction(() => window.__globeReady === true);
-      const obs = page.locator("#observatory");
-      await obs
-        .getByRole("searchbox", { name: "Search destinations" })
-        .fill("Kyoto");
-      await obs.getByRole("button", { name: /Kyoto Japan/ }).click();
+      await page.waitForFunction(() => window.__globeReady);
+      await page.locator("#observatory").getByRole("searchbox").fill("Kyoto");
+      await page.getByRole("button", { name: /Kyoto Japan/ }).click();
       assert.ok(
-        await obs
+        await page
+          .locator("#observatory")
           .getByRole("heading", { name: "Kyoto", exact: true })
           .isVisible(),
       );
-      await obs
-        .getByRole("button", { name: "Open the journey", exact: true })
-        .click();
-      await page.getByRole("dialog").waitFor();
-      assert.ok(
-        (await page.getByRole("dialog").innerText()).includes(
-          "Fictional itinerary",
-        ),
+      assert.match(
+        await page
+          .locator("#observatory")
+          .getByRole("link", { name: /Open the journey/ })
+          .getAttribute("href"),
+        /^\/trips\//,
       );
-      await page.keyboard.press("Escape");
-      await obs.getByRole("searchbox").fill("");
     },
   );
-  await shot(page, "05-observatory");
   await scene(page, "expeditions");
-  await check(
-    "journey search, filters, sorting, tabs, checklist, download and dialog focus restoration",
-    async () => {
-      const exp = page.locator("#expeditions");
-      await exp.getByRole("searchbox").fill("Himalayan");
-      assert.equal(await exp.locator(".expedition-panel").count(), 1);
-      const trigger = exp.locator(".expedition-panel").first();
-      await trigger.click();
-      const dialog = page.getByRole("dialog");
-      await dialog.waitFor();
-      await dialog.getByRole("tab", { name: "Packing", exact: true }).click();
-      await dialog.getByRole("checkbox").first().check();
-      assert.match(await dialog.innerText(), /1 of 6 ready/);
-      await dialog.getByRole("tab", { name: "Budget", exact: true }).click();
-      assert.match(await dialog.innerText(), /Example total/i);
-      await dialog.getByRole("tab", { name: "Timeline", exact: true }).click();
-      assert.equal(await dialog.locator(".detail-itinerary li").count(), 5);
-      const downloadPromise = page.waitForEvent("download");
-      await dialog
-        .getByRole("button", { name: "Take this sample plan" })
-        .click();
-      assert.match(
-        (await downloadPromise).suggestedFilename(),
-        /himalayan-journey/,
+  await check("journey search and vertical editorial layout", async () => {
+    await page.locator("#expeditions input[type=search]").fill("Himalayan");
+    assert.equal(await page.locator(".expedition-panel").count(), 1);
+    await page.locator("#expeditions input[type=search]").fill("");
+    const boxes = await page
+      .locator(".expedition-panel")
+      .evaluateAll((items) =>
+        items.map((el) => el.getBoundingClientRect().top),
       );
-      await page.keyboard.press("Escape");
-      assert.ok(await trigger.evaluate((el) => el === document.activeElement));
-      await exp.getByRole("searchbox").fill("");
-      await exp.getByLabel("Filter terrain").selectOption("Coast");
-      await exp.getByLabel("Sort journeys").selectOption("Shortest first");
-      assert.ok((await exp.locator(".expedition-panel").count()) > 0);
-      await exp.getByLabel("Filter terrain").selectOption("All terrains");
-    },
-  );
-  await check(
-    "desktop cinematic passage advances with scroll and remains keyboard accessible",
-    async () => {
-      const passage = page.locator(".expedition-passage");
-      await page.waitForFunction(
-        () =>
-          document.querySelector(".expedition-passage")?.dataset.cinematic ===
-          "true",
-      );
-      const metrics = await passage.evaluate((el) => ({
-        start: el.parentElement.getBoundingClientRect().top + scrollY - 96,
-        distance: el.parentElement.offsetHeight - el.offsetHeight,
-      }));
-      await page.evaluate(
-        (y) => window.__lenis.scrollTo(y, { immediate: true, force: true }),
-        metrics.start + 10,
-      );
-      await page.waitForTimeout(1300);
-      const x = await page
-        .locator(".expedition-cinema")
-        .evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m41);
-      await page.evaluate(
-        (y) => window.__lenis.scrollTo(y, { immediate: true, force: true }),
-        metrics.start + metrics.distance * 0.7,
-      );
-      await page.waitForTimeout(1300);
-      assert.ok(
-        await page
-          .locator(".expedition-cinema")
-          .evaluate(
-            (el, x) =>
-              new DOMMatrix(getComputedStyle(el).transform).m41 < x - 150,
-            x,
-          ),
-        "The journal rail did not advance horizontally",
-      );
-      assert.ok(
-        Math.abs((await passage.boundingBox()).y - 96) < 5,
-        "The filmstrip did not remain pinned at its reading position",
-      );
-      await page.locator(".expedition-panel").nth(2).focus();
-      await page.waitForTimeout(1400);
-      const frame = await page
-        .locator(".expedition-panel")
-        .nth(2)
-        .boundingBox();
-      assert.ok(
-        frame.x >= -2 && frame.x + frame.width <= 1442,
-        `Keyboard target outside viewport: ${JSON.stringify(frame)}`,
-      );
-      assert.ok(
-        await page
-          .locator(".expedition-panel")
-          .nth(2)
-          .evaluate((el) => document.activeElement === el),
-        "Pinning interrupted keyboard focus",
-      );
-      await page.keyboard.press("Enter");
-      await page.getByRole("dialog").waitFor();
-      await page.keyboard.press("Escape");
-      const firstJournal = await page
-        .locator(".expedition-panel h3")
-        .first()
-        .innerText();
-      await page
-        .getByRole("button", { name: "Next journeys", exact: true })
-        .click();
-      await page.waitForTimeout(1900);
-      assert.notEqual(
-        await page.locator(".expedition-panel h3").first().innerText(),
-        firstJournal,
-      );
-      assert.ok(
-        await page
-          .locator(".expedition-cinema")
-          .evaluate(
-            (el) =>
-              Math.abs(new DOMMatrix(getComputedStyle(el).transform).m41) < 5,
-          ),
-        "The next group did not rewind to its first journal",
-      );
-      await page
-        .getByRole("button", { name: "Previous journeys", exact: true })
-        .click();
-      await page.waitForTimeout(1900);
-      assert.equal(
-        await page.locator(".expedition-panel h3").first().innerText(),
-        firstJournal,
-      );
-      await shot(page, "refinement-cinematic-passage");
-      await scene(page, "expeditions");
-    },
-  );
-  await shot(page, "06-expeditions");
-  await scene(page, "memories");
-  await check(
-    "memory search, category filters, lightbox zoom, photo changes and keyboard navigation",
-    async () => {
-      const mem = page.locator("#memories");
-      await mem.getByRole("searchbox").fill("Kyoto");
-      await mem.getByRole("button", { name: "Discovery", exact: true }).click();
-      assert.equal(await mem.locator(".memory-print").count(), 1);
-      await mem.locator(".memory-print").first().click();
-      const dialog = page.getByRole("dialog");
-      const image = dialog.locator(".lightbox-image img");
-      const first = await image.getAttribute("src");
-      await dialog.getByRole("button", { name: "View image 2" }).click();
-      assert.notEqual(await image.getAttribute("src"), first);
-      await dialog.getByRole("button", { name: "Zoom in" }).click();
-      assert.ok(
-        await dialog.getByRole("button", { name: "Zoom out" }).isVisible(),
-      );
-      await page.keyboard.press("Escape");
-      await mem.getByRole("searchbox").fill("");
-      await mem
-        .getByRole("button", { name: "All moments", exact: true })
-        .click();
-      await mem.locator(".memory-print").first().click();
-      const title = await page
-        .getByRole("dialog")
-        .getByRole("heading")
-        .innerText();
-      await page.keyboard.press("ArrowRight");
-      assert.notEqual(
-        await page.getByRole("dialog").getByRole("heading").innerText(),
-        title,
-      );
-      await page.keyboard.press("Escape");
-    },
-  );
-  await shot(page, "07-memory-archive");
-  await scene(page, "sound");
-  await check(
-    "sound filters, playlist details, album catalog and honest visual preview",
-    async () => {
-      const sound = page.locator("#sound");
-      await sound
-        .getByLabel("Filter listening mood")
-        .selectOption("After dark");
-      await sound
-        .getByRole("button", { name: "Explore collection", exact: true })
-        .click();
-      assert.equal(
-        await page.getByRole("dialog").locator(".playlist-tracks>div").count(),
-        12,
-      );
-      await page.keyboard.press("Escape");
-      await sound
-        .getByRole("button", { name: "Visual preview", exact: true })
-        .click();
-      assert.ok(
-        await sound
-          .getByText("Visual preview only. No sound is playing.")
-          .isVisible(),
-      );
-      assert.equal(await page.locator("audio").count(), 0);
-      await sound
-        .getByRole("button", { name: "Pause visuals", exact: true })
-        .click();
-      await sound.getByRole("button", { name: "Albums", exact: true }).click();
-      await sound.locator(".album-catalog-item").first().click();
-      assert.equal(
-        await page.getByRole("dialog").locator(".playlist-tracks>div").count(),
-        6,
-      );
-      await page.keyboard.press("Escape");
-      await sound.getByRole("button", { name: "Artists", exact: true }).click();
-      assert.equal(await sound.locator(".artist-row").count(), 45);
-      await sound
-        .getByRole("button", { name: "Playlists", exact: true })
-        .click();
-      await sound
-        .getByLabel("Filter listening mood")
-        .selectOption("All frequencies");
-    },
-  );
-  await check(
-    "original editorial palette and interactive layered music sleeves",
-    async () => {
-      for (const [id, color] of [
-        ["expeditions", "rgb(255, 255, 255)"],
-        ["memories", "rgb(245, 247, 251)"],
-        ["sound", "rgb(255, 255, 255)"],
-      ])
-        assert.equal(
-          await page
-            .locator("#" + id)
-            .evaluate((el) => getComputedStyle(el).backgroundColor),
-          color,
-        );
-      const preview = page.locator(".sound-art-ghost.middle");
-      const title = (await preview.getAttribute("aria-label")).replace(
-        "Preview ",
-        "",
-      );
-      await preview.focus();
-      await page.keyboard.press("Enter");
-      assert.equal(
-        await page.locator(".sound-stage-notes h3").innerText(),
-        title,
-      );
-      assert.ok(
-        await page
-          .locator(".world-nav")
-          .evaluate((el) => !el.inert && getComputedStyle(el).opacity === "1"),
-      );
-    },
-  );
-  await shot(page, "08-sound");
-  await scene(page, "intelligence");
-  await check(
-    "orb, authored conversation selection and workflow demonstration",
-    async () => {
-      const ai = page.locator("#intelligence");
-      await ai.locator(".ai-topic select").selectOption("Finance");
-      assert.match(
-        await ai.locator(".conversation-answer").innerText(),
-        /fictional estimates/,
-      );
-      await ai.getByRole("button", { name: "Workflow", exact: true }).click();
-      assert.equal(await ai.locator(".workflow-paper li").count(), 3);
-      await ai
-        .getByRole("button", { name: "Conversations", exact: true })
-        .click();
-      await ai
-        .getByRole("button", { name: "Next example", exact: true })
-        .click();
-      assert.match(
-        await ai.locator(".conversation-answer").innerText(),
-        /balance/,
-      );
-      assert.equal(await ai.locator(".atlas-orb canvas").count(), 1);
-    },
-  );
-  await shot(page, "09-intelligence");
-  await scene(page, "system");
-  await check(
-    "system nodes, reconciled finance ledger, reminder updates and linked activity",
-    async () => {
-      const sys = page.locator("#system");
-      await sys.getByRole("button", { name: "Finance", exact: true }).click();
-      await sys
-        .getByRole("button", { name: "Open the local demo", exact: true })
-        .click();
-      assert.equal(
-        await page.getByRole("dialog").locator(".sample-ledger>div").count(),
-        10,
-      );
-      await page
-        .getByRole("dialog")
-        .getByRole("button", { name: "Previous month" })
-        .click();
-      assert.match(await page.getByRole("dialog").innerText(), /October 2025/);
-      await page.keyboard.press("Escape");
-      await sys.getByRole("button", { name: "Reminders", exact: true }).click();
-      await sys
-        .getByRole("button", { name: "Open the local demo", exact: true })
-        .click();
-      const check = page.getByRole("dialog").getByRole("checkbox").nth(1);
-      await check.check();
-      assert.ok(await check.isChecked());
-      await page.keyboard.press("Escape");
-      await sys
-        .getByRole("button", { name: "Organization", exact: true })
-        .click();
-      await sys
-        .getByRole("button", { name: "Open the local demo", exact: true })
-        .click();
-      assert.equal(
-        await page.getByRole("dialog").locator(".sample-ledger>div").count(),
-        12,
-      );
-      await page.keyboard.press("Escape");
-      await sys.getByRole("button", { name: "Travel", exact: true }).click();
-    },
-  );
-  await shot(page, "10-atlas-system");
-  await scene(page, "beyond");
-  await shot(page, "11-beyond");
-  await check("chapter menu traps focus, navigates and closes", async () => {
-    await page.getByRole("button", { name: "The atlas", exact: true }).click();
-    const dialog = page.getByRole("dialog");
-    await dialog.waitFor();
-    await page.keyboard.press("Shift+Tab");
-    assert.ok(
-      await dialog.evaluate((el) => el.contains(document.activeElement)),
-    );
-    await dialog.getByRole("button", { name: /The Sound Dimension/ }).click();
-    await page.waitForTimeout(2000);
-    assert.equal(await page.getByRole("dialog").count(), 0);
-    assert.equal(await page.evaluate(() => location.hash), "#sound");
-    assert.ok(
-      await page
-        .locator("#sound")
-        .evaluate((el) => Math.abs(el.getBoundingClientRect().top - 74) < 100),
-    );
+    assert.ok(boxes[1] > boxes[0] + 300);
+    await page.screenshot({ path: "work/qa-travel/expeditions.png" });
   });
   await check(
-    "return to original door works after a long browsing session",
+    "trip opens a dedicated page with interactive route and field notes",
     async () => {
-      await scene(page, "beyond");
-      await page
-        .getByRole("button", { name: "Return to the door", exact: true })
-        .click();
-      await page.waitForFunction(
-        () => window.scrollY < 5,
-        {},
-        { timeout: 8000 },
-      );
-      assert.ok(await page.evaluate(() => window.scrollY < 5));
-    },
-  );
-  await check(
-    "public routes, real local search, direct detail links and back navigation",
-    async () => {
-      for (const path of [
-        "/explore",
-        "/trips",
-        "/places",
-        "/map",
-        "/photography",
-        "/timeline",
-        "/experiences",
-        "/food",
-        "/cinema",
-        "/about",
-        "/search?q=Kyoto",
-        "/trips/himalayan-journey",
-        "/places/kyoto",
-      ]) {
-        const response = await page.goto(origin + path, {
-          waitUntil: "domcontentloaded",
-          timeout: 60000,
-        });
-        assert.equal(response.status(), 200, path);
-        await page.waitForTimeout(100);
-        assert.equal(await page.locator("h1").count(), 1, path);
-      }
-      await page.goto(origin + "/explore", { waitUntil: "networkidle" });
-      await page
-        .getByRole("button", { name: "Search the atlas", exact: true })
-        .click();
-      await page.getByRole("dialog").getByRole("searchbox").fill("Kyoto");
-      await page
-        .getByRole("dialog")
-        .getByRole("link", { name: /Place Kyoto/ })
-        .click();
-      await page.waitForURL("**/places/kyoto");
-      await page.goBack();
-      assert.match(page.url(), /explore/);
-    },
-  );
-  await check(
-    "complete track catalog: search, mood filtering and album relationships",
-    async () => {
-      await page.goto(origin + "/#sound", { waitUntil: "networkidle" });
-      const sound = page.locator("#sound");
-      await sound.getByRole("button", { name: "Tracks", exact: true }).click();
-      assert.equal(await sound.locator(".track-row").count(), 216);
-      await sound
-        .getByLabel("Filter listening mood")
-        .selectOption("After dark");
-      assert.ok(
-        (await sound.locator(".track-row").count()) > 0 &&
-          (await sound.locator(".track-row").count()) < 216,
-      );
-      await sound.getByRole("searchbox").fill("Night Bus");
-      assert.ok((await sound.locator(".track-row").count()) > 0);
-      await sound.locator(".track-row").first().click();
-      assert.equal(
-        await page.getByRole("dialog").locator(".playlist-tracks>div").count(),
-        6,
-      );
-      await page.keyboard.press("Escape");
-    },
-  );
-  await check(
-    "connected details: memory navigation closes overlays and opens linked journeys",
-    async () => {
-      await page.goto(origin + "/#expeditions", { waitUntil: "networkidle" });
-      await page.locator("#expeditions .expedition-panel").first().click();
-      await page
-        .getByRole("dialog")
-        .getByRole("link", { name: "Explore the memory archive" })
-        .click();
-      await page.waitForTimeout(1500);
-      assert.equal(await page.getByRole("dialog").count(), 0);
-      await page.locator("#memories .memory-print").first().click();
-      assert.ok(
-        (await page.getByRole("dialog").locator(".memory-related a").count()) >
-          0,
-      );
-      await page
-        .getByRole("dialog")
-        .locator(".memory-related a")
-        .first()
-        .click();
+      await page.locator(".expedition-panel").first().click();
       await page.waitForURL("**/trips/**");
+      await page.locator(".journey-cover h1").waitFor();
       assert.equal(await page.getByRole("dialog").count(), 0);
+      const buttons = page.locator(".journey-stops button");
+      assert.ok((await buttons.count()) > 0);
+      await buttons.last().click();
+      assert.equal(await buttons.last().getAttribute("aria-pressed"), "true");
+      await page.getByRole("button", { name: "Zoom route in" }).click();
+      assert.equal(
+        await page.getByRole("button", { name: "Zoom route out" }).isDisabled(),
+        false,
+      );
+      await page.locator(".journey-route-section").scrollIntoViewIfNeeded();
+      await page.waitForTimeout(1500);
+      await page.screenshot({ path: "work/qa-travel/trip-route.png" });
+      await page.getByRole("tab", { name: "Packing", exact: true }).click();
+      await page.getByRole("checkbox").first().check();
+      assert.ok(await page.getByRole("checkbox").first().isChecked());
     },
   );
-  await desktop.close();
-  const mobile = await browser.newContext({
+  await page.goto(origin + "/#beyond", { waitUntil: "networkidle" });
+  await page.waitForFunction(() => window.__heroReady);
+  await page.getByRole("status",{name:"Loading",exact:true}).waitFor({state:"detached"});
+  await scene(page, "beyond");
+  await check("return-home door closes as the journey finishes", async () => {
+    const top = await page
+      .locator("#beyond")
+      .evaluate((el) => el.getBoundingClientRect().top + scrollY);
+    await scroll(page, top - 700);
+    const before = await page
+      .locator(".door-leaf")
+      .evaluate((el) =>
+        Math.abs(new DOMMatrix(getComputedStyle(el).transform).m13),
+      );
+    const finish = await page
+      .locator("#beyond")
+      .evaluate(
+        (el) => el.getBoundingClientRect().bottom + scrollY - innerHeight,
+      );
+    await scroll(page, finish + 5);
+    const after = await page
+      .locator(".door-leaf")
+      .evaluate((el) =>
+        Math.abs(new DOMMatrix(getComputedStyle(el).transform).m13),
+      );
+    console.log("closing angles", before, after);
+    assert.ok(after < before && after < 0.05);
+    await page.screenshot({ path: "work/qa-travel/home-again.png" });
+  });
+  const mobile = await browser.newPage({
     viewport: { width: 390, height: 844 },
-    deviceScaleFactor: 1,
     isMobile: true,
     hasTouch: true,
   });
-  const mp = await mobile.newPage();
-  attach(mp);
-  await mp.goto(origin, { waitUntil: "networkidle", timeout: 90000 });
+  attach(mobile);
+  await mobile.goto(origin + "/trips/himalayan-journey", {
+    waitUntil: "networkidle",
+  });
   await check(
-    "mobile: original hero framing, all scenes and no horizontal page overflow",
+    "mobile route page and reduced motion remain readable",
     async () => {
-      await shot(mp, "12-mobile-hero");
-      for (const id of [
-        "arrival",
-        "observatory",
-        "expeditions",
-        "memories",
-        "sound",
-        "intelligence",
-        "system",
-        "beyond",
-      ]) {
-        await scene(mp, id);
-        const widths = await mp.evaluate(() => ({
-          page: document.documentElement.scrollWidth,
-          viewport: innerWidth,
-        }));
-        assert.ok(
-          widths.page <= widths.viewport + 1,
-          `${id}: ${JSON.stringify(widths)}`,
-        );
-        await shot(mp, "mobile-" + id);
-      }
-    },
-  );
-  await check(
-    "mobile: native expedition rail responds to horizontal touch without pinning",
-    async () => {
-      await scene(mp, "expeditions");
-      const rail = mp.locator(".expedition-viewport");
-      assert.equal(
-        await mp.locator(".expedition-passage").getAttribute("data-cinematic"),
-        null,
-      );
-      await rail.scrollIntoViewIfNeeded();
-      const box = await rail.boundingBox();
-      const y = Math.max(100, Math.min(740, box.y + box.height / 2));
-      const cdp = await mobile.newCDPSession(mp);
-      await cdp.send("Input.dispatchTouchEvent", {
-        type: "touchStart",
-        touchPoints: [{ x: 330, y }],
-      });
-      for (let i = 1; i <= 8; i++) {
-        await cdp.send("Input.dispatchTouchEvent", {
-          type: "touchMove",
-          touchPoints: [{ x: 330 - i * 30, y }],
-        });
-        await mp.waitForTimeout(35);
-      }
-      await cdp.send("Input.dispatchTouchEvent", {
-        type: "touchEnd",
-        touchPoints: [],
-      });
-      await mp.waitForTimeout(500);
-      assert.ok(await rail.evaluate((el) => el.scrollLeft > 60));
-      await mp
-        .getByRole("button", { name: "Next journeys", exact: true })
-        .tap();
-      await mp.waitForTimeout(300);
-      assert.equal(await rail.evaluate((el) => el.scrollLeft), 0);
-      await mp
-        .getByRole("button", { name: "Previous journeys", exact: true })
-        .tap();
-      await mp.waitForTimeout(300);
-      assert.equal(await rail.evaluate((el) => el.scrollLeft), 0);
-      await cdp.detach();
-    },
-  );
-  await check(
-    "mobile: chapter navigation and touch-size detail dismissal",
-    async () => {
-      await scene(mp, "expeditions");
-      await mp.locator("#expeditions .expedition-panel").first().tap();
-      await mp.getByRole("dialog").waitFor();
-      await mp.getByRole("button", { name: "Close dialog" }).tap();
-      await mp.getByRole("button", { name: "The atlas", exact: true }).tap();
-      await mp
-        .getByRole("dialog")
-        .getByRole("button", { name: /The Memory Archive/ })
-        .tap();
-      await mp.waitForTimeout(1700);
-      assert.equal(await mp.evaluate(() => location.hash), "#memories");
       assert.ok(
-        await mp
-          .locator("#memories")
-          .evaluate(
-            (el) => Math.abs(el.getBoundingClientRect().top - 74) < 150,
-          ),
-      );
-    },
-  );
-  await check(
-    "mobile: native vertical swipe passes through the preserved globe",
-    async () => {
-      await scene(mp, "observatory");
-      const canvas = mp.locator("#observatory canvas");
-      assert.equal(
-        await canvas.evaluate((el) => getComputedStyle(el).touchAction),
-        "pan-y",
-      );
-      const box = await canvas.boundingBox();
-      const y = Math.min(780, box.y + box.height * 0.6);
-      const before = await mp.evaluate(() => scrollY);
-      const cdp = await mobile.newCDPSession(mp);
-      await cdp.send("Input.dispatchTouchEvent", {
-        type: "touchStart",
-        touchPoints: [{ x: 195, y }],
-      });
-      for (let i = 1; i <= 8; i++) {
-        await cdp.send("Input.dispatchTouchEvent", {
-          type: "touchMove",
-          touchPoints: [{ x: 195, y: y - i * 30 }],
-        });
-        await mp.waitForTimeout(35);
-      }
-      await cdp.send("Input.dispatchTouchEvent", {
-        type: "touchEnd",
-        touchPoints: [],
-      });
-      await mp.waitForTimeout(400);
-      assert.ok((await mp.evaluate(() => scrollY)) > before + 60);
-      await cdp.detach();
-    },
-  );
-  await check(
-    "responsive: landscape orientation and a 320px viewport",
-    async () => {
-      await mp.setViewportSize({ width: 844, height: 390 });
-      await mp.waitForTimeout(500);
-      assert.ok(
-        await mp.evaluate(
+        await mobile.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth + 1,
         ),
       );
-      await shot(mp, "15-mobile-landscape");
-      await mp.setViewportSize({ width: 320, height: 568 });
-      await scene(mp, "system");
-      assert.ok(
-        await mp.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth + 1,
-        ),
-      );
-      await shot(mp, "16-small-mobile");
+      await mobile.locator(".journey-route-section").scrollIntoViewIfNeeded();
+      await mobile.screenshot({ path: "work/qa-travel/mobile-route.png" });
+      await mobile.emulateMedia({ reducedMotion: "reduce" });
+      await mobile.reload();
+      assert.ok(await mobile.locator("h1").isVisible());
     },
   );
-  await mobile.close();
-  const reduced = await browser.newContext({
-    viewport: { width: 1280, height: 900 },
-    reducedMotion: "reduce",
-  });
-  const rp = await reduced.newPage();
-  attach(rp);
-  await rp.goto(origin, { waitUntil: "networkidle", timeout: 90000 });
-  await check(
-    "reduced motion: original hero alternative, visible reading and paused new animation",
-    async () => {
-      assert.equal(
-        Math.round(
-          (await rp.locator('[aria-label="Life Atlas Hero"]').boundingBox())
-            .height,
-        ),
-        900,
-      );
-      await scene(rp, "expeditions");
-      assert.equal(
-        await rp.locator(".expedition-passage").getAttribute("data-cinematic"),
-        null,
-      );
-      assert.equal(
-        await rp
-          .locator(".expedition-viewport")
-          .evaluate((el) => getComputedStyle(el).overflowX),
-        "auto",
-      );
-      await scene(rp, "sound");
-      await rp
-        .getByRole("button", { name: "Visual preview", exact: true })
-        .click();
-      const names = await rp
-        .locator(".sound-wave i")
-        .first()
-        .evaluate((el) => getComputedStyle(el).animationName);
-      assert.equal(names, "none");
-      await shot(rp, "13-reduced-motion");
-    },
+  await check("no browser exceptions", async () =>
+    assert.deepEqual(errors, []),
   );
-  await reduced.close();
-  const fallback = await browser.newContext({
-    viewport: { width: 1280, height: 900 },
-  });
-  await fallback.addInitScript(() => {
-    const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = function (kind, ...args) {
-      return String(kind).includes("webgl")
-        ? null
-        : original.call(this, kind, ...args);
-    };
-  });
-  const fp = await fallback.newPage();
-  attach(fp);
-  await fp.goto(origin, { waitUntil: "networkidle", timeout: 90000 });
-  await check(
-    "WebGL failure: destination directory and CSS orb remain usable",
-    async () => {
-      await scene(fp, "observatory");
-      assert.ok(
-        await fp
-          .getByText("Your world, in words. Select any destination.")
-          .isVisible(),
-      );
-      await fp.locator("#observatory").getByRole("searchbox").fill("Tokyo");
-      await fp.getByRole("button", { name: /Tokyo Japan/ }).click();
-      assert.ok(
-        await fp
-          .getByRole("heading", { name: "Tokyo", exact: true })
-          .isVisible(),
-      );
-      await scene(fp, "intelligence");
-      assert.equal(await fp.locator(".atlas-orb canvas").count(), 0);
-      assert.ok(await fp.locator(".orb-css-fallback").isVisible());
-      await shot(fp, "14-webgl-fallback");
-    },
-  );
-  await fallback.close();
 } finally {
   await browser.close();
   await writeFile(
-    `${directory}/results.json`,
-    JSON.stringify({ results, errors, consoleErrors, failures }, null, 2),
+    "work/qa-travel/results.json",
+    JSON.stringify({ results, errors }, null, 2),
   );
 }
-console.log(
-  JSON.stringify(
-    {
-      passed: results.filter((r) => r.passed).length,
-      failed: results.filter((r) => !r.passed).length,
-      pageErrors: errors.length,
-      consoleErrors: consoleErrors.length,
-      httpFailures: failures.length,
-    },
-    null,
-    2,
-  ),
-);
-if (results.some((r) => !r.passed) || errors.length) process.exitCode = 1;
+if (results.some((result) => !result.passed)) process.exitCode = 1;

@@ -9,28 +9,28 @@ export default function Beyond() {
   return (
     <section id="beyond" className="world-beyond world-scene">
       <div className="world-section-bar">
-        <ChapterLabel number="09">The Beyond</ChapterLabel>
-        <span className="world-eyebrow">There is always another door.</span>
+        <ChapterLabel number="06">Home, again</ChapterLabel>
+        <span className="world-eyebrow">The last mile brings you home.</span>
       </div>
       <div className="beyond-door" aria-hidden="true">
         <div className="door-leaf" />
         <span />
       </div>
       <div className="beyond-words" data-world-reveal>
-        <p className="world-eyebrow">The world doesn’t end here.</p>
+        <p className="world-eyebrow">The journey settles. The memories stay.</p>
         <KineticHeading
-          lines={["Neither does", <em key="story">your story.</em>]}
+          lines={["Back where you belong.", <em key="story">With a world inside you.</em>]}
         />
         <p>
-          Keep moving. Keep noticing.
+          The bags are down. The door closes.
           <br />
-          Keep a little of the world with you.
+          And a little of the road comes home with you.
         </p>
         <a className="world-button light" href="#expeditions">
           Find your next beginning <ArrowUpRight size={17} />
         </a>
         <button className="world-link" onClick={() => returnToDoor(lenis)}>
-          Return to the door <ArrowUp size={16} />
+          Start another journey <ArrowUp size={16} />
         </button>
       </div>
       <footer className="world-colophon">

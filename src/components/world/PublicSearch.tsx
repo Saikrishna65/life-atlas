@@ -51,7 +51,7 @@ export default function PublicSearch({ onClose }: { onClose: () => void }) {
         label="Search places, journeys, memories, sound"
         placeholder="What are you drawn to?"
       />
-      <DemoNote>Search this public demonstration. No private records.</DemoNote>
+      <DemoNote>Explore destinations, journeys and stories.</DemoNote>
       <div className="search-public-results" aria-live="polite">
         {results.slice(0, 16).map((r) => (
           <Link href={r.href} key={`${r.type}-${r.title}`} onClick={onClose}>

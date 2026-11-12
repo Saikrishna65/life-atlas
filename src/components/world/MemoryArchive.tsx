@@ -65,7 +65,7 @@ export default function MemoryArchive() {
   return (
     <section id="memories" className="world-memories world-scene">
       <div className="world-section-bar">
-        <ChapterLabel number="05">The Memory Archive</ChapterLabel>
+        <ChapterLabel number="04">The Memory Archive</ChapterLabel>
         <span className="world-eyebrow">Collect moments. Not just miles.</span>
       </div>
       <header className="world-editorial-header" data-world-reveal>

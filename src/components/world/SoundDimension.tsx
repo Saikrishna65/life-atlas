@@ -88,7 +88,7 @@ export default function SoundDimension() {
   return (
     <section ref={root} id="sound" className="world-sound world-scene">
       <div className="world-section-bar">
-        <ChapterLabel number="06">The Sound Dimension</ChapterLabel>
+        <ChapterLabel number="05">The Sound Dimension</ChapterLabel>
         <span className="world-eyebrow">
           <AudioLines size={14} /> Feel something different
         </span>

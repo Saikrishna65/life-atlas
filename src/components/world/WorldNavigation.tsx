@@ -5,17 +5,14 @@ import { useLenis } from "lenis/react";
 import { Modal } from "./primitives";
 import { navigateChapter, returnToDoor } from "./navigation";
 export const chapters = [
-  ["arrival", "The Arrival"],
   ["observatory", "The Observatory"],
   ["expeditions", "The Expeditions"],
   ["memories", "The Memory Archive"],
   ["sound", "The Sound Dimension"],
-  ["intelligence", "The Intelligence"],
-  ["system", "The Atlas System"],
   ["beyond", "The Beyond"],
 ];
 export default function WorldNavigation() {
-  const [active, setActive] = useState("arrival");
+  const [active, setActive] = useState("observatory");
   const [visible, setVisible] = useState(false);
   const [open, setOpen] = useState(false);
   const lenis = useLenis();
@@ -77,8 +74,8 @@ export default function WorldNavigation() {
   }, []);
   return (
     <>
-      <a className="world-skip" href="#arrival">
-        Skip to the living world
+      <a className="world-skip" href="#observatory">
+        Skip to the journeys
       </a>
       <nav
         aria-label="World chapters"
@@ -159,7 +156,7 @@ export default function WorldNavigation() {
             />
           ))}
         </div>
-        <span>09</span>
+        <span>{String(chapters.length+1).padStart(2,"0")}</span>
       </aside>
     </>
   );
