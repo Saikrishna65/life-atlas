@@ -1,0 +1,298 @@
+{
+  "source": "https://github.com/lutangar/cities.json",
+  "upstream": "GeoNames Gazetteer",
+  "license": "CC BY 4.0",
+  "retrieved": "2026-11-12",
+  "records": [
+    {
+      "destination": "Chopta",
+      "mapCenter": [30.5, 79.2],
+      "referenceSettlement": "Ukhimath",
+      "referenceCoordinates": [30.51572, 79.0918],
+      "distanceToReferenceKm": 10.5,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Tungnath",
+      "mapCenter": [30.5, 79.2],
+      "referenceSettlement": "Ukhimath",
+      "referenceCoordinates": [30.51572, 79.0918],
+      "distanceToReferenceKm": 10.5,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Chandrashila",
+      "mapCenter": [30.5, 79.2],
+      "referenceSettlement": "Ukhimath",
+      "referenceCoordinates": [30.51572, 79.0918],
+      "distanceToReferenceKm": 10.5,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Rishikesh",
+      "mapCenter": [30.1, 78.3],
+      "referenceSettlement": "Rishīkesh",
+      "referenceCoordinates": [30.10778, 78.29255],
+      "distanceToReferenceKm": 1.1,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Munnar",
+      "mapCenter": [10.1, 77.1],
+      "referenceSettlement": "Munnar",
+      "referenceCoordinates": [10.08818, 77.06239],
+      "distanceToReferenceKm": 4.3,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Varanasi",
+      "mapCenter": [25.3, 83.0],
+      "referenceSettlement": "Varanasi",
+      "referenceCoordinates": [25.31668, 83.01041],
+      "distanceToReferenceKm": 2.1,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Jaisalmer",
+      "mapCenter": [26.9, 70.9],
+      "referenceSettlement": "Jaisalmer",
+      "referenceCoordinates": [26.91763, 70.90387],
+      "distanceToReferenceKm": 2.0,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Manali",
+      "mapCenter": [32.2, 77.2],
+      "referenceSettlement": "Manāli",
+      "referenceCoordinates": [32.2574, 77.17481],
+      "distanceToReferenceKm": 6.8,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Kasol",
+      "mapCenter": [32.0, 77.3],
+      "referenceSettlement": "Kulu",
+      "referenceCoordinates": [31.95835, 77.10823],
+      "distanceToReferenceKm": 18.7,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Jibhi",
+      "mapCenter": [31.6, 77.3],
+      "referenceSettlement": "Banjār",
+      "referenceCoordinates": [31.639, 77.34055],
+      "distanceToReferenceKm": 5.8,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Tirthan Valley",
+      "mapCenter": [31.6, 77.4],
+      "referenceSettlement": "Banjār",
+      "referenceCoordinates": [31.639, 77.34055],
+      "distanceToReferenceKm": 7.1,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Bir Billing",
+      "mapCenter": [32.0, 76.7],
+      "referenceSettlement": "Jogindarnagar",
+      "referenceCoordinates": [31.98727, 76.78906],
+      "distanceToReferenceKm": 8.5,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "McLeod Ganj",
+      "mapCenter": [32.2, 76.3],
+      "referenceSettlement": "Dharamsala",
+      "referenceCoordinates": [32.22006, 76.32013],
+      "distanceToReferenceKm": 2.9,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Spiti Valley",
+      "mapCenter": [32.2, 78.1],
+      "referenceSettlement": "Sarāhan",
+      "referenceCoordinates": [31.50988, 77.79395],
+      "distanceToReferenceKm": 82.0,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Ladakh",
+      "mapCenter": [34.2, 77.6],
+      "referenceSettlement": "Leh",
+      "referenceCoordinates": [34.16504, 77.58402],
+      "distanceToReferenceKm": 4.2,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Kashmir",
+      "mapCenter": [34.1, 74.8],
+      "referenceSettlement": "Srinagar",
+      "referenceCoordinates": [34.08565, 74.80555],
+      "distanceToReferenceKm": 1.7,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Jaipur",
+      "mapCenter": [26.9, 75.8],
+      "referenceSettlement": "Jaipur",
+      "referenceCoordinates": [26.91962, 75.78781],
+      "distanceToReferenceKm": 2.5,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Udaipur",
+      "mapCenter": [24.6, 73.7],
+      "referenceSettlement": "Udaipur",
+      "referenceCoordinates": [24.58584, 73.71346],
+      "distanceToReferenceKm": 2.1,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Hampi",
+      "mapCenter": [15.3, 76.5],
+      "referenceSettlement": "Kamalāpuram",
+      "referenceCoordinates": [15.30442, 76.47649],
+      "distanceToReferenceKm": 2.6,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Coorg",
+      "mapCenter": [12.4, 75.7],
+      "referenceSettlement": "Madikeri",
+      "referenceCoordinates": [12.42602, 75.7382],
+      "distanceToReferenceKm": 5.1,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Goa",
+      "mapCenter": [15.5, 73.8],
+      "referenceSettlement": "Reis Magos",
+      "referenceCoordinates": [15.50761, 73.80972],
+      "distanceToReferenceKm": 1.3,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Kerala Backwaters",
+      "mapCenter": [9.5, 76.3],
+      "referenceSettlement": "Alappuzha",
+      "referenceCoordinates": [9.49004, 76.3264],
+      "distanceToReferenceKm": 3.1,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Tokyo",
+      "mapCenter": [35.7, 139.7],
+      "referenceSettlement": "Ōkubo",
+      "referenceCoordinates": [35.70307, 139.70436],
+      "distanceToReferenceKm": 0.5,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Kyoto",
+      "mapCenter": [35.0, 135.8],
+      "referenceSettlement": "Kyoto",
+      "referenceCoordinates": [35.02107, 135.75385],
+      "distanceToReferenceKm": 4.8,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Osaka",
+      "mapCenter": [34.7, 135.5],
+      "referenceSettlement": "Umeda",
+      "referenceCoordinates": [34.70274, 135.49778],
+      "distanceToReferenceKm": 0.4,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Mount Fuji",
+      "mapCenter": [35.4, 138.7],
+      "referenceSettlement": "Narusawa",
+      "referenceCoordinates": [35.48321, 138.70072],
+      "distanceToReferenceKm": 9.3,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Seoul",
+      "mapCenter": [37.6, 127.0],
+      "referenceSettlement": "Seoul",
+      "referenceCoordinates": [37.566, 126.9784],
+      "distanceToReferenceKm": 4.2,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Bali",
+      "mapCenter": [-8.4, 115.2],
+      "referenceSettlement": "Pohgending Kawan",
+      "referenceCoordinates": [-8.4359, 115.1426],
+      "distanceToReferenceKm": 7.5,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Swiss Alps",
+      "mapCenter": [46.6, 7.9],
+      "referenceSettlement": "Lauterbrunnen",
+      "referenceCoordinates": [46.59307, 7.90938],
+      "distanceToReferenceKm": 1.1,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Iceland",
+      "mapCenter": [64.1, -21.9],
+      "referenceSettlement": "Kópavogur",
+      "referenceCoordinates": [64.11234, -21.91298],
+      "distanceToReferenceKm": 1.5,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Lisbon",
+      "mapCenter": [38.7, -9.1],
+      "referenceSettlement": "Alfama",
+      "referenceCoordinates": [38.7112, -9.12772],
+      "distanceToReferenceKm": 2.7,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Dolomites",
+      "mapCenter": [46.5, 11.9],
+      "referenceSettlement": "Livinallongo del Col di Lana",
+      "referenceCoordinates": [46.48162, 11.95399],
+      "distanceToReferenceKm": 4.6,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Cappadocia",
+      "mapCenter": [38.6, 34.8],
+      "referenceSettlement": "Göreme",
+      "referenceCoordinates": [38.64284, 34.82885],
+      "distanceToReferenceKm": 5.4,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Lofoten",
+      "mapCenter": [68.2, 13.6],
+      "referenceSettlement": "Leknes",
+      "referenceCoordinates": [68.14746, 13.61151],
+      "distanceToReferenceKm": 5.9,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Pokhara",
+      "mapCenter": [28.2, 84.0],
+      "referenceSettlement": "Pokhara",
+      "referenceCoordinates": [28.26689, 83.96851],
+      "distanceToReferenceKm": 8.1,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    },
+    {
+      "destination": "Sikkim",
+      "mapCenter": [27.3, 88.6],
+      "referenceSettlement": "Gangtok",
+      "referenceCoordinates": [27.32574, 88.61216],
+      "distanceToReferenceKm": 3.1,
+      "note": "Regional orientation center; reference settlement is a geographic cross-check, not the destination itself."
+    }
+  ],
+  "sourceSnapshotSha256": "467174e3e2f3c799230f31c1164451a973fe17ed8a26ae15bd076a127dfd3557",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+}

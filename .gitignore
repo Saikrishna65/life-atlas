@@ -46,3 +46,6 @@ scratch/
 /artifacts/
 /mobile-test-results/
 __pycache__/
+
+# Local implementation scratch and QA artifacts
+/work/
