@@ -1,4 +1,5 @@
 "use client";
+import { KineticHeading, RouteDrawing } from "./EditorialElements";
 import { useState } from "react";
 import { ArrowDownRight, Plus, X } from "lucide-react";
 import { ChapterLabel } from "./primitives";
@@ -28,17 +29,25 @@ export default function Arrival() {
     <section id="arrival" className="world-arrival world-scene">
       <div className="arrival-landscape" aria-hidden="true" />
       <div className="arrival-shade" />
+      <RouteDrawing className="arrival-route" />
+      <div className="arrival-coordinates" aria-hidden="true">
+        <span>REALITY</span>
+        <span>↳ IMAGINATION</span>
+      </div>
       <div className="world-section-bar">
         <ChapterLabel number="02">The Arrival</ChapterLabel>
         <span className="world-eyebrow">Reality meets imagination</span>
       </div>
       <div className="arrival-heading" data-world-reveal>
         <p className="world-eyebrow">You’re on the other side.</p>
-        <h2>
-          Every life is a world
-          <br />
-          waiting to be <em>explored.</em>
-        </h2>
+        <KineticHeading
+          lines={[
+            "Every life is a world",
+            <span key="explored">
+              waiting to be <em>explored.</em>
+            </span>,
+          ]}
+        />
         <p>
           Not every journey takes you somewhere new.
           <br />

@@ -1,4 +1,5 @@
 "use client";
+import { KineticHeading, RouteDrawing } from "./EditorialElements";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -70,11 +71,14 @@ export default function MemoryArchive() {
       <header className="world-editorial-header" data-world-reveal>
         <div>
           <p className="world-eyebrow">Small things. Infinite meaning.</p>
-          <h2>
-            Some moments
-            <br />
-            never <em>really leave.</em>
-          </h2>
+          <KineticHeading
+            lines={[
+              "Some moments",
+              <span key="leave">
+                never <em>really leave.</em>
+              </span>,
+            ]}
+          />
         </div>
         <div>
           <p>
@@ -129,46 +133,56 @@ export default function MemoryArchive() {
           </select>
         </label>
       </div>
-      <div className="memory-wall">
-        {items.slice(0, limit).map((m, i) => {
-          const p = gallery.find((p) => p.id === m.photoIds[0])!;
-          const d = destinations.find((d) => d.id === m.destinationId)!;
-          return (
-            <button
-              className={`memory-print memory-shape-${i % 5}`}
-              key={m.id}
-              onClick={() => {
-                setSelected(m.id);
-                setPhoto(0);
-                setZoom(false);
-              }}
-            >
-              <div className="memory-image-wrap">
-                <Image
-                  width={1600}
-                  height={1000}
-                  sizes="(max-width: 700px) 90vw, 50vw"
-                  src={p.thumbnail}
-                  alt={p.alt}
-                  loading="lazy"
-                />
-                <span className="memory-open">
-                  <ArrowUpRight size={20} />
-                </span>
-                <span className="memory-number">
-                  {String(memories.indexOf(m) + 1).padStart(3, "0")}
-                </span>
-              </div>
-              <div className="memory-print-caption">
-                <span>
-                  {d.name} / {m.category}
-                </span>
-                <h3>{m.title.split(" · ")[0]}</h3>
-                <time dateTime={m.date}>{formatDate(m.date)}</time>
-              </div>
-            </button>
-          );
-        })}
+      <div className="memory-salon">
+        <RouteDrawing variant="memory" />
+        <div className="archive-stamp" aria-hidden="true">
+          <span>THE ART OF</span>
+          <strong>noticing.</strong>
+          <small>001—108 / A LIFE IN FRAGMENTS</small>
+        </div>
+        <div className="memory-wall">
+          {items.slice(0, limit).map((m, i) => {
+            const p = gallery.find((p) => p.id === m.photoIds[0])!;
+            const d = destinations.find((d) => d.id === m.destinationId)!;
+            return (
+              <button
+                className={`memory-print memory-shape-${i % 5}`}
+                data-print-index={i}
+                data-world-tilt
+                key={m.id}
+                onClick={() => {
+                  setSelected(m.id);
+                  setPhoto(0);
+                  setZoom(false);
+                }}
+              >
+                <div className="memory-image-wrap" data-tilt-plane>
+                  <Image
+                    width={1600}
+                    height={1000}
+                    sizes="(max-width: 700px) 90vw, 50vw"
+                    src={p.thumbnail}
+                    alt={p.alt}
+                    loading="lazy"
+                  />
+                  <span className="memory-open">
+                    <ArrowUpRight size={20} />
+                  </span>
+                  <span className="memory-number">
+                    {String(memories.indexOf(m) + 1).padStart(3, "0")}
+                  </span>
+                </div>
+                <div className="memory-print-caption">
+                  <span>
+                    {d.name} / {m.category}
+                  </span>
+                  <h3>{m.title.split(" · ")[0]}</h3>
+                  <time dateTime={m.date}>{formatDate(m.date)}</time>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
       {items.length === 0 && (
         <Empty
@@ -213,6 +227,7 @@ export default function MemoryArchive() {
                 height: zoom ? "150%" : "100%",
                 maxWidth: "none",
               }}
+              key={current.photoIds[photo]}
               src={gallery.find((p) => p.id === current.photoIds[photo])!.src}
               alt={gallery.find((p) => p.id === current.photoIds[photo])!.alt}
             />

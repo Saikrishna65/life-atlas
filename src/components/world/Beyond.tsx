@@ -1,4 +1,5 @@
 "use client";
+import { KineticHeading } from "./EditorialElements";
 import { ArrowUpRight, ArrowUp } from "lucide-react";
 import { useLenis } from "lenis/react";
 import { ChapterLabel } from "./primitives";
@@ -12,16 +13,14 @@ export default function Beyond() {
         <span className="world-eyebrow">There is always another door.</span>
       </div>
       <div className="beyond-door" aria-hidden="true">
-        <div />
+        <div className="door-leaf" />
         <span />
       </div>
       <div className="beyond-words" data-world-reveal>
         <p className="world-eyebrow">The world doesn’t end here.</p>
-        <h2>
-          Neither does
-          <br />
-          <em>your story.</em>
-        </h2>
+        <KineticHeading
+          lines={["Neither does", <em key="story">your story.</em>]}
+        />
         <p>
           Keep moving. Keep noticing.
           <br />

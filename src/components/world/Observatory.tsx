@@ -1,4 +1,5 @@
 "use client";
+import { KineticHeading, ObservatoryDial } from "./EditorialElements";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -84,11 +85,12 @@ export default function Observatory() {
       <header className="observatory-heading" data-world-reveal>
         <div>
           <p className="world-eyebrow">Start with a little wonder.</p>
-          <h2>
-            The world is wide.
-            <br />
-            <em>Make it personal.</em>
-          </h2>
+          <KineticHeading
+            lines={[
+              "The world is wide.",
+              <em key="personal">Make it personal.</em>,
+            ]}
+          />
         </div>
         <p>
           Every point, a possibility.
@@ -99,6 +101,7 @@ export default function Observatory() {
       <div className="observatory-layout">
         <div className="observatory-map">
           <div className="observatory-grid" aria-hidden="true" />
+          <ObservatoryDial />
           <span className="map-axis top">N / 90°</span>
           <span className="map-axis bottom">S / 90°</span>
           <div className="observatory-core">

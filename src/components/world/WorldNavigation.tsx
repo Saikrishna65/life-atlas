@@ -22,27 +22,39 @@ export default function WorldNavigation() {
   useEffect(() => {
     const root = document.getElementById("living-world");
     if (!root) return;
-    const visibility = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { threshold: 0, rootMargin: "0px 0px -90% 0px" },
-    );
-    visibility.observe(root);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries)
-          if (entry.isIntersecting) setActive(entry.target.id);
-      },
-      { rootMargin: "-15% 0px -55% 0px" },
-    );
+    // IntersectionObserver percentage margins resolve against width. Use actual
+    // viewport heights so chapter visibility also works on ultrawide displays.
+    let visibility: IntersectionObserver;
+    let observer: IntersectionObserver;
+    const connect = () => {
+      visibility?.disconnect();
+      observer?.disconnect();
+      const height = window.innerHeight;
+      visibility = new IntersectionObserver(
+        ([entry]) => setVisible(entry.isIntersecting),
+        { threshold: 0, rootMargin: `0px 0px -${height - 1}px 0px` },
+      );
+      visibility.observe(root);
+      observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries)
+            if (entry.isIntersecting) setActive(entry.target.id);
+        },
+        { rootMargin: `-${height * 0.15}px 0px -${height * 0.55}px 0px` },
+      );
+      observeChapters();
+    };
     const observeChapters = () =>
       chapters.forEach(([id]) => {
         const e = document.getElementById(id);
         if (e) observer.observe(e);
       });
-    observeChapters();
+    connect();
+    window.addEventListener("resize", connect);
     const mutation = new MutationObserver(observeChapters);
     mutation.observe(root, { childList: true, subtree: true });
     return () => {
+      window.removeEventListener("resize", connect);
       visibility.disconnect();
       observer.disconnect();
       mutation.disconnect();

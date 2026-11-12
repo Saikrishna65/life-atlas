@@ -1,3 +1,6 @@
+@layer atlas-base, atlas-editorial;
+@import "./editorial.css" layer(atlas-editorial);
+@layer atlas-base {
 /* The Living World. All visual tokens are scoped to the public experience. */
 .living-world,
 .world-modal {
@@ -4059,4 +4062,6 @@
 .living-world .world-search input:focus-visible,
 .world-modal .world-search input:focus-visible {
   outline: none;
+}
+
 }

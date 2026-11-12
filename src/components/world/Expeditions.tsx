@@ -1,4 +1,5 @@
 "use client";
+import { KineticHeading, RouteDrawing } from "./EditorialElements";
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import {
@@ -17,6 +18,7 @@ import {
   SearchField,
 } from "./primitives";
 import ExpeditionDetail from "./ExpeditionDetail";
+import { useExpeditionSequence } from "./useExpeditionSequence";
 export default function Expeditions() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All terrains");
@@ -38,18 +40,23 @@ export default function Expeditions() {
   const offset =
     Math.min(page, Math.max(0, Math.ceil(items.length / 3) - 1)) * 3;
   const current = expeditions.find((e) => e.id === selected);
+  const { passage, focusFrame, rewind } = useExpeditionSequence(
+    items
+      .slice(offset, offset + 3)
+      .map((e) => e.id)
+      .join("|"),
+  );
   return (
     <section id="expeditions" className="world-expeditions world-scene">
+      <RouteDrawing className="expedition-route-background" />
       <div className="world-section-bar">
         <ChapterLabel number="04">The Expeditions</ChapterLabel>
         <span className="world-eyebrow">24 ways to take the long way</span>
       </div>
       <header className="world-editorial-header" data-world-reveal>
-        <h2>
-          Go somewhere
-          <br />
-          <em>that stays with you.</em>
-        </h2>
+        <KineticHeading
+          lines={["Go somewhere", <em key="stay">that stays with you.</em>]}
+        />
         <div>
           <p>
             The early train. The unfamiliar road.
@@ -108,38 +115,58 @@ export default function Expeditions() {
           </label>
         </div>
       </div>
-      <div className="expedition-cinema">
-        {items.slice(offset, offset + 3).map((e, i) => (
-          <button
-            className={`expedition-panel panel-${i}`}
-            key={e.id}
-            onClick={() => setSelected(e.id)}
-          >
-            <Image
-              width={1600}
-              height={1000}
-              sizes="(max-width: 700px) 90vw, 50vw"
-              src={e.image}
-              alt={`Illustrative ${e.category.toLowerCase()} landscape`}
-              loading="lazy"
-            />
-            <div className="expedition-panel-shade" />
-            <div className="expedition-panel-top">
-              <span>
-                FIELD JOURNAL /{" "}
-                {String(expeditions.indexOf(e) + 1).padStart(2, "0")}
-              </span>
-              <ArrowUpRight size={23} />
-            </div>
-            <div className="expedition-panel-caption">
-              <span>{e.route.join(" — ")}</span>
-              <h3>{e.name}</h3>
-              <p>
-                {e.duration} days <i /> {e.category} <i /> {e.difficulty}
-              </p>
-            </div>
-          </button>
-        ))}
+      <div className="expedition-passage" ref={passage}>
+        <div className="expedition-stage-index">
+          <span>TAKE THE LONG WAY</span>
+          <span className="passage-instruction">
+            Scroll to unfold the journey ↘
+          </span>
+          <span>FIELD JOURNALS / {String(items.length).padStart(2, "0")}</span>
+        </div>
+        <div className="expedition-viewport">
+          <div className="expedition-cinema">
+            {items.slice(offset, offset + 3).map((e, i) => (
+              <button
+                className={`expedition-panel panel-${i}`}
+                key={e.id}
+                onFocus={() => focusFrame(i)}
+                onClick={() => setSelected(e.id)}
+              >
+                <div className="expedition-image-plane">
+                  <Image
+                    width={1600}
+                    height={1000}
+                    sizes="(max-width: 700px) 90vw, 50vw"
+                    src={e.image}
+                    alt={`Illustrative ${e.category.toLowerCase()} landscape`}
+                    loading="lazy"
+                  />
+                </div>
+                <div className="expedition-panel-shade" />
+                <span className="expedition-big-index" aria-hidden="true">
+                  {String(expeditions.indexOf(e) + 1).padStart(2, "0")}
+                </span>
+                <div className="expedition-panel-top">
+                  <span>
+                    FIELD JOURNAL /{" "}
+                    {String(expeditions.indexOf(e) + 1).padStart(2, "0")}
+                  </span>
+                  <ArrowUpRight size={23} />
+                </div>
+                <div className="expedition-panel-caption">
+                  <span>{e.route.join(" — ")}</span>
+                  <h3>{e.name}</h3>
+                  <p>
+                    {e.duration} days <i /> {e.category} <i /> {e.difficulty}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="expedition-passage-progress" aria-hidden="true">
+          <span />
+        </div>
       </div>
       {!items.length && (
         <Empty
@@ -164,7 +191,10 @@ export default function Expeditions() {
         <div>
           <button
             className="world-icon"
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            onClick={() => {
+              setPage((p) => Math.max(0, p - 1));
+              rewind();
+            }}
             disabled={offset === 0}
             aria-label="Previous journeys"
           >
@@ -172,7 +202,10 @@ export default function Expeditions() {
           </button>
           <button
             className="world-icon"
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => {
+              setPage((p) => p + 1);
+              rewind();
+            }}
             disabled={offset + 3 >= items.length}
             aria-label="Next journeys"
           >

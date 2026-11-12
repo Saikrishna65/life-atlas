@@ -25,6 +25,27 @@ those assets. Geographic center cross-checks are recorded separately and are not
 navigation waypoints. Music artists, albums, tracks, and durations are fictional.
 There is no audio, fake player, model API, or notification execution.
 
+## Editorial palette and spatial layouts
+
+The second visual pass restores the original white, ink (#0b1220), and cobalt
+(#1f4fd8) palette. `editorial.css` overrides the established component foundation
+through explicit cascade layers. Night scenes use the same ink and cobalt tokens.
+The protected hero and core globe source are unchanged by this refinement.
+
+`WorldMotion` directs masked type, drawn routes, print reveals, pointer depth,
+magnetic controls, orbital diagrams, and the closing doorway. Per-element GSAP
+contexts are released when filtered content leaves the DOM. Size changes refresh
+scroll geometry; pin reparenting alone does not, avoiding observer feedback loops.
+The public detail shell shares this director; the existing hero is outside its
+scope.
+
+`useExpeditionSequence` pins one bounded editorial filmstrip on large fine-pointer
+displays. Smaller screens, touch devices, and reduced-motion settings use a native
+scroll-snap rail. Keyboard focus aligns offscreen journals. The archive uses an
+irregular print salon, music uses selectable layered sleeves, and Atlas has a
+pearl/cobalt shader with smoothed visual states and a touch response. No audio or
+live assistant execution is implied.
+
 ## Navigation, motion, and resources
 
 Use the existing root Lenis instance. `navigateChapter` waits for a deferred
@@ -64,7 +85,9 @@ provided managed runtime; no application dependency was added. Override
 `ATLAS_CHROMIUM` when the browser executable differs. Evidence is written to the
 ignored `work/qa` folder. The suite covers the door, scene transitions, interactive
 content, native dialog focus, public routes, real touch swipes, desktop, mobile,
-orientation changes, small screens, reduced motion, and WebGL failure.
+orientation changes, small screens, reduced motion, and WebGL failure. It also
+checks filmstrip scroll progression, keyboard entry into the last journal, native
+horizontal touch scrolling, the editorial palette, and sleeve selection.
 
 Repository-wide ESLint currently reports errors in untouched legacy modules.
 Changed public files are checked separately; this task does not alter private

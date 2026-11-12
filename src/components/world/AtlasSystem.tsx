@@ -1,4 +1,5 @@
 "use client";
+import { KineticHeading } from "./EditorialElements";
 import { useMemo, useState } from "react";
 import {
   ArrowUpRight,
@@ -128,11 +129,12 @@ export default function AtlasSystem() {
         <span className="world-eyebrow">Many dimensions. One life.</span>
       </div>
       <header className="world-editorial-header" data-world-reveal>
-        <h2>
-          Everything you are.
-          <br />
-          <em>Beautifully connected.</em>
-        </h2>
+        <KineticHeading
+          lines={[
+            "Everything you are.",
+            <em key="connected">Beautifully connected.</em>,
+          ]}
+        />
         <p>
           Less scattered. More you.
           <br />
@@ -141,9 +143,15 @@ export default function AtlasSystem() {
       </header>
       <div className="system-layout">
         <div className="system-constellation">
-          <svg viewBox="0 0 600 500" aria-hidden="true">
-            <ellipse cx="300" cy="250" rx="220" ry="185" />
-            <ellipse cx="300" cy="250" rx="145" ry="105" />
+          <svg
+            className="system-orbit-grid"
+            viewBox="0 0 600 500"
+            aria-hidden="true"
+          >
+            <g className="system-orbit-rings">
+              <ellipse cx="300" cy="250" rx="220" ry="185" />
+              <ellipse cx="300" cy="250" rx="145" ry="105" />
+            </g>
             {modules.map((_, i) => {
               const a = (i * Math.PI) / 4 - Math.PI / 2;
               return (

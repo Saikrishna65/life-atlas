@@ -58,10 +58,10 @@ export default function AtlasOrb({
         };
         const material = new THREE.ShaderMaterial({
           uniforms,
-          vertexShader: `uniform float uTime; uniform vec2 uPointer; uniform float uState; varying vec3 vNormal; varying vec3 vPosition;
-void main(){vNormal=normalize(normalMatrix*normal);float wave=sin(position.x*5.+uTime*.5)*sin(position.y*4.-uTime*.4)*sin(position.z*5.+uTime*.3);vec3 p=position+normal*wave*(.045+uState*.035);vPosition=p;gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`,
-          fragmentShader: `uniform float uTime;uniform vec2 uPointer;uniform float uState;varying vec3 vNormal;varying vec3 vPosition;
-void main(){vec3 n=normalize(vNormal);float fresnel=pow(1.-max(dot(n,vec3(0.,0.,1.)),0.),2.2);float flow=sin(vPosition.y*18.+sin(vPosition.x*8.+uTime*.3)*2.+uTime*.4);float bands=smoothstep(.5,1.,flow);vec3 dark=vec3(.018,.052,.075);vec3 teal=vec3(.28,.64,.65);vec3 cream=vec3(.91,.83,.63);float light=max(dot(n,normalize(vec3(-.6+uPointer.x*.5,.8+uPointer.y*.5,1.))),0.);vec3 color=mix(dark,teal,light*.4+bands*.16);color=mix(color,cream,fresnel*.9);color+=pow(max(dot(reflect(normalize(vec3(-1.,1.,1.)),n),vec3(0.,0.,-1.)),0.),28.)*.4;gl_FragColor=vec4(color,1.);}`,
+          vertexShader: `uniform float uTime;uniform float uState;varying vec3 vNormal;varying vec3 vPosition;varying vec3 vView;
+void main(){float drift=sin(position.x*3.2+sin(position.y*2.8+uTime*.28))*sin(position.y*3.8-uTime*.23)*sin(position.z*3.1+uTime*.19);vec3 p=position+normal*drift*(.028+uState*.055);vec4 view=modelViewMatrix*vec4(p,1.);vView=-view.xyz;vPosition=p;vNormal=normalize(normalMatrix*normal);gl_Position=projectionMatrix*view;}`,
+          fragmentShader: `uniform float uTime;uniform vec2 uPointer;uniform float uState;varying vec3 vNormal;varying vec3 vPosition;varying vec3 vView;
+void main(){vec3 n=normalize(vNormal);vec3 v=normalize(vView);vec3 l=normalize(vec3(-.7+uPointer.x*.5,.9+uPointer.y*.5,1.2));float fresnel=pow(1.-max(dot(n,v),0.),2.7);vec3 p=vPosition;float warp=sin(p.x*3.8+sin(p.z*3.+uTime*.23)*1.7)+cos(p.y*3.2-sin(p.x*2.5-uTime*.18));float flow=smoothstep(-.3,.9,warp);vec3 ink=vec3(.015,.048,.19);vec3 cobalt=vec3(.055,.22,.8);vec3 pearl=vec3(.88,.94,1.);float diffuse=max(dot(n,l),0.);float spec=pow(max(dot(n,normalize(l+v)),0.),65.);float ribbon=pow(max(sin(p.y*2.3+p.x*1.7+warp*.6+uTime*.12),0.),9.);vec3 color=mix(ink,cobalt,.25+flow*.55);color=mix(color,pearl,pow(diffuse,3.)*.67+ribbon*.27);color+=pearl*spec*.95;color=mix(color,pearl,fresnel*.78);color+=vec3(.02,.07,.24)*uState;gl_FragColor=vec4(color,1.);}`,
         });
         const geometry = new THREE.SphereGeometry(
           1.12,
@@ -72,7 +72,7 @@ void main(){vec3 n=normalize(vNormal);float fresnel=pow(1.-max(dot(n,vec3(0.,0.,
         scene.add(orb);
         const ringGeometry = new THREE.TorusGeometry(1.58, 0.0025, 4, 128);
         const ringMaterial = new THREE.MeshBasicMaterial({
-          color: 0x88b7b4,
+          color: 0x5b87ff,
           transparent: true,
           opacity: 0.25,
         });
@@ -95,7 +95,7 @@ void main(){vec3 n=normalize(vNormal);float fresnel=pow(1.-max(dot(n,vec3(0.,0.,
           new THREE.BufferAttribute(positions, 3),
         );
         const particleMaterial = new THREE.PointsMaterial({
-          color: 0xc3d2c4,
+          color: 0xdce7ff,
           size: 0.016,
           transparent: true,
           opacity: 0.65,
@@ -105,17 +105,21 @@ void main(){vec3 n=normalize(vNormal);float fresnel=pow(1.-max(dot(n,vec3(0.,0.,
         let frame = 0,
           visible = false;
         const started = performance.now();
+        let impulse = 0;
         const render = (time: number) => {
           frame = 0;
           if (disposed) return;
           const t = reduced.matches ? 0 : (time - started) / 1000;
           uniforms.uTime.value = t;
-          uniforms.uState.value +=
+          const targetState =
             (stateRef.current === "thinking"
               ? 1
               : stateRef.current === "response"
                 ? 0.4
-                : 0) - uniforms.uState.value;
+                : 0) +
+            impulse * 0.6;
+          uniforms.uState.value += (targetState - uniforms.uState.value) * 0.1;
+          impulse *= 0.92;
           orb.rotation.y = t * 0.05 + uniforms.uPointer.value.x * 0.15;
           orb.rotation.x = uniforms.uPointer.value.y * 0.1;
           ring.rotation.z = 0.4 + t * 0.025;
@@ -166,6 +170,11 @@ void main(){vec3 n=normalize(vNormal);float fresnel=pow(1.-max(dot(n,vec3(0.,0.,
             frame = 0;
           } else if (visible) request();
         };
+        const touch = () => {
+          impulse = 1;
+          request();
+        };
+        container.addEventListener("pointerdown", touch, { passive: true });
         container.addEventListener("pointermove", pointer);
         container.addEventListener("pointerleave", leave);
         document.addEventListener("visibilitychange", visibility);
@@ -174,6 +183,7 @@ void main(){vec3 n=normalize(vNormal);float fresnel=pow(1.-max(dot(n,vec3(0.,0.,
           cancelAnimationFrame(frame);
           resize.disconnect();
           observer.disconnect();
+          container.removeEventListener("pointerdown", touch);
           container.removeEventListener("pointermove", pointer);
           container.removeEventListener("pointerleave", leave);
           document.removeEventListener("visibilitychange", visibility);

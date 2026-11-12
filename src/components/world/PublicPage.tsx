@@ -3,6 +3,7 @@ import { type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import "./world.css";
+import WorldMotion from "./WorldMotion";
 export default function PublicPage({
   title,
   kicker,
@@ -21,7 +22,7 @@ export default function PublicPage({
         <h1>{title}</h1>
         <p>{kicker}</p>
       </header>
-      {children}
+      <WorldMotion>{children}</WorldMotion>
       <nav className="public-crossroads" aria-label="Keep exploring">
         <span className="world-eyebrow">There is more to your world.</span>
         <Link href="/">

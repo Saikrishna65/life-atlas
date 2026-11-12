@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, type ReactNode } from "react";
-import { X, ArrowUpRight, Search } from "lucide-react";
+import { X, ArrowUpRight, Search, Asterisk } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useLenis } from "lenis/react";
 export function ChapterLabel({
@@ -12,7 +12,12 @@ export function ChapterLabel({
 }) {
   return (
     <div className="world-eyebrow">
-      <span className="world-cross">✳</span>
+      <Asterisk
+        className="world-cross"
+        size={22}
+        strokeWidth={1.5}
+        aria-hidden="true"
+      />
       <span>
         {number} / {children}
       </span>

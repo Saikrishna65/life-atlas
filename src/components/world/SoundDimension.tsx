@@ -1,4 +1,5 @@
 "use client";
+import { KineticHeading } from "./EditorialElements";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -60,6 +61,14 @@ export default function SoundDimension() {
   const currentAlbum = albums.find((a) => a.id === selectedAlbum);
   const current = playlists.find((p) => p.id === selected);
   const focus = filtered[Math.min(index, Math.max(0, filtered.length - 1))];
+  const nextCover =
+    filtered[
+      (Math.min(index, Math.max(0, filtered.length - 1)) + 1) % filtered.length
+    ];
+  const followingCover =
+    filtered[
+      (Math.min(index, Math.max(0, filtered.length - 1)) + 2) % filtered.length
+    ];
   const catalog =
     catalogTab === "Artists"
       ? searchRecords(artists, query, (a) => `${a.name} ${a.genre}`)
@@ -87,10 +96,9 @@ export default function SoundDimension() {
       <header className="world-editorial-header" data-world-reveal>
         <div>
           <p className="world-eyebrow">A soundtrack for the in-between.</p>
-          <h2>
-            Life has a<br />
-            <em>frequency.</em>
-          </h2>
+          <KineticHeading
+            lines={["Life has a", <em key="frequency">frequency.</em>]}
+          />
         </div>
         <div>
           <p>
@@ -150,30 +158,53 @@ export default function SoundDimension() {
         <div className={`sound-stage ${visual ? "is-previewing" : ""}`}>
           <div className="sound-orbits" aria-hidden="true" />
           <div className="sound-art-stack">
-            <div className="sound-art-ghost back">
+            <button
+              className="sound-art-ghost back"
+              disabled={filtered.length < 2}
+              onClick={() => {
+                setIndex(
+                  (Math.min(index, filtered.length - 1) + 2) % filtered.length,
+                );
+                setVisual(false);
+              }}
+              aria-label={`Preview ${followingCover.title}`}
+            >
               <AlbumArt
-                variant={(focus.artwork + 2) % 8}
-                color="#6e7e81"
-                label="Background artwork study"
+                variant={followingCover.artwork}
+                color={followingCover.color}
+                label={followingCover.title}
               />
-            </div>
-            <div className="sound-art-ghost middle">
+            </button>
+            <button
+              className="sound-art-ghost middle"
+              disabled={filtered.length < 2}
+              onClick={() => {
+                setIndex(
+                  (Math.min(index, filtered.length - 1) + 1) % filtered.length,
+                );
+                setVisual(false);
+              }}
+              aria-label={`Preview ${nextCover.title}`}
+            >
               <AlbumArt
-                variant={(focus.artwork + 1) % 8}
-                color="#b3a196"
-                label="Background artwork study"
+                variant={nextCover.artwork}
+                color={nextCover.color}
+                label={nextCover.title}
               />
-            </div>
+            </button>
             <button
               className="sound-art-main"
+              data-world-tilt
               onClick={() => setSelected(focus.id)}
               aria-label={`Open ${focus.title}`}
             >
-              <AlbumArt
-                variant={focus.artwork}
-                color={focus.color}
-                label={focus.title}
-              />
+              <div className="sound-tilt-plane" data-tilt-plane>
+                <AlbumArt
+                  variant={focus.artwork}
+                  color={focus.color}
+                  label={focus.title}
+                />
+              </div>
               <span>
                 <ArrowUpRight size={23} />
               </span>
@@ -214,7 +245,7 @@ export default function SoundDimension() {
                 <i
                   key={i}
                   style={{
-                    height: `${8 + ((i * 17) % 37)}px`,
+                    height: `${8 + ((tracks.find((t) => t.id === focus.trackIds[i % focus.trackIds.length])!.duration + i * 7) % 37)}px`,
                     animationDelay: `${i * 0.04}s`,
                   }}
                 />

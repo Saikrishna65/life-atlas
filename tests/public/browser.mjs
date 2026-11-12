@@ -207,6 +207,99 @@ try {
       await exp.getByLabel("Filter terrain").selectOption("All terrains");
     },
   );
+  await check(
+    "desktop cinematic passage advances with scroll and remains keyboard accessible",
+    async () => {
+      const passage = page.locator(".expedition-passage");
+      await page.waitForFunction(
+        () =>
+          document.querySelector(".expedition-passage")?.dataset.cinematic ===
+          "true",
+      );
+      const metrics = await passage.evaluate((el) => ({
+        start: el.parentElement.getBoundingClientRect().top + scrollY - 96,
+        distance: el.parentElement.offsetHeight - el.offsetHeight,
+      }));
+      await page.evaluate(
+        (y) => window.__lenis.scrollTo(y, { immediate: true, force: true }),
+        metrics.start + 10,
+      );
+      await page.waitForTimeout(1300);
+      const x = await page
+        .locator(".expedition-cinema")
+        .evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m41);
+      await page.evaluate(
+        (y) => window.__lenis.scrollTo(y, { immediate: true, force: true }),
+        metrics.start + metrics.distance * 0.7,
+      );
+      await page.waitForTimeout(1300);
+      assert.ok(
+        await page
+          .locator(".expedition-cinema")
+          .evaluate(
+            (el, x) =>
+              new DOMMatrix(getComputedStyle(el).transform).m41 < x - 150,
+            x,
+          ),
+        "The journal rail did not advance horizontally",
+      );
+      assert.ok(
+        Math.abs((await passage.boundingBox()).y - 96) < 5,
+        "The filmstrip did not remain pinned at its reading position",
+      );
+      await page.locator(".expedition-panel").nth(2).focus();
+      await page.waitForTimeout(1400);
+      const frame = await page
+        .locator(".expedition-panel")
+        .nth(2)
+        .boundingBox();
+      assert.ok(
+        frame.x >= -2 && frame.x + frame.width <= 1442,
+        `Keyboard target outside viewport: ${JSON.stringify(frame)}`,
+      );
+      assert.ok(
+        await page
+          .locator(".expedition-panel")
+          .nth(2)
+          .evaluate((el) => document.activeElement === el),
+        "Pinning interrupted keyboard focus",
+      );
+      await page.keyboard.press("Enter");
+      await page.getByRole("dialog").waitFor();
+      await page.keyboard.press("Escape");
+      const firstJournal = await page
+        .locator(".expedition-panel h3")
+        .first()
+        .innerText();
+      await page
+        .getByRole("button", { name: "Next journeys", exact: true })
+        .click();
+      await page.waitForTimeout(1900);
+      assert.notEqual(
+        await page.locator(".expedition-panel h3").first().innerText(),
+        firstJournal,
+      );
+      assert.ok(
+        await page
+          .locator(".expedition-cinema")
+          .evaluate(
+            (el) =>
+              Math.abs(new DOMMatrix(getComputedStyle(el).transform).m41) < 5,
+          ),
+        "The next group did not rewind to its first journal",
+      );
+      await page
+        .getByRole("button", { name: "Previous journeys", exact: true })
+        .click();
+      await page.waitForTimeout(1900);
+      assert.equal(
+        await page.locator(".expedition-panel h3").first().innerText(),
+        firstJournal,
+      );
+      await shot(page, "refinement-cinematic-passage");
+      await scene(page, "expeditions");
+    },
+  );
   await shot(page, "06-expeditions");
   await scene(page, "memories");
   await check(
@@ -288,6 +381,38 @@ try {
       await sound
         .getByLabel("Filter listening mood")
         .selectOption("All frequencies");
+    },
+  );
+  await check(
+    "original editorial palette and interactive layered music sleeves",
+    async () => {
+      for (const [id, color] of [
+        ["expeditions", "rgb(255, 255, 255)"],
+        ["memories", "rgb(245, 247, 251)"],
+        ["sound", "rgb(255, 255, 255)"],
+      ])
+        assert.equal(
+          await page
+            .locator("#" + id)
+            .evaluate((el) => getComputedStyle(el).backgroundColor),
+          color,
+        );
+      const preview = page.locator(".sound-art-ghost.middle");
+      const title = (await preview.getAttribute("aria-label")).replace(
+        "Preview ",
+        "",
+      );
+      await preview.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(
+        await page.locator(".sound-stage-notes h3").innerText(),
+        title,
+      );
+      assert.ok(
+        await page
+          .locator(".world-nav")
+          .evaluate((el) => !el.inert && getComputedStyle(el).opacity === "1"),
+      );
     },
   );
   await shot(page, "08-sound");
@@ -521,6 +646,49 @@ try {
     },
   );
   await check(
+    "mobile: native expedition rail responds to horizontal touch without pinning",
+    async () => {
+      await scene(mp, "expeditions");
+      const rail = mp.locator(".expedition-viewport");
+      assert.equal(
+        await mp.locator(".expedition-passage").getAttribute("data-cinematic"),
+        null,
+      );
+      await rail.scrollIntoViewIfNeeded();
+      const box = await rail.boundingBox();
+      const y = Math.max(100, Math.min(740, box.y + box.height / 2));
+      const cdp = await mobile.newCDPSession(mp);
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x: 330, y }],
+      });
+      for (let i = 1; i <= 8; i++) {
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x: 330 - i * 30, y }],
+        });
+        await mp.waitForTimeout(35);
+      }
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+      await mp.waitForTimeout(500);
+      assert.ok(await rail.evaluate((el) => el.scrollLeft > 60));
+      await mp
+        .getByRole("button", { name: "Next journeys", exact: true })
+        .tap();
+      await mp.waitForTimeout(300);
+      assert.equal(await rail.evaluate((el) => el.scrollLeft), 0);
+      await mp
+        .getByRole("button", { name: "Previous journeys", exact: true })
+        .tap();
+      await mp.waitForTimeout(300);
+      assert.equal(await rail.evaluate((el) => el.scrollLeft), 0);
+      await cdp.detach();
+    },
+  );
+  await check(
     "mobile: chapter navigation and touch-size detail dismissal",
     async () => {
       await scene(mp, "expeditions");
@@ -614,6 +782,17 @@ try {
             .height,
         ),
         900,
+      );
+      await scene(rp, "expeditions");
+      assert.equal(
+        await rp.locator(".expedition-passage").getAttribute("data-cinematic"),
+        null,
+      );
+      assert.equal(
+        await rp
+          .locator(".expedition-viewport")
+          .evaluate((el) => getComputedStyle(el).overflowX),
+        "auto",
       );
       await scene(rp, "sound");
       await rp
