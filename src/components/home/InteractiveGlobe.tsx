@@ -21,14 +21,20 @@ export interface GlobePlace {
 
 interface InteractiveGlobeProps {
   places: GlobePlace[];
+  onSelect?: (id: string) => void;
+  selectedPlaceId?: string;
 }
 
-export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
+export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: InteractiveGlobeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const globeWrapperRef = useRef<HTMLDivElement>(null);
   const globeContainerRef = useRef<HTMLDivElement>(null);
   const globeInstanceRef = useRef<unknown>(null);
   const [isGlobeReady, setIsGlobeReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const generationRef = useRef(0);
+  const selectRef = useRef(onSelect);
+  useEffect(() => { selectRef.current = onSelect; }, [onSelect]);
 
   const validPlaces = useMemo(
     () => places.filter(p => p.latitude !== null && p.longitude !== null),
@@ -38,11 +44,13 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
   const initGlobe = useCallback(async () => {
     if (typeof window === "undefined" || !globeContainerRef.current || globeInstanceRef.current) return;
 
+    const generation = generationRef.current;
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     // Dynamically import to avoid SSR issues
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const GlobeModule = await import("globe.gl") as any;
+    if (generation !== generationRef.current || !globeContainerRef.current) return;
     const GlobeFn = GlobeModule.default || GlobeModule;
 
     const containerEl = globeContainerRef.current;
@@ -129,7 +137,15 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
         return Math.max(2000, distance * 80);
       })
       .arcAltitudeAutoScale(0.8);
-      // NOTE: Hover and click feature completely removed on both mobile and web.
+
+    // Accessible destination list outside the canvas mirrors these marker actions.
+    globe.pointsData(validPlaces)
+      .pointLat((d: GlobePlace) => d.latitude)
+      .pointLng((d: GlobePlace) => d.longitude)
+      .pointAltitude(0.135).pointRadius(0.65).pointColor(() => colors.accent)
+      .pointLabel((d: GlobePlace) => `${d.name} · ${d.country} / Demo destination`)
+      .onPointClick((d: GlobePlace) => selectRef.current?.(d.id));
+    globe.renderer().setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1.25 : 1.75));
 
     // Fetch GeoJSON for the dotted landmasses
     fetch('/data/countries.geojson')
@@ -138,6 +154,7 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
         return res.json();
       })
       .then(countries => {
+        if (generation !== generationRef.current) return;
         if (countries?.features) {
           globe.hexPolygonsData(countries.features)
             .hexPolygonResolution(3)
@@ -154,6 +171,7 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
     const scene = globe.scene();
     if (scene) {
       import('three').then((THREE) => {
+        if (generation !== generationRef.current) return;
         // Clear default lights for custom lighting
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         scene.children = scene.children.filter((c: any) => !c.isLight);
@@ -217,7 +235,7 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
         // Mouse parallax for background stars
         const isTouch = window.matchMedia("(pointer: coarse)").matches;
         let handleMouseMove: ((e: MouseEvent) => void) | null = null;
-        if (!isTouch) {
+        if (!isTouch && !prefersReducedMotion) {
           const xTo = gsap.quickTo(particlesMesh.rotation, "x", { duration: 2, ease: "power2.out" });
           const yTo = gsap.quickTo(particlesMesh.rotation, "y", { duration: 2, ease: "power2.out" });
           
@@ -235,6 +253,13 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
           if (handleMouseMove) {
             window.removeEventListener('mousemove', handleMouseMove);
           }
+          gsap.killTweensOf(particlesMesh.rotation);
+          particlesGeometry.dispose();
+          particlesMaterial.dispose();
+          circleTexture.dispose();
+          sphereMaterial.dispose();
+          pillarMaterial.dispose();
+          baseGeometry.dispose();
           if (originalCleanup) originalCleanup();
         };
 
@@ -275,9 +300,13 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       // On mobile touch devices, disable touch rotation capture so vertical page scroll is completely unhindered
       if (isTouch) {
         controls.enableRotate = false;
+        // OrbitControls sets touch-action:none even with rotation disabled.
+        // Restore native vertical gestures so the public globe never traps page scrolling.
+        globe.renderer().domElement.style.touchAction = "pan-y";
       }
     }
 
+    let cameraTimer: ReturnType<typeof setTimeout> | undefined;
     if (!prefersReducedMotion) {
       let centerLat = homeLocation.latitude;
       let centerLng = homeLocation.longitude;
@@ -289,7 +318,8 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       }
       
       globe.pointOfView({ lat: centerLat, lng: centerLng, altitude: 4 }, 0);
-      setTimeout(() => {
+      cameraTimer = setTimeout(() => {
+        if (generation !== generationRef.current) return;
         globe.pointOfView({ lat: centerLat, lng: centerLng, altitude: 2.2 }, 3000);
       }, 300);
     }
@@ -312,15 +342,30 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
     };
     window.addEventListener("resize", handleResize);
 
+    const visibility = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !document.hidden) globe.resumeAnimation?.();
+      else globe.pauseAnimation?.();
+    }, { rootMargin: '100px' });
+    visibility.observe(containerEl);
+    const onVisibility = () => { if (document.hidden) globe.pauseAnimation?.(); else if (containerEl.getBoundingClientRect().bottom > 0 && containerEl.getBoundingClientRect().top < window.innerHeight) globe.resumeAnimation?.(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    const previousCleanup = globe._cleanup;
     globe._cleanup = () => {
+      clearTimeout(cameraTimer);
+      visibility.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener("resize", handleResize);
+      previousCleanup?.();
       globe._destructor?.();
     };
   }, [validPlaces]);
 
   useEffect(() => {
-    initGlobe();
+    const lifecycle = generationRef;
+    lifecycle.current++;
+    initGlobe().catch(() => setFailed(true));
     return () => {
+      lifecycle.current++;
       if (globeInstanceRef.current) {
         // @ts-expect-error - globe._cleanup is a custom property attached during init
         globeInstanceRef.current._cleanup?.();
@@ -328,6 +373,14 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
       }
     };
   }, [initGlobe]);
+
+  useEffect(() => {
+    const place = validPlaces.find(p => p.id === selectedPlaceId);
+    if (!place || !globeInstanceRef.current) return;
+    const globe = globeInstanceRef.current as { pointOfView: (p: object, ms: number) => void; controls: () => { autoRotate: boolean } };
+    globe.controls().autoRotate = false;
+    globe.pointOfView({ lat: place.latitude, lng: place.longitude, altitude: 2.2 }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1000);
+  }, [selectedPlaceId, validPlaces, isGlobeReady]);
 
   // Initial resting state set immediately upon mount
   useEffect(() => {
@@ -488,7 +541,7 @@ export default function InteractiveGlobe({ places }: InteractiveGlobeProps) {
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border border-muted/30 rounded-full animate-pulse" />
               <p className="font-sans text-[10px] uppercase tracking-widest text-muted-foreground">
-                Loading atmosphere...
+                {failed ? "The map is taking a rest. Explore the destinations beside it." : "Loading atmosphere..."}
               </p>
             </div>
           </div>

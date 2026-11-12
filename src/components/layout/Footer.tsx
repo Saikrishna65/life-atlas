@@ -1,28 +1,29 @@
 "use client";
-
 import { usePathname } from "next/navigation";
-
+import Link from "next/link";
+import dynamic from "next/dynamic";
+const AdminFooter = dynamic(() => import("./AdminFooter"));
 export default function Footer() {
   const pathname = usePathname();
-
-  if (pathname?.startsWith("/secret")) {
+  if (pathname?.startsWith("/admin")) return <AdminFooter />;
+  if (
+    pathname === "/" ||
+    pathname?.startsWith("/secret") ||
+    pathname?.startsWith("/admin")
+  )
     return null;
-  }
-
   return (
-    <footer className="py-12 md:py-24 px-6 md:px-12 border-t border-muted/20">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-end gap-12">
-        <div>
-          <h2 className="font-display text-2xl md:text-3xl mb-4">LIFE ATLAS</h2>
-          <p className="font-body text-muted-foreground max-w-sm">
-            A place for the moments I want to remember. Travels, places, people, food, films and everything in between.
-          </p>
-        </div>
-        
-        <div className="flex flex-col gap-2 font-sans text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Life Atlas.</p>
-          <p>Personal archive.</p>
-        </div>
+    <footer className="public-footer">
+      <div>
+        <strong>LIFE ATLAS</strong>
+        <p>
+          A world of places, moments, and possibilities.
+          <br />A public demonstration for the endlessly curious.
+        </p>
+      </div>
+      <div>
+        <Link href="/about">About the atlas & image credits ↗</Link>
+        <span>© 2026 LIFE ATLAS / THE LIVING WORLD</span>
       </div>
     </footer>
   );

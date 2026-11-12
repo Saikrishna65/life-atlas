@@ -1,18 +1,17 @@
-import { getMapData } from "@/lib/queries/map";
-import MapWrapper from "@/components/map/MapWrapper";
-import { Metadata } from "next";
-
+import type { Metadata } from "next";
+import PublicPage from "@/components/world/PublicPage";
+import Observatory from "@/components/world/Observatory";
 export const metadata: Metadata = {
-  title: "Map | Life Atlas",
-  description: "An interactive atlas of places and journeys.",
+  title: "The world, within reach.",
+  description: "Every coordinate opens a new chapter.",
 };
-
-export default async function MapPage() {
-  const places = await getMapData();
-
+export default function Page() {
   return (
-    <div className="fixed inset-0 z-10 bg-background">
-      <MapWrapper places={places} />
-    </div>
+    <PublicPage
+      title={"The world, within reach."}
+      kicker={"Every coordinate opens a new chapter."}
+    >
+      <Observatory />
+    </PublicPage>
   );
 }

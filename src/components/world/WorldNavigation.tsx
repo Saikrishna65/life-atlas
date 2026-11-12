@@ -1,0 +1,154 @@
+"use client";
+import { useEffect, useState } from "react";
+import { ArrowUpRight, Compass, Menu } from "lucide-react";
+import { useLenis } from "lenis/react";
+import { Modal } from "./primitives";
+import { navigateChapter, returnToDoor } from "./navigation";
+export const chapters = [
+  ["arrival", "The Arrival"],
+  ["observatory", "The Observatory"],
+  ["expeditions", "The Expeditions"],
+  ["memories", "The Memory Archive"],
+  ["sound", "The Sound Dimension"],
+  ["intelligence", "The Intelligence"],
+  ["system", "The Atlas System"],
+  ["beyond", "The Beyond"],
+];
+export default function WorldNavigation() {
+  const [active, setActive] = useState("arrival");
+  const [visible, setVisible] = useState(false);
+  const [open, setOpen] = useState(false);
+  const lenis = useLenis();
+  useEffect(() => {
+    const root = document.getElementById("living-world");
+    if (!root) return;
+    const visibility = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      { threshold: 0, rootMargin: "0px 0px -90% 0px" },
+    );
+    visibility.observe(root);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries)
+          if (entry.isIntersecting) setActive(entry.target.id);
+      },
+      { rootMargin: "-15% 0px -55% 0px" },
+    );
+    const observeChapters = () =>
+      chapters.forEach(([id]) => {
+        const e = document.getElementById(id);
+        if (e) observer.observe(e);
+      });
+    observeChapters();
+    const mutation = new MutationObserver(observeChapters);
+    mutation.observe(root, { childList: true, subtree: true });
+    return () => {
+      visibility.disconnect();
+      observer.disconnect();
+      mutation.disconnect();
+    };
+  }, []);
+  const navigate = (id: string) => {
+    setOpen(false);
+    if (id !== "top") {
+      void navigateChapter(id, lenis);
+      return;
+    }
+    returnToDoor(lenis, 1.4);
+  };
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, []);
+  return (
+    <>
+      <a className="world-skip" href="#arrival">
+        Skip to the living world
+      </a>
+      <nav
+        aria-label="World chapters"
+        className={`world-nav ${visible ? "is-visible" : ""}`}
+        inert={!visible}
+      >
+        <button className="world-wordmark" onClick={() => navigate("top")}>
+          LIFE ATLAS<span>THE LIVING WORLD</span>
+        </button>
+        <div className="world-nav-links">
+          {[
+            ["observatory", "Discover"],
+            ["expeditions", "Journeys"],
+            ["memories", "Memories"],
+            ["sound", "Sound"],
+          ].map(([id, name]) => (
+            <button
+              key={id}
+              onClick={() => navigate(id)}
+              aria-current={active === id ? "location" : undefined}
+            >
+              {name}
+            </button>
+          ))}
+        </div>
+        <button
+          className="world-nav-explore"
+          onClick={() => setOpen(true)}
+          aria-expanded={open}
+          aria-controls="world-chapter-menu"
+        >
+          The atlas <Compass size={16} />
+        </button>
+        <button
+          className="world-nav-mobile world-icon"
+          onClick={() => setOpen(true)}
+          aria-label="Open chapter menu"
+          aria-expanded={open}
+        >
+          <Menu size={22} />
+        </button>
+      </nav>
+      {open && (
+        <Modal
+          title="Choose a chapter"
+          className="world-chapter-dialog"
+          onClose={() => setOpen(false)}
+        >
+          <div className="world-chapter-menu" id="world-chapter-menu">
+            {chapters.map(([id, label], i) => (
+              <button key={id} onClick={() => navigate(id)}>
+                <small>0{i + 2}</small>
+                <span>{label}</span>
+                <ArrowUpRight size={20} />
+              </button>
+            ))}
+            <p>Take the long way. There’s no wrong turn.</p>
+          </div>
+        </Modal>
+      )}
+      <aside
+        className={`world-progress ${visible ? "is-visible" : ""}`}
+        aria-label="Current chapter"
+      >
+        <span>
+          {String(chapters.findIndex(([id]) => id === active) + 2).padStart(
+            2,
+            "0",
+          )}
+        </span>
+        <div>
+          {chapters.map(([id, label]) => (
+            <button
+              key={id}
+              aria-label={`Go to ${label}`}
+              aria-current={active === id ? "location" : undefined}
+              onClick={() => navigate(id)}
+            />
+          ))}
+        </div>
+        <span>09</span>
+      </aside>
+    </>
+  );
+}

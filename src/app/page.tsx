@@ -1,43 +1,22 @@
+import type { Metadata } from "next";
 import Hero from "@/components/home/Hero";
-import FeaturedTrips from "@/components/home/FeaturedTrips";
-import LifeStatistics from "@/components/home/LifeStatistics";
-import TimelinePreview from "@/components/home/TimelinePreview";
-import PhotographyStory from "@/components/home/PhotographyStory";
-import LifeBeyondTravel from "@/components/home/LifeBeyondTravel";
-import Link from "next/link";
-import { getHomepageData } from "@/lib/queries/home";
-
-import LazyGlobe from "@/components/home/LazyGlobe";
 import HomePreloader from "@/components/home/HomePreloader";
 import { NativeAppRedirect } from "@/components/native/NativeAppRedirect";
-
-export default async function Home() {
-  const { stats, featuredTrips, timelinePreview, photos, experiences, globePlaces } = await getHomepageData();
-
+import LivingWorld from "@/components/world/LivingWorld";
+export const metadata: Metadata = {
+  title: "Life Atlas — The Living World",
+  description:
+    "A cinematic journey through places, moments, sound, and possibility. Reality meets imagination in the Living World.",
+};
+export default function Home() {
   return (
     <>
       <NativeAppRedirect />
       <HomePreloader />
-      <main className="bg-background text-foreground min-h-screen">
-      <Hero />
-      <LazyGlobe places={globePlaces} />
-      
-      <FeaturedTrips trips={featuredTrips} />
-      <LifeStatistics stats={stats} />
-      <TimelinePreview events={timelinePreview} />
-      <PhotographyStory photos={photos} />
-      <LifeBeyondTravel experiences={experiences} />
-
-      {/* Final CTA */}
-      <section className="py-32 px-6 text-center border-t border-muted/20">
-        <h2 className="font-display text-4xl md:text-5xl text-foreground mb-6 italic">
-          Keep moving.<br/><span className="text-accent not-italic">Keep remembering.</span>
-        </h2>
-        <Link href="/explore" className="inline-block mt-4 font-sans text-sm uppercase tracking-widest text-muted-foreground hover:text-accent transition-colors font-semibold">
-          Explore the atlas &rarr;
-        </Link>
-      </section>
-    </main>
-  </>
+      <div className="bg-background text-foreground min-h-screen">
+        <Hero />
+        <LivingWorld />
+      </div>
+    </>
   );
 }

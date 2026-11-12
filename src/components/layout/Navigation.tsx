@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Search } from "lucide-react";
 import gsap from "gsap";
+import PublicHeader from "@/components/world/PublicHeader";
 
 const navLinks = [
   { href: "/explore", label: "Explore" },
@@ -151,9 +152,11 @@ export default function Navigation() {
     : "hover:text-black/60";
 
   // Hide the navigation entirely on secret private sections
-  if (pathname?.startsWith("/secret")) {
+  if ((pathname === "/" && !isInHero) || pathname?.startsWith("/secret")) {
     return null;
   }
+
+  if (pathname !== "/" && !pathname?.startsWith("/admin")) return <PublicHeader />;
 
   return (
     <>
@@ -207,6 +210,8 @@ export default function Navigation() {
       {/* Fullscreen Menu */}
       <div
         id="fullscreen-menu"
+        inert={!isOpen}
+        aria-hidden={!isOpen}
         role="dialog"
         aria-modal="true"
         aria-label="Main Navigation"

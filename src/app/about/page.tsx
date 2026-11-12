@@ -1,64 +1,85 @@
-import { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "About | Life Atlas",
-  description: "The philosophy and technology behind this personal archive.",
+import PublicPage from "@/components/world/PublicPage";
+import Link from "next/link";
+export const metadata = {
+  title: "A world worth remembering",
+  description: "About the Life Atlas Living World public demonstration.",
 };
-
-export default function AboutPage() {
+export default function Page() {
   return (
-    <main className="min-h-screen bg-background pt-32 pb-32">
-      <div className="max-w-3xl mx-auto px-6 md:px-12">
-        <header className="mb-24">
-          <h1 className="font-display text-5xl md:text-7xl tracking-tighter mb-6 text-foreground leading-tight">
-            About the Atlas.
-          </h1>
-          <p className="font-sans text-muted-foreground text-lg md:text-xl font-light tracking-wide max-w-xl">
-            A digital monument to the places, people, and moments that shape a life.
+    <PublicPage
+      title="A life is more than a list."
+      kicker="Life Atlas — The Living World. Reality meets imagination."
+    >
+      <article className="about-manifesto">
+        <span className="world-eyebrow">A note from the atlas</span>
+        <h2>
+          Go a little further.
+          <br />
+          Look a little closer.
+          <br />
+          <em>Keep what matters.</em>
+        </h2>
+        <div className="about-prose">
+          <p>
+            The world is not short of things to see. Sometimes what we need is a
+            little space to notice them. Life Atlas brings places, journeys,
+            memories, sound, and practical plans into one connected public
+            experience.
           </p>
-        </header>
-
-        <article className="prose prose-lg prose-invert max-w-none">
-          <section className="mb-16">
-            <h2 className="font-sans text-xs uppercase tracking-widest text-muted-foreground mb-6">The Purpose</h2>
-            <p className="font-body text-xl font-light leading-relaxed text-foreground/85 mb-6">
-              Life Atlas exists because human memory is beautifully flawed. We remember the feeling of a place, the color of the sky, or the taste of a meal, but the exact coordinates and dates slip away over time. This project is an attempt to anchor those fleeting moments.
-            </p>
-            <p className="font-body text-xl font-light leading-relaxed text-foreground/85">
-              It is not a social network or a travel blog meant for public consumption and algorithmic optimization. It is a deeply personal archive. A way to look back at the topography of a life and see the interconnected web of journeys, conversations, and discoveries.
-            </p>
-          </section>
-
-          <section className="mb-16">
-            <h2 className="font-sans text-xs uppercase tracking-widest text-muted-foreground mb-6">Photography & Observation</h2>
-            <p className="font-body text-xl font-light leading-relaxed text-foreground/85 mb-6">
-              Photography here serves as a tool for observation rather than exhibition. The images scattered across this atlas are fragments of atmospheres—the geometry of an unknown city, the quiet of an early morning flight, or the chaotic energy of a night market. 
-            </p>
-            <p className="font-body text-xl font-light leading-relaxed text-foreground/85">
-              By collecting places, stories, and photographs in one unified space, the relationships between them become clear. A cup of coffee in Tokyo is no longer just an isolated image; it is tied to a coordinate on a map, and a specific trip.
-            </p>
-          </section>
-
-          <section className="mb-16">
-            <h2 className="font-sans text-xs uppercase tracking-widest text-muted-foreground mb-6">The Technology</h2>
-            <p className="font-body text-xl font-light leading-relaxed text-foreground/85 mb-6">
-              Life Atlas is built on modern web primitives. It is powered by <strong>Next.js</strong> for seamless routing and server-rendered performance, allowing the archive to remain fast regardless of how many memories it holds.
-            </p>
-            <p className="font-body text-xl font-light leading-relaxed text-foreground/85 mb-6">
-              The data—every trip, coordinate, and photograph—is modeled using <strong>Prisma</strong> and stored securely in a <strong>PostgreSQL</strong> database. 
-            </p>
-            <p className="font-body text-xl font-light leading-relaxed text-foreground/85">
-              For interactions and fluidity, the interface uses <strong>Tailwind CSS</strong> for styling, <strong>Lenis</strong> for buttery smooth scrolling, and <strong>GSAP</strong> to craft cinematic, meaningful motion without overwhelming the senses.
-            </p>
-          </section>
-        </article>
-
-        <div className="mt-32 pt-16 border-t border-muted/20 flex justify-center">
-          <div className="w-16 h-16 rounded-full border border-muted/30 flex items-center justify-center text-muted-foreground/50">
-            <span className="font-display text-2xl tracking-tighter">LA</span>
-          </div>
+          <p>
+            This edition is a demonstration. The journals, journeys, budgets,
+            financial records, reminders, music catalog, and Atlas conversations
+            are fictional local examples. They are designed to show
+            possibilities, not to claim verified personal achievements or live
+            AI execution.
+          </p>
+          <p>
+            No private vault, bank record, personal memory, assistant
+            credential, or native data is connected to these scenes. The orb is
+            an interactive visual presence. The sound dimension is a visual
+            catalog with no audio playback.
+          </p>
+          <h3>The collection</h3>
+          <p>
+            36 destinations, 24 detailed expeditions, 120 timeline events, 108
+            memories, 180 image metadata records, and 42 imagined travel
+            milestones. The fictional music catalog includes 45 artists, 36
+            albums, 216 tracks, and 20 playlists. Explore 56 authored
+            conversations, 28 workflows, 108 ecosystem activities, 64 planning
+            examples, and 120 sample transactions.
+          </p>
+          <h3>Images & geography</h3>
+          <p>
+            Landscape studies are illustrative and do not document the named
+            destinations. The archive’s 180 metadata entries use six shared
+            image studies rather than 180 unique photographs. The Arrival holds
+            the original hero’s last frame. Additional landscapes come from
+            existing Life Atlas artwork and the MIT-licensed Start Bootstrap
+            collections. Abstract album art and the orb are procedural. Map
+            coordinates are rounded approximate centers for orientation, not
+            navigation or trail safety.
+          </p>
+          <a
+            className="world-link"
+            href="/images/world/LICENSES.txt"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Read image license notices ↗
+          </a>
+          <h3>A world for different ways of exploring</h3>
+          <p>
+            Use chapter navigation, a keyboard, or a touch screen. New ambient
+            animations respect reduced-motion preferences. Destination details
+            remain available when WebGL is unavailable. Every itinerary, price,
+            weather expectation, and transport note needs current independent
+            confirmation before a real journey.
+          </p>
+          <Link className="world-button dark" href="/">
+            Step into the living world ↗
+          </Link>
         </div>
-      </div>
-    </main>
+      </article>
+    </PublicPage>
   );
 }

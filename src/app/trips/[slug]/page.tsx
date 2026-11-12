@@ -1,6 +1,8 @@
+import { expeditions } from "@/data/demo/expeditions";
+import PublicPage from "@/components/world/PublicPage";
+import ExpeditionDetail from "@/components/world/ExpeditionDetail";
 import { notFound } from "next/navigation";
-import { getTripBySlug, getNextTrip, getAllTripSlugs } from "@/lib/queries/trips";
-import TripHero from "@/components/trips/TripHero";
+import { getTripBySlug, getNextTrip } from "@/lib/queries/trips";
 import TripOverview from "@/components/trips/TripOverview";
 import PublicTripRouteMap from "@/components/trips/PublicTripRouteMap";
 import TripDays from "@/components/trips/TripDays";
@@ -10,7 +12,8 @@ import NextJourney from "@/components/trips/NextJourney";
 import { Metadata } from "next";
 
 export async function generateStaticParams() {
-  return await getAllTripSlugs();
+  // Existing database journeys still resolve dynamically; demo builds need no database.
+  return expeditions.map((e) => ({ slug: e.slug }));
 }
 
 export async function generateMetadata({
@@ -19,12 +22,14 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const demo = expeditions.find((e) => e.slug === slug);
+  if (demo) return { title: demo.name, description: demo.overview };
   const trip = await getTripBySlug(slug);
-  
+
   if (!trip) {
     return { title: "Trip Not Found | Life Atlas" };
   }
-  
+
   return {
     title: `${trip.title} | Life Atlas`,
     description: trip.description || `Journey to ${trip.destination}`,
@@ -42,6 +47,18 @@ export default async function TripDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const demo = expeditions.find((e) => e.slug === slug);
+  if (demo)
+    return (
+      <PublicPage
+        title={demo.name}
+        kicker="An imagined journey. A real sense of possibility."
+      >
+        <div className="public-detail-wrap">
+          <ExpeditionDetail expedition={demo} />
+        </div>
+      </PublicPage>
+    );
   const trip = await getTripBySlug(slug);
 
   if (!trip) {
@@ -51,10 +68,12 @@ export default async function TripDetailPage({
   const nextTrip = await getNextTrip(trip.startDate, trip.id);
 
   return (
-    <main className="bg-background text-foreground min-h-screen pb-24">
-      <TripHero trip={trip} />
+    <PublicPage
+      title={trip.title}
+      kicker={trip.description || `A journey through ${trip.destination}.`}
+    >
       <TripOverview trip={trip} photoCount={trip.photos.length} />
-      
+
       {/* Interactive Expedition Route Map */}
       <PublicTripRouteMap
         tripTitle={trip.title}
@@ -67,12 +86,12 @@ export default async function TripDetailPage({
       />
 
       <TripDays days={trip.tripDays} />
-      
+
       <TripExperiences experiences={trip.experiences} />
-      
+
       <TripGallery photos={trip.photos} />
-      
+
       {nextTrip && <NextJourney trip={nextTrip} />}
-    </main>
+    </PublicPage>
   );
 }
