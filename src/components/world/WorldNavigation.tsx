@@ -1,10 +1,13 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { useEffect, useState } from "react";
-import { ArrowUpRight, Compass, Menu } from "lucide-react";
+import { ArrowUpRight, Search, Menu } from "lucide-react";
 import { useLenis } from "lenis/react";
 import { Modal } from "./primitives";
 import { navigateChapter, returnToDoor } from "./navigation";
+const typography = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-world-navigation", display: "swap" });
 export const chapters = [
   ["observatory", "The Observatory"],
   ["on-the-road", "The art of going"],
@@ -81,52 +84,29 @@ export default function WorldNavigation() {
       <nav
         aria-label="World chapters"
         data-scene={active}
-        className={`world-nav ${visible ? "is-visible" : ""}`}
+        className={`${typography.variable} world-nav reference-world-nav ${visible ? "is-visible" : ""}`}
         inert={!visible}
       >
-        <button
-          className="world-wordmark atlas-logo-brand"
-          aria-label="Life Atlas home"
-          onClick={() => navigate("top")}
-        >
-          <Image
-            src="/brand/life-atlas-black.png"
-            width={84}
-            height={56}
-            sizes="84px"
-            alt=""
-          />
+        <button className="reference-nav-round" aria-label="Search the atlas" onClick={() => window.dispatchEvent(new Event("open-search"))}>
+          <Search size={17} />
         </button>
-        <div className="world-nav-links">
-          {[
-            ["observatory", "Discover"],
-            ["expeditions", "Journeys"],
-            ["memories", "Frames & films"],
-          ].map(([id, name]) => (
-            <button
-              key={id}
-              onClick={() => navigate(id)}
-              aria-current={active === id ? "location" : undefined}
-            >
-              {name}
-            </button>
-          ))}
+        <div className="reference-nav-center">
+          <div className="reference-nav-pill">
+            <Link href="/trips">The journeys</Link>
+            <Link href="/places">The places</Link>
+            <Link href="/photography">Frames &amp; films</Link>
+          </div>
+          <button className="reference-nav-brand" aria-label="Life Atlas home" onClick={() => navigate("top")}>
+            <Image src="/brand/life-atlas-black.png" width={96} height={64} sizes="96px" alt="" />
+          </button>
+          <div className="reference-nav-pill">
+            <button onClick={() => navigate("observatory")}>The world</button>
+            <Link href="/timeline">Our timeline</Link>
+            <Link href="/about">The story</Link>
+          </div>
         </div>
-        <button
-          className="world-nav-explore"
-          onClick={() => setOpen(true)}
-          aria-expanded={open}
-          aria-controls="world-chapter-menu"
-        >
-          The atlas <Compass size={16} />
-        </button>
-        <button
-          className="world-nav-mobile world-icon"
-          onClick={() => setOpen(true)}
-          aria-label="Open chapter menu"
-          aria-expanded={open}
-        >
-          <Menu size={22} />
+        <button className="reference-nav-round" aria-label="The atlas" onClick={() => setOpen(true)} aria-expanded={open} aria-controls="world-chapter-menu">
+          <Menu size={17} />
         </button>
       </nav>
       {open && (

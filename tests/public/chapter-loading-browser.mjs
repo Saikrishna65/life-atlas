@@ -29,7 +29,7 @@ try {
   await page.getByRole("link", { name: "Explore the Globe", exact: true }).click();
   await requested;
   await page.waitForFunction(() => window.__globeReady === true, null, { timeout: 45000 });
-  await page.waitForFunction(() => Math.abs(document.querySelector("#observatory").getBoundingClientRect().top - 74) < 12);
+  await page.waitForFunction(() => Math.abs(document.querySelector("#observatory").getBoundingClientRect().top) < 12);
   await page.locator("#observatory canvas").evaluate(canvas => { canvas.dataset.retainedRenderer = "yes"; });
   assert.ok(await page.locator("#observatory").evaluate(el => el.getBoundingClientRect().height > 500));
   assert.ok(await page.locator("#on-the-road.world-loading").count());
@@ -38,7 +38,7 @@ try {
   await page.locator("#on-the-road:not(.world-loading)").waitFor({ state: "attached" });
   await page.waitForTimeout(600);
   assert.equal(await page.locator('#observatory canvas[data-retained-renderer="yes"]').count(), 1);
-  assert.ok(await page.locator("#observatory").evaluate(el => Math.abs(el.getBoundingClientRect().top - 74) < 12));
+  assert.ok(await page.locator("#observatory").evaluate(el => Math.abs(el.getBoundingClientRect().top) < 12));
   assert.deepEqual(errors, []);
   console.log("PASS delayed adjacent chapter retains its placeholder, active globe DOM/renderer and scroll alignment throughout lazy loading, with no browser exceptions. Video uses local fixtures.");
 } finally { release(); await browser.close(); }

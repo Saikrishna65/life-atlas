@@ -185,3 +185,24 @@
 }
 
 .observatory-destination-list > button[aria-pressed="true"] { box-shadow: inset 0 -2px 0 #fff; }
+
+/* Keep the approved reference-inspired navigation throughout the homepage. */
+.world-nav.reference-world-nav {
+  --w-focus: #fff;
+  top: 25px; left: 25px; right: 25px;
+  padding: 0; gap: 30px; border: 0;
+  background: transparent; backdrop-filter: none;
+  color: #fff; font-family: var(--font-world-navigation), sans-serif;
+}
+.reference-nav-center { display: flex; align-items: center; justify-content: center; gap: 28px; width: min(1120px, 75vw); }
+.reference-nav-pill { display: flex; flex: 1; align-items: center; justify-content: space-evenly; gap: 22px; min-height: 46px; padding: 0 23px; border-radius: 40px; background: #171a177d; backdrop-filter: blur(2px); }
+.reference-world-nav .reference-nav-pill :is(a, button) { padding: 0; background: none; border: 0; color: white; font: 600 10px var(--font-world-navigation), sans-serif; text-transform: uppercase; white-space: nowrap; }
+.reference-nav-brand { display: grid; place-items: center; flex: 0 0 96px; border: 0; padding: 0; background: none; cursor: pointer; }
+.reference-nav-brand img { width: 96px; height: 64px; object-fit: contain; filter: brightness(0) invert(1); }
+.reference-nav-round { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; padding: 0; border: 0; border-radius: 50%; background: #171a177d; backdrop-filter: blur(2px); color: white; cursor: pointer; }
+@media (max-width: 1050px) { .reference-nav-pill { gap: 12px; padding-inline: 15px; } .reference-nav-center { gap: 16px; } }
+@media (max-width: 700px) {
+  .world-nav.reference-world-nav { top: 20px; left: 20px; right: 20px; gap: 15px; }
+  .reference-nav-pill { display: none; }
+  .reference-nav-center { flex: 1; width: auto; }
+}

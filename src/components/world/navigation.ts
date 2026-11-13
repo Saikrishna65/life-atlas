@@ -7,6 +7,7 @@ export async function navigateChapter(
   immediate = false,
 ) {
   const request = ++latestNavigation;
+  const offset = id === "observatory" ? 0 : 74;
   window.dispatchEvent(
     new CustomEvent("world-chapter-request", { detail: id }),
   );
@@ -47,7 +48,7 @@ export async function navigateChapter(
     lenis.resize();
     // Numeric destinations avoid adding the scene’s CSS scroll-margin a second time.
     const position = () =>
-      window.scrollY + target.getBoundingClientRect().top - 74;
+      window.scrollY + target.getBoundingClientRect().top - offset;
     lenis.scrollTo(position(), {
       force: true,
       duration: reduce ? 0 : 1.3,
@@ -58,7 +59,7 @@ export async function navigateChapter(
         requestAnimationFrame(() => requestAnimationFrame(() => {
           if (request !== latestNavigation || !target.isConnected || rendered() !== target) return;
           lenis.resize();
-          if (Math.abs(target.getBoundingClientRect().top - 74) > 5)
+          if (Math.abs(target.getBoundingClientRect().top - offset) > 5)
             lenis.scrollTo(position(), {
               duration: reduce ? 0 : 0.35,
               force: true,
@@ -70,7 +71,7 @@ export async function navigateChapter(
 
   } else
     window.scrollTo({
-      top: window.scrollY + target.getBoundingClientRect().top - 74,
+      top: window.scrollY + target.getBoundingClientRect().top - offset,
       behavior: reduce ? "instant" : "smooth",
     });
   history.replaceState(null, "", `#${id}`);

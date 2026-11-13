@@ -1,3 +1,11 @@
+# Approved navigation continuity
+
+The homepage chapter navigation retains the hero’s split rounded pill groups,
+centred white Atlas mark, 2px blur and circular search/menu controls. Mobile keeps
+the centred mark and touch controls. The globe entry aligns to the viewport top
+so the transparent floating header sits over the globe scene. The approved hero
+and globe source remain unchanged.
+
 # The world, wide open — globe scene
 
 The Observatory now continues the approved film hero's white typography, Jakarta

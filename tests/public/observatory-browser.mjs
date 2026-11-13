@@ -40,7 +40,7 @@ try {
   assert.ok(await section.locator(".observatory-heading h2").evaluate(el => getComputedStyle(el).fontFamily.toLowerCase().includes("jakarta")));
   assert.equal(await page.locator("#observatory canvas").count(), 1);
   assert.equal(await page.locator('.world-nav[data-scene="observatory"]').count(), 1);
-  await page.waitForFunction(() => Math.abs(document.querySelector("#observatory").getBoundingClientRect().top - 74) < 12, null, { timeout: 15000 });
+  await page.waitForFunction(() => Math.abs(document.querySelector("#observatory").getBoundingClientRect().top) < 12, null, { timeout: 15000 });
   assert.ok(await page.locator('.world-nav[data-scene="observatory"]').isVisible());
   await page.screenshot({ path: "work/qa-observatory/desktop.png" });
   await section.screenshot({ path: "work/qa-observatory/section.png" });
@@ -83,7 +83,7 @@ try {
   // The hero's discovery rail is intentionally hidden on mobile; deep links still work.
   await mobile.goto("http://localhost:3008/#observatory");
   await mobile.locator("#observatory.observatory-v2").waitFor();
-  await mobile.waitForFunction(() => Math.abs(document.querySelector("#observatory").getBoundingClientRect().top - 74) < 12);
+  await mobile.waitForFunction(() => Math.abs(document.querySelector("#observatory").getBoundingClientRect().top) < 12);
   await globe(mobile);
   assert.ok(await mobile.locator(".observatory-touch-hint").isVisible());
   assert.ok(await mobile.locator(".observatory-desktop-hint").isHidden());
