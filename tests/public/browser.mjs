@@ -62,19 +62,10 @@ try {
   });
   attach(page);
   await page.goto(origin, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => window.__heroReady);
-  await page
-    .getByRole("status", { name: "Loading", exact: true })
-    .waitFor({ state: "detached" });
-  await check("door image sequence remains scroll driven", async () => {
-    const canvas = page.locator("[data-hero] canvas").first();
-    const first = await canvas.evaluate((el) => el.toDataURL());
+  await check("three-film trip hero replaces the door sequence", async () => {
+    assert.equal(await page.locator(".trip-film-selectors button").count(), 3);
+    assert.equal(await page.locator("[data-hero] canvas").count(), 0);
     await page.screenshot({ path: "work/qa-travel/hero.png" });
-    await scroll(page, 1200);
-    const middle = await canvas.evaluate((el) => el.toDataURL());
-    assert.notEqual(first, middle);
-    await scroll(page, 2400);
-    assert.notEqual(middle, await canvas.evaluate((el) => el.toDataURL()));
   });
   await check(
     "Arrival and private app demos removed from public homepage",
@@ -83,10 +74,7 @@ try {
         await page.locator("#arrival,#intelligence,#system,#sound").count(),
         0,
       );
-      assert.equal(
-        await page.getByRole("heading", { name: /Every life is/ }).count(),
-        1,
-      );
+      assert.equal(await page.locator(".trip-film-main h1").count(), 1);
     },
   );
   await scene(page, "observatory");
@@ -176,10 +164,7 @@ try {
     },
   );
   await page.goto(origin + "/#beyond", { waitUntil: "networkidle" });
-  await page.waitForFunction(() => window.__heroReady);
-  await page
-    .getByRole("status", { name: "Loading", exact: true })
-    .waitFor({ state: "detached" });
+  await page.locator(".trip-film-main h1").waitFor();
   await scene(page, "beyond");
   await check("return-home door closes as the journey finishes", async () => {
     let before = 0;

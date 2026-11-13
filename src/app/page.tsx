@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Hero from "@/components/home/Hero";
-import HomePreloader from "@/components/home/HomePreloader";
+import TripFilmHero from "@/components/home/TripFilmHero";
+import { getLatestHeroTrips } from "@/lib/queries/hero-trips";
 import { NativeAppRedirect } from "@/components/native/NativeAppRedirect";
 import LivingWorld from "@/components/world/LivingWorld";
 export const metadata: Metadata = {
@@ -8,13 +8,13 @@ export const metadata: Metadata = {
   description:
     "A cinematic journey through places, moments, and possibility. Reality meets imagination in the Living World.",
 };
-export default function Home() {
+export default async function Home() {
+  const trips = await getLatestHeroTrips();
   return (
     <>
       <NativeAppRedirect />
-      <HomePreloader />
       <div className="bg-background text-foreground min-h-screen">
-        <Hero />
+        <TripFilmHero trips={trips} />
         <LivingWorld />
       </div>
     </>

@@ -1,3 +1,28 @@
+# Current hero update
+
+The user supplied a reference recording and explicitly replaced the door-hero
+preservation requirement. `TripFilmHero` now mounts on the homepage, replacing
+`Hero` and `HomePreloader`. Their original files and frame assets remain archived
+unchanged. The globe and below-hero sections are unchanged in this revision.
+
+Hero: full-screen silent video, floating navigation, serif lower-left trip title,
+three film selectors, right-side discovery panels. Stock videos are illustrative;
+source/license information is in docs/HERO-FILMS.md. Only the selected video is
+mounted. Playback stops offscreen, on hidden tabs and in menus. Reduced motion
+starts paused. Arrow keys switch slides; the pause button controls the sequence.
+Public trips are read with `take: 3` and descending startDate ordering. No private
+vault data is read. Sample expeditions are used when no public records exist.
+
+The stock CDN is blocked in this workspace. Its source/download redirects were
+verified through web lookup; actual stock playback needs verification on an
+unrestricted connection. The explicit offline fallback uses previously credited
+local motion studies and labels that state in the hero. No reference-site footage
+has been copied.
+
+---
+
+## Prior section implementation notes (hero superseded above)
+
 # Life Atlas public travel edition
 
 The homepage flows from the original door image sequence into the globe,

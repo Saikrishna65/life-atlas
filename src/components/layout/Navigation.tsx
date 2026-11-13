@@ -152,7 +152,7 @@ export default function Navigation() {
     : "hover:text-black/60";
 
   // Hide the navigation entirely on secret private sections
-  if ((pathname === "/" && !isInHero) || pathname?.startsWith("/secret")) {
+  if (pathname === "/" || pathname?.startsWith("/secret")) {
     return null;
   }
 

@@ -1,0 +1,488 @@
+.trip-film-hero {
+  position: relative;
+  height: 100svh;
+  min-height: 660px;
+  color: #ede2cf;
+  background: #18201c;
+  isolation: isolate;
+  overflow: hidden;
+  font-family: var(--font-sans), sans-serif;
+}
+.trip-film-hero * {
+  box-sizing: border-box;
+}
+.trip-film-hero a {
+  text-decoration: none;
+  color: inherit;
+}
+.trip-film-hero button {
+  cursor: pointer;
+  color: inherit;
+}
+.trip-film-hero :is(a, button):focus-visible {
+  outline: 2px solid #fff1d4;
+  outline-offset: 5px;
+}
+.trip-film-stage,
+.trip-film-stage > video,
+.trip-film-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.trip-film-stage {
+  z-index: -1;
+}
+.trip-film-stage > video,
+.trip-film-outgoing {
+  object-fit: cover;
+}
+.trip-film-stage > video {
+  animation: trip-film-enter 1s ease both;
+}
+.trip-film-outgoing {
+  opacity: 0.8;
+}
+.trip-film-shade {
+  background:
+    linear-gradient(180deg, #080b0960, transparent 35%, #080b0990),
+    linear-gradient(90deg, #131a1728, transparent 60%);
+}
+.trip-film-header {
+  position: absolute;
+  top: 25px;
+  left: 25px;
+  right: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  z-index: 3;
+}
+.trip-film-round {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #15191687;
+  border: 0;
+  flex-shrink: 0;
+}
+.trip-film-navigation {
+  display: flex;
+  align-items: center;
+  width: min(1120px, 75vw);
+  justify-content: center;
+  gap: 28px;
+}
+.trip-film-navigation > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 22px;
+  flex: 1;
+  background: #171a177d;
+  border-radius: 40px;
+  min-height: 46px;
+  padding: 0 23px;
+  backdrop-filter: blur(8px);
+}
+.trip-film-navigation > div > a {
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.trip-film-brand {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  line-height: 1.1;
+}
+.trip-film-navigation a:hover {
+  color: #fff;
+}
+.trip-film-main {
+  position: absolute;
+  left: 22px;
+  bottom: 152px;
+  max-width: min(66vw, 950px);
+}
+.trip-film-eyebrow {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  opacity: 0.8;
+  margin: 0 0 18px;
+}
+.trip-film-main h1 {
+  font-family: var(--font-trip-serif), Georgia, serif;
+  color: #ede2cf;
+  font-size: clamp(58px, 5.5vw, 108px);
+  font-weight: 300;
+  line-height: 0.99;
+  letter-spacing: -0.065em;
+  text-wrap: balance;
+  margin: 0;
+  max-width: 750px;
+}
+.trip-film-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 26px;
+  font-size: 10px;
+}
+.trip-film-cta > span {
+  border-radius: 30px;
+  background: #e5d1bd;
+  color: #2e3028;
+  padding: 14px 20px;
+}
+.trip-film-cta > svg {
+  transition: transform 0.3s;
+}
+.trip-film-cta:hover > svg {
+  transform: translateX(5px);
+}
+.trip-film-discover {
+  position: absolute;
+  right: 25px;
+  bottom: 153px;
+  width: clamp(260px, 21vw, 390px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.trip-film-aside-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1c1e1b6e;
+  padding: 9px 15px;
+  border-radius: 25px;
+  width: 48%;
+  font:
+    12px Georgia,
+    serif;
+}
+.trip-film-discover-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.trip-film-discover-pair > a {
+  position: relative;
+  aspect-ratio: 1.15;
+  border-radius: 9px;
+  overflow: hidden;
+  background: #222;
+}
+.trip-film-discover-pair img {
+  object-fit: cover;
+  transition: transform 0.7s;
+}
+.trip-film-discover-pair a:hover img {
+  transform: scale(1.05);
+}
+.trip-film-discover-pair > a:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent, #161b16c9);
+}
+.trip-film-discover-pair a > span {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 1;
+  font:
+    14px Georgia,
+    serif;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.trip-film-world-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 9px;
+  background: #1c1e1b8a;
+  backdrop-filter: blur(10px);
+}
+.trip-film-orbit {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 1px solid #e5d1bd66;
+  flex-shrink: 0;
+}
+.trip-film-world-link strong {
+  display: block;
+  font:
+    16px Georgia,
+    serif;
+}
+.trip-film-world-link small {
+  display: block;
+  font-size: 10px;
+  margin-top: 6px;
+  opacity: 0.7;
+}
+.trip-film-world-link > svg {
+  margin-left: auto;
+  align-self: flex-start;
+}
+.trip-film-footer {
+  position: absolute;
+  bottom: 28px;
+  left: 22px;
+  right: 25px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 25px;
+  border-top: 1px solid #e5d1bd55;
+  padding-top: 17px;
+}
+.trip-film-selectors {
+  display: flex;
+  width: min(62%, 800px);
+  gap: 20px;
+}
+.trip-film-selectors > button {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  flex: 1;
+  gap: 12px;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 0 0 14px;
+  min-width: 0;
+  opacity: 0.58;
+  transition: opacity 0.4s;
+}
+.trip-film-selectors > button[aria-pressed="true"],
+.trip-film-selectors > button:hover {
+  opacity: 1;
+}
+.trip-film-thumbnail {
+  position: relative;
+  width: clamp(65px, 6vw, 105px);
+  aspect-ratio: 1.6;
+  flex-shrink: 0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.trip-film-thumbnail img {
+  object-fit: cover;
+}
+.trip-film-selector-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  line-height: 1.25;
+  max-width: 125px;
+}
+.trip-film-selector-copy small {
+  font-size: 10px;
+}
+.trip-film-progress {
+  position: absolute;
+  height: 1px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #e5d1bd44;
+}
+.trip-film-progress > span {
+  display: block;
+  height: 100%;
+  background: #e5d1bd;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s linear;
+}
+.trip-film-footer-note {
+  display: flex;
+  align-items: end;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 8px;
+  letter-spacing: 0.03em;
+  opacity: 0.8;
+}
+.trip-film-footer-note > a:last-child {
+  font-size: 10px;
+  margin-top: 5px;
+}
+@keyframes trip-film-enter {
+  from {
+    opacity: 0;
+    transform: scale(1.035);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (min-width: 1800px) {
+  .trip-film-main {
+    bottom: 170px;
+  }
+  .trip-film-main h1 {
+    max-width: 1000px;
+  }
+  .trip-film-discover {
+    bottom: 170px;
+  }
+  .trip-film-footer {
+    bottom: 35px;
+  }
+}
+@media (max-width: 1050px) {
+  .trip-film-navigation {
+    width: auto;
+    flex: 1;
+  }
+  .trip-film-navigation > div {
+    gap: 15px;
+    padding: 0 18px;
+  }
+  .trip-film-navigation > div > a {
+    font-size: 8px;
+  }
+  .trip-film-discover {
+    width: 240px;
+  }
+  .trip-film-main {
+    max-width: 62vw;
+  }
+  .trip-film-main h1 {
+    font-size: 7vw;
+  }
+  .trip-film-selectors {
+    width: 75%;
+  }
+  .trip-film-selector-copy {
+    font-size: 9px;
+  }
+  .trip-film-footer-note {
+    max-width: 170px;
+  }
+}
+@media (max-width: 700px) {
+  .trip-film-hero {
+    min-height: 650px;
+  }
+  .trip-film-header {
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    gap: 15px;
+  }
+  .trip-film-navigation > div {
+    display: none;
+  }
+  .trip-film-brand {
+    font-size: 12px;
+  }
+  .trip-film-main {
+    left: 20px;
+    right: 20px;
+    bottom: 230px;
+    max-width: none;
+  }
+  .trip-film-main h1 {
+    font-size: clamp(48px, 13vw, 78px);
+    max-width: 580px;
+  }
+  .trip-film-eyebrow {
+    font-size: 8px;
+  }
+  .trip-film-cta {
+    margin-top: 22px;
+  }
+  .trip-film-cta > span {
+    padding: 13px 18px;
+  }
+  .trip-film-discover {
+    display: none;
+  }
+  .trip-film-footer {
+    bottom: 22px;
+    left: 20px;
+    right: 20px;
+    display: block;
+    padding-top: 14px;
+  }
+  .trip-film-selectors {
+    width: 100%;
+    gap: 10px;
+  }
+  .trip-film-selectors > button {
+    display: block;
+    padding-bottom: 10px;
+  }
+  .trip-film-thumbnail {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1.9;
+    margin-bottom: 8px;
+  }
+  .trip-film-selector-copy {
+    max-width: none;
+    font-size: 9px;
+    gap: 5px;
+  }
+  .trip-film-selector-copy small {
+    font-size: 8px;
+  }
+  .trip-film-footer-note {
+    max-width: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+    gap: 10px;
+    font-size: 7px;
+  }
+  .trip-film-footer-note > a:last-child {
+    display: none;
+  }
+  .trip-film-footer-note > a {
+    padding-block: 8px;
+  }
+  .trip-film-round {
+    width: 42px;
+    height: 42px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trip-film-stage > video {
+    animation: none;
+  }
+  .trip-film-hero * {
+    transition: none !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .trip-film-shade {
+    background: linear-gradient(180deg, #080b0944, transparent 25%, #080b0966 48%, #080b09ee 100%);
+  }
+}

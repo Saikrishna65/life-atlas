@@ -59,10 +59,7 @@ async function chapter(page, id) {
 }
 async function home(page) {
   await page.goto(origin, { waitUntil: "networkidle" });
-  await page.waitForFunction(() => window.__heroReady);
-  await page
-    .getByRole("status", { name: "Loading", exact: true })
-    .waitFor({ state: "detached" });
+  await page.locator(".trip-film-main h1").waitFor();
 }
 try {
   const page = await browser.newPage({
@@ -152,16 +149,7 @@ try {
       );
       await chapter(page, "memories");
       assert.equal(await page.locator(".memory-print-caption").count(), 0);
-      assert.equal(await page.locator("video").count(), 0);
-      assert.equal(
-        await page.evaluate(
-          () =>
-            performance
-              .getEntriesByType("resource")
-              .filter((r) => r.name.endsWith(".mp4")).length,
-        ),
-        0,
-      );
+      assert.equal(await page.locator("dialog video").count(), 0);
       await page
         .getByRole("button", {
           name: "Watch mountain motion study",
@@ -190,7 +178,7 @@ try {
       assert.ok(await video.evaluate((v) => v.currentTime > 0));
       await page.screenshot({ path: "work/qa-cinema/film.png" });
       await page.keyboard.press("Escape");
-      assert.equal(await page.locator("video").count(), 0);
+      assert.equal(await page.locator("dialog video").count(), 0);
       await page.screenshot({ path: "work/qa-cinema/archive.png" });
     },
   );
@@ -202,7 +190,7 @@ try {
       });
       await page.getByRole("button", { name: "Films", exact: true }).click();
       assert.equal(await page.locator(".trip-photo-wall > button").count(), 1);
-      assert.equal(await page.locator("video").count(), 0);
+      assert.equal(await page.locator("dialog video").count(), 0);
       await page.locator(".trip-photo-wall > button").click();
       assert.equal(
         await page.locator("dialog video").getAttribute("autoplay"),
