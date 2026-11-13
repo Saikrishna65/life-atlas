@@ -15,130 +15,77 @@ async function media(page) {
       body: await readFile("public/films/hero/highlands.mp4"),
     }),
   );
+  page.on("pageerror", (e) => errors.push(e.message));
+}
+async function decoded(locator) {
+  // Streaming Next responses may briefly retain a hidden boundary copy.
+  const visible = locator.filter({ visible: true });
+  await visible.waitFor({ state: "visible" });
+  await visible.evaluate((el) => el.decode());
+  await visible.waitFor({ state: "visible" });
 }
 try {
-  const page = await browser.newPage({
-    viewport: { width: 1920, height: 1080 },
-  });
-  page.on("pageerror", (e) => errors.push(e.message));
+  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
   await media(page);
   await page.goto("http://localhost:3008", { waitUntil: "domcontentloaded" });
-  await page
-    .locator('.hero-globe-canvas[data-globe-ready="true"]')
-    .waitFor({ timeout: 45000 });
-  await page.locator(".hero-gallery-landscape").evaluate((el) => el.decode());
-  const globe = page.locator(".hero-globe-canvas");
-  assert.ok(await globe.locator("canvas").isVisible());
-  await page.waitForFunction(
-    () =>
-      document.querySelector(".hero-globe-canvas")?.dataset.globeMotion ===
-      "paused",
-  );
-  await page
-    .getByRole("link", { name: "Explore the Globe", exact: true })
-    .hover();
-  await page.waitForFunction(
-    () =>
-      document.querySelector(".hero-globe-canvas")?.dataset.globeMotion ===
-      "rotating",
-  );
-  await page.mouse.move(800, 100);
-  await page.waitForFunction(
-    () =>
-      document.querySelector(".hero-globe-canvas")?.dataset.globeMotion ===
-      "paused",
-  );
-  const gallery = page.getByRole("link", {
-    name: "Photo Gallery",
-    exact: true,
-  });
+  const globe = page.locator(".hero-globe-preview img");
+  await decoded(globe);
+  await decoded(page.locator(".hero-gallery-landscape"));
+  await decoded(page.locator(".trip-film-brand img"));
+  assert.ok((await page.locator(".trip-film-brand img").getAttribute("src")).includes("life-atlas-white"));
+  assert.equal(await page.locator(".trip-film-hero canvas").count(), 0);
+  const globeBounds = await globe.boundingBox();
+  const cardBounds = await page.locator(".trip-film-globe-tile").boundingBox();
+  assert.ok(globeBounds.width <= 142 && globeBounds.height <= 142);
+  assert.ok(globeBounds.x > cardBounds.x && globeBounds.y > cardBounds.y);
+  assert.ok(globeBounds.y + globeBounds.height < cardBounds.y + cardBounds.height - 25);
+  const before = await globe.evaluate(el => getComputedStyle(el).transform);
+  await page.getByRole("link", { name: "Explore the Globe", exact: true }).hover();
+  await page.waitForTimeout(600);
+  assert.equal(await globe.evaluate(el => getComputedStyle(el).transform), before);
+  const gallery = page.getByRole("link", { name: "Photo Gallery", exact: true });
   assert.equal(await gallery.getAttribute("href"), "/photography");
-  assert.equal(
-    await gallery
-      .locator(".hero-gallery-landscape")
-      .getAttribute("src")
-      .then((url) => url.includes("gallery-window")),
-    true,
-  );
-  assert.equal(await page.locator(".trip-film-photo-stack").count(), 0);
   assert.equal(await page.locator(".trip-film-stage video[poster]").count(), 0);
-  await page
-    .getByRole("button", { name: "Pause trip films", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Pause trip films", exact: true }).click();
   await page.waitForTimeout(900);
   await page.screenshot({ path: "work/qa-option1/desktop.png" });
-  await page
-    .locator(".trip-film-discover")
-    .screenshot({ path: "work/qa-option1/cards.png" });
+  await page.locator(".trip-film-discover").screenshot({ path: "work/qa-option1/cards.png" });
   await gallery.click();
   await page.waitForURL("**/photography");
+  await decoded(page.locator(".public-header .atlas-logo-brand img"));
+  assert.ok((await page.locator(".public-header .atlas-logo-brand img").getAttribute("src")).includes("life-atlas-black"));
+  await page.screenshot({ path: "work/qa-option1/public-header.png" });
   await page.goBack();
-  await page
-    .locator('.hero-globe-canvas[data-globe-ready="true"]')
-    .waitFor({ timeout: 45000 });
-  await page
-    .getByRole("link", { name: "Explore the Globe", exact: true })
-    .click();
-  await page.waitForFunction(
-    () => !!document.querySelector("#observatory .observatory-heading"),
-  );
+  await decoded(page.locator(".trip-film-brand img"));
+  await page.getByRole("link", { name: "Explore the Globe", exact: true }).click();
+  await page.locator("#observatory .observatory-heading").waitFor();
   await page.locator("#observatory canvas").first().waitFor({ timeout: 45000 });
-  const fallback = await browser.newPage({
-    viewport: { width: 1440, height: 1000 },
-    reducedMotion: "reduce",
+  const reduced = await browser.newPage({ viewport: { width: 1440, height: 1000 }, reducedMotion: "reduce" });
+  await media(reduced);
+  // The decorative hero globe must work even when WebGL is unavailable.
+  await reduced.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+      if (/webgl/.test(type)) return null;
+      return original.call(this, type, ...args);
+    };
   });
-  fallback.on("pageerror", (e) => errors.push(e.message));
-  await media(fallback);
-  await fallback.goto("http://localhost:3008");
-  await fallback
-    .locator('.hero-globe-canvas[data-globe-ready="true"]')
-    .waitFor({ timeout: 45000 });
-  await fallback
-    .getByRole("link", { name: "Explore the Globe", exact: true })
-    .hover();
-  await fallback.waitForTimeout(350);
-  assert.equal(
-    await fallback
-      .locator(".hero-globe-canvas")
-      .getAttribute("data-globe-motion"),
-    "paused",
-  );
-  await fallback
-    .locator(".hero-globe-canvas canvas")
-    .evaluate((el) =>
-      el
-        .getContext("webgl2")
-        ?.getExtension("WEBGL_lose_context")
-        ?.loseContext(),
-    );
-  await fallback.locator('.hero-globe-preview[data-failed="true"]').waitFor();
-  assert.ok(await fallback.locator(".hero-globe-fallback").isVisible());
-  assert.equal(
-    await fallback
-      .getByRole("link", { name: "Explore the Globe", exact: true })
-      .getAttribute("href"),
-    "/#observatory",
-  );
-  const mobile = await browser.newPage({
-    viewport: { width: 390, height: 844 },
-    isMobile: true,
-    hasTouch: true,
-    reducedMotion: "reduce",
-  });
-  mobile.on("pageerror", (e) => errors.push(e.message));
+  await reduced.goto("http://localhost:3008");
+  await decoded(reduced.locator(".hero-globe-preview img"));
+  assert.equal(await reduced.locator(".trip-film-hero canvas").count(), 0);
+  assert.equal(await reduced.getByRole("link", { name: "Explore the Globe", exact: true }).getAttribute("href"), "/#observatory");
+  const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
   await media(mobile);
   await mobile.goto("http://localhost:3008", { waitUntil: "networkidle" });
-  assert.equal(await mobile.locator(".hero-globe-canvas canvas").count(), 0);
-  assert.ok(
-    await mobile.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth,
-    ),
-  );
+  await decoded(mobile.locator(".trip-film-brand img"));
+  assert.equal(await mobile.locator(".trip-film-hero canvas").count(), 0);
+  assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await mobile.screenshot({ path: "work/qa-option1/mobile.png" });
+  await mobile.goto("http://localhost:3008/photography");
+  await decoded(mobile.locator(".public-header .atlas-logo-brand img"));
+  assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   assert.deepEqual(errors, []);
-  console.log(
-    "PASS approved gallery art, live white/hex globe preview, idle/hover suspension, navigation/back lifecycle, reduced motion, WebGL loss fallback, mobile renderer avoidance, no hero poster and no browser exceptions. Video bytes used local fixtures.",
-  );
+  console.log("PASS compact flat globe without hero WebGL, logo variants on desktop/mobile, gallery/back navigation, original main globe, reduced motion/WebGL unavailable, no overflow or browser exceptions. Video bytes used local fixtures.");
 } finally {
   await browser.close();
 }

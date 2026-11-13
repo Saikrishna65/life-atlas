@@ -1,23 +1,24 @@
-# Approved Option 1 discovery cards
+# Compact flat globe and supplied logo artwork
 
-The Photo Gallery card now uses the selected Cinematic Windows composition:
-a full-bleed, original generated mountain/coast/forest ribbon artwork, live
-white label and an accessible link to /photography. The image is decorative,
-with Next Image responsive sizing and hover movement disabled for reduced motion.
+The hero globe card is now a static, flat SVG illustration of local country
+geometry: white ocean and slate hexagonal land, with no shading, pins, routes,
+rotation or WebGL dependency. Its 142px image has generous clear space inside the
+card, with a 119px globe. The working card link still opens the original main
+Observatory globe. `InteractiveGlobe.tsx` and its core model are unchanged.
 
-GlobeCardPreview uses the same globe.gl engine, local country geometry, white
-Phong sphere, slate hex land, cobalt points and silver arcs as InteractiveGlobe.
-It is a compact preview, not a replacement for the main model. The card uses
-coarser hex detail to avoid aliasing at its small size. The existing
-InteractiveGlobe.tsx remains unchanged. Activating the card opens the real
-Observatory. The preview is capped at DPR 1.25, only initializes on visible desktop
-layouts, renders once when idle, rotates on hover/focus, pauses offscreen or on
-hidden tabs and respects reduced motion. Lifecycle cleanup aborts data loading,
-disconnects observers/listeners, destroys the renderer and disposes materials.
-WebGL failure retains a decorative SVG globe and the working navigation link.
+The approved Cinematic Windows gallery artwork remains in place. Hero films,
+dissolve timing, navigation surfaces, gallery and latest-trip links are unchanged.
+The hero has no poster image or full-frame gradient overlay.
 
-The Explore and Latest Trip actions, hero video transitions, navbar material,
-white UI and typography are retained. The hero still has no loading-poster image.
+Transparent web derivatives of the supplied white and black Atlas logos live in
+`public/brand`. The white mark replaces the compass/wordmark in the hero; the
+black mark appears in public inner-page and chapter navigation. See the asset
+README for source provenance. Native and private navigation are unaffected.
+
+`tests/public/option1-cards-browser.mjs` checks card sizing, static artwork without
+a hero renderer, both logo variants, gallery/back navigation, the working main
+globe, reduced motion, mobile overflow and JavaScript errors. Local video fixtures
+isolate these checks from the stock CDN.
 
 ---
 

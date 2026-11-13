@@ -866,3 +866,19 @@
   .memory-month select { font-size: 11px; width: auto; min-height: 44px; padding: 8px; }
   .memory-toolbar .world-filter-pills button { min-height: 44px; }
 }
+
+/* Supplied Atlas symbol on the light public navigation. */
+.world-nav .atlas-logo-brand {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  padding: 0;
+  min-width: 84px;
+  min-height: 44px;
+}
+.world-nav .atlas-logo-brand img {
+  display: block;
+  width: 84px;
+  height: 56px;
+  object-fit: contain;
+}

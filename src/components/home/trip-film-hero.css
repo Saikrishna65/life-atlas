@@ -101,13 +101,15 @@
   white-space: nowrap;
 }
 .trip-film-brand {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  text-align: center;
-  letter-spacing: 0.12em;
-  font-size: 11px;
-  line-height: 1.1;
+  display: grid;
+  place-items: center;
+  flex: 0 0 96px;
+}
+.trip-film-brand img {
+  display: block;
+  width: 96px;
+  height: 64px;
+  object-fit: contain;
 }
 .trip-film-navigation a:hover {
   color: #fff;
@@ -213,13 +215,6 @@
   overflow: hidden;
   border: 5px solid #ffffff40;
   background: var(--hero-surface);
-}
-.trip-film-photo-tile img {
-  object-fit: cover;
-  transition: transform 0.7s;
-}
-.trip-film-photo-tile:hover img {
-  transform: scale(1.04);
 }
 .trip-film-photo-tile::after {
   content: "";
@@ -593,11 +588,6 @@
   justify-content: center;
   align-items: center;
 }
-.trip-film-globe-tile > svg {
-  width: 135px;
-  height: 168px;
-  margin-top: -18px;
-}
 .trip-film-photo-stack {
   position: relative;
   width: 120px;
@@ -705,45 +695,20 @@
 }
 .hero-globe-preview {
   position: absolute;
-  inset: 0;
-  overflow: hidden;
+  inset: 8px 10px 30px;
+  display: grid;
+  place-items: center;
   pointer-events: none;
 }
-.hero-globe-canvas {
-  position: absolute;
-  width: 132%;
-  height: 123%;
-  left: -16%;
-  top: -10%;
-}
-.hero-globe-canvas canvas {
+.hero-globe-preview img {
   display: block;
-}
-.hero-globe-fallback {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  inset: -4px 0 0;
-}
-.hero-globe-preview:has([data-globe-ready="true"]):not([data-failed="true"])
-  .hero-globe-fallback {
-  display: none;
-}
-.hero-globe-preview[data-failed="true"] .hero-globe-canvas {
-  visibility: hidden;
+  width: min(142px, 100%);
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
 }
 @media (prefers-reduced-motion: reduce) {
   .trip-film-journal-tile .hero-gallery-landscape {
     transition: none;
   }
-}
-
-/* Caption contrast is local to the miniature globe, never the hero footage. */
-.trip-film-hero .trip-film-globe-tile::after {
-  content: "";
-  position: absolute;
-  inset: 60% 0 0;
-  z-index: 1;
-  background: linear-gradient(transparent, #07131ab3);
-  pointer-events: none;
 }

@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
@@ -19,8 +20,18 @@ export default function PublicHeader() {
   return (
     <>
       <header className="world-nav is-visible public-header">
-        <Link className="world-wordmark" href="/">
-          LIFE ATLAS<span>THE LIVING WORLD</span>
+        <Link
+          className="world-wordmark atlas-logo-brand"
+          href="/"
+          aria-label="Life Atlas home"
+        >
+          <Image
+            src="/brand/life-atlas-black.png"
+            width={84}
+            height={56}
+            sizes="84px"
+            alt=""
+          />
         </Link>
         <nav className="world-nav-links" aria-label="Public navigation">
           {links.map(([href, label]) => (

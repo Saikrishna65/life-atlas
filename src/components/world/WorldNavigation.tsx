@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Compass, Menu } from "lucide-react";
 import { useLenis } from "lenis/react";
@@ -82,8 +83,18 @@ export default function WorldNavigation() {
         className={`world-nav ${visible ? "is-visible" : ""}`}
         inert={!visible}
       >
-        <button className="world-wordmark" onClick={() => navigate("top")}>
-          LIFE ATLAS<span>THE LIVING WORLD</span>
+        <button
+          className="world-wordmark atlas-logo-brand"
+          aria-label="Life Atlas home"
+          onClick={() => navigate("top")}
+        >
+          <Image
+            src="/brand/life-atlas-black.png"
+            width={84}
+            height={56}
+            sizes="84px"
+            alt=""
+          />
         </button>
         <div className="world-nav-links">
           {[

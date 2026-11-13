@@ -4,12 +4,11 @@ import Link from "next/link";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { HERO_RELEASE_MS } from "./hero-playback";
 import TripFilmStage from "./TripFilmStage";
-import dynamic from "next/dynamic";
+import GlobeCardPreview from "./GlobeCardPreview";
 import Image from "next/image";
 import {
   ArrowRight,
   ArrowUpRight,
-  Compass,
   Menu,
   Pause,
   Play,
@@ -18,10 +17,6 @@ import gsap from "gsap";
 import { heroFilms, type HeroTrip } from "@/data/demo/hero-films";
 import { Modal } from "@/components/world/primitives";
 import "./trip-film-hero.css";
-
-const GlobeCardPreview = dynamic(() => import("./GlobeCardPreview"), {
-  ssr: false,
-});
 
 const heroTypography = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -194,12 +189,14 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
             href="/"
             aria-label="Life Atlas home"
           >
-            <Compass size={27} strokeWidth={1} />
-            <span>
-              LIFE
-              <br />
-              ATLAS
-            </span>
+            <Image
+              src="/brand/life-atlas-white.png"
+              width={96}
+              height={64}
+              sizes="96px"
+              alt=""
+              priority
+            />
           </Link>
           <div>
             <Link href="/map">The world</Link>
