@@ -1,18 +1,28 @@
 "use client";
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState, type ComponentType } from "react";
+import { Suspense, useEffect, useRef, useState, type ComponentType } from "react";
 import { useLenis } from "lenis/react";
 import { navigateChapter } from "./navigation";
-import WorldNavigation from "./WorldNavigation";
+import WorldNavigation, { chapters } from "./WorldNavigation";
 import WorldMotion from "./WorldMotion";
 import SceneBoundary from "./SceneBoundary";
 import "./world.css";
+import "./observatory.css";
 const AtlasPassage = dynamic(() => import("./AtlasPassage"));
 const Observatory = dynamic(() => import("./Observatory"));
 const Expeditions = dynamic(() => import("./Expeditions"));
 const MemoryArchive = dynamic(() => import("./MemoryArchive"));
 const PublishedMedia = dynamic(() => import("./PublishedMedia"));
 const Beyond = dynamic(() => import("./Beyond"));
+function ChapterLoading({ id, title }: { id: string; title: string }) {
+  return (
+    <section id={id} className="world-scene world-loading" aria-label={title}>
+      <span className="world-eyebrow">The next chapter</span>
+      <h2>{title}</h2>
+      <p>Keep wandering. A new world is coming into view.</p>
+    </section>
+  );
+}
 function Deferred({
   id,
   title,
@@ -64,18 +74,12 @@ function Deferred({
     <div ref={ref} className="world-deferred" data-chapter={id}>
       {ready ? (
         <SceneBoundary id={id} title={title}>
-          <Component />
+          <Suspense fallback={<ChapterLoading id={id} title={title} />}>
+            <Component />
+          </Suspense>
         </SceneBoundary>
       ) : (
-        <section
-          id={id}
-          className="world-scene world-loading"
-          aria-label={title}
-        >
-          <span className="world-eyebrow">The next chapter</span>
-          <h2>{title}</h2>
-          <p>Keep wandering. A new world is coming into view.</p>
-        </section>
+        <ChapterLoading id={id} title={title} />
       )}
     </div>
   );
@@ -83,8 +87,34 @@ function Deferred({
 export default function LivingWorld() {
   const lenis = useLenis();
   useEffect(() => {
-    if (lenis && location.hash)
-      void navigateChapter(location.hash.slice(1), lenis, true);
+    const alignHash = () => {
+      const id = location.hash.slice(1);
+      if (id === "place-browser")
+        window.dispatchEvent(new CustomEvent("world-chapter-request", { detail: "observatory" }));
+      if (id === "place-browser" || chapters.some(([chapter]) => chapter === id))
+        void navigateChapter(id, lenis, true);
+    };
+    // Let the router finish its initial focus/scroll pass before aligning a deep link.
+    const frame = requestAnimationFrame(alignHash);
+    const enterChapter = (event: MouseEvent) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = (event.target as HTMLElement).closest<HTMLAnchorElement>("a[href]");
+      if (!link || link.closest("#living-world") || link.target === "_blank" || link.hasAttribute("download")) return;
+      const url = new URL(link.href, location.href);
+      const id = url.hash.slice(1);
+      if (url.origin !== location.origin || url.pathname !== location.pathname || !chapters.some(([chapter]) => chapter === id)) return;
+      // Hero links live outside the world container. Use its existing Lenis engine,
+      // rather than letting the router reset scroll while the chapter is deferred.
+      event.preventDefault();
+      void navigateChapter(id, lenis);
+    };
+    document.addEventListener("click", enterChapter, true);
+    window.addEventListener("hashchange", alignHash);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("click", enterChapter, true);
+      window.removeEventListener("hashchange", alignHash);
+    };
   }, [lenis]);
   return (
     <div
@@ -122,7 +152,7 @@ export default function LivingWorld() {
           title="The Memory Archive"
           component={MemoryArchive}
         />
-        <PublishedMedia />
+        <Suspense fallback={null}><PublishedMedia /></Suspense>
         <Deferred id="beyond" title="The Beyond" component={Beyond} />
       </WorldMotion>
       <noscript>

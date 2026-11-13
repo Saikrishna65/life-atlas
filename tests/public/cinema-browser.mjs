@@ -69,14 +69,14 @@ try {
   await home(page);
   await page.screenshot({ path: "work/qa-cinema/hero.png" });
   await check(
-    "globe surround uses the editorial palette; globe remains interactive",
+    "globe surround matches the white-on-charcoal hero; globe remains interactive",
     async () => {
       await chapter(page, "observatory");
       assert.equal(
         await page
           .locator(".world-observatory")
           .evaluate((el) => getComputedStyle(el).backgroundColor),
-        "rgb(243, 238, 229)",
+        "rgb(22, 33, 29)",
       );
       await page.waitForFunction(() => window.__globeReady);
       assert.ok((await page.locator("#observatory canvas").count()) > 0);

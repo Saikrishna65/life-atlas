@@ -30,7 +30,7 @@ export default function WorldNavigation() {
       const height = window.innerHeight;
       visibility = new IntersectionObserver(
         ([entry]) => setVisible(entry.isIntersecting),
-        { threshold: 0, rootMargin: `0px 0px -${height - 1}px 0px` },
+        { threshold: 0, rootMargin: `0px 0px -${height - 100}px 0px` },
       );
       visibility.observe(root);
       observer = new IntersectionObserver(
@@ -80,6 +80,7 @@ export default function WorldNavigation() {
       </a>
       <nav
         aria-label="World chapters"
+        data-scene={active}
         className={`world-nav ${visible ? "is-visible" : ""}`}
         inert={!visible}
       >
@@ -149,6 +150,7 @@ export default function WorldNavigation() {
       <aside
         className={`world-progress ${visible ? "is-visible" : ""}`}
         aria-label="Current chapter"
+        data-scene={active}
       >
         <span>
           {String(chapters.findIndex(([id]) => id === active) + 2).padStart(

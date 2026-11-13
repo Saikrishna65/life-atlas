@@ -11,12 +11,13 @@ export async function navigateChapter(
     new CustomEvent("world-chapter-request", { detail: id }),
   );
   const rendered = () => {
-    const el = document.getElementById(id);
-    return el &&
-      (!el.classList.contains("world-loading") ||
-        el.hasAttribute("data-world-error"))
-      ? el
-      : null;
+    // Streamed route boundaries can briefly contain a hidden copy of the chapter.
+    // A zero-sized target would clamp Lenis to the top and cancel the real entry.
+    return Array.from(document.querySelectorAll<HTMLElement>(`#${CSS.escape(id)}`)).find(el =>
+      (!el.classList.contains("world-loading") || el.hasAttribute("data-world-error"))
+      && el.getBoundingClientRect().width > 0
+      && el.getBoundingClientRect().height > 0,
+    ) ?? null;
   };
   if (!rendered())
     await new Promise<void>((resolve) => {
@@ -27,10 +28,7 @@ export async function navigateChapter(
           resolve();
         }
       });
-      observer.observe(
-        document.getElementById("living-world") ?? document.body,
-        { subtree: true, childList: true },
-      );
+      observer.observe(document.body, { subtree: true, childList: true });
       const timer = setTimeout(() => {
         observer.disconnect();
         resolve();
@@ -55,16 +53,21 @@ export async function navigateChapter(
       duration: reduce ? 0 : 1.3,
       immediate: reduce,
       onComplete: () => {
-        if (request !== latestNavigation || !target.isConnected) return;
-        lenis.resize();
-        if (Math.abs(target.getBoundingClientRect().top - 74) > 5)
-          lenis.scrollTo(position(), {
-            duration: reduce ? 0 : 0.35,
-            force: true,
-            immediate: reduce,
-          });
+        // Let lazy replacements and animation measurements finish before
+        // correcting alignment. Never measure a hidden loading boundary.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (request !== latestNavigation || !target.isConnected || rendered() !== target) return;
+          lenis.resize();
+          if (Math.abs(target.getBoundingClientRect().top - 74) > 5)
+            lenis.scrollTo(position(), {
+              duration: reduce ? 0 : 0.35,
+              force: true,
+              immediate: reduce,
+            });
+        }));
       },
     });
+
   } else
     window.scrollTo({
       top: window.scrollY + target.getBoundingClientRect().top - 74,

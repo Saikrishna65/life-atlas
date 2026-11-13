@@ -1,3 +1,48 @@
+# The world, wide open — globe scene
+
+The Observatory now continues the approved film hero's white typography, Jakarta
+Sans and restrained charcoal surfaces. The previous cream map frame, instrument
+dial, side notes and budget/statistics panels are replaced by an open globe stage,
+large editorial title, floating destination photograph and a four-place browsing
+rail. Search, category filters, pagination, keyboard selection, previous/next place
+controls and real journey links operate on the existing public demonstration data.
+
+The globe model, country geometry, markers, camera transitions, render lifecycle,
+scroll choreography, device quality limits and touch behaviour remain in
+the unchanged `src/components/home/InteractiveGlobe.tsx`. Each deferred chapter
+now has its own Suspense boundary and keeps its loading placeholder in the flow.
+Loading another scene can no longer hide the world and interrupt the existing
+globe's mount lifecycle. The optional published-media section is isolated too. The approved hero source
+and assets are unchanged. Heavy globe code remains lazy and only activates near
+its actual stage, preserving the hero’s initial renderer budget. No new WebGL renderer or scroll engine was added.
+
+The new scene uses scoped `observatory.css`. Its incoming photographs fade after
+load, while the existing WorldMotion director handles title and drawn-route
+reveals. New decorative transitions are disabled for reduced motion. On mobile,
+the title, globe and compact photo panel stack vertically; category selection
+becomes a native select and arrows have 44px touch targets. The destination
+browser also works when WebGL is unavailable.
+
+Same-page links from the hero now enter through the existing chapter navigator,
+preventing a router scroll reset while deferred content loads. Initial chapter
+hashes use the same path. Alignment waits for visible targets and defers its
+final correction past lazy replacements and animation layout measurements. The chapter navigation switches to a dark surface and
+white mark for this scene, becoming visible at the navigation landing offset.
+Other public chapters retain their palette. No private/native modules are read.
+
+`observatory-browser.mjs` exercises actual Chromium WebGL rendering, entry from
+the hero, search, category filtering, camera selection via the existing props,
+place stepping, pagination, keyboard activation, internal section navigation,
+mobile touch/reduced motion, and a directory fallback with WebGL disabled.
+Synthetic network fixtures supply hero video bytes; no personal uploads occur.
+`chapter-loading-browser.mjs` holds the adjacent chapter’s production chunk,
+verifying that its placeholder, globe renderer and scroll position remain stable.
+The browser checks also observe zero WebGL context requests during the hero
+and one canvas in the active globe. These are lifecycle checks, not device FPS
+or hardware performance measurements.
+
+---
+
 # Restored discovery cards with public trip photographs
 
 The original overlapping-photo gallery card and illustrated ObservatoryInstrument
