@@ -1,5 +1,6 @@
-@layer atlas-base, atlas-editorial;
+@layer atlas-base, atlas-editorial, atlas-cinema;
 @import "./editorial.css" layer(atlas-editorial);
+@import "./cinema.css" layer(atlas-cinema);
 @layer atlas-base {
 /* The Living World. All visual tokens are scoped to the public experience. */
 .living-world,

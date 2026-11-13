@@ -8,7 +8,7 @@ import "./world.css";
 const links = [
   ["/explore", "Discover"],
   ["/trips", "Journeys"],
-  ["/photography", "Memories"],
+  ["/photography", "Frames & films"],
   ["/map", "The world"],
   ["/timeline", "Timeline"],
   ["/about", "About"],
@@ -51,7 +51,11 @@ export default function PublicHeader() {
         </div>
       </header>
       {open && (
-        <Modal title="Explore the atlas" onClose={() => setOpen(false)}>
+        <Modal
+          title="Explore the atlas"
+          className="world-chapter-dialog public-navigation-dialog"
+          onClose={() => setOpen(false)}
+        >
           <nav className="public-menu">
             {[
               ...links,

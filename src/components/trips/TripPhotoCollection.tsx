@@ -1,6 +1,9 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
+import { Film } from "lucide-react";
+import { usePublicCatalog } from "@/components/world/usePublicCatalog";
+import { mediaForTrip, mediaKind } from "@/lib/r2/public-media";
 import { Modal } from "@/components/world/primitives";
 export interface TripPhoto {
   id: string;
@@ -8,14 +11,56 @@ export interface TripPhoto {
   caption?: string | null;
   location?: string | null;
   category?: string | null;
+  kind?: "photo" | "video";
+  poster?: string;
 }
 export default function TripPhotoCollection({
-  photos,
+  photos: sourcePhotos,
+  collection,
   illustrative = false,
 }: {
   photos: TripPhoto[];
+  collection?: { slug: string; title: string };
   illustrative?: boolean;
 }) {
+  const { catalog, error } = usePublicCatalog();
+  const [kind, setKind] = useState("All media");
+  const [failed, setFailed] = useState<string | null>(null);
+  const photos: TripPhoto[] = useMemo(() => {
+    const published = collection
+      ? mediaForTrip(
+          catalog?.items ?? [],
+          collection.slug,
+          collection.title,
+        ).map((item) => ({
+          id: "published-" + item.id,
+          url: item.url,
+          caption: item.title || undefined,
+          category: "Published",
+          location: item.tags
+            .find((tag) => tag.startsWith("place:"))
+            ?.slice(6)
+            .trim(),
+          kind: mediaKind(item.mimeType),
+          poster: item.thumbnailUrl,
+        }))
+      : [];
+    const study: TripPhoto[] = illustrative
+      ? [
+          {
+            id: "motion-study",
+            kind: "video",
+            url: "/films/mountain-study.mp4",
+            poster: "/images/world/mountains-small.webp",
+            caption:
+              "Silent animated landscape study. Illustrative, not recorded trip footage.",
+            category: "Motion studies",
+            location: sourcePhotos[0]?.location,
+          },
+        ]
+      : [];
+    return [...sourcePhotos, ...study, ...published];
+  }, [sourcePhotos, catalog, collection, illustrative]);
   const [category, setCategory] = useState("All categories");
   const [place, setPlace] = useState("All places"),
     [selected, setSelected] = useState<string | null>(null),
@@ -27,18 +72,22 @@ export default function TripPhotoCollection({
     () =>
       photos.filter(
         (p) =>
+          (kind === "All media" ||
+            (kind === "Films" ? p.kind === "video" : p.kind !== "video")) &&
           (category === "All categories" ||
             (p.category || "Uncategorized") === category) &&
           (place === "All places" ||
             (p.location?.trim() || "Unassigned") === place),
       ),
-    [photos, place, category],
+    [photos, place, category, kind],
   );
   const index = visible.findIndex((p) => p.id === selected),
     focus = visible[index];
   useEffect(() => {
     if (!selected) return;
     const key = (event: KeyboardEvent) => {
+      if ((event.target as HTMLElement)?.closest("video,input,textarea,select"))
+        return;
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
       event.preventDefault();
       setSelected(
@@ -55,7 +104,7 @@ export default function TripPhotoCollection({
     <section id="photo-journal" className="trip-photo-section photo-journal-v2">
       <header>
         <div>
-          <p className="world-eyebrow">THE PHOTO JOURNAL</p>
+          <p className="world-eyebrow">FRAMES & FILMS</p>
           <h2>
             Less said.
             <br />
@@ -90,6 +139,27 @@ export default function TripPhotoCollection({
           </button>
         ))}
       </nav>
+      <div className="trip-media-type" aria-label="Trip media type">
+        {["All media", "Photos", "Films"].map((value) => (
+          <button
+            key={value}
+            aria-pressed={kind === value}
+            onClick={() => {
+              setKind(value);
+              setSelected(null);
+              setLimit(24);
+            }}
+          >
+            {value}
+          </button>
+        ))}
+      </div>
+      {error && (
+        <p className="trip-media-error" role="status">
+          Published media is temporarily unavailable. The local journal is still
+          here.
+        </p>
+      )}
       <div className="photo-category-filter">
         <label>
           Explore by category{" "}
@@ -112,7 +182,7 @@ export default function TripPhotoCollection({
         </label>
       </div>
       {!visible.length && (
-        <p>No photographs have been published for this place yet.</p>
+        <p>No media has been published for this place yet.</p>
       )}
       <div className="trip-photo-wall">
         {visible.slice(0, limit).map((photo, i) => (
@@ -120,17 +190,31 @@ export default function TripPhotoCollection({
             key={photo.id}
             onClick={() => setSelected(photo.id)}
             aria-label={
-              "View " + (photo.caption || "trip photograph " + (i + 1))
+              "View " +
+              (photo.caption ||
+                (photo.kind === "video" ? "trip film " : "trip photograph ") +
+                  (i + 1))
             }
           >
-            <Image
-              src={photo.url}
-              alt={photo.caption || "Trip photograph " + (i + 1)}
-              width={1000}
-              height={800}
-              loading="lazy"
-              unoptimized
-            />
+            {photo.kind === "video" && !photo.poster ? (
+              <div className="trip-film-placeholder">
+                <Film size={40} />
+              </div>
+            ) : (
+              <Image
+                src={photo.kind === "video" ? photo.poster! : photo.url}
+                alt={photo.caption || "Trip photograph " + (i + 1)}
+                width={1000}
+                height={800}
+                loading="lazy"
+                unoptimized
+              />
+            )}
+            {photo.kind === "video" && (
+              <span className="trip-film-mark">
+                <Film size={13} /> Film
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -139,7 +223,7 @@ export default function TripPhotoCollection({
           className="world-link photo-more"
           onClick={() => setLimit((n) => n + 24)}
         >
-          Unfold more photographs ↗
+          Unfold more moments ↗
         </button>
       )}
       {focus && (
@@ -149,13 +233,33 @@ export default function TripPhotoCollection({
           onClose={() => setSelected(null)}
         >
           <div className="trip-photo-lightbox">
-            <Image
-              src={focus.url}
-              alt={focus.caption || "Trip photograph"}
-              width={1600}
-              height={1200}
-              unoptimized
-            />
+            {focus.kind === "video" ? (
+              <video
+                key={focus.id}
+                src={focus.url}
+                poster={focus.poster}
+                controls
+                playsInline
+                preload="metadata"
+                onError={() => setFailed(focus.id)}
+              />
+            ) : (
+              <Image
+                src={focus.url}
+                alt={focus.caption || "Trip photograph"}
+                width={1600}
+                height={1200}
+                unoptimized
+              />
+            )}
+            {failed === focus.id && (
+              <p role="status">
+                This film could not be loaded.{" "}
+                <a href={focus.url} target="_blank" rel="noreferrer">
+                  Open the original
+                </a>
+              </p>
+            )}
             <div className="photo-open-details">
               {focus.category && <span>{focus.category} / </span>}
               {focus.location && <span>{focus.location}</span>}
@@ -170,7 +274,7 @@ export default function TripPhotoCollection({
                   )
                 }
               >
-                ← Previous photograph
+                ← Previous moment
               </button>
               <span>
                 {index + 1} / {visible.length}
@@ -181,7 +285,7 @@ export default function TripPhotoCollection({
                   setSelected(visible[(index + 1) % visible.length].id)
                 }
               >
-                Next photograph →
+                Next moment →
               </button>
             </div>
           </div>

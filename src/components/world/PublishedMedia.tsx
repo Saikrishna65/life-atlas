@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -8,93 +8,35 @@ import {
   Search,
   X,
 } from "lucide-react";
-import {
-  PUBLIC_CATALOG_STORAGE,
-  publicCatalogSource,
-  readPublicCatalog,
-} from "@/lib/r2/public-catalog";
-import type { PublicMediaCatalog } from "@/lib/r2/types";
+import { usePublicCatalog } from "./usePublicCatalog";
 import { ChapterLabel, Modal } from "./primitives";
 import { KineticHeading } from "./EditorialElements";
 import "./published-media.css";
 export default function PublishedMedia() {
-  const [source, setSource] = useState(""),
-    [catalog, setCatalog] = useState<PublicMediaCatalog | null>(null),
-    [error, setError] = useState(false);
+  const { source, catalog, error } = usePublicCatalog();
+  const [kind, setKind] = useState("All media");
   const [query, setQuery] = useState(""),
     [category, setCategory] = useState("All collections"),
     [collection, setCollection] = useState("All places"),
     [visible, setVisible] = useState(18),
     [selected, setSelected] = useState<string | null>(null);
-  const lastFetch = useRef(0);
-  useEffect(() => {
-    let alive = true;
-    let address = "";
-    try {
-      address =
-        new URLSearchParams(location.search).get("atlasCatalog") ||
-        localStorage.getItem(PUBLIC_CATALOG_STORAGE) ||
-        "";
-    } catch {
-      /* Public browsing still works with browser storage disabled. */
-    }
-    if (!address) return;
-    try {
-      address = publicCatalogSource(address);
-    } catch {
-      queueMicrotask(() => setError(true));
-      return;
-    }
-    queueMicrotask(() => setSource(address));
-    let request: AbortController | undefined,
-      timeout: ReturnType<typeof setTimeout> | undefined;
-    const load = async () => {
-      if (Date.now() - lastFetch.current < 30000) return;
-      lastFetch.current = Date.now();
-      request?.abort();
-      request = new AbortController();
-      timeout = setTimeout(() => request?.abort(), 10000);
-      try {
-        const next = await readPublicCatalog(address, request.signal);
-        setCatalog(next);
-        setError(false);
-        try {
-          localStorage.setItem(PUBLIC_CATALOG_STORAGE, address);
-        } catch {}
-      } catch {
-        if (alive) setError(true);
-      } finally {
-        clearTimeout(timeout);
-      }
-    };
-    void load();
-    const focus = () => {
-      if (document.visibilityState === "visible") void load();
-    };
-    window.addEventListener("focus", focus);
-    document.addEventListener("visibilitychange", focus);
-    return () => {
-      alive = false;
-      lastFetch.current = 0;
-      request?.abort();
-      clearTimeout(timeout);
-      window.removeEventListener("focus", focus);
-      document.removeEventListener("visibilitychange", focus);
-    };
-  }, []);
   const items = useMemo(
     () =>
       (catalog?.items ?? [])
         .filter(
           (item) =>
             (category === "All collections" || item.category === category) &&
+            (kind === "All media" ||
+              (kind === "Films"
+                ? item.mimeType.startsWith("video/")
+                : item.mimeType.startsWith("image/"))) &&
             (collection === "All places" || item.collection === collection) &&
             `${item.title} ${item.description} ${item.tags.join(" ")} ${item.collection}`
               .toLowerCase()
               .includes(query.toLowerCase()),
         )
         .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)),
-    [catalog, query, category, collection],
+    [catalog, query, category, collection, kind],
   );
   const focus = items.find((item) => item.id === selected);
   const move = (direction: number) => {
@@ -106,6 +48,8 @@ export default function PublishedMedia() {
   useEffect(() => {
     if (!selected) return;
     const key = (event: KeyboardEvent) => {
+      if ((event.target as HTMLElement)?.closest("video,input,textarea,select"))
+        return;
       if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
         event.preventDefault();
         const index = items.findIndex((item) => item.id === selected);
@@ -137,8 +81,8 @@ export default function PublishedMedia() {
           ]}
         />
         <p>
-          Independent photographs, moving images and places, published from Life
-          Atlas. Photographs and moving images, shared with intention.
+          Photographs and films from the road. A collection of places, faces,
+          and the little things in between.
         </p>
       </header>
       {error && (
@@ -154,6 +98,20 @@ export default function PublishedMedia() {
       )}
       {catalog && (
         <>
+          <div className="trip-media-type" aria-label="Published media type">
+            {["All media", "Photos", "Films"].map((value) => (
+              <button
+                key={value}
+                aria-pressed={kind === value}
+                onClick={() => {
+                  setKind(value);
+                  setVisible(18);
+                }}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
           <div className="world-published-toolbar">
             <label>
               <Search size={16} />
@@ -206,6 +164,7 @@ export default function PublishedMedia() {
               <button
                 key={item.id}
                 className={index % 5 === 0 ? "published-large" : ""}
+                aria-label={`Open ${item.mimeType.startsWith("video/") ? "film" : "photo"}: ${item.title || item.collection || "published moment"}`}
                 onClick={() => setSelected(item.id)}
               >
                 <div>
@@ -260,7 +219,7 @@ export default function PublishedMedia() {
                 className="world-link"
                 onClick={() => setVisible((value) => value + 18)}
               >
-                Unfold more photographs <ArrowRight size={16} />
+                Unfold more moments <ArrowRight size={16} />
               </button>
             )}
             <small>

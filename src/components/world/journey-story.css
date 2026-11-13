@@ -1,6 +1,6 @@
 .journey-story {
-  background: #fff;
-  color: #0b1220;
+  background: #f3eee5;
+  color: #2d2824;
 }
 .journey-cover {
   height: 100dvh;
@@ -41,7 +41,7 @@
 }
 .journey-cover-title h1 {
   font:
-    400 clamp(60px, 9vw, 150px)/0.98 var(--font-display),
+    400 clamp(60px, 9vw, 150px)/0.98 var(--font-atlas-display),
     Georgia,
     serif;
   letter-spacing: -0.06em;
@@ -83,14 +83,14 @@
 .journey-prologue h2,
 .journey-route-section h2 {
   font:
-    400 clamp(44px, 5vw, 80px)/1.07 var(--font-display),
+    400 clamp(44px, 5vw, 80px)/1.07 var(--font-atlas-display),
     Georgia,
     serif;
   letter-spacing: -0.04em;
   margin: 20px 0;
 }
 .journey-story em {
-  color: #1f4fd8;
+  color: #ad2b2b;
   font-weight: 400;
 }
 .journey-prologue p:not(.world-eyebrow) {
@@ -124,12 +124,12 @@
 }
 .journey-map svg circle {
   fill: #fff;
-  stroke: #1f4fd8;
+  stroke: #ad2b2b;
   stroke-width: 3;
   transition: r 0.5s;
 }
 .journey-map svg circle.active-stop {
-  fill: #1f4fd8;
+  fill: #ad2b2b;
   stroke: #b5caff;
   stroke-width: 7;
 }
@@ -150,7 +150,7 @@
   stroke-linejoin: round;
 }
 .journey-route-ink {
-  stroke: #1f4fd8;
+  stroke: #ad2b2b;
   stroke-width: 2;
   stroke-dasharray: 1;
   stroke-dashoffset: 0;
@@ -168,7 +168,7 @@
 .journey-map-tools button {
   border: 1px solid #dce3ee;
   background: white;
-  color: #1f4fd8;
+  color: #ad2b2b;
   min-height: 38px;
   min-width: 38px;
   padding: 8px;
@@ -195,12 +195,12 @@
   color: #69768b;
 }
 .journey-stops button[aria-pressed="true"] {
-  color: #1f4fd8;
+  color: #ad2b2b;
 }
 .journey-stops button > span {
   flex: 1;
   font:
-    23px var(--font-display),
+    23px var(--font-atlas-display),
     Georgia,
     serif;
 }
@@ -212,7 +212,7 @@
 }
 .journey-place-note h3 {
   font:
-    42px var(--font-display),
+    42px var(--font-atlas-display),
     Georgia,
     serif;
   margin: 18px 0;
@@ -244,7 +244,7 @@
 }
 .journey-end h2 {
   font:
-    55px/1.1 var(--font-display),
+    55px/1.1 var(--font-atlas-display),
     Georgia,
     serif;
   margin: 25px 0 40px;
@@ -339,7 +339,7 @@
   font-size: 10px;
 }
 .route-layer-control button[aria-pressed="true"] {
-  background: #1f4fd8;
+  background: #ad2b2b;
   color: white;
 }
 .route-map-note {
@@ -371,7 +371,7 @@
 .trip-geographic-section h2,
 .trip-photo-section h2 {
   font:
-    clamp(42px, 5vw, 75px)/1.08 var(--font-display),
+    clamp(42px, 5vw, 75px)/1.08 var(--font-atlas-display),
     Georgia,
     serif;
   letter-spacing: -0.04em;
@@ -395,7 +395,7 @@
 .trip-telemetry strong {
   font-size: 23px;
   font-weight: 400;
-  color: #1f4fd8;
+  color: #ad2b2b;
 }
 .trip-telemetry strong > span {
   font-size: 12px;
@@ -405,7 +405,7 @@
 }
 .trip-visited h3 {
   font:
-    35px var(--font-display),
+    35px var(--font-atlas-display),
     Georgia,
     serif;
 }
@@ -417,11 +417,11 @@
 }
 .trip-visited article > small {
   font-size: 10px;
-  color: #1f4fd8;
+  color: #ad2b2b;
 }
 .trip-visited h4 {
   font:
-    27px var(--font-display),
+    27px var(--font-atlas-display),
     Georgia,
     serif;
   margin: 0 0 12px;
@@ -443,7 +443,7 @@
   border: 0;
   padding: 0;
   text-align: left;
-  color: #0b1220;
+  color: #2d2824;
 }
 .trip-photo-wall > button:nth-child(3n + 2) {
   margin-top: 65px;
@@ -455,13 +455,13 @@
 }
 .trip-photo-wall span {
   display: block;
-  color: #1f4fd8;
+  color: #ad2b2b;
   font-size: 10px;
   margin-top: 15px;
 }
 .trip-photo-wall p {
   font:
-    22px var(--font-display),
+    22px var(--font-atlas-display),
     Georgia,
     serif;
   margin: 12px 0;
@@ -543,7 +543,7 @@
   border-radius: 30px;
 }
 .photo-place-filters button[aria-pressed="true"] {
-  background: #1f4fd8;
+  background: #ad2b2b;
   color: white;
 }
 .photo-journal-v2 .trip-photo-wall {
@@ -603,11 +603,11 @@
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.13em;
-  color: #1f4fd8;
+  color: #ad2b2b;
 }
 .photo-open-details > p {
   font:
-    26px var(--font-display),
+    26px var(--font-atlas-display),
     Georgia,
     serif;
   margin: 15px 0 0;
@@ -620,7 +620,7 @@
 }
 .notebook-v2 > header h2 {
   font:
-    clamp(46px, 6vw, 90px)/1.04 var(--font-display),
+    clamp(46px, 6vw, 90px)/1.04 var(--font-atlas-display),
     Georgia,
     serif;
   letter-spacing: -0.045em;
@@ -641,7 +641,7 @@
 .notebook-spine {
   font-size: 8px;
   letter-spacing: 0.2em;
-  color: #1f4fd8;
+  color: #ad2b2b;
 }
 .notebook-layout nav {
   display: flex;
@@ -655,7 +655,7 @@
   text-align: left;
   padding: 18px 0;
   font:
-    23px var(--font-display),
+    23px var(--font-atlas-display),
     Georgia,
     serif;
   color: #66748a;
@@ -674,7 +674,7 @@
   font: 18px Arial;
 }
 .notebook-layout nav button[aria-selected="true"] {
-  color: #1f4fd8;
+  color: #ad2b2b;
 }
 .notebook-layout aside > p {
   font-size: 12px;
@@ -698,7 +698,7 @@
 }
 .notebook-paper h3 {
   font:
-    clamp(35px, 4vw, 65px)/1.06 var(--font-display),
+    clamp(35px, 4vw, 65px)/1.06 var(--font-atlas-display),
     Georgia,
     serif;
   letter-spacing: -0.035em;
@@ -718,19 +718,19 @@
   color: #5a6478;
 }
 .notebook-days button[aria-pressed="true"] {
-  background: #1f4fd8;
+  background: #ad2b2b;
   color: white;
-  border-color: #1f4fd8;
+  border-color: #ad2b2b;
 }
 .notebook-day-number {
   position: absolute;
   right: 20px;
   top: 50px;
   font:
-    italic 270px var(--font-display),
+    italic 270px var(--font-atlas-display),
     Georgia,
     serif;
-  color: #1f4fd80b;
+  color: #ad2b2b0b;
   pointer-events: none;
 }
 .notebook-day {
@@ -756,7 +756,7 @@
 .notebook-day-foot button {
   border: 0;
   background: none;
-  color: #1f4fd8;
+  color: #ad2b2b;
 }
 .notebook-day-foot button:disabled {
   opacity: 0.3;
@@ -768,7 +768,7 @@
 .notebook-notes article > span {
   font-size: 9px;
   letter-spacing: 0.1em;
-  color: #1f4fd8;
+  color: #ad2b2b;
 }
 .notebook-notes h3 {
   font-size: 38px;
@@ -788,7 +788,7 @@
   font-size: 13px;
 }
 .notebook-packing input {
-  accent-color: #1f4fd8;
+  accent-color: #ad2b2b;
   width: 17px;
   height: 17px;
 }
@@ -803,7 +803,7 @@
 }
 .notebook-budget > footer {
   font-size: 20px;
-  color: #1f4fd8;
+  color: #ad2b2b;
 }
 .notebook-budget > p:last-child {
   font-size: 11px;
@@ -875,7 +875,7 @@
 }
 .itinerary-edition > header h2 {
   font:
-    clamp(50px, 7vw, 105px)/1.02 var(--font-display),
+    clamp(50px, 7vw, 105px)/1.02 var(--font-atlas-display),
     Georgia,
     serif;
   letter-spacing: -0.055em;
@@ -914,7 +914,7 @@
   color: #66748a;
 }
 .itinerary-layout aside button[aria-pressed="true"] {
-  color: #1f4fd8;
+  color: #ad2b2b;
 }
 .itinerary-layout aside button > small {
   font-size: 9px;
@@ -922,7 +922,7 @@
 .itinerary-layout aside button > span:nth-child(2) {
   flex: 1;
   font:
-    22px var(--font-display),
+    22px var(--font-atlas-display),
     Georgia,
     serif;
 }
@@ -937,7 +937,7 @@
 }
 .itinerary-layout aside > p {
   font:
-    italic 23px/1.5 var(--font-display),
+    italic 23px/1.5 var(--font-atlas-display),
     Georgia,
     serif;
   color: #66748a;
@@ -971,7 +971,7 @@
 }
 .itinerary-day-cover h3 {
   font:
-    clamp(35px, 4vw, 62px)/1.05 var(--font-display),
+    clamp(35px, 4vw, 62px)/1.05 var(--font-atlas-display),
     Georgia,
     serif;
   letter-spacing: -0.035em;
@@ -983,7 +983,7 @@
 }
 .itinerary-day-intro p {
   font:
-    23px/1.6 var(--font-display),
+    23px/1.6 var(--font-atlas-display),
     Georgia,
     serif;
   margin: 0 0 20px;
@@ -1018,15 +1018,15 @@
 }
 .itinerary-beats time {
   font-size: 10px;
-  color: #1f4fd8;
+  color: #ad2b2b;
   line-height: 1.8;
 }
 .itinerary-beat-dot {
   width: 9px;
   height: 9px;
-  background: #1f4fd8;
+  background: #ad2b2b;
   border: 2px solid #f5f7fb;
-  outline: 1px solid #1f4fd8;
+  outline: 1px solid #ad2b2b;
   border-radius: 50%;
   position: relative;
   margin-top: 4px;
@@ -1039,7 +1039,7 @@
 }
 .itinerary-beats h4 {
   font:
-    30px/1.15 var(--font-display),
+    30px/1.15 var(--font-atlas-display),
     Georgia,
     serif;
   letter-spacing: -0.02em;
@@ -1070,7 +1070,7 @@
     sans-serif;
   margin-left: 15px;
   border: 1px solid #dce3ee;
-  color: #1f4fd8;
+  color: #ad2b2b;
   background: white;
   padding: 10px 14px;
 }
@@ -1149,4 +1149,37 @@
   .itinerary-day {
     animation: none;
   }
+}
+
+/* The journey continues the public editorial identity. */
+.journey-story :is(h1, h2, h3) {
+  text-transform: uppercase;
+  font-style: normal;
+}
+.journey-story :is(h1, h2, h3) em {
+  font-style: normal;
+}
+.journey-story .trip-media-type {
+  margin: 18px 0;
+}
+.journey-story .trip-media-type button[aria-pressed="true"] {
+  background: #ad2b2b;
+  border-color: #ad2b2b;
+  color: #fff8ee;
+}
+.journey-story .trip-photo-wall > button {
+  position: relative;
+}
+.journey-story .trip-photo-lightbox video {
+  width: 100%;
+  max-height: 70svh;
+  background: #171a18;
+}
+.journey-story .trip-film-placeholder {
+  width: 100%;
+  height: 100%;
+  min-height: 250px;
+  display: grid;
+  place-content: center;
+  background: #d8cfc2;
 }

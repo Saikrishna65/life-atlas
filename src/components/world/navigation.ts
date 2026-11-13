@@ -47,8 +47,10 @@ export async function navigateChapter(
   if (lenis) {
     lenis.start();
     lenis.resize();
-    lenis.scrollTo(target, {
-      offset: -74,
+    // Numeric destinations avoid adding the scene’s CSS scroll-margin a second time.
+    const position = () =>
+      window.scrollY + target.getBoundingClientRect().top - 74;
+    lenis.scrollTo(position(), {
       force: true,
       duration: reduce ? 0 : 1.3,
       immediate: reduce,
@@ -56,8 +58,7 @@ export async function navigateChapter(
         if (request !== latestNavigation || !target.isConnected) return;
         lenis.resize();
         if (Math.abs(target.getBoundingClientRect().top - 74) > 5)
-          lenis.scrollTo(target, {
-            offset: -74,
+          lenis.scrollTo(position(), {
             duration: reduce ? 0 : 0.35,
             force: true,
             immediate: reduce,

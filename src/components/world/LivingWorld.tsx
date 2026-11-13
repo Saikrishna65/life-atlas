@@ -7,6 +7,7 @@ import WorldNavigation from "./WorldNavigation";
 import WorldMotion from "./WorldMotion";
 import SceneBoundary from "./SceneBoundary";
 import "./world.css";
+const AtlasPassage = dynamic(() => import("./AtlasPassage"));
 const Observatory = dynamic(() => import("./Observatory"));
 const Expeditions = dynamic(() => import("./Expeditions"));
 const MemoryArchive = dynamic(() => import("./MemoryArchive"));
@@ -105,6 +106,11 @@ export default function LivingWorld() {
           id="observatory"
           title="The Observatory"
           component={Observatory}
+        />
+        <Deferred
+          id="on-the-road"
+          title="The art of going"
+          component={AtlasPassage}
         />
         <Deferred
           id="expeditions"

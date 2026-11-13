@@ -6,6 +6,7 @@ import { Modal } from "./primitives";
 import { navigateChapter, returnToDoor } from "./navigation";
 export const chapters = [
   ["observatory", "The Observatory"],
+  ["on-the-road", "The art of going"],
   ["expeditions", "The Expeditions"],
   ["memories", "The Memory Archive"],
   ["beyond", "The Beyond"],
@@ -88,7 +89,7 @@ export default function WorldNavigation() {
           {[
             ["observatory", "Discover"],
             ["expeditions", "Journeys"],
-            ["memories", "Memories"],
+            ["memories", "Frames & films"],
           ].map(([id, name]) => (
             <button
               key={id}
@@ -118,7 +119,7 @@ export default function WorldNavigation() {
       </nav>
       {open && (
         <Modal
-          title="Choose a chapter"
+          title="Where shall we go?"
           className="world-chapter-dialog"
           onClose={() => setOpen(false)}
         >
@@ -154,7 +155,7 @@ export default function WorldNavigation() {
             />
           ))}
         </div>
-        <span>{String(chapters.length+1).padStart(2,"0")}</span>
+        <span>{String(chapters.length + 1).padStart(2, "0")}</span>
       </aside>
     </>
   );

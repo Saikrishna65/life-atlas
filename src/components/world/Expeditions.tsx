@@ -35,7 +35,7 @@ export default function Expeditions() {
     <section id="expeditions" className="world-expeditions world-scene">
       <RouteDrawing className="expedition-route-background" />
       <div className="world-section-bar">
-        <ChapterLabel number="03">The Expeditions</ChapterLabel>
+        <ChapterLabel number="04">The Expeditions</ChapterLabel>
         <span className="world-eyebrow">24 ways to take the long way</span>
       </div>
       <header className="world-editorial-header" data-world-reveal>

@@ -79,7 +79,10 @@ export default async function TripDetailPage({
 
       <TripExperiences experiences={trip.experiences} />
 
-      <TripGallery photos={trip.photos} />
+      <TripGallery
+        collection={{ slug: trip.slug, title: trip.title }}
+        photos={trip.photos}
+      />
 
       {nextTrip && <NextJourney trip={nextTrip} />}
     </JourneyFrame>

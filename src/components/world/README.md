@@ -1,52 +1,78 @@
-# Life Atlas public travel journal
+# Life Atlas public travel edition
 
-The public homepage now flows from the door hero directly into the Observatory,
-Expeditions, Memory Archive, optional published collection and
-Home Again ending. Arrival, assistant demonstrations and app-system demonstrations
-are no longer mounted or included in chapter navigation.
+The homepage flows from the original door image sequence into the globe,
+The Art of Going, expeditions, frames & films, the optional public catalog,
+and the home-again closing doorway. No private-app feature presentation or
+music section is mounted in the public journey.
 
-The hero's image controller, scroll duration, frame renderer, assets and entrance
-preloader are preserved. The user-authorized editorial update changes heading
-markup and introduces `home/HeroEditorial.tsx`; its child transforms animate type
-without changing image-sequence progress. Preservation tests pin the original
-controller separately from the editable text. All 287 frames remain unchanged.
+## Art direction and preservation
 
-Expeditions use oversized alternating vertical compositions, links to dedicated
-trip routes and scoped image parallax. No pinned horizontal passage is mounted.
-Decorative SVG curves draw with scroll, with a moving point following the same
-curve. Reduced motion displays completed routes and static text.
+Reference: https://deltacafes.com/en (Bürocratik). Its editorial scale, condensed
+typography, photographic storytelling and warm tonal contrasts informed this
+Life Atlas adaptation. No source code, proprietary fonts, branding, film or
+photography from the reference is included. Oswald is an open-source alternative.
+Direct browser access to the reference was blocked in the development environment;
+its textual structure and published design capture were available through search.
+Exact reference animation timing was not verified.
 
-`JourneyStory` gives sample trips cinematic covers, actual geographic street/terrain
-maps, selectable destination markers, photo lightboxes and itinerary/packing/budget
-controls. Samples do not invent travelled paths or telemetry. Published trips draw
-their actual GPS segments and show recorded distance, moving/elapsed time, altitude,
-ascent and speed. Missing values stay explicitly unavailable. Published photographs
-include their linked place names. Map tiles require connectivity and have a visible
-failure state. No private local store is read by these pages.
+The hero renderer, preloader, 287 frames and image-scroll controller are unchanged.
+Only its editorial stylesheet evolves. Preservation tests pin the original image
+controller and renderer. InteractiveGlobe.tsx is unchanged in this revision;
+its model, camera, marker selection and rendering remain intact. The surrounding
+layout is redesigned. The final doorway still closes as the trip concludes.
 
-The final doorway starts open and closes as its section reaches the viewport's
-bottom, accompanied by return-home copy. Return navigation still uses the shared
-Lenis instance. GSAP contexts, triggers and listeners are scoped and cleaned up.
+`AtlasPassage` uses CSS sticky and GSAP ScrollTrigger on the existing Lenis engine.
+The desktop cycle crossfades three editorial scenes with direct chapter controls.
+Nonactive scenes are inert and hidden from the accessibility tree. Mobile and
+reduced-motion layouts show a readable vertical sequence, with no pinned section.
+All triggers and media-query listeners are cleaned up. No new animation loop or
+WebGL renderer is introduced. The world’s established route-drawing motion remains.
 
-Typed sample records and illustrative image licensing remain unchanged. Published
-media continues to use the separate validated, credential-free public catalog.
+## Photos and films
 
-Checks: `npm test`, `npx tsc --noEmit`, scoped ESLint, `npm run build`, and
-`ATLAS_QA_URL=http://localhost:3008 node tests/public/browser.mjs` against a fresh
-production server. The browser suite covers the preserved door, scene removal,
-globe selection, trip navigation, map controls, field-note controls, closing door,
-mobile overflow and reduced motion. Evidence goes into ignored `work/qa-travel`.
+MemoryArchive has image-only photo buttons and two optional film previews.
+TripPhotoCollection supports optional captions, place and category filters,
+photo/film filters, posters and keyboard navigation. Location and caption details
+are shown in the viewer. Native video controls manage playback, with no autoplay
+or automatic audio. Arrow keys retain seeking behavior while a video is focused.
+Video controls are included in the modal focus trap.
 
-The photo journal uses an image-only editorial wall with place filters; location
-and optional captions appear only inside the lightbox. The sample field journal
-is a day-selectable notebook with conditions, packing and budget pages. Published
-trip records take priority over sample slugs, and recorded-route fitting uses GPS
-bounds with a close zoom cap so short tracks remain legible.
+Two six-second silent animated landscape studies demonstrate working playback.
+They are labeled illustrative animations, never actual trip footage. Their source
+and licenses are recorded in src/data/demo/SOURCES.md and public/films/README.txt.
+They are around 150 KB each, loaded only on opening their viewers. No compression
+or processing is applied to published user media by this public implementation.
+Browser codec support determines playback of uploaded formats such as MOV/HEIC;
+the user can open the original if a film fails to load.
 
-The itinerary-only edition removes field-note, packing and budget panels. Sample
-journeys use deterministic, explicitly illustrative winding route geometry and
-five detailed scheduled beats per day. Photo journals have independent place
-and category filters; labels remain inside the opened photograph. Mock geometry
-never replaces a published trip's recorded GPS data.
+`usePublicCatalog` loads the existing versioned, validated, credential-free R2
+manifest. It accepts the `atlasCatalog` public URL parameter or a previously saved
+public source URL. It cancels pending fetches on unmount, limits timeouts and
+rechecks on focus at most once every 30 seconds. Local imagery remains available
+if the catalog fails. Public catalog data is never treated as private vault data.
 
-Music is no longer mounted on the landing page or linked in chapter navigation.
+For a trip’s published media, choose placement `expedition` and set collection
+to its exact public slug or full title. An optional `place:Chopta` tag assigns a
+place filter. Exact normalized matches prevent one trip’s media from leaking into
+another collection. Both image and video MIME types are accepted. The original
+public catalog schema and Android publishing protocol are unchanged. No R2
+credentials, backend proxy, environment secret or database migration is added.
+
+The existing dedicated trip pages retain geographic route maps, synthetic sample
+route disclosures, real published GPS paths, and detailed day-by-day itineraries.
+Demo data never claims to document actual travel. Map tiles need connectivity;
+local content and the no-WebGL destination directory remain usable independently.
+
+## Validation
+
+- `npm test`: fixture integrity, hero preservation and public media matching.
+- `npx tsc --noEmit`; scoped ESLint for changed public files.
+- `npm run build` for the production Next.js output.
+- `node tests/public/browser.mjs`: existing travel interaction regressions.
+- `node tests/public/cinema-browser.mjs`: chapter cycle, film playback, media
+  filters, explicit published-trip association, mobile and reduced motion.
+
+Run browser suites against a fresh production server on port 3008. Set
+ATLAS_QA_URL to use another local origin. Evidence is written under ignored
+work/qa-travel and work/qa-cinema. Do not build over a running production server’s
+.next directory. These are Chromium checks, not physical Android or iOS testing.

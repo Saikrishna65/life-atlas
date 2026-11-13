@@ -159,6 +159,7 @@ export default function JourneyStory({
       </section>
 
       <TripPhotoCollection
+        collection={{ slug: e.slug, title: e.name }}
         illustrative
         photos={gallery
           .filter(

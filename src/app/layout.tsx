@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { atlasDisplay } from "@/lib/public-fonts";
 import { display, sans, body } from "@/lib/fonts";
 import "./globals.css";
 import SmoothScroll from "@/components/layout/SmoothScroll";
@@ -51,7 +52,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${display.variable} ${sans.variable} ${body.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${display.variable} ${sans.variable} ${body.variable} ${atlasDisplay.variable}`}>
       <body suppressHydrationWarning>
         <MobileAppBridge />
         <div className="grain-overlay" />

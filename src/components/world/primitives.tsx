@@ -104,7 +104,7 @@ export function Modal({
         if (e.key !== "Tab") return;
         const controls = Array.from(
           e.currentTarget.querySelectorAll<HTMLElement>(
-            'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+            'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), video[controls], [tabindex]:not([tabindex="-1"])',
           ),
         ).filter((el) => el.getClientRects().length > 0);
         const first = controls[0],
@@ -135,7 +135,7 @@ export function Modal({
     >
       <div className="world-modal-inner">
         <header className="world-modal-header">
-          <span className="world-eyebrow">Life Atlas / Field notes</span>
+          <span className="world-eyebrow">Life Atlas / In focus</span>
           <button
             onClick={onClose}
             className="world-icon"

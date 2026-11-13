@@ -3,7 +3,14 @@ import { KineticHeading, RouteDrawing } from "./EditorialElements";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Minus, Plus } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Minus,
+  Plus,
+  Play,
+} from "lucide-react";
 import { memories, gallery } from "@/data/demo/memories";
 import { destinations, expeditions } from "@/data/demo/expeditions";
 import { searchRecords, formatDate } from "@/data/demo/selectors";
@@ -15,6 +22,7 @@ import {
   SearchField,
 } from "./primitives";
 export default function MemoryArchive() {
+  const [film, setFilm] = useState<"mountain" | "coastal" | null>(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All moments");
   const [year, setYear] = useState("All months");
@@ -65,7 +73,7 @@ export default function MemoryArchive() {
   return (
     <section id="memories" className="world-memories world-scene">
       <div className="world-section-bar">
-        <ChapterLabel number="04">The Memory Archive</ChapterLabel>
+        <ChapterLabel number="05">The Memory Archive</ChapterLabel>
         <span className="world-eyebrow">Collect moments. Not just miles.</span>
       </div>
       <header className="world-editorial-header" data-world-reveal>
@@ -73,9 +81,9 @@ export default function MemoryArchive() {
           <p className="world-eyebrow">Small things. Infinite meaning.</p>
           <KineticHeading
             lines={[
-              "Some moments",
+              "Life happens.",
               <span key="leave">
-                never <em>really leave.</em>
+                <em>Keep the feeling.</em>
               </span>,
             ]}
           />
@@ -89,6 +97,38 @@ export default function MemoryArchive() {
           <DemoNote>108 imagined moments / 180 image records.</DemoNote>
         </div>
       </header>
+      <div
+        className="memory-film-strip"
+        aria-label="Illustrative motion studies"
+      >
+        {(["mountain", "coastal"] as const).map((name, i) => (
+          <button
+            key={name}
+            onClick={() => setFilm(name)}
+            aria-label={`Watch ${name} motion study`}
+          >
+            <Image
+              src={`/images/world/${i === 0 ? "mountains" : "ocean"}.webp`}
+              alt=""
+              width={1200}
+              height={750}
+              sizes="(max-width: 700px) 90vw, 50vw"
+              loading="lazy"
+            />
+            <span className="film-strip-shade" />
+            <span className="film-strip-top">
+              MOTION STUDY / 0{i + 1}
+              <Play size={18} />
+            </span>
+            <span className="film-strip-title">
+              {i === 0 ? "A little further." : "A little slower."}
+            </span>
+            <span className="film-strip-foot">
+              ILLUSTRATIVE ANIMATION <span>00:06 / SILENT</span>
+            </span>
+          </button>
+        ))}
+      </div>
       <div className="memory-toolbar">
         <SearchField
           value={query}
@@ -146,6 +186,7 @@ export default function MemoryArchive() {
             const d = destinations.find((d) => d.id === m.destinationId)!;
             return (
               <button
+                aria-label={`Open moment in ${d.name}`}
                 className={`memory-print memory-shape-${i % 5}`}
                 data-print-index={i}
                 data-world-tilt
@@ -171,13 +212,6 @@ export default function MemoryArchive() {
                   <span className="memory-number">
                     {String(memories.indexOf(m) + 1).padStart(3, "0")}
                   </span>
-                </div>
-                <div className="memory-print-caption">
-                  <span>
-                    {d.name} / {m.category}
-                  </span>
-                  <h3>{m.title.split(" · ")[0]}</h3>
-                  <time dateTime={m.date}>{formatDate(m.date)}</time>
                 </div>
               </button>
             );
@@ -208,6 +242,26 @@ export default function MemoryArchive() {
           </button>
         )}
       </footer>
+      {film && (
+        <Modal
+          title={`${film} motion study`}
+          className="atlas-film-dialog"
+          onClose={() => setFilm(null)}
+        >
+          <video
+            key={film}
+            controls
+            playsInline
+            preload="metadata"
+            src={`/films/${film}-study.mp4`}
+            poster={`/images/world/${film === "mountain" ? "mountains" : "ocean"}-small.webp`}
+          />
+          <p>
+            Illustrative landscape animation, not recorded trip footage. Six
+            seconds, no soundtrack.
+          </p>
+        </Modal>
+      )}
       {current && (
         <Modal
           className="memory-lightbox"

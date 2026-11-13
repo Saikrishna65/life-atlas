@@ -35,3 +35,7 @@ procedural CSS geometry. No audio recordings are distributed or played.
 
 The social preview at public/og-image.jpg is a resized derivative of the existing
 public/images/hero-backdrop.jpg. Its original file remains unchanged.
+
+## Public motion studies
+
+`/films/mountain-study.mp4` and `/films/coastal-study.mp4` are silent six-second pan/zoom derivatives of the mountains and ocean studies above, encoded with FFmpeg. They are labeled illustrative animations, not recordings of a trip. No reference-site imagery, films, music or proprietary fonts have been copied.

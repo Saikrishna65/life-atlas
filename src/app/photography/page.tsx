@@ -3,14 +3,14 @@ import PublicPage from "@/components/world/PublicPage";
 import PublishedMedia from "@/components/world/PublishedMedia";
 import MemoryArchive from "@/components/world/MemoryArchive";
 export const metadata: Metadata = {
-  title: "A moment, held.",
-  description: "Not everything that matters fits inside a frame.",
+  title: "Frames & films",
+  description: "Photographs, films and the moments in between. The Life Atlas visual journal.",
 };
 export default function Page() {
   return (
     <PublicPage
-      title={"A moment, held."}
-      kicker={"Not everything that matters fits inside a frame."}
+      title={"Frames & films."}
+      kicker={"Still photographs. Moving memories. A life, in the making."}
     >
       <MemoryArchive />
       <PublishedMedia />

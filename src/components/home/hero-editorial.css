@@ -57,3 +57,27 @@
     transform: none !important;
   }
 }
+
+/* Editorial layer only: the door renderer, camera and scroll controller are unchanged. */
+[data-hero] .hero-editorial-heading {
+  font-family: var(--font-atlas-display), Impact, sans-serif;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: clamp(52px, 6.7vw, 104px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+[data-hero] .hero-editorial-heading em {
+  font-style: normal;
+  color: #fff1d8;
+}
+[data-hero] .hero-editorial-heading:before {
+  background: #fff1d8;
+  width: 65px;
+}
+@media (max-width: 700px) {
+  [data-hero] .hero-editorial-heading {
+    font-size: clamp(42px, 11vw, 62px);
+    max-width: 340px;
+  }
+}

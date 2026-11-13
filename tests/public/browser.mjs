@@ -128,7 +128,7 @@ try {
     await page.screenshot({ path: "work/qa-travel/expeditions.png" });
   });
   await check(
-    "trip opens a dedicated page with interactive route and field notes",
+    "trip opens a dedicated page with interactive route, itinerary and media journal",
     async () => {
       await page.locator(".expedition-panel").first().click();
       await page.waitForURL("**/trips/**");
@@ -150,6 +150,7 @@ try {
       await page.locator(".journey-route-section").scrollIntoViewIfNeeded();
       await page.waitForTimeout(1500);
       await page.screenshot({ path: "work/qa-travel/trip-route.png" });
+      await page.getByRole("button", { name: "Photos", exact: true }).click();
       assert.equal(
         (await page.locator(".trip-photo-wall").innerText()).trim(),
         "",
