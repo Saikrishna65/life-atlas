@@ -1,3 +1,27 @@
+# Hero refinement: colour and video handoff
+
+`TripFilmStage` retains a live outgoing video until the incoming decoder paints
+its first frame (`requestVideoFrameCallback`, or decoded data + two animation
+frames when paused). It then overlaps the actual videos with a 1.2s opacity blend.
+The outgoing source is released after the blend. Inactive slots have no source;
+there is no poster substitution during transitions. A failed incoming clip leaves
+the previous scene visible. Reduced motion removes the blend and starts paused;
+explicit playback does not change the motion preference for heading animation.
+
+The hero now uses warm peach, light Manrope typography with controlled two-line
+headings, paired pill/arrow controls, individual thumbnail rules and warm discovery
+panels. Shading is concentrated behind content; footage has a modest saturation
+increase. Three 1080p colour motion studies replace the grayscale fallback. They
+remain labeled illustrative animations, and their originals are unchanged.
+
+Browser evidence: `tests/public/hero-transition-browser.mjs` deliberately delays
+an incoming response, checks the old video keeps playing, measures intermediate
+blend opacity, and verifies source release, pause/menu, mobile and reduced motion.
+Stock CDN access remains blocked here; local colour-video fixtures verify decoding
+and switching without claiming live CDN playback.
+
+---
+
 # Current hero update
 
 The user supplied a reference recording and explicitly replaced the door-hero
@@ -5,10 +29,10 @@ preservation requirement. `TripFilmHero` now mounts on the homepage, replacing
 `Hero` and `HomePreloader`. Their original files and frame assets remain archived
 unchanged. The globe and below-hero sections are unchanged in this revision.
 
-Hero: full-screen silent video, floating navigation, serif lower-left trip title,
+Hero: full-screen silent video, floating navigation, light lower-left trip title,
 three film selectors, right-side discovery panels. Stock videos are illustrative;
-source/license information is in docs/HERO-FILMS.md. Only the selected video is
-mounted. Playback stops offscreen, on hidden tabs and in menus. Reduced motion
+source/license information is in docs/HERO-FILMS.md. Persistent decoder slots retain the outgoing video while the incoming
+video buffers; only the selected and transitioning clips have sources. Playback stops offscreen, on hidden tabs and in menus. Reduced motion
 starts paused. Arrow keys switch slides; the pause button controls the sequence.
 Public trips are read with `take: 3` and descending startDate ordering. No private
 vault data is read. Sample expeditions are used when no public records exist.

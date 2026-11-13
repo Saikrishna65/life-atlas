@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Cormorant_Garamond } from "next/font/google";
+import { Manrope } from "next/font/google";
+import TripFilmStage from "./TripFilmStage";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -16,16 +17,21 @@ import { heroFilms, type HeroTrip } from "@/data/demo/hero-films";
 import { Modal } from "@/components/world/primitives";
 import "./trip-film-hero.css";
 
-const heroSerif = Cormorant_Garamond({
+const heroSerif = Manrope({
   subsets: ["latin"],
-  weight: "300",
+  weight: ["300", "400"],
   variable: "--font-trip-serif",
   display: "swap",
 });
 
 export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
   const [active, setActive] = useState(0);
-  const [previous, setPrevious] = useState<number | null>(null);
+  const [requested, setRequested] = useState(0);
+  const [outgoing, setOutgoing] = useState<number | null>(null);
+  const [queued, setQueued] = useState<number | null>(null);
+  const queuedRequest = useRef<number | null>(null);
+  const [manualPlay, setManualPlay] = useState(false);
+  const [tabVisible, setTabVisible] = useState(true);
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(true);
   const [visible, setVisible] = useState(true);
@@ -33,57 +39,61 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
   const [failed, setFailed] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [menu, setMenu] = useState(false);
-  const video = useRef<HTMLVideoElement>(null);
+
   const root = useRef<HTMLElement>(null);
   const heading = useRef<HTMLDivElement>(null);
   const progress = useRef<HTMLSpanElement>(null);
-  const advancing = useRef(false);
+
   const current = trips[active];
-  const film = heroFilms[active % heroFilms.length];
+  const playing =
+    !paused &&
+    (!reduced || manualPlay) &&
+    visible &&
+    tabVisible &&
+    !menu &&
+    !blocked;
   const choose = (index: number) => {
-    if (index === active) return;
-    advancing.current = false;
-    setPrevious(active);
-    setActive(index);
-    setFallback(false);
-    setFailed(false);
+    if (outgoing !== null) {
+      queuedRequest.current = index;
+      setQueued(index);
+    } else setRequested(index);
     setBlocked(false);
+    setFailed(false);
   };
-  useEffect(() => {
-    const timer = setTimeout(
-      () => setReduced(matchMedia("(prefers-reduced-motion: reduce)").matches),
-      0,
-    );
-    return () => clearTimeout(timer);
-  }, []);
   useEffect(() => {
     const media = matchMedia("(prefers-reduced-motion: reduce)");
     const change = () => setReduced(media.matches);
+    const initial = setTimeout(change, 0);
     media.addEventListener("change", change);
     const observer = new IntersectionObserver(
       ([entry]) => setVisible(entry.isIntersecting),
       { threshold: 0.15 },
     );
     observer.observe(root.current!);
-    const visibility = () => {
-      if (document.hidden) video.current?.pause();
-      else if (!paused && !media.matches && visible && !menu)
-        void video.current?.play().catch(() => setBlocked(true));
-    };
+    const visibility = () => setTabVisible(!document.hidden);
     document.addEventListener("visibilitychange", visibility);
     return () => {
+      clearTimeout(initial);
       media.removeEventListener("change", change);
       observer.disconnect();
       document.removeEventListener("visibilitychange", visibility);
     };
-  }, [paused, visible, menu]);
+  }, []);
   useEffect(() => {
-    const element = video.current;
-    if (!element) return;
-    if (paused || reduced || !visible || menu || document.hidden)
-      element.pause();
-    else void element.play().catch(() => setBlocked(true));
-  }, [active, paused, reduced, visible, fallback, menu]);
+    if (outgoing === null) return;
+    const timer = setTimeout(
+      () => {
+        setOutgoing(null);
+        if (queuedRequest.current !== null) {
+          setRequested(queuedRequest.current);
+          queuedRequest.current = null;
+          setQueued(null);
+        }
+      },
+      reduced ? 0 : 1250,
+    );
+    return () => clearTimeout(timer);
+  }, [outgoing, reduced]);
   useEffect(() => {
     if (reduced) return;
     const context = gsap.context(() => {
@@ -114,80 +124,54 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
         }
       }}
     >
-      <div className="trip-film-stage" aria-hidden="true">
-        {previous !== null && (
-          <Image
-            key={`previous-${previous}`}
-            className="trip-film-outgoing"
-            src={heroFilms[previous % 3].poster}
-            alt=""
-            fill
-            sizes="100vw"
-            unoptimized
-          />
-        )}
-        <video
-          ref={video}
-          key={`${active}-${fallback}`}
-          src={fallback ? film.fallback : film.src}
-          poster={film.poster}
-          muted
-          playsInline
-          preload={reduced ? "none" : "metadata"}
-          disablePictureInPicture
-          tabIndex={-1}
-          onError={() => {
-            if (!fallback) setFallback(true);
-            else {
-              setFailed(true);
-              setPaused(true);
-            }
-          }}
-          onPlaying={() => setBlocked(false)}
-          onTimeUpdate={(e) => {
-            const v = e.currentTarget;
-            const duration = Math.min(v.duration || 10, 10);
-            if (progress.current)
-              progress.current.style.transform = `scaleX(${Math.min(1, v.currentTime / duration)})`;
-            if (
-              v.currentTime >= duration &&
-              !paused &&
-              !reduced &&
-              trips.length > 1 &&
-              !advancing.current
-            ) {
-              advancing.current = true;
-              choose((active + 1) % trips.length);
-            }
-          }}
-          onEnded={() => {
-            if (!paused && !reduced && trips.length > 1)
-              choose((active + 1) % trips.length);
-          }}
-        />
-        <div className="trip-film-shade" />
-      </div>
+      <TripFilmStage
+        active={active}
+        outgoing={outgoing}
+        requested={requested}
+        count={trips.length}
+        playing={playing}
+        reduced={reduced}
+        onReveal={(index) => {
+          if (index !== active) {
+            setOutgoing(active);
+            setActive(index);
+          }
+        }}
+        onProgress={(value) => {
+          if (progress.current)
+            progress.current.style.transform = `scaleX(${value})`;
+        }}
+        onEnd={() => {
+          if (trips.length > 1) setRequested((active + 1) % trips.length);
+        }}
+        onStatus={(status) => {
+          setFallback(status === "fallback");
+          setFailed(status === "failed");
+          setBlocked(status === "blocked");
+          if (status === "failed") {
+            setRequested(active);
+            setPaused(true);
+          }
+        }}
+      />
       <header className="trip-film-header">
         <button
           className="trip-film-round"
           aria-label={
-            paused || reduced || blocked
+            paused || (reduced && !manualPlay) || blocked
               ? "Play trip films"
               : "Pause trip films"
           }
-          aria-pressed={paused || reduced || blocked}
+          aria-pressed={paused || (reduced && !manualPlay) || blocked}
           onClick={() => {
-            if (paused || reduced || blocked) {
+            if (paused || (reduced && !manualPlay) || blocked) {
               setPaused(false);
-              setReduced(false);
-              void video.current
-                ?.play()
-                .then(() => setBlocked(false))
-                .catch(() => setBlocked(true));
+              setManualPlay(true);
+              setBlocked(false);
             } else setPaused(true);
           }}
         >
-          {paused || reduced || blocked ? (
+          {paused || (reduced && !manualPlay) || blocked ? (
             <Play size={15} />
           ) : (
             <Pause size={15} />
@@ -232,21 +216,32 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
           {active + 1}
         </p>
         <h1>
-          <Link href={`/trips/${current.slug}`}>{current.title}.</Link>
+          <Link href={`/trips/${current.slug}`}>
+            {current.title
+              .split(" ")
+              .slice(0, Math.ceil(current.title.split(" ").length / 2))
+              .join(" ")}
+            <br />
+            {current.title
+              .split(" ")
+              .slice(Math.ceil(current.title.split(" ").length / 2))
+              .join(" ")}
+            .
+          </Link>
         </h1>
         <Link className="trip-film-cta" href={`/trips/${current.slug}`}>
-          <span>Discover the journey</span>
+          <span>Explore this trip</span>
           <ArrowRight size={17} />
         </Link>
       </div>
       <aside className="trip-film-discover" aria-label="More to discover">
         <div className="trip-film-aside-label">
-          A little further <ArrowRight size={18} />
+          Explore the atlas <ArrowRight size={18} />
         </div>
         <div className="trip-film-discover-pair">
           <Link href="/trips">
             <Image
-              src="/images/world/ridge-small.webp"
+              src="/images/door-sequence/frame_286.webp"
               alt=""
               fill
               sizes="170px"
@@ -272,8 +267,11 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
             <Compass size={44} strokeWidth={0.6} />
           </span>
           <span>
-            <strong>A world of stories.</strong>
-            <small>Find a place. Follow a feeling.</small>
+            <strong>Every place has a story.</strong>
+            <small>
+              Trace the routes, revisit the moments, and find your next
+              somewhere.
+            </small>
           </span>
           <ArrowUpRight size={18} />
         </Link>
@@ -289,6 +287,7 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
               key={trip.id}
               aria-pressed={active === i}
               aria-label={`Show trip ${i + 1}: ${trip.title}`}
+              aria-busy={(requested === i && active !== i) || queued === i}
               onClick={() => {
                 setPaused(false);
                 choose(i);

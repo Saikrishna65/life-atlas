@@ -2,7 +2,7 @@
   position: relative;
   height: 100svh;
   min-height: 660px;
-  color: #ede2cf;
+  color: #e8c1aa;
   background: #18201c;
   isolation: isolate;
   overflow: hidden;
@@ -39,15 +39,28 @@
   object-fit: cover;
 }
 .trip-film-stage > video {
-  animation: trip-film-enter 1s ease both;
+  opacity: 0;
+  z-index: 0;
+  transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  filter: saturate(1.12);
 }
-.trip-film-outgoing {
-  opacity: 0.8;
+.trip-film-stage > video[data-outgoing="true"] {
+  opacity: 1;
+  z-index: 1;
+}
+.trip-film-stage > video[data-showing="true"] {
+  opacity: 1;
+  z-index: 2;
+}
+.trip-film-shade {
+  z-index: 3;
+  pointer-events: none;
 }
 .trip-film-shade {
   background:
-    linear-gradient(180deg, #080b0960, transparent 35%, #080b0990),
-    linear-gradient(90deg, #131a1728, transparent 60%);
+    linear-gradient(0deg, #080d0bbb, transparent 52%),
+    linear-gradient(90deg, #15100c55, transparent 50%),
+    linear-gradient(180deg, #080d0b44, transparent 22%);
 }
 .trip-film-header {
   position: absolute;
@@ -121,12 +134,12 @@
   margin: 0 0 18px;
 }
 .trip-film-main h1 {
-  font-family: var(--font-trip-serif), Georgia, serif;
-  color: #ede2cf;
-  font-size: clamp(58px, 5.5vw, 108px);
+  font-family: var(--font-trip-serif), sans-serif;
+  color: #e8c1aa;
+  font-size: clamp(58px, 4.65vw, 92px);
   font-weight: 300;
-  line-height: 0.99;
-  letter-spacing: -0.065em;
+  line-height: 1.02;
+  letter-spacing: -0.075em;
   text-wrap: balance;
   margin: 0;
   max-width: 750px;
@@ -136,15 +149,20 @@
   align-items: center;
   gap: 12px;
   margin-top: 26px;
-  font-size: 10px;
+  font-size: 13px;
+  gap: 0;
 }
 .trip-film-cta > span {
   border-radius: 30px;
-  background: #e5d1bd;
+  background: #e8c1aa;
   color: #2e3028;
-  padding: 14px 20px;
+  padding: 16px 25px;
 }
 .trip-film-cta > svg {
+  box-sizing: content-box;
+  padding: 17px 22px;
+  border-radius: 40px;
+  background: #40291c;
   transition: transform 0.3s;
 }
 .trip-film-cta:hover > svg {
@@ -163,7 +181,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #1c1e1b6e;
+  background: #3b2719dc;
   padding: 9px 15px;
   border-radius: 25px;
   width: 48%;
@@ -215,28 +233,30 @@
   gap: 12px;
   padding: 14px;
   border-radius: 9px;
-  background: #1c1e1b8a;
+  background: linear-gradient(120deg, #2e2016dd, #181a15d9);
   backdrop-filter: blur(10px);
 }
 .trip-film-orbit {
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
-  border: 1px solid #e5d1bd66;
+  border: 1px solid #e8c1aa55;
+  background: radial-gradient(circle, #75633e88, #241c12);
   flex-shrink: 0;
 }
 .trip-film-world-link strong {
   display: block;
   font:
-    16px Georgia,
-    serif;
+    400 15px var(--font-sans),
+    sans-serif;
 }
 .trip-film-world-link small {
   display: block;
-  font-size: 10px;
-  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.2;
+  margin-top: 7px;
   opacity: 0.7;
 }
 .trip-film-world-link > svg {
@@ -252,7 +272,7 @@
   align-items: end;
   justify-content: space-between;
   gap: 25px;
-  border-top: 1px solid #e5d1bd55;
+  border-top: 0;
   padding-top: 17px;
 }
 .trip-film-selectors {
@@ -269,9 +289,10 @@
   text-align: left;
   border: 0;
   background: none;
-  padding: 0 0 14px;
+  padding: 17px 0 0;
+  border-top: 1px solid #e8c1aa55;
   min-width: 0;
-  opacity: 0.58;
+  opacity: 0.86;
   transition: opacity 0.4s;
 }
 .trip-film-selectors > button[aria-pressed="true"],
@@ -294,7 +315,8 @@
   flex-direction: column;
   justify-content: space-between;
   gap: 8px;
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 500;
   line-height: 1.25;
   max-width: 125px;
 }
@@ -306,13 +328,13 @@
   height: 1px;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: #e5d1bd44;
+  top: -1px;
+  background: transparent;
 }
 .trip-film-progress > span {
   display: block;
   height: 100%;
-  background: #e5d1bd;
+  background: #e8c1aa;
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.25s linear;
@@ -483,6 +505,60 @@
 
 @media (max-width: 700px) {
   .trip-film-shade {
-    background: linear-gradient(180deg, #080b0944, transparent 25%, #080b0966 48%, #080b09ee 100%);
+    background: linear-gradient(
+      180deg,
+      #080b0944,
+      transparent 25%,
+      #080b0966 48%,
+      #080b09ee 100%
+    );
+  }
+}
+
+/* Reference composition: warm typography and luminous footage with localised shading. */
+.trip-film-eyebrow {
+  opacity: 0.85;
+  font-size: 8px;
+  margin-bottom: 14px;
+}
+.trip-film-discover-pair > a {
+  border: 1px solid #e8c1aa33;
+}
+.trip-film-discover-pair a > span {
+  font-family: var(--font-sans), sans-serif;
+  font-size: 13px;
+}
+.trip-film-discover-pair a:nth-child(2) {
+  box-shadow: inset 0 0 0 4px #e8c1aa55;
+}
+.trip-film-discover-pair a:nth-child(2)::after {
+  border: 4px solid #e8c1aa55;
+  border-radius: 9px;
+}
+.trip-film-world-link {
+  min-height: 145px;
+  align-items: flex-start;
+}
+.trip-film-world-link > span:nth-child(2) {
+  padding-top: 12px;
+}
+@media (max-width: 700px) {
+  .trip-film-main h1 {
+    font-size: clamp(42px, 11.6vw, 66px);
+    letter-spacing: -0.07em;
+  }
+  .trip-film-selectors > button {
+    padding-top: 13px;
+  }
+  .trip-film-selector-copy {
+    font-size: 10px;
+  }
+  .trip-film-cta > svg {
+    padding: 14px 20px;
+  }
+  .trip-film-shade {
+    background:
+      linear-gradient(0deg, #080d0bdd, transparent 72%),
+      linear-gradient(90deg, #15100c33, transparent 90%);
   }
 }

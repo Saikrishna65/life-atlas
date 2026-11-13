@@ -29,44 +29,66 @@ try {
     await page
       .locator(".trip-film-main h1")
       .evaluate((el) => getComputedStyle(el).color),
-    "rgb(237, 226, 207)",
+    "rgb(232, 193, 170)",
   );
-  assert.equal(await page.locator(".trip-film-stage video").count(), 1);
+  assert.equal(
+    await page.locator(".trip-film-stage video[data-showing=true]").count(),
+    1,
+  );
   await page.waitForFunction(
-    () => document.querySelector(".trip-film-stage video")?.currentTime > 0.1,
+    () =>
+      document.querySelector(".trip-film-stage video[data-showing=true]")
+        ?.currentTime > 0.1,
   );
   assert.ok(
-    await page.locator(".trip-film-stage video").evaluate((v) => v.muted),
+    await page
+      .locator(".trip-film-stage video[data-showing=true]")
+      .evaluate((v) => v.muted),
   );
   assert.ok(requested.length > 0);
   await page
     .getByRole("button", { name: "Pause trip films", exact: true })
     .click();
   const time = await page
-    .locator(".trip-film-stage video")
+    .locator(".trip-film-stage video[data-showing=true]")
     .evaluate((v) => v.currentTime);
   await page.waitForTimeout(500);
   assert.ok(
     await page
-      .locator(".trip-film-stage video")
+      .locator(".trip-film-stage video[data-showing=true]")
       .evaluate((v, t) => Math.abs(v.currentTime - t) < 0.1, time),
   );
   await page.screenshot({ path: "work/qa-film-hero/desktop.png" });
   const slides = page.locator(".trip-film-selectors button");
   const title = await page.locator(".trip-film-main h1").innerText();
   await slides.nth(1).click();
-  assert.equal(await slides.nth(1).getAttribute("aria-pressed"), "true");
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelectorAll(".trip-film-selectors button")[1]
+        ?.getAttribute("aria-pressed") === "true",
+  );
   assert.notEqual(await page.locator(".trip-film-main h1").innerText(), title);
-  assert.equal(await page.locator(".trip-film-stage video").count(), 1);
+  assert.equal(
+    await page.locator(".trip-film-stage video[data-showing=true]").count(),
+    1,
+  );
   await page.getByRole("button", { name: "Open atlas menu" }).click();
   await page.getByRole("dialog").waitFor();
   assert.ok(
-    await page.locator(".trip-film-stage video").evaluate((v) => v.paused),
+    await page
+      .locator(".trip-film-stage video[data-showing=true]")
+      .evaluate((v) => v.paused),
   );
   await page.keyboard.press("Escape");
   await slides.nth(2).focus();
   await page.keyboard.press("ArrowRight");
-  assert.equal(await slides.nth(2).getAttribute("aria-pressed"), "true");
+  await page.waitForFunction(
+    () =>
+      document
+        .querySelectorAll(".trip-film-selectors button")[2]
+        ?.getAttribute("aria-pressed") === "true",
+  );
   await page.locator(".trip-film-cta").click();
   await page.waitForURL("**/trips/**");
   const mobile = await browser.newPage({
@@ -79,7 +101,9 @@ try {
   await mobile.route("https://videos.pexels.com/**", (route) => route.abort());
   await mobile.goto("http://localhost:3008", { waitUntil: "networkidle" });
   assert.ok(
-    await mobile.locator(".trip-film-stage video").evaluate((v) => v.paused),
+    await mobile
+      .locator(".trip-film-stage video[data-showing=true]")
+      .evaluate((v) => v.paused),
   );
   await mobile.screenshot({ path: "work/qa-film-hero/mobile.png" });
   assert.ok(
@@ -96,7 +120,9 @@ try {
     .getByRole("button", { name: "Play trip films", exact: true })
     .click();
   await mobile.waitForFunction(
-    () => document.querySelector(".trip-film-stage video")?.currentTime > 0.1,
+    () =>
+      document.querySelector(".trip-film-stage video[data-showing=true]")
+        ?.currentTime > 0.1,
   );
   assert.match(
     await mobile.locator(".trip-film-footer-note [role=status]").innerText(),
