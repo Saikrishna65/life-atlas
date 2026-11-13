@@ -21,9 +21,9 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  const trip = await getTripBySlug(slug).catch(() => null);
   const demo = expeditions.find((e) => e.slug === slug);
-  if (demo) return { title: demo.name, description: demo.overview };
-  const trip = await getTripBySlug(slug);
+  if (!trip && demo) return { title: demo.name, description: demo.overview };
 
   if (!trip) {
     return { title: "Trip Not Found | Life Atlas" };
@@ -46,9 +46,9 @@ export default async function TripDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const trip = await getTripBySlug(slug).catch(() => null);
   const demo = expeditions.find((e) => e.slug === slug);
-  if (demo) return <JourneyStory expedition={demo} />;
-  const trip = await getTripBySlug(slug);
+  if (!trip && demo) return <JourneyStory expedition={demo} />;
 
   if (!trip) {
     notFound();

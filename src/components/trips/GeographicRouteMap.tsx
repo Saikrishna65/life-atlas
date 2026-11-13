@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -14,19 +14,23 @@ import type { RoutePoint, RouteStop } from "@/lib/public-trips/route";
 function View({
   points,
   active,
+  fit,
+  recorded,
 }: {
   points: [number, number][];
   active?: RouteStop;
+  fit: number;
+  recorded: boolean;
 }) {
   const map = useMap();
   useEffect(() => {
     if (points.length)
       map.fitBounds(L.latLngBounds(points), {
         padding: [40, 40],
-        maxZoom: 12,
+        maxZoom: recorded ? 17 : 11,
         animate: false,
       });
-  }, [map, points]);
+  }, [map, points, fit, recorded]);
   useEffect(() => {
     if (active)
       map.setView(
@@ -50,13 +54,20 @@ export default function GeographicRouteMap({
 }) {
   const [failed, setFailed] = useState(false),
     [terrain, setTerrain] = useState(false);
-  const points: [number, number][] = [
-    ...paths.flat().map((p) => [p.latitude, p.longitude] as [number, number]),
-    ...stops.map((p) => [p.latitude, p.longitude] as [number, number]),
-  ];
+  const [fit, setFit] = useState(0);
+  const points = useMemo<[number, number][]>(
+    () => [
+      ...paths.flat().map((p) => [p.latitude, p.longitude] as [number, number]),
+      ...(paths.length
+        ? []
+        : stops.map((p) => [p.latitude, p.longitude] as [number, number])),
+    ],
+    [paths, stops],
+  );
   return (
     <div className="geographic-route">
       <div className="route-layer-control">
+        <button onClick={() => setFit((n) => n + 1)}>Fit route</button>
         <button
           aria-pressed={!terrain}
           onClick={() => {
@@ -97,14 +108,42 @@ export default function GeographicRouteMap({
           }
           eventHandlers={{ tileerror: () => setFailed(true) }}
         />
-        <View points={points} active={stops.find((p) => p.id === activeId)} />
+        <View
+          points={points}
+          active={stops.find((p) => p.id === activeId)}
+          fit={fit}
+          recorded={paths.length > 0}
+        />
+        {paths.map((path, i) => (
+          <Polyline
+            key={"outline-" + i}
+            positions={path.map((p) => [p.latitude, p.longitude])}
+            pathOptions={{ color: "#fff", weight: 9, opacity: 0.95 }}
+          />
+        ))}
         {paths.map((path, i) => (
           <Polyline
             key={i}
             positions={path.map((p) => [p.latitude, p.longitude])}
-            pathOptions={{ color: "#1f4fd8", weight: 4, opacity: 0.9 }}
+            pathOptions={{ color: "#1f4fd8", weight: 5, opacity: 1 }}
           />
         ))}
+        {paths.length > 0 &&
+          [paths[0][0], paths[paths.length - 1].at(-1)!].map((point, index) => (
+            <CircleMarker
+              key={"endpoint-" + index}
+              center={[point.latitude, point.longitude]}
+              radius={8}
+              pathOptions={{
+                color: "#fff",
+                weight: 3,
+                fillColor: index ? "#0b1220" : "#1f4fd8",
+                fillOpacity: 1,
+              }}
+            >
+              <Popup>{index ? "Journey finish" : "Journey start"}</Popup>
+            </CircleMarker>
+          ))}
         {stops.map((stop) => (
           <CircleMarker
             key={stop.id}

@@ -150,12 +150,16 @@ try {
       await page.locator(".journey-route-section").scrollIntoViewIfNeeded();
       await page.waitForTimeout(1500);
       await page.screenshot({ path: "work/qa-travel/trip-route.png" });
+      assert.equal((await page.locator(".trip-photo-wall").innerText()).trim(), "");
+      const filter=page.locator(".photo-place-filters button");
+      await filter.nth(1).click();
+      assert.equal(await filter.nth(1).getAttribute("aria-pressed"),"true");
       const photos = page.locator(".trip-photo-wall>button");
       assert.ok((await photos.count()) > 0);
       await photos.first().click();
       await page.getByRole("dialog").waitFor();
       await page.keyboard.press("Escape");
-      await page.getByRole("tab", { name: "Packing", exact: true }).click();
+      await page.getByRole("tab", { name: /Packing/ }).click();
       await page.getByRole("checkbox").first().check();
       assert.ok(await page.getByRole("checkbox").first().isChecked());
     },

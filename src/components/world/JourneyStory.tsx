@@ -8,7 +8,7 @@ import type { Expedition } from "@/data/demo/types";
 import PublicRouteExplorer from "@/components/trips/PublicRouteExplorer";
 import TripPhotoCollection from "@/components/trips/TripPhotoCollection";
 import { gallery } from "@/data/demo/memories";
-import ExpeditionDetail from "./ExpeditionDetail";
+import JourneyNotebook from "./JourneyNotebook";
 import WorldMotion from "./WorldMotion";
 import "./world.css";
 import "./journey-story.css";
@@ -184,10 +184,7 @@ export default function JourneyStory({
               ?.name,
           }))}
       />
-      <section className="journey-notebook">
-        <p className="world-eyebrow">03 / THE FIELD NOTES</p>
-        <ExpeditionDetail expedition={e} />
-      </section>
+      <JourneyNotebook expedition={e} />
     </JourneyFrame>
   );
 }

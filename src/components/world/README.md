@@ -36,3 +36,9 @@ Checks: `npm test`, `npx tsc --noEmit`, scoped ESLint, `npm run build`, and
 production server. The browser suite covers the preserved door, scene removal,
 globe selection, trip navigation, map controls, field-note controls, closing door,
 mobile overflow and reduced motion. Evidence goes into ignored `work/qa-travel`.
+
+The photo journal uses an image-only editorial wall with place filters; location
+and optional captions appear only inside the lightbox. The sample field journal
+is a day-selectable notebook with conditions, packing and budget pages. Published
+trip records take priority over sample slugs, and recorded-route fitting uses GPS
+bounds with a close zoom cap so short tracks remain legible.

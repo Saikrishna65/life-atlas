@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { Modal } from "@/components/world/primitives";
 export interface TripPhoto {
@@ -15,86 +15,145 @@ export default function TripPhotoCollection({
   photos: TripPhoto[];
   illustrative?: boolean;
 }) {
-  const [selected, setSelected] = useState<number | null>(null);
+  const [place, setPlace] = useState("All places"),
+    [selected, setSelected] = useState<string | null>(null),
+    [limit, setLimit] = useState(24);
+  const locations = [
+    ...new Set(photos.map((p) => p.location?.trim() || "Unassigned")),
+  ];
+  const visible = useMemo(
+    () =>
+      photos.filter(
+        (p) =>
+          place === "All places" ||
+          (p.location?.trim() || "Unassigned") === place,
+      ),
+    [photos, place],
+  );
+  const index = visible.findIndex((p) => p.id === selected),
+    focus = visible[index];
   useEffect(() => {
-    if (selected === null) return;
+    if (!selected) return;
     const key = (event: KeyboardEvent) => {
-      if (event.key === "ArrowRight")
-        setSelected((i) => ((i ?? 0) + 1) % photos.length);
-      if (event.key === "ArrowLeft")
-        setSelected((i) => ((i ?? 0) - 1 + photos.length) % photos.length);
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      setSelected(
+        visible[
+          (index + (event.key === "ArrowRight" ? 1 : -1) + visible.length) %
+            visible.length
+        ]?.id ?? null,
+      );
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [selected, photos.length]);
+  }, [selected, visible, index]);
   return (
-    <section className="trip-photo-section">
-      <p className="world-eyebrow">THE PHOTO JOURNAL</p>
-      <h2>
-        The places.
-        <br />
-        <em>The moments between.</em>
-      </h2>
+    <section className="trip-photo-section photo-journal-v2">
+      <header>
+        <div>
+          <p className="world-eyebrow">THE PHOTO JOURNAL</p>
+          <h2>
+            Less said.
+            <br />
+            <em>More remembered.</em>
+          </h2>
+        </div>
+        <span>
+          {String(visible.length).padStart(2, "0")} frames / a journey in
+          fragments
+        </span>
+      </header>
       {illustrative && (
         <p className="journey-disclosure">
-          Illustrative landscape studies for this sample itinerary, not
-          photographs of an actual completed trip.
+          Illustrative landscape studies for this sample itinerary.
         </p>
       )}
-      {!photos.length && <p>No trip photographs have been published yet.</p>}
+      <nav
+        className="photo-place-filters"
+        aria-label="Filter photographs by place"
+      >
+        {["All places", ...locations].map((name) => (
+          <button
+            key={name}
+            aria-pressed={place === name}
+            onClick={() => {
+              setPlace(name);
+              setLimit(24);
+              setSelected(null);
+            }}
+          >
+            {name}
+          </button>
+        ))}
+      </nav>
+      {!visible.length && (
+        <p>No photographs have been published for this place yet.</p>
+      )}
       <div className="trip-photo-wall">
-        {photos.map((photo, index) => (
+        {visible.slice(0, limit).map((photo, i) => (
           <button
             key={photo.id}
-            onClick={() => setSelected(index)}
+            onClick={() => setSelected(photo.id)}
             aria-label={
-              "View " + (photo.caption || "trip photograph " + (index + 1))
+              "View " + (photo.caption || "trip photograph " + (i + 1))
             }
           >
             <Image
               src={photo.url}
-              alt={photo.caption || "Published trip photograph"}
+              alt={photo.caption || "Trip photograph " + (i + 1)}
               width={1000}
               height={800}
               loading="lazy"
               unoptimized
             />
-            <span>{photo.location}</span>
-            <p>{photo.caption}</p>
           </button>
         ))}
       </div>
-      {selected !== null && photos[selected] && (
+      {limit < visible.length && (
+        <button
+          className="world-link photo-more"
+          onClick={() => setLimit((n) => n + 24)}
+        >
+          Unfold more photographs ↗
+        </button>
+      )}
+      {focus && (
         <Modal
-          title={photos[selected].caption || "Trip photograph"}
+          title={focus.caption || "Trip photograph"}
+          className="photo-journal-modal"
           onClose={() => setSelected(null)}
         >
           <div className="trip-photo-lightbox">
             <Image
-              src={photos[selected].url}
-              alt={photos[selected].caption || "Trip photograph"}
+              src={focus.url}
+              alt={focus.caption || "Trip photograph"}
               width={1600}
               height={1200}
               unoptimized
             />
-            <p>
-              {photos[selected].location} · {photos[selected].caption}
-            </p>
+            <div className="photo-open-details">
+              {focus.location && <span>{focus.location}</span>}
+              {focus.caption && <p>{focus.caption}</p>}
+            </div>
             <div>
               <button
                 className="world-link"
                 onClick={() =>
-                  setSelected((selected - 1 + photos.length) % photos.length)
+                  setSelected(
+                    visible[(index - 1 + visible.length) % visible.length].id,
+                  )
                 }
               >
                 ← Previous photograph
               </button>
               <span>
-                {selected + 1} / {photos.length}
+                {index + 1} / {visible.length}
               </span>
               <button
                 className="world-link"
-                onClick={() => setSelected((selected + 1) % photos.length)}
+                onClick={() =>
+                  setSelected(visible[(index + 1) % visible.length].id)
+                }
               >
                 Next photograph →
               </button>
