@@ -4,7 +4,9 @@ import Link from "next/link";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { HERO_RELEASE_MS } from "./hero-playback";
 import TripFilmStage from "./TripFilmStage";
-import GlobeCardPreview from "./GlobeCardPreview";
+import { ObservatoryInstrument } from "./AtlasObjects";
+import HeroGalleryPreview from "./HeroGalleryPreview";
+import HeroLogo from "./HeroLogo";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -14,7 +16,7 @@ import {
   Play,
 } from "lucide-react";
 import gsap from "gsap";
-import { heroFilms, type HeroTrip } from "@/data/demo/hero-films";
+import { heroFilms, type HeroTrip, type HeroGalleryPhoto } from "@/data/demo/hero-films";
 import { Modal } from "@/components/world/primitives";
 import "./trip-film-hero.css";
 
@@ -25,7 +27,7 @@ const heroTypography = Plus_Jakarta_Sans({
   display: "swap",
 });
 
-export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
+export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip[]; galleryPhotos: HeroGalleryPhoto[] }) {
   const [active, setActive] = useState(0);
   const [requested, setRequested] = useState(0);
   const [outgoing, setOutgoing] = useState<number | null>(null);
@@ -189,14 +191,7 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
             href="/"
             aria-label="Life Atlas home"
           >
-            <Image
-              src="/brand/life-atlas-white.png"
-              width={96}
-              height={64}
-              sizes="96px"
-              alt=""
-              priority
-            />
+            <HeroLogo />
           </Link>
           <div>
             <Link href="/map">The world</Link>
@@ -241,24 +236,17 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
         <Link href="/explore" className="trip-film-aside-label">
           Explore <ArrowRight size={20} />
         </Link>
-        <Link className="trip-film-journal-tile" href="/photography">
-          <Image
-            className="hero-gallery-landscape"
-            src="/images/world/gallery-window.png"
-            alt=""
-            fill
-            sizes="(max-width: 700px) 1px, 200px"
-          />
+        <Link className="trip-film-journal-tile" href="/photography" aria-label="Photo Gallery">
+          <HeroGalleryPreview photos={galleryPhotos} trips={trips} />
           <span className="hero-card-arrow">
             <ArrowUpRight size={17} />
           </span>
-          <span>Photo Gallery</span>
         </Link>
         <Link
           className="trip-film-photo-tile trip-film-globe-tile"
           href="/#observatory"
         >
-          <GlobeCardPreview />
+          <ObservatoryInstrument />
           <span className="hero-card-arrow">
             <ArrowUpRight size={17} />
           </span>

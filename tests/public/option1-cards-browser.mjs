@@ -28,21 +28,18 @@ try {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
   await media(page);
   await page.goto("http://localhost:3008", { waitUntil: "domcontentloaded" });
-  const globe = page.locator(".hero-globe-preview img");
-  await decoded(globe);
-  await decoded(page.locator(".hero-gallery-landscape"));
+  const stack = page.locator(".trip-film-photo-stack");
+  await decoded(stack.locator("img").first());
+  await decoded(stack.locator("img").last());
+  const tripIds = await stack.locator("img").evaluateAll(images => images.map(image => image.dataset.tripId));
+  assert.equal(tripIds.length, 2);
+  assert.equal(new Set(tripIds).size, 2);
+  assert.equal(await page.locator(".hero-gallery-landscape").count(), 0);
   await decoded(page.locator(".trip-film-brand img"));
   assert.ok((await page.locator(".trip-film-brand img").getAttribute("src")).includes("life-atlas-white"));
+  assert.equal(await page.locator(".trip-film-brand img").evaluate(image => getComputedStyle(image).filter), 'url("#atlas-white-ink")');
   assert.equal(await page.locator(".trip-film-hero canvas").count(), 0);
-  const globeBounds = await globe.boundingBox();
-  const cardBounds = await page.locator(".trip-film-globe-tile").boundingBox();
-  assert.ok(globeBounds.width <= 142 && globeBounds.height <= 142);
-  assert.ok(globeBounds.x > cardBounds.x && globeBounds.y > cardBounds.y);
-  assert.ok(globeBounds.y + globeBounds.height < cardBounds.y + cardBounds.height - 25);
-  const before = await globe.evaluate(el => getComputedStyle(el).transform);
-  await page.getByRole("link", { name: "Explore the Globe", exact: true }).hover();
-  await page.waitForTimeout(600);
-  assert.equal(await globe.evaluate(el => getComputedStyle(el).transform), before);
+  assert.ok(await page.locator(".trip-film-globe-tile > svg").isVisible());
   const gallery = page.getByRole("link", { name: "Photo Gallery", exact: true });
   assert.equal(await gallery.getAttribute("href"), "/photography");
   assert.equal(await page.locator(".trip-film-stage video[poster]").count(), 0);
@@ -62,7 +59,7 @@ try {
   await page.locator("#observatory canvas").first().waitFor({ timeout: 45000 });
   const reduced = await browser.newPage({ viewport: { width: 1440, height: 1000 }, reducedMotion: "reduce" });
   await media(reduced);
-  // The decorative hero globe must work even when WebGL is unavailable.
+  // The illustrated hero globe must work even when WebGL is unavailable.
   await reduced.addInitScript(() => {
     const original = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function(type, ...args) {
@@ -71,9 +68,40 @@ try {
     };
   });
   await reduced.goto("http://localhost:3008");
-  await decoded(reduced.locator(".hero-globe-preview img"));
+  await reduced.locator(".trip-film-globe-tile > svg").filter({ visible: true }).waitFor();
   assert.equal(await reduced.locator(".trip-film-hero canvas").count(), 0);
   assert.equal(await reduced.getByRole("link", { name: "Explore the Globe", exact: true }).getAttribute("href"), "/#observatory");
+  // Exercise the actual public catalog reader with photos from two distinct trips.
+  const published = await browser.newPage({ viewport: { width: 1440, height: 1000 }, reducedMotion: "reduce" });
+  await media(published);
+  const source = "https://media.example.com/atlas/catalog/current.json";
+  const item = (id, collection, mimeType = "image/jpeg") => ({
+    id, collection, mimeType, key: `travel/expeditions/${id}.jpg`,
+    url: `https://media.example.com/travel/expeditions/${id}.jpg`,
+    thumbnailUrl: `https://media.example.com/galleries/previews/${id}.jpg`,
+    title: "Trip photograph", description: "", tags: [], category: "expedition",
+    size: 100, publishedAt: "2026-11-13T10:00:00Z", metadataPolicy: "removed",
+  });
+  await published.route("https://media.example.com/**", async route => {
+    if (route.request().url() === source) return route.fulfill({ json: {
+      format: "life-atlas-public-media", version: 1, revision: "browser-fixture",
+      updatedAt: "2026-11-13T10:00:00Z", items: [
+        item("a", "himalayan-journey"), item("b", "The Himalayan Journey"),
+        item("c", "river-ritual-repeat"), item("d", "river-ritual-repeat", "video/mp4"),
+      ],
+    }});
+    return route.fulfill({ contentType: "image/webp", body: await readFile("public/images/world/ridge-small.webp") });
+  });
+  await published.goto(`http://localhost:3008/?atlasCatalog=${encodeURIComponent(source)}`);
+  await published.waitForFunction(() => document.querySelectorAll('.trip-film-photo-stack img[data-sample="false"]').length === 2);
+  const publishedPhotos = published.locator(".trip-film-photo-stack img");
+  await decoded(publishedPhotos.first());
+  await decoded(publishedPhotos.last());
+  assert.deepEqual(await publishedPhotos.evaluateAll(images => images.map(image => image.getAttribute("src"))), [
+    "https://media.example.com/galleries/previews/a.jpg", "https://media.example.com/galleries/previews/c.jpg",
+  ]);
+  assert.equal(await published.locator(".hero-gallery-caption small").count(), 0);
+  await published.locator(".trip-film-discover").screenshot({ path: "work/qa-option1/published-cards.png" });
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
   await media(mobile);
   await mobile.goto("http://localhost:3008", { waitUntil: "networkidle" });
@@ -85,7 +113,7 @@ try {
   await decoded(mobile.locator(".public-header .atlas-logo-brand img"));
   assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   assert.deepEqual(errors, []);
-  console.log("PASS compact flat globe without hero WebGL, logo variants on desktop/mobile, gallery/back navigation, original main globe, reduced motion/WebGL unavailable, no overflow or browser exceptions. Video bytes used local fixtures.");
+  console.log("PASS restored photo-print and illustrated globe cards, distinct trip photos from the public catalog, thumbnail use and video exclusion, white-ink logo, gallery/back navigation, original main globe, reduced motion/WebGL unavailable and mobile without browser exceptions. Public media and video bytes used local fixtures.");
 } finally {
   await browser.close();
 }

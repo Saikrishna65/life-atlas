@@ -10,3 +10,7 @@ wordmark or additional branding is included. Next Image serves appropriately siz
 variants; the full-resolution transparent derivatives are retained here.
 
 Logo links have a textual accessible name; the marks inside are decorative.
+
+The hero applies the `atlas-white-ink` SVG filter to the white asset, making dark
+outline pixels transparent and retaining a clean white silhouette. The saved
+source derivative remains available unchanged; the black logo is unaffected.

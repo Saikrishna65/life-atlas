@@ -1,24 +1,28 @@
-# Compact flat globe and supplied logo artwork
+# Restored discovery cards with public trip photographs
 
-The hero globe card is now a static, flat SVG illustration of local country
-geometry: white ocean and slate hexagonal land, with no shading, pins, routes,
-rotation or WebGL dependency. Its 142px image has generous clear space inside the
-card, with a 119px globe. The working card link still opens the original main
-Observatory globe. `InteractiveGlobe.tsx` and its core model are unchanged.
+The original overlapping-photo gallery card and illustrated ObservatoryInstrument
+are restored. The globe card is an SVG illustration with no WebGL or location
+pins. Its link still opens the original, unchanged main interactive globe.
 
-The approved Cinematic Windows gallery artwork remains in place. Hero films,
-dissolve timing, navigation surfaces, gallery and latest-trip links are unchanged.
-The hero has no poster image or full-frame gradient overlay.
+The gallery card selects one photograph per trip, from two different public trip
+journals. A bounded server query reads two public database trips with photos;
+images are selected by featured status/date with stable tie-breaks. The homepage
+revalidates every five minutes. The existing public catalog reader also supplies
+newly published expedition photos without rebuilding; thumbnails are preferred,
+films and non-trip collections are excluded, and known title/slug aliases resolve
+to one trip. Real photos are never padded with fictional sample images. If no
+public photos exist, the card uses two distinct, clearly labelled demo trip
+images already used by the trip journals. Private/native vaults are not read.
 
-Transparent web derivatives of the supplied white and black Atlas logos live in
-`public/brand`. The white mark replaces the compass/wordmark in the hero; the
-black mark appears in public inner-page and chapter navigation. See the asset
-README for source provenance. Native and private navigation are unaffected.
+The white logo now uses a white-ink SVG filter: its original light shape is kept,
+and dark borders/shadows become transparent. The black public-header asset,
+hero video/dissolve implementation, shared surfaces and typography are unchanged.
 
-`tests/public/option1-cards-browser.mjs` checks card sizing, static artwork without
-a hero renderer, both logo variants, gallery/back navigation, the working main
-globe, reduced motion, mobile overflow and JavaScript errors. Local video fixtures
-isolate these checks from the stock CDN.
+`hero-gallery.test.ts` covers distinct trips, title/slug aliases, thumbnails,
+video exclusion, sample separation and repeated image suppression.
+`option1-cards-browser.mjs` checks both card links, public catalog integration,
+logo rendering, the main globe, mobile and reduced motion. Public media/network
+fixtures are explicitly synthetic; no personal media is uploaded by these tests.
 
 ---
 

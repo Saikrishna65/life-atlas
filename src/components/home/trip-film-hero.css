@@ -646,33 +646,7 @@
   letter-spacing: -0.025em;
 }
 
-/* Approved Option 1: photographic windows and the existing globe's material language. */
-.trip-film-journal-tile {
-  padding: 0;
-  border: 1px solid #ffffff30;
-}
-.trip-film-journal-tile .hero-gallery-landscape {
-  object-fit: cover;
-  object-position: 50% 42%;
-  transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.trip-film-journal-tile::after {
-  content: "";
-  position: absolute;
-  inset: 55% 0 0;
-  background: linear-gradient(transparent, #061115c9);
-  pointer-events: none;
-}
-.trip-film-journal-tile > span:last-child {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  z-index: 2;
-  font-weight: 500;
-}
-.trip-film-journal-tile:hover .hero-gallery-landscape {
-  transform: scale(1.045);
-}
+/* The original overlapping trip prints and illustrated observatory object. */
 .trip-film-hero .hero-card-arrow {
   position: absolute;
   top: 10px;
@@ -685,30 +659,37 @@
   width: 24px;
   height: 24px;
 }
-.trip-film-globe-tile {
-  isolation: isolate;
+.trip-film-hero .trip-film-journal-tile {
+  justify-content: flex-start;
+  align-items: center;
+  padding: 6px 12px 12px;
 }
-.trip-film-hero .trip-film-globe-tile > span:last-child {
-  z-index: 2;
+.trip-film-journal-tile .trip-film-photo-stack {
+  flex: 0 0 96px;
+  align-self: center;
+}
+.trip-film-journal-tile .hero-gallery-caption {
+  align-self: flex-start;
   font-weight: 500;
-  text-shadow: 0 1px 4px #0009;
+  font-size: 13px;
+  line-height: 1.2;
 }
-.hero-globe-preview {
+.hero-gallery-caption small {
+  display: block;
+  font-size: 8px;
+  font-weight: 400;
+  margin-top: 3px;
+  opacity: .8;
+}
+.trip-film-globe-tile > svg {
+  width: 135px;
+  height: 168px;
+  margin-top: -18px;
+}
+.atlas-logo-filter {
   position: absolute;
-  inset: 8px 10px 30px;
-  display: grid;
-  place-items: center;
   pointer-events: none;
 }
-.hero-globe-preview img {
-  display: block;
-  width: min(142px, 100%);
-  height: auto;
-  max-height: 100%;
-  object-fit: contain;
-}
-@media (prefers-reduced-motion: reduce) {
-  .trip-film-journal-tile .hero-gallery-landscape {
-    transition: none;
-  }
+.trip-film-brand .atlas-white-ink {
+  filter: url(#atlas-white-ink);
 }

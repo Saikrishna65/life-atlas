@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import TripFilmHero from "@/components/home/TripFilmHero";
-import { getLatestHeroTrips } from "@/lib/queries/hero-trips";
+import { getLatestHeroTrips, getHeroGalleryPhotos } from "@/lib/queries/hero-trips";
 import { NativeAppRedirect } from "@/components/native/NativeAppRedirect";
 import LivingWorld from "@/components/world/LivingWorld";
 export const metadata: Metadata = {
@@ -8,13 +8,15 @@ export const metadata: Metadata = {
   description:
     "A cinematic journey through places, moments, and possibility. Reality meets imagination in the Living World.",
 };
+export const revalidate = 300;
+
 export default async function Home() {
-  const trips = await getLatestHeroTrips();
+  const [trips, galleryPhotos] = await Promise.all([getLatestHeroTrips(), getHeroGalleryPhotos()]);
   return (
     <>
       <NativeAppRedirect />
       <div className="bg-background text-foreground min-h-screen">
-        <TripFilmHero trips={trips} />
+        <TripFilmHero trips={trips} galleryPhotos={galleryPhotos} />
         <LivingWorld />
       </div>
     </>

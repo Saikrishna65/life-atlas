@@ -23,3 +23,11 @@ export interface HeroTrip {
   image: string;
   sample: boolean;
 }
+export interface HeroGalleryPhoto {
+  id: string;
+  src: string;
+  tripId: string;
+  tripSlug: string;
+  tripTitle: string;
+  sample: boolean;
+}
