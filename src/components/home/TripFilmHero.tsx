@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Manrope } from "next/font/google";
 import TripFilmStage from "./TripFilmStage";
+import { JourneyJournal, ObservatoryInstrument } from "./AtlasObjects";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -235,45 +236,34 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
         </Link>
       </div>
       <aside className="trip-film-discover" aria-label="More to discover">
-        <div className="trip-film-aside-label">
-          Explore the atlas <ArrowRight size={18} />
-        </div>
-        <div className="trip-film-discover-pair">
-          <Link href="/trips">
-            <Image
-              src="/images/door-sequence/frame_286.webp"
-              alt=""
-              fill
-              sizes="170px"
-            />
-            <span>
-              All journeys <ArrowUpRight size={15} />
-            </span>
-          </Link>
-          <Link href="/photography">
-            <Image
-              src="/images/world/valley-small.webp"
-              alt=""
-              fill
-              sizes="170px"
-            />
-            <span>
-              The visual journal <ArrowUpRight size={15} />
-            </span>
-          </Link>
-        </div>
+        <Link href="/explore" className="trip-film-aside-label">
+          Explore the atlas <ArrowRight size={20} />
+        </Link>
+        <Link className="trip-film-journal-tile" href="/trips">
+          <JourneyJournal />
+          <span>All journeys</span>
+        </Link>
+        <Link className="trip-film-photo-tile" href="/photography">
+          <Image
+            src="/images/world/valley-small.webp"
+            alt=""
+            fill
+            sizes="200px"
+          />
+          <span>The visual journal</span>
+        </Link>
         <Link className="trip-film-world-link" href="/#observatory">
-          <span className="trip-film-orbit">
-            <Compass size={44} strokeWidth={0.6} />
+          <span className="trip-film-instrument">
+            <ObservatoryInstrument />
           </span>
-          <span>
+          <span className="trip-film-world-copy">
             <strong>Every place has a story.</strong>
             <small>
               Trace the routes, revisit the moments, and find your next
               somewhere.
             </small>
           </span>
-          <ArrowUpRight size={18} />
+          <ArrowRight size={22} />
         </Link>
       </aside>
       <footer className="trip-film-footer">
@@ -331,7 +321,7 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
       {menu && (
         <Modal
           title="Explore Life Atlas"
-          className="world-chapter-dialog"
+          className="world-chapter-dialog trip-film-menu"
           onClose={() => setMenu(false)}
         >
           <nav className="public-menu">

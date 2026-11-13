@@ -29,7 +29,7 @@ try {
     await page
       .locator(".trip-film-main h1")
       .evaluate((el) => getComputedStyle(el).color),
-    "rgb(232, 193, 170)",
+    "rgb(255, 255, 255)",
   );
   assert.equal(
     await page.locator(".trip-film-stage video[data-showing=true]").count(),

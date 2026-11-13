@@ -1,3 +1,22 @@
+# White hero and reference panel geometry
+
+The current hero uses white type, white CTA surfaces and neutral charcoal controls.
+The full-frame gradient shading layer has been removed on desktop and mobile;
+text shadows stay attached to lettering. No cream/peach or brown fills remain in
+this hero. The existing video-to-video transition logic is unchanged.
+
+The discovery rail is a three-row grid: 42px label above a 146px journal tile,
+a photographic tile spanning both rows, and a 146px story panel spanning the
+full width. Original SVG journal and observatory-instrument objects replace the
+full-bleed left photograph and circular placeholder. They are decorative;
+all four discovery links retain accessible text and real destinations.
+
+Browser checks verify panel alignment, spanning heights, white text, absence of
+the shade layer, smooth handoffs, mobile and reduced motion. Screenshots are in
+ignored work/qa-hero-white. The remaining public scenes are unchanged this round.
+
+---
+
 # Hero refinement: colour and video handoff
 
 `TripFilmStage` retains a live outgoing video until the incoming decoder paints

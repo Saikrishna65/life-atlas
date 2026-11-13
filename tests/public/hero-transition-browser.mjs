@@ -6,7 +6,7 @@ const browser = await chromium.launch({
   executablePath: "/usr/bin/chromium",
   args: ["--no-sandbox"],
 });
-await mkdir("work/qa-hero-refine", { recursive: true });
+await mkdir("work/qa-hero-white", { recursive: true });
 const errors = [];
 try {
   const page = await browser.newPage({
@@ -37,10 +37,22 @@ try {
     await page
       .locator(".trip-film-main h1")
       .evaluate((e) => getComputedStyle(e).color),
-    "rgb(232, 193, 170)",
+    "rgb(255, 255, 255)",
   );
   assert.equal(await page.locator(".trip-film-main h1 br").count(), 1);
-  await page.screenshot({ path: "work/qa-hero-refine/first-trip.png" });
+  await page.screenshot({ path: "work/qa-hero-white/first-trip.png" });
+  assert.equal(await page.locator(".trip-film-shade").count(), 0);
+  const panels = await page.locator(".trip-film-discover").evaluate(el => {
+    const box = selector => { const r = el.querySelector(selector).getBoundingClientRect(); return { x:r.x, y:r.y, bottom:r.bottom, height:r.height }; };
+    return { label:box(".trip-film-aside-label"), journal:box(".trip-film-journal-tile"), photo:box(".trip-film-photo-tile"), story:box(".trip-film-world-link") };
+  });
+  assert.ok(Math.abs(panels.label.x-panels.journal.x)<1);
+  assert.ok(Math.abs(panels.label.y-panels.photo.y)<1);
+  assert.ok(Math.abs(panels.journal.bottom-panels.photo.bottom)<1);
+  assert.ok(panels.photo.height > panels.journal.height);
+  assert.ok(panels.story.y >= panels.photo.bottom + 7);
+  assert.equal(await page.locator(".trip-film-orbit").count(), 0);
+  await page.locator(".trip-film-discover").screenshot({path:"work/qa-hero-white/discovery.png"});
   const time = await first.evaluate((v) => v.currentTime);
   await page.locator(".trip-film-selectors button").nth(1).click();
   await page.waitForTimeout(350);
@@ -74,7 +86,7 @@ try {
   assert.ok(opacity > 0.01 && opacity < 0.99, `blend opacity ${opacity}`);
   assert.equal(await first.getAttribute("data-outgoing"), "true");
   assert.ok(await first.evaluate((v) => !v.paused));
-  await page.screenshot({ path: "work/qa-hero-refine/blend.png" });
+  await page.screenshot({ path: "work/qa-hero-white/blend.png" });
   await page.waitForTimeout(1400);
   assert.equal(await first.getAttribute("src"), null);
   await page
@@ -83,7 +95,7 @@ try {
   assert.ok(
     await page.locator('video[data-showing="true"]').evaluate((v) => v.paused),
   );
-  await page.screenshot({ path: "work/qa-hero-refine/desktop.png" });
+  await page.screenshot({ path: "work/qa-hero-white/desktop.png" });
   await page.getByRole("button", { name: "Open atlas menu" }).click();
   await page.getByRole("dialog").waitFor();
   await page.keyboard.press("Escape");
@@ -124,7 +136,7 @@ try {
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   );
-  await mobile.screenshot({ path: "work/qa-hero-refine/mobile.png" });
+  await mobile.screenshot({ path: "work/qa-hero-white/mobile.png" });
   await mobile
     .getByRole("button", { name: "Play trip films", exact: true })
     .click();
@@ -146,7 +158,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS delayed incoming media retains a live outgoing video; decoded-frame reveal, measured two-video crossfade, outgoing release, queued rapid selections, peach text, two-line heading, pause/menu controls, colour fallback, mobile overflow and reduced-motion switching. No browser exceptions. Primary CDN responses used local colour-video fixtures.",
+    "PASS delayed incoming media retains a live outgoing video; decoded-frame reveal, measured two-video crossfade, outgoing release, queued rapid selections, white text, unshaded video, staggered discovery panels, two-line heading, pause/menu controls, colour fallback, mobile overflow and reduced-motion switching. No browser exceptions. Primary CDN responses used local colour-video fixtures.",
   );
 } finally {
   await browser.close();

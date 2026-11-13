@@ -190,7 +190,6 @@ export default function TripFilmStage({
           />
         );
       })}
-      <div className="trip-film-shade" />
     </div>
   );
 }
