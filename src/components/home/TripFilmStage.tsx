@@ -175,7 +175,6 @@ export default function TripFilmStage({
                   : film.src
                 : undefined
             }
-            poster={film.poster}
             muted
             playsInline
             preload={mounted ? "auto" : "none"}
