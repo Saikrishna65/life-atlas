@@ -8,6 +8,7 @@ import type { Expedition } from "@/data/demo/types";
 import PublicRouteExplorer from "@/components/trips/PublicRouteExplorer";
 import TripPhotoCollection from "@/components/trips/TripPhotoCollection";
 import { gallery } from "@/data/demo/memories";
+import { sampleJourneyRoute } from "@/data/demo/journey-details";
 import JourneyNotebook from "./JourneyNotebook";
 import WorldMotion from "./WorldMotion";
 import "./world.css";
@@ -101,12 +102,12 @@ export default function JourneyStory({
           </p>
         </div>
         <p className="journey-disclosure">
-          Illustrative journey and photography. The map below connects
-          destination coordinates; it is not a recorded GPS track or a navigable
-          road route.
+          Illustrative journey and photography. The map includes synthetic
+          sample route data to preview the experience; it does not document
+          actual travel.
         </p>
       </section>
-      <section className="journey-route-section">
+      <section className="journey-route-section" id="route">
         <header>
           <p className="world-eyebrow">02 / TRACE THE JOURNEY</p>
           <h2>
@@ -118,6 +119,8 @@ export default function JourneyStory({
         <div className="journey-cartography">
           <PublicRouteExplorer
             stops={stops}
+            routeData={sampleJourneyRoute(e)}
+            illustrative
             activeId={stops[active]?.id}
             onSelect={(id) => setActive(stops.findIndex((d) => d.id === id))}
           />
@@ -154,32 +157,31 @@ export default function JourneyStory({
           </aside>
         </div>
       </section>
-      <section className="trip-telemetry sample-telemetry">
-        <article>
-          <small>Sample itinerary</small>
-          <strong>{e.duration} days</strong>
-        </article>
-        <article>
-          <small>Places</small>
-          <strong>{stops.length}</strong>
-        </article>
-        {["Distance", "Highest altitude", "Speed", "Travellers"].map(
-          (label) => (
-            <article key={label}>
-              <small>{label}</small>
-              <strong>Not recorded</strong>
-            </article>
-          ),
-        )}
-      </section>
+
       <TripPhotoCollection
         illustrative
         photos={gallery
-          .filter((photo) => e.galleryIds.includes(photo.id))
+          .filter(
+            (photo) =>
+              e.galleryIds.includes(photo.id) &&
+              (!["Mountains", "Nature"].includes(e.category) ||
+                !["ocean", "space"].includes(photo.sourceId)),
+          )
           .map((photo) => ({
             id: photo.id,
             url: photo.src,
             caption: photo.caption,
+            category:
+              (
+                {
+                  mountains: "Mountains",
+                  mist: "Atmosphere",
+                  ridge: "Trails",
+                  valley: "Nature",
+                  ocean: "Coast",
+                  space: "Night sky",
+                } as Record<string, string>
+              )[photo.sourceId] || "Landscapes",
             location: destinations.find((d) => d.id === photo.destinationId)
               ?.name,
           }))}

@@ -42,3 +42,9 @@ and optional captions appear only inside the lightbox. The sample field journal
 is a day-selectable notebook with conditions, packing and budget pages. Published
 trip records take priority over sample slugs, and recorded-route fitting uses GPS
 bounds with a close zoom cap so short tracks remain legible.
+
+The itinerary-only edition removes field-note, packing and budget panels. Sample
+journeys use deterministic, explicitly illustrative winding route geometry and
+five detailed scheduled beats per day. Photo journals have independent place
+and category filters; labels remain inside the opened photograph. Mock geometry
+never replaces a published trip's recorded GPS data.

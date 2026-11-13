@@ -150,18 +150,28 @@ try {
       await page.locator(".journey-route-section").scrollIntoViewIfNeeded();
       await page.waitForTimeout(1500);
       await page.screenshot({ path: "work/qa-travel/trip-route.png" });
-      assert.equal((await page.locator(".trip-photo-wall").innerText()).trim(), "");
-      const filter=page.locator(".photo-place-filters button");
+      assert.equal(
+        (await page.locator(".trip-photo-wall").innerText()).trim(),
+        "",
+      );
+      const filter = page.locator(".photo-place-filters button");
       await filter.nth(1).click();
-      assert.equal(await filter.nth(1).getAttribute("aria-pressed"),"true");
+      assert.equal(await filter.nth(1).getAttribute("aria-pressed"), "true");
       const photos = page.locator(".trip-photo-wall>button");
       assert.ok((await photos.count()) > 0);
       await photos.first().click();
       await page.getByRole("dialog").waitFor();
       await page.keyboard.press("Escape");
-      await page.getByRole("tab", { name: /Packing/ }).click();
-      await page.getByRole("checkbox").first().check();
-      assert.ok(await page.getByRole("checkbox").first().isChecked());
+      assert.equal(await page.getByRole("tab").count(), 0);
+      assert.equal(await page.locator(".itinerary-beats li").count(), 5);
+      await page.getByRole("button", { name: /Next day/ }).click();
+      assert.equal(
+        await page
+          .locator(".itinerary-layout aside button")
+          .nth(1)
+          .getAttribute("aria-pressed"),
+        "true",
+      );
     },
   );
   await page.goto(origin + "/#beyond", { waitUntil: "networkidle" });

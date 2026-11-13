@@ -7,6 +7,7 @@ export interface TripPhoto {
   url: string;
   caption?: string | null;
   location?: string | null;
+  category?: string | null;
 }
 export default function TripPhotoCollection({
   photos,
@@ -15,6 +16,7 @@ export default function TripPhotoCollection({
   photos: TripPhoto[];
   illustrative?: boolean;
 }) {
+  const [category, setCategory] = useState("All categories");
   const [place, setPlace] = useState("All places"),
     [selected, setSelected] = useState<string | null>(null),
     [limit, setLimit] = useState(24);
@@ -25,10 +27,12 @@ export default function TripPhotoCollection({
     () =>
       photos.filter(
         (p) =>
-          place === "All places" ||
-          (p.location?.trim() || "Unassigned") === place,
+          (category === "All categories" ||
+            (p.category || "Uncategorized") === category) &&
+          (place === "All places" ||
+            (p.location?.trim() || "Unassigned") === place),
       ),
-    [photos, place],
+    [photos, place, category],
   );
   const index = visible.findIndex((p) => p.id === selected),
     focus = visible[index];
@@ -48,7 +52,7 @@ export default function TripPhotoCollection({
     return () => window.removeEventListener("keydown", key);
   }, [selected, visible, index]);
   return (
-    <section className="trip-photo-section photo-journal-v2">
+    <section id="photo-journal" className="trip-photo-section photo-journal-v2">
       <header>
         <div>
           <p className="world-eyebrow">THE PHOTO JOURNAL</p>
@@ -86,6 +90,27 @@ export default function TripPhotoCollection({
           </button>
         ))}
       </nav>
+      <div className="photo-category-filter">
+        <label>
+          Explore by category{" "}
+          <select
+            aria-label="Photo category"
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setLimit(24);
+              setSelected(null);
+            }}
+          >
+            {[
+              "All categories",
+              ...new Set(photos.map((p) => p.category || "Uncategorized")),
+            ].map((name) => (
+              <option key={name}>{name}</option>
+            ))}
+          </select>
+        </label>
+      </div>
       {!visible.length && (
         <p>No photographs have been published for this place yet.</p>
       )}
@@ -132,6 +157,7 @@ export default function TripPhotoCollection({
               unoptimized
             />
             <div className="photo-open-details">
+              {focus.category && <span>{focus.category} / </span>}
               {focus.location && <span>{focus.location}</span>}
               {focus.caption && <p>{focus.caption}</p>}
             </div>

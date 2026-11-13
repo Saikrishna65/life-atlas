@@ -16,7 +16,9 @@ export default function PublicRouteExplorer({
   routeData,
   activeId,
   onSelect,
+  illustrative = false,
 }: {
+  illustrative?: boolean;
   stops: RouteStop[];
   routeData?: unknown;
   activeId?: string;
@@ -33,6 +35,7 @@ export default function PublicRouteExplorer({
     );
   return (
     <Map
+      illustrative={illustrative}
       stops={valid}
       paths={route.paths}
       activeId={activeId}

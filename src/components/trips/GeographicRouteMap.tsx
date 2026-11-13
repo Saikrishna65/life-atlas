@@ -46,7 +46,9 @@ export default function GeographicRouteMap({
   paths = [],
   activeId,
   onSelect,
+  illustrative = false,
 }: {
+  illustrative?: boolean;
   stops: RouteStop[];
   paths?: RoutePoint[][];
   activeId?: string;
@@ -171,9 +173,11 @@ export default function GeographicRouteMap({
         </p>
       )}
       <p className="route-map-note">
-        {paths.length
-          ? "The blue line follows published GPS fixes; gaps between recording segments are preserved."
-          : "No recorded GPS track was published. Place markers show approximate locations; no travel path is invented."}
+        {illustrative
+          ? "Illustrative sample route — not recorded travel, not verified road or trail directions."
+          : paths.length
+            ? "The blue line follows published GPS fixes; gaps between recording segments are preserved."
+            : "No recorded GPS track was published. Place markers show approximate locations; no travel path is invented."}
       </p>
     </div>
   );
