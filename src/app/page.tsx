@@ -6,7 +6,7 @@ import LivingWorld from "@/components/world/LivingWorld";
 export const metadata: Metadata = {
   title: "Life Atlas — The Living World",
   description:
-    "A cinematic journey through places, moments, sound, and possibility. Reality meets imagination in the Living World.",
+    "A cinematic journey through places, moments, and possibility. Reality meets imagination in the Living World.",
 };
 export default function Home() {
   return (

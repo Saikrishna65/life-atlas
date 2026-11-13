@@ -10,7 +10,6 @@ import "./world.css";
 const Observatory = dynamic(() => import("./Observatory"));
 const Expeditions = dynamic(() => import("./Expeditions"));
 const MemoryArchive = dynamic(() => import("./MemoryArchive"));
-const SoundDimension = dynamic(() => import("./SoundDimension"));
 const PublishedMedia = dynamic(() => import("./PublishedMedia"));
 const Beyond = dynamic(() => import("./Beyond"));
 function Deferred({
@@ -118,16 +117,11 @@ export default function LivingWorld() {
           component={MemoryArchive}
         />
         <PublishedMedia />
-        <Deferred
-          id="sound"
-          title="The Sound Dimension"
-          component={SoundDimension}
-        />
         <Deferred id="beyond" title="The Beyond" component={Beyond} />
       </WorldMotion>
       <noscript>
         The interactive chapters require JavaScript. Life Atlas is a fictional
-        public demonstration of travel, memories, music, and personal planning.
+        public collection of travel, places, and memories.
       </noscript>
     </div>
   );

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { destinations, expeditions } from "@/data/demo/expeditions";
 import { memories } from "@/data/demo/memories";
-import { playlists } from "@/data/demo/music";
 import { searchRecords } from "@/data/demo/selectors";
 import { DemoNote, Modal, SearchField } from "./primitives";
 import "./world.css";
@@ -27,12 +26,7 @@ const entries = [
     type: "Memory",
     href: "/photography",
   })),
-  ...playlists.map((p) => ({
-    title: p.title,
-    description: `${p.mood} ${p.description}`,
-    type: "Sound",
-    href: "/#sound",
-  })),
+
 ];
 export default function PublicSearch({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
@@ -48,7 +42,7 @@ export default function PublicSearch({ onClose }: { onClose: () => void }) {
       <SearchField
         value={query}
         onChange={setQuery}
-        label="Search places, journeys, memories, sound"
+        label="Search places, journeys and memories"
         placeholder="What are you drawn to?"
       />
       <DemoNote>Explore destinations, journeys and stories.</DemoNote>

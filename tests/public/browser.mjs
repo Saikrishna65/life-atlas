@@ -80,7 +80,7 @@ try {
     "Arrival and private app demos removed from public homepage",
     async () => {
       assert.equal(
-        await page.locator("#arrival,#intelligence,#system").count(),
+        await page.locator("#arrival,#intelligence,#system,#sound").count(),
         0,
       );
       assert.equal(

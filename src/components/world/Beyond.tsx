@@ -9,7 +9,7 @@ export default function Beyond() {
   return (
     <section id="beyond" className="world-beyond world-scene">
       <div className="world-section-bar">
-        <ChapterLabel number="06">Home, again</ChapterLabel>
+        <ChapterLabel number="05">Home, again</ChapterLabel>
         <span className="world-eyebrow">The last mile brings you home.</span>
       </div>
       <div className="beyond-door" aria-hidden="true">

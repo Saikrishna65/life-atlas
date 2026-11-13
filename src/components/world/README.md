@@ -1,7 +1,7 @@
 # Life Atlas public travel journal
 
 The public homepage now flows from the door hero directly into the Observatory,
-Expeditions, Memory Archive, Sound Dimension, optional published collection and
+Expeditions, Memory Archive, optional published collection and
 Home Again ending. Arrival, assistant demonstrations and app-system demonstrations
 are no longer mounted or included in chapter navigation.
 
@@ -48,3 +48,5 @@ journeys use deterministic, explicitly illustrative winding route geometry and
 five detailed scheduled beats per day. Photo journals have independent place
 and category filters; labels remain inside the opened photograph. Mock geometry
 never replaces a published trip's recorded GPS data.
+
+Music is no longer mounted on the landing page or linked in chapter navigation.

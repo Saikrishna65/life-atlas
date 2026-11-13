@@ -8,7 +8,6 @@ export const chapters = [
   ["observatory", "The Observatory"],
   ["expeditions", "The Expeditions"],
   ["memories", "The Memory Archive"],
-  ["sound", "The Sound Dimension"],
   ["beyond", "The Beyond"],
 ];
 export default function WorldNavigation() {
@@ -90,7 +89,6 @@ export default function WorldNavigation() {
             ["observatory", "Discover"],
             ["expeditions", "Journeys"],
             ["memories", "Memories"],
-            ["sound", "Sound"],
           ].map(([id, name]) => (
             <button
               key={id}

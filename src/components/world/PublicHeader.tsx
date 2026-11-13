@@ -58,7 +58,6 @@ export default function PublicHeader() {
               ["/food", "Food & places"],
               ["/cinema", "Cinema"],
               ["/experiences", "Experiences"],
-              ["/#sound", "Sound"],
             ].map(([href, label]) => (
               <Link onClick={() => setOpen(false)} href={href} key={href}>
                 {label}
