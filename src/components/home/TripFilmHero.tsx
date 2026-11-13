@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Manrope } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
+import { HERO_RELEASE_MS } from "./hero-playback";
 import TripFilmStage from "./TripFilmStage";
-import { JourneyJournal, ObservatoryInstrument } from "./AtlasObjects";
+import { ObservatoryInstrument } from "./AtlasObjects";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -18,10 +19,10 @@ import { heroFilms, type HeroTrip } from "@/data/demo/hero-films";
 import { Modal } from "@/components/world/primitives";
 import "./trip-film-hero.css";
 
-const heroSerif = Manrope({
+const heroTypography = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["300", "400"],
-  variable: "--font-trip-serif",
+  weight: ["400", "500", "600"],
+  variable: "--font-hero",
   display: "swap",
 });
 
@@ -91,7 +92,7 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
           setQueued(null);
         }
       },
-      reduced ? 0 : 1250,
+      reduced ? 0 : HERO_RELEASE_MS,
     );
     return () => clearTimeout(timer);
   }, [outgoing, reduced]);
@@ -110,7 +111,7 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
   return (
     <section
       ref={root}
-      className={`${heroSerif.variable} trip-film-hero`}
+      className={`${heroTypography.variable} trip-film-hero`}
       data-hero
       aria-label="Latest trip films"
       onKeyDown={(e) => {
@@ -237,31 +238,42 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
       </div>
       <aside className="trip-film-discover" aria-label="More to discover">
         <Link href="/explore" className="trip-film-aside-label">
-          Explore the atlas <ArrowRight size={20} />
+          Explore <ArrowRight size={20} />
         </Link>
-        <Link className="trip-film-journal-tile" href="/trips">
-          <JourneyJournal />
-          <span>All journeys</span>
+        <Link className="trip-film-journal-tile" href="/photography">
+          <span className="trip-film-photo-stack" aria-hidden="true">
+            <Image
+              src="/images/world/ocean-small.webp"
+              alt=""
+              width={110}
+              height={72}
+            />
+            <Image
+              src="/images/world/valley-small.webp"
+              alt=""
+              width={110}
+              height={72}
+            />
+          </span>
+          <span>Photo Gallery</span>
         </Link>
-        <Link className="trip-film-photo-tile" href="/photography">
-          <Image
-            src="/images/world/valley-small.webp"
-            alt=""
-            fill
-            sizes="200px"
-          />
-          <span>The visual journal</span>
+        <Link
+          className="trip-film-photo-tile trip-film-globe-tile"
+          href="/#observatory"
+        >
+          <ObservatoryInstrument />
+          <span>Explore the Globe</span>
         </Link>
-        <Link className="trip-film-world-link" href="/#observatory">
-          <span className="trip-film-instrument">
-            <ObservatoryInstrument />
+        <Link className="trip-film-world-link" href={`/trips/${trips[0].slug}`}>
+          <span className="trip-film-latest-image">
+            <Image src={trips[0].image} alt="" fill sizes="120px" unoptimized />
           </span>
           <span className="trip-film-world-copy">
-            <strong>Every place has a story.</strong>
-            <small>
-              Trace the routes, revisit the moments, and find your next
-              somewhere.
+            <small className="trip-film-card-eyebrow">
+              Latest trip{trips[0].sample ? " / sample" : ""}
             </small>
+            <strong>{trips[0].title}</strong>
+            <small>Follow the route. Open the journal.</small>
           </span>
           <ArrowRight size={22} />
         </Link>
@@ -321,7 +333,7 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
       {menu && (
         <Modal
           title="Explore Life Atlas"
-          className="world-chapter-dialog trip-film-menu"
+          className={`${heroTypography.variable} world-chapter-dialog trip-film-menu`}
           onClose={() => setMenu(false)}
         >
           <nav className="public-menu">

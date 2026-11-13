@@ -1,3 +1,27 @@
+# Automatic playback and hero navigation refinement
+
+Automatic transitions now prewarm the next paused video after 1.5s of active
+playback, except for reduced motion and data-saving connections. The handoff
+starts 1.75s before the 10s presentation boundary (or the actual end of shorter
+clips). Incoming clips require decoded data and at least 1.4s of buffered media.
+Both videos play during the 1.4s linear dissolve; old sources release after 1.5s.
+This addresses the previous end-of-clip freeze before the next request started.
+Manual selection, paused browsing, and rapid-selection queuing remain supported.
+
+The right rail links to Photo Gallery, the existing interactive globe, and the
+latest public trip (`trips[0]`, independent of the active film). The fourth,
+compact Explore link opens the directory. Hero typography is Plus Jakarta Sans;
+navbar blur is 2px. A shared translucent background token applies to navigation,
+hero buttons and discovery panels. White text and unshaded video remain intact.
+
+`hero-automatic-browser.mjs` checks actual automatic progression without clicking
+a selector, preloading readiness, motion overlap before the old clip ends, CSS
+blend opacity, shared materials, links, type and mobile/reduced motion. Network
+fixtures isolate this check from the blocked stock CDN. `hero-playback.test.ts`
+checks overlap time for normal clip lengths and unknown metadata.
+
+---
+
 # White hero and reference panel geometry
 
 The current hero uses white type, white CTA surfaces and neutral charcoal controls.

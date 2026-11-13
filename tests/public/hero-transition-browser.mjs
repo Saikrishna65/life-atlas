@@ -87,7 +87,7 @@ try {
   assert.equal(await first.getAttribute("data-outgoing"), "true");
   assert.ok(await first.evaluate((v) => !v.paused));
   await page.screenshot({ path: "work/qa-hero-white/blend.png" });
-  await page.waitForTimeout(1400);
+  await page.waitForTimeout(1600);
   assert.equal(await first.getAttribute("src"), null);
   await page
     .getByRole("button", { name: "Pause trip films", exact: true })

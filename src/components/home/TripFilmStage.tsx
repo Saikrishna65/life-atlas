@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { heroFilms } from "@/data/demo/hero-films";
+import { heroHandoffAt, HERO_PRELOAD_AT_SECONDS } from "./hero-playback";
 
 /** The outgoing decoder stays alive until the incoming video has painted a frame. */
 export default function TripFilmStage({
@@ -26,7 +27,9 @@ export default function TripFilmStage({
   onEnd: () => void;
   onStatus: (status: "stock" | "fallback" | "failed" | "blocked") => void;
 }) {
+  const [prewarmed, setPrewarmed] = useState<number | null>(null);
   const videos = useRef<(HTMLVideoElement | null)[]>([]);
+  const failedSlots = useRef(new Set<number>());
   const generations = useRef([0, 0, 0]);
   const [fallbacks, setFallbacks] = useState<boolean[]>([false, false, false]);
   const current = useRef({
@@ -62,9 +65,26 @@ export default function TripFilmStage({
     const rafs = new Set<number>();
     const target = videos.current[requested];
     if (!target) return;
-    if (requested !== active) target.currentTime = 0;
+    if (failedSlots.current.has(requested)) {
+      current.current.onStatus("failed");
+      return;
+    }
+    if (requested !== active && target.currentTime > 0.05)
+      target.currentTime = 0;
     const paint = () => {
-      if (disposed || target.readyState < 2) return;
+      if (disposed || target.readyState < (playing ? 3 : 2)) return;
+      if (playing && requested !== active) {
+        const ahead =
+          Array.from(
+            { length: target.buffered.length },
+            (_, i) => target.buffered.end(i) - target.currentTime,
+          ).find(
+            (seconds, i) =>
+              target.buffered.start(i) <= target.currentTime + 0.05 &&
+              seconds > 0,
+          ) ?? 0;
+        if (ahead < Math.min(1.4, (target.duration || 10) / 2)) return;
+      }
       const generation = generations.current[requested];
       const commit = () => {
         if (!disposed && generation === generations.current[requested])
@@ -85,6 +105,8 @@ export default function TripFilmStage({
       }
     };
     target.addEventListener("loadeddata", paint);
+    target.addEventListener("canplay", paint);
+    target.addEventListener("progress", paint);
     videos.current.forEach((v, index) => {
       if (!v) return;
       const needed =
@@ -109,6 +131,8 @@ export default function TripFilmStage({
       frames.forEach((id) => target.cancelVideoFrameCallback(id));
       rafs.forEach(cancelAnimationFrame);
       target.removeEventListener("loadeddata", paint);
+      target.removeEventListener("canplay", paint);
+      target.removeEventListener("progress", paint);
     };
   }, [active, requested, playing, outgoing, fallbacks, reveal]);
   useEffect(() => {
@@ -131,7 +155,10 @@ export default function TripFilmStage({
     >
       {heroFilms.slice(0, count).map((film, index) => {
         const mounted =
-          index === active || index === requested || index === outgoing;
+          index === active ||
+          index === requested ||
+          index === outgoing ||
+          (index === prewarmed && playing && !reduced);
         return (
           <video
             key={index}
@@ -160,13 +187,30 @@ export default function TripFilmStage({
                 setFallbacks((old) =>
                   old.map((value, i) => (i === index ? true : value)),
                 );
-              else if (index === current.current.requested)
-                current.current.onStatus("failed");
+              else {
+                failedSlots.current.add(index);
+                if (index === current.current.requested)
+                  current.current.onStatus("failed");
+              }
             }}
             onTimeUpdate={(e) => {
               if (index !== current.current.active) return;
               const element = e.currentTarget;
-              const duration = Math.min(element.duration || 10, 10);
+              const duration = heroHandoffAt(element.duration);
+              const connection = (
+                navigator as Navigator & { connection?: { saveData?: boolean } }
+              ).connection;
+              if (
+                element.currentTime >= HERO_PRELOAD_AT_SECONDS &&
+                current.current.playing &&
+                !current.current.reduced &&
+                outgoing === null &&
+                count > 1 &&
+                !connection?.saveData
+              ) {
+                const next = (index + 1) % count;
+                if (prewarmed !== next) setPrewarmed(next);
+              }
               current.current.onProgress(
                 Math.min(1, element.currentTime / duration),
               );
