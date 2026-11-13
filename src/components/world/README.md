@@ -1,3 +1,26 @@
+# Approved Option 1 discovery cards
+
+The Photo Gallery card now uses the selected Cinematic Windows composition:
+a full-bleed, original generated mountain/coast/forest ribbon artwork, live
+white label and an accessible link to /photography. The image is decorative,
+with Next Image responsive sizing and hover movement disabled for reduced motion.
+
+GlobeCardPreview uses the same globe.gl engine, local country geometry, white
+Phong sphere, slate hex land, cobalt points and silver arcs as InteractiveGlobe.
+It is a compact preview, not a replacement for the main model. The card uses
+coarser hex detail to avoid aliasing at its small size. The existing
+InteractiveGlobe.tsx remains unchanged. Activating the card opens the real
+Observatory. The preview is capped at DPR 1.25, only initializes on visible desktop
+layouts, renders once when idle, rotates on hover/focus, pauses offscreen or on
+hidden tabs and respects reduced motion. Lifecycle cleanup aborts data loading,
+disconnects observers/listeners, destroys the renderer and disposes materials.
+WebGL failure retains a decorative SVG globe and the working navigation link.
+
+The Explore and Latest Trip actions, hero video transitions, navbar material,
+white UI and typography are retained. The hero still has no loading-poster image.
+
+---
+
 # Automatic playback and hero navigation refinement
 
 Automatic transitions now prewarm the next paused video after 1.5s of active

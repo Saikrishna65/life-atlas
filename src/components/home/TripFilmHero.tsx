@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { HERO_RELEASE_MS } from "./hero-playback";
 import TripFilmStage from "./TripFilmStage";
-import { ObservatoryInstrument } from "./AtlasObjects";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import {
   ArrowRight,
@@ -18,6 +18,10 @@ import gsap from "gsap";
 import { heroFilms, type HeroTrip } from "@/data/demo/hero-films";
 import { Modal } from "@/components/world/primitives";
 import "./trip-film-hero.css";
+
+const GlobeCardPreview = dynamic(() => import("./GlobeCardPreview"), {
+  ssr: false,
+});
 
 const heroTypography = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -241,19 +245,15 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
           Explore <ArrowRight size={20} />
         </Link>
         <Link className="trip-film-journal-tile" href="/photography">
-          <span className="trip-film-photo-stack" aria-hidden="true">
-            <Image
-              src="/images/world/ocean-small.webp"
-              alt=""
-              width={110}
-              height={72}
-            />
-            <Image
-              src="/images/world/valley-small.webp"
-              alt=""
-              width={110}
-              height={72}
-            />
+          <Image
+            className="hero-gallery-landscape"
+            src="/images/world/gallery-window.png"
+            alt=""
+            fill
+            sizes="(max-width: 700px) 1px, 200px"
+          />
+          <span className="hero-card-arrow">
+            <ArrowUpRight size={17} />
           </span>
           <span>Photo Gallery</span>
         </Link>
@@ -261,7 +261,10 @@ export default function TripFilmHero({ trips }: { trips: HeroTrip[] }) {
           className="trip-film-photo-tile trip-film-globe-tile"
           href="/#observatory"
         >
-          <ObservatoryInstrument />
+          <GlobeCardPreview />
+          <span className="hero-card-arrow">
+            <ArrowUpRight size={17} />
+          </span>
           <span>Explore the Globe</span>
         </Link>
         <Link className="trip-film-world-link" href={`/trips/${trips[0].slug}`}>

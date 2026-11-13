@@ -39,3 +39,10 @@ public/images/hero-backdrop.jpg. Its original file remains unchanged.
 ## Public motion studies
 
 `/films/mountain-study.mp4` and `/films/coastal-study.mp4` are silent six-second pan/zoom derivatives of the mountains and ocean studies above, encoded with FFmpeg. They are labeled illustrative animations, not recordings of a trip. No reference-site imagery, films, music or proprietary fonts have been copied.
+
+## Approved Option 1 gallery navigation artwork
+
+`/images/world/gallery-window.png` is original generated artwork, created for
+the selected Cinematic Windows design in November 2026. Its curved landscape
+ribbons are illustrative, not photographs of the named journeys or personal
+memories. The live Photo Gallery remains a separate destination.
