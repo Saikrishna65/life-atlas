@@ -16,13 +16,18 @@ class OpenWakeWordFeatureBuffersTest {
         val partial = ShortArray(600) { (it + 1).toShort() }
         assertTrue(buffers.pushAudio(partial).isEmpty())
 
-        // Pushing 680 more completes the first 1280-sample chunk.
+        // Pushing 680 more completes the first 1280-sample chunk (+480 seeded overlap = 1760).
         val rest = ShortArray(680) { (601 + it).toShort() }
         val firstWindows = buffers.pushAudio(rest)
         assertEquals(1, firstWindows.size)
-        assertEquals(OpenWakeWordFeatureBuffers.STEP_SAMPLES, firstWindows[0].size)
-        assertEquals(1.0f, firstWindows[0][0], 0.0001f)
-        assertEquals(1280.0f, firstWindows[0][1279], 0.0001f)
+        assertEquals(
+            OpenWakeWordFeatureBuffers.STEP_SAMPLES + OpenWakeWordFeatureBuffers.MEL_OVERLAP_SAMPLES,
+            firstWindows[0].size
+        )
+        assertEquals(0.0f, firstWindows[0][0], 0.0001f)
+        assertEquals(0.0f, firstWindows[0][479], 0.0001f)
+        assertEquals(1.0f, firstWindows[0][480], 0.0001f)
+        assertEquals(1280.0f, firstWindows[0][1759], 0.0001f)
 
         // Second 1280-sample push must include 480 overlap samples + 1280 new samples = 1760.
         val second = ShortArray(1280) { (2000 + it).toShort() }

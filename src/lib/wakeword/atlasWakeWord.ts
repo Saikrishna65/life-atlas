@@ -179,7 +179,7 @@ export const EXPERIMENT_SCENARIOS: WakeWordScenarioDefinition[] = [
     steps: [
       "Enable Listening on this screen.",
       "Verify Android microphone indicator & persistent notification appear.",
-      "Speak the loaded wake phrase (Hey Jarvis for the bundled test model, or Hey Atlas if you imported a custom model) 5 times.",
+      "Speak \"Hey Atlas\" (or the currently loaded wake phrase) 5 times.",
       "Record observed detections, missed phrases, and latency below.",
     ],
   },

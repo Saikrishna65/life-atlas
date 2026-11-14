@@ -93,8 +93,8 @@ object WakeWordModelManager {
                 modelPathOrAsset = BUNDLED_CUSTOM_ASSET,
                 isAsset = true,
                 sha256 = sha256Bytes(bytes),
-                threshold = 0.5f,
-                cooldownMs = 1500L,
+                threshold = 0.65f,
+                cooldownMs = 3000L,
                 requiredEmbeddingFrames = inspectEmbeddingFrames(bytes),
                 licenseNote = "Bundled custom Hey Atlas model"
             )

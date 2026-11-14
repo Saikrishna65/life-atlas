@@ -37,6 +37,8 @@ class OpenWakeWordEngine(
 
     private val buffers = OpenWakeWordFeatureBuffers(modelInfo.requiredEmbeddingFrames)
     private var lastDetectionElapsedMs: Long = 0L
+    private var consecutiveHits: Int = 0
+    private val requiredConsecutiveHits: Int = if (modelInfo.isCustomHeyAtlasModel) 2 else 1
 
     init {
         val opts = OrtSession.SessionOptions().apply {
@@ -64,6 +66,7 @@ class OpenWakeWordEngine(
     fun reset() {
         buffers.reset()
         lastDetectionElapsedMs = 0L
+        consecutiveHits = 0
     }
 
     fun processAudio(samples: ShortArray, length: Int): WakeWordInferenceResult? {
@@ -89,14 +92,24 @@ class OpenWakeWordEngine(
                     if (score > bestScore) bestScore = score
                     chunksEvaluated++
                     val nowMs = SystemClock.elapsedRealtime()
-                    if (score >= modelInfo.threshold &&
+                    if (score >= modelInfo.threshold) {
+                        consecutiveHits++
+                    } else {
+                        consecutiveHits = 0
+                    }
+                    if (consecutiveHits >= requiredConsecutiveHits &&
                         (nowMs - lastDetectionElapsedMs) >= modelInfo.cooldownMs
                     ) {
                         lastDetectionElapsedMs = nowMs
+                        consecutiveHits = 0
+                        // Flush sliding embeddings immediately so one spoken phrase cannot double-trigger.
+                        buffers.reset()
                         detected = true
+                        break
                     }
                 }
             }
+            if (detected) break
         }
 
         val elapsedMs = (SystemClock.elapsedRealtimeNanos() - startNs) / 1_000_000.0

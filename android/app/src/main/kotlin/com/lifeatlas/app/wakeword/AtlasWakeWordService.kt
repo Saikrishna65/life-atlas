@@ -6,12 +6,15 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioRecordingConfiguration
@@ -19,10 +22,12 @@ import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.Handler
+import android.os.HandlerThread
 import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import android.os.Process
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -48,19 +53,68 @@ import kotlin.math.sin
 class AtlasWakeWordService : Service() {
 
     private var engine: OpenWakeWordEngine? = null
+    @Volatile
     private var audioRecord: AudioRecord? = null
     private var captureThread: Thread? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
     private val running = AtomicBoolean(false)
     private val paused = AtomicBoolean(false)
+    private val pausedForMic = AtomicBoolean(false)
     private val destroyed = AtomicBoolean(false)
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var micMonitorThread: HandlerThread? = null
+    private var micMonitorHandler: Handler? = null
     private var audioManager: AudioManager? = null
     private var recordingCallback: AudioManager.AudioRecordingCallback? = null
-    private var lastSilencedFlag = false
+    @Volatile
+    private var activeAudioSessionId: Int = -1
+    @Volatile
+    private var ignoreAudioUntilElapsedMs: Long = 0L
     private var useAssistantSessionOnWake = false
+    private var screenReceiverRegistered = false
+
+    // AudioFocus listener: releases mic the instant any other app requests audio focus for recording,
+    // giving it a ~300ms head start before it opens AudioRecord — eliminating the hardware conflict window.
+    private val audioFocusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+            val h = micMonitorHandler ?: mainHandler
+            h.post {
+                if (running.get() && !pausedForMic.get() && !paused.get() && !destroyed.get()) {
+                    pauseForMicCompetition("Pre-emptive release: audio focus lost to another recording/call app")
+                }
+            }
+        }
+    }
+    private var audioFocusRequest: AudioFocusRequest? = null
+
+    private val micRecoveryPollRunnable = object : Runnable {
+        override fun run() {
+            if (!running.get() || !pausedForMic.get() || destroyed.get()) return
+            if (!isExternalAppRecording() && !isInCallMode()) {
+                resumeFromMicCompetition()
+            } else {
+                val h = micMonitorHandler ?: mainHandler
+                h.postDelayed(this, 25_000L)
+            }
+        }
+    }
+
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                // If the user locked the screen, they are finished with on-screen recording/call apps.
+                val h = micMonitorHandler ?: mainHandler
+                h.post {
+                    if (running.get() && pausedForMic.get() && !isExternalAppRecording() && !isInCallMode()) {
+                        resumeFromMicCompetition()
+                    }
+                }
+            }
+        }
+    }
 
     companion object {
         private const val TAG = "AtlasWakeWordService"
@@ -93,8 +147,16 @@ class AtlasWakeWordService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
+        micMonitorThread = HandlerThread("AtlasMicMonitor", Process.THREAD_PRIORITY_URGENT_AUDIO).apply { start() }
+        micMonitorHandler = Handler(micMonitorThread!!.looper)
         audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         registerMicCompetitionCallback()
+        try {
+            registerReceiver(screenReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
+            screenReceiverRegistered = true
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to register screenReceiver: ${e.message}")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -224,6 +286,7 @@ class AtlasWakeWordService : Service() {
             isServicePaused = false
             isMicSilenced = false
             acquireWakeLock()
+            requestAudioFocusForListening()
 
             val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             nm?.notify(NOTIFICATION_ID_LISTENING, buildListeningNotification(model))
@@ -259,30 +322,26 @@ class AtlasWakeWordService : Service() {
 
     private fun runCaptureLoop() {
         val sampleRate = OpenWakeWordFeatureBuffers.SAMPLE_RATE_HZ
+        // Keep >= 1 second internal AudioRecord ring buffer so screen-off CPU scaling or app switches never drop PCM chunks.
         val minBufBytes = AudioRecord.getMinBufferSize(
             sampleRate,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT
-        ).coerceAtLeast(OpenWakeWordFeatureBuffers.STEP_SAMPLES * 4)
+        ).coerceAtLeast(sampleRate * 2)
 
         val record = createAudioRecord(sampleRate, minBufBytes)
         if (record == null) {
-            WakeWordDiagnostics.updateServiceState(
-                this,
-                "error",
-                "AudioRecord unavailable (microphone permission or hardware busy)."
-            )
-            AtlasWakeWordPlugin.emitStatusChange(this)
-            mainHandler.post {
-                stopPipeline("AudioRecord unavailable")
-                stopForegroundCompat()
-                stopSelf()
-            }
+            handleAudioStartFailure("AudioRecord unavailable (microphone hardware busy or blocked in background).")
             return
         }
 
         audioRecord = record
-        val readChunk = ShortArray(OpenWakeWordFeatureBuffers.STEP_SAMPLES)
+        activeAudioSessionId = record.audioSessionId
+        // Read in 20 ms slices (320 samples) so competing recorder callbacks unblock and release the mic in <20 ms.
+        val sliceSamples = 320
+        val readSlice = ShortArray(sliceSamples)
+        val stepChunk = ShortArray(OpenWakeWordFeatureBuffers.STEP_SAMPLES)
+        var stepFilled = 0
         var batchFrames = 0L
         var batchInferenceMs = 0.0
         var batchPeakScore = 0.0f
@@ -293,8 +352,9 @@ class AtlasWakeWordService : Service() {
             if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
                 throw IllegalStateException("AudioRecord failed to enter RECORDING state.")
             }
+            Log.i(TAG, "AudioRecord started (session=$activeAudioSessionId, bufBytes=$minBufBytes)")
 
-            while (running.get() && !paused.get() && !destroyed.get()) {
+            while (running.get() && !paused.get() && !pausedForMic.get() && !destroyed.get()) {
                 if (!hasMicPermission()) {
                     WakeWordDiagnostics.updateServiceState(
                         this,
@@ -310,31 +370,48 @@ class AtlasWakeWordService : Service() {
                     break
                 }
 
-                // Respect phone calls: never interfere with active voice/VoIP calls.
-                val mode = audioManager?.mode ?: AudioManager.MODE_NORMAL
-                if (mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_IN_COMMUNICATION) {
-                    WakeWordDiagnostics.recordMicCompetition(this, "Paused for active phone/VoIP call")
-                    WakeWordDiagnostics.updateServiceState(
-                        this,
-                        "paused_for_call",
-                        "Paused automatically while phone call is active"
-                    )
-                    AtlasWakeWordPlugin.emitStatusChange(this)
-                    Thread.sleep(500)
-                    continue
+                // Respect phone calls: release hardware mic during active voice/VoIP calls.
+                if (isInCallMode()) {
+                    (micMonitorHandler ?: mainHandler).post {
+                        pauseForMicCompetition("Paused and released mic for active phone/VoIP call")
+                    }
+                    break
                 }
 
-                val read = record.read(readChunk, 0, readChunk.size)
+                val needed = (stepChunk.size - stepFilled).coerceAtMost(readSlice.size)
+                val read = record.read(readSlice, 0, needed)
                 if (read < 0) {
+                    if (pausedForMic.get() || paused.get() || !running.get() || destroyed.get()) {
+                        break
+                    }
                     Log.w(TAG, "AudioRecord read error: $read")
                     WakeWordDiagnostics.recordMicCompetition(this, "AudioRecord read error ($read)")
-                    Thread.sleep(150)
+                    Thread.sleep(100)
                     continue
                 }
                 if (read == 0) continue
 
+                if (pausedForMic.get() || paused.get() || !running.get() || destroyed.get()) {
+                    break
+                }
+
+                // Duck briefly while playing our own confirmation chime so the chime cannot echo back into mel frames.
+                if (SystemClock.elapsedRealtime() < ignoreAudioUntilElapsedMs) {
+                    stepFilled = 0
+                    continue
+                }
+
+                System.arraycopy(readSlice, 0, stepChunk, stepFilled, read)
+                stepFilled += read
+                if (stepFilled < stepChunk.size) continue
+                stepFilled = 0
+
+                if (pausedForMic.get() || paused.get() || !running.get() || destroyed.get()) {
+                    break
+                }
+
                 val localEngine = engine ?: break
-                val result = localEngine.processAudio(readChunk, read) ?: continue
+                val result = localEngine.processAudio(stepChunk, stepChunk.size) ?: continue
                 batchFrames += result.framesProcessed
                 batchInferenceMs += result.inferenceLatencyMs
                 if (result.score > batchPeakScore) batchPeakScore = result.score
@@ -354,19 +431,15 @@ class AtlasWakeWordService : Service() {
                 }
 
                 if (result.detected) {
+                    ignoreAudioUntilElapsedMs = SystemClock.elapsedRealtime() + 500L
                     handleDetection(localEngine.modelInfo, result.score, result.inferenceLatencyMs)
                 }
             }
         } catch (e: SecurityException) {
             Log.e(TAG, "SecurityException in AudioRecord loop", e)
-            WakeWordDiagnostics.updateServiceState(
-                this,
-                "error",
-                "Microphone access denied by Android: ${e.message}"
-            )
-            AtlasWakeWordPlugin.emitStatusChange(this)
+            handleAudioStartFailure("Microphone access denied by Android: ${e.message}")
         } catch (e: Exception) {
-            if (running.get() && !paused.get()) {
+            if (running.get() && !paused.get() && !pausedForMic.get()) {
                 Log.e(TAG, "Capture loop error", e)
                 WakeWordDiagnostics.updateServiceState(
                     this,
@@ -385,6 +458,31 @@ class AtlasWakeWordService : Service() {
             if (audioRecord === record) {
                 audioRecord = null
             }
+            activeAudioSessionId = -1
+        }
+    }
+
+    private fun handleAudioStartFailure(reason: String) {
+        Log.w(TAG, "handleAudioStartFailure: $reason")
+        if (pausedForMic.get()) {
+            // If Android blocked background AudioRecord re-open after another app finished recording,
+            // fall back cleanly to an explicit paused state with a Resume button instead of dying silently.
+            pausedForMic.set(false)
+            paused.set(true)
+            isServicePaused = true
+            isMicSilenced = true
+            releaseWakeLock()
+            WakeWordDiagnostics.updateServiceState(this, "paused_mic_blocked", reason)
+            AtlasWakeWordPlugin.emitStatusChange(this)
+            mainHandler.post { refreshListeningNotification() }
+            return
+        }
+        WakeWordDiagnostics.updateServiceState(this, "error", reason)
+        AtlasWakeWordPlugin.emitStatusChange(this)
+        mainHandler.post {
+            stopPipeline(reason)
+            stopForegroundCompat()
+            stopSelf()
         }
     }
 
@@ -453,13 +551,20 @@ class AtlasWakeWordService : Service() {
         if (!running.get() || paused.get()) return
         paused.set(true)
         isServicePaused = true
+        runCatching { audioRecord?.stop() }
         releaseWakeLock()
         WakeWordDiagnostics.updateServiceState(this, "paused_for_voice", reason)
         AtlasWakeWordPlugin.emitStatusChange(this)
+        refreshListeningNotification()
+    }
+
+    private fun clearMicRecoveryCallbacks() {
+        micMonitorHandler?.removeCallbacks(micRecoveryPollRunnable)
+        mainHandler.removeCallbacks(micRecoveryPollRunnable)
     }
 
     private fun resumePipeline() {
-        if (!running.get() || !paused.get()) return
+        if (!running.get() || (!paused.get() && !pausedForMic.get())) return
         if (!hasMicPermission()) {
             stopPipeline("Cannot resume: microphone permission revoked")
             stopForegroundCompat()
@@ -467,21 +572,29 @@ class AtlasWakeWordService : Service() {
             return
         }
         paused.set(false)
+        pausedForMic.set(false)
         isServicePaused = false
+        isMicSilenced = false
+        clearMicRecoveryCallbacks()
+        captureThread?.join(300L)
         engine?.reset()
         acquireWakeLock()
         val model = engine?.modelInfo ?: WakeWordModelManager.getActiveModel(this)
         WakeWordDiagnostics.updateServiceState(this, "listening", "Resumed listening (${model.targetPhrase})", model)
         AtlasWakeWordPlugin.emitStatusChange(this)
+        refreshListeningNotification()
         startCaptureLoopIfNeeded()
     }
 
     private fun stopPipeline(reason: String) {
         running.set(false)
         paused.set(false)
+        pausedForMic.set(false)
         isServiceRunning = false
         isServicePaused = false
         isMicSilenced = false
+        clearMicRecoveryCallbacks()
+        abandonAudioFocus()
         runCatching { audioRecord?.stop() }
         captureThread?.interrupt()
         captureThread = null
@@ -492,43 +605,140 @@ class AtlasWakeWordService : Service() {
         AtlasWakeWordPlugin.emitStatusChange(this)
     }
 
+    private fun requestAudioFocusForListening() {
+        val am = audioManager ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val attrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(attrs)
+                .setAcceptsDelayedFocusGain(false)
+                .setWillPauseWhenDucked(true)
+                .setOnAudioFocusChangeListener(audioFocusChangeListener, micMonitorHandler ?: mainHandler)
+                .build()
+            audioFocusRequest = req
+            am.requestAudioFocus(req)
+        } else {
+            @Suppress("DEPRECATION")
+            am.requestAudioFocus(
+                audioFocusChangeListener,
+                AudioManager.STREAM_VOICE_CALL,
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+            )
+        }
+        Log.d(TAG, "Audio focus requested for wake-word listening")
+    }
+
+    private fun abandonAudioFocus() {
+        val am = audioManager ?: return
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
+                audioFocusRequest = null
+            } else {
+                @Suppress("DEPRECATION")
+                am.abandonAudioFocus(audioFocusChangeListener)
+            }
+        }
+        Log.d(TAG, "Audio focus abandoned")
+    }
+
+    private fun isInCallMode(): Boolean {
+        val mode = audioManager?.mode ?: AudioManager.MODE_NORMAL
+        return mode == AudioManager.MODE_IN_CALL || mode == AudioManager.MODE_IN_COMMUNICATION
+    }
+
+    private fun isExternalAppRecording(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return false
+        val am = audioManager ?: return false
+        val ours = activeAudioSessionId
+        return am.activeRecordingConfigurations.any { cfg ->
+            val silenced = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) cfg.isClientSilenced else false
+            cfg.clientAudioSessionId != ours && !silenced
+        }
+    }
+
+    private fun pauseForMicCompetition(reason: String) {
+        if (!running.get() || destroyed.get()) return
+        if (pausedForMic.getAndSet(true)) return
+        isMicSilenced = true
+        // Abandon audio focus first so the competing app gets notified we are out of the way,
+        // then immediately release the hardware AudioRecord handle (0 ms).
+        abandonAudioFocus()
+        val rec = audioRecord
+        audioRecord = null
+        activeAudioSessionId = -1
+        runCatching { rec?.stop() }
+        runCatching { rec?.release() }
+        captureThread?.interrupt()
+        Log.i(TAG, "Released AudioRecord hardware handle for competing mic app: $reason")
+        val h = micMonitorHandler ?: mainHandler
+        clearMicRecoveryCallbacks()
+        h.postDelayed(micRecoveryPollRunnable, 25_000L)
+        mainHandler.post {
+            WakeWordDiagnostics.recordMicCompetition(this, reason)
+            WakeWordDiagnostics.updateServiceState(this, "silenced_by_mic_competition", reason)
+            AtlasWakeWordPlugin.emitStatusChange(this)
+            refreshListeningNotification()
+        }
+    }
+
+    private fun resumeFromMicCompetition() {
+        if (!running.get() || !pausedForMic.get() || paused.get() || destroyed.get()) return
+        if (isExternalAppRecording() || isInCallMode()) {
+            val h = micMonitorHandler ?: mainHandler
+            clearMicRecoveryCallbacks()
+            h.postDelayed(micRecoveryPollRunnable, 25_000L)
+            return
+        }
+        Log.i(TAG, "External mic app closed; attempting AudioRecord re-acquisition")
+        pausedForMic.set(false)
+        isMicSilenced = false
+        clearMicRecoveryCallbacks()
+        captureThread?.join(350L)
+        engine?.reset()
+        mainHandler.post {
+            if (!running.get() || paused.get() || pausedForMic.get() || destroyed.get()) return@post
+            WakeWordDiagnostics.updateServiceState(
+                this,
+                "listening",
+                "Microphone released for other app and restored cleanly"
+            )
+            AtlasWakeWordPlugin.emitStatusChange(this)
+            refreshListeningNotification()
+            requestAudioFocusForListening()
+            startCaptureLoopIfNeeded()
+        }
+    }
+
     private fun registerMicCompetitionCallback() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
         val am = audioManager ?: return
         val cb = object : AudioManager.AudioRecordingCallback() {
             override fun onRecordingConfigChanged(configs: MutableList<AudioRecordingConfiguration>) {
-                if (!running.get()) return
+                if (!running.get() || paused.get() || destroyed.get()) return
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    val oursSilenced = configs.any {
-                        it.clientAudioSessionId == audioRecord?.audioSessionId && it.isClientSilenced
+                    val ours = activeAudioSessionId
+                    val oursSilenced = ours != -1 && configs.any {
+                        it.clientAudioSessionId == ours && it.isClientSilenced
                     }
-                    if (oursSilenced != lastSilencedFlag) {
-                        lastSilencedFlag = oursSilenced
-                        isMicSilenced = oursSilenced
-                        if (oursSilenced) {
-                            WakeWordDiagnostics.recordMicCompetition(
-                                this@AtlasWakeWordService,
-                                "Android silenced Atlas microphone (another app holds higher-priority mic)"
-                            )
-                            WakeWordDiagnostics.updateServiceState(
-                                this@AtlasWakeWordService,
-                                "silenced_by_mic_competition",
-                                "Microphone silenced by higher-priority app or system audio"
-                            )
-                        } else {
-                            WakeWordDiagnostics.updateServiceState(
-                                this@AtlasWakeWordService,
-                                "listening",
-                                "Microphone focus restored"
-                            )
-                        }
-                        AtlasWakeWordPlugin.emitStatusChange(this@AtlasWakeWordService)
+                    val externalActive = configs.any {
+                        it.clientAudioSessionId != ours && !it.isClientSilenced
+                    }
+                    if (oursSilenced || externalActive) {
+                        pauseForMicCompetition("Released Atlas mic so external recording/call app has full access")
+                    } else if (pausedForMic.get() && !externalActive && !isInCallMode()) {
+                        val h = micMonitorHandler ?: mainHandler
+                        clearMicRecoveryCallbacks()
+                        h.postDelayed(micRecoveryPollRunnable, 25_000L)
                     }
                 }
             }
         }
         recordingCallback = cb
-        am.registerAudioRecordingCallback(cb, mainHandler)
+        am.registerAudioRecordingCallback(cb, micMonitorHandler ?: mainHandler)
     }
 
     private fun acquireWakeLock() {
@@ -558,10 +768,10 @@ class AtlasWakeWordService : Service() {
             }
             if (vibrator?.hasVibrator() == true) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vibrator.vibrate(VibrationEffect.createOneShot(55L, VibrationEffect.DEFAULT_AMPLITUDE))
+                    vibrator.vibrate(VibrationEffect.createOneShot(85L, VibrationEffect.DEFAULT_AMPLITUDE))
                 } else {
                     @Suppress("DEPRECATION")
-                    vibrator.vibrate(55L)
+                    vibrator.vibrate(85L)
                 }
             }
         } catch (_: Exception) {
@@ -582,7 +792,7 @@ class AtlasWakeWordService : Service() {
                     val t = i.toDouble() / sr
                     val freq = if (i < samples / 2) 523.25 else 659.25 // C5 -> E5 soft chime
                     val envAmp = sin(PI * (i.toDouble() / samples))
-                    pcm[i] = (sin(2.0 * PI * freq * t) * 4500.0 * envAmp).toInt().toShort()
+                    pcm[i] = (sin(2.0 * PI * freq * t) * 14000.0 * envAmp).toInt().toShort()
                 }
                 val track = AudioTrack.Builder()
                     .setAudioAttributes(
@@ -642,10 +852,17 @@ class AtlasWakeWordService : Service() {
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setSilent(true)
             .setAutoCancel(true)
             .setContentIntent(pi)
             .build()
         nm.notify(NOTIFICATION_ID_DETECTED, notif)
+    }
+
+    private fun refreshListeningNotification() {
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+        val model = engine?.modelInfo ?: WakeWordModelManager.getActiveModel(this)
+        nm.notify(NOTIFICATION_ID_LISTENING, buildListeningNotification(model))
     }
 
     private fun buildListeningNotification(modelInfo: WakeWordModelInfo): Notification {
@@ -666,12 +883,22 @@ class AtlasWakeWordService : Service() {
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val label = if (modelInfo.isCustomHeyAtlasModel) {
-            "Listening offline for \"Hey Atlas\""
-        } else {
-            "Listening offline (TEST MODEL: \"${modelInfo.targetPhrase}\")"
+        val resumeIntent = PendingIntent.getService(
+            this,
+            2,
+            Intent(this, AtlasWakeWordService::class.java).apply {
+                action = ACTION_RESUME
+                putExtra(EXTRA_FROM_NOTIFICATION, true)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val label = when {
+            pausedForMic.get() -> "Mic released for other recording/call app — tap Resume"
+            paused.get() -> "Listening paused — tap Resume to continue"
+            modelInfo.isCustomHeyAtlasModel -> "Listening offline for \"Hey Atlas\""
+            else -> "Listening offline (TEST MODEL: \"${modelInfo.targetPhrase}\")"
         }
-        return NotificationCompat.Builder(this, CHANNEL_LISTENING)
+        val builder = NotificationCompat.Builder(this, CHANNEL_LISTENING)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle("Atlas Wake-Word Experiment")
             .setContentText(label)
@@ -679,7 +906,10 @@ class AtlasWakeWordService : Service() {
             .setOnlyAlertOnce(true)
             .setContentIntent(openIntent)
             .addAction(0, "Stop Listening", stopIntent)
-            .build()
+        if (paused.get() || pausedForMic.get()) {
+            builder.addAction(0, "Resume", resumeIntent)
+        }
+        return builder.build()
     }
 
     private fun createChannels() {
@@ -715,16 +945,24 @@ class AtlasWakeWordService : Service() {
 
     override fun onDestroy() {
         destroyed.set(true)
+        if (screenReceiverRegistered) {
+            runCatching { unregisterReceiver(screenReceiver) }
+            screenReceiverRegistered = false
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             recordingCallback?.let { cb -> audioManager?.unregisterAudioRecordingCallback(cb) }
         }
         if (running.get()) {
             stopPipeline("Service destroyed by system")
         } else {
+            abandonAudioFocus()
             releaseWakeLock()
             engine?.close()
             engine = null
         }
+        micMonitorThread?.quitSafely()
+        micMonitorThread = null
+        micMonitorHandler = null
         super.onDestroy()
     }
 }

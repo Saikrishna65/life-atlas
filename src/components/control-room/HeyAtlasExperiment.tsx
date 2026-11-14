@@ -450,12 +450,12 @@ export default function HeyAtlasExperiment() {
               className="oc-secondary"
               disabled={busy || !nativeSupported}
               onClick={() =>
-                void runAction("Reset to bundled Hey Jarvis test model.", () =>
+                void runAction("Reset to bundled Hey Atlas model.", () =>
                   atlasWakeWordBridge.resetToTestModel()
                 )
               }
             >
-              <RotateCcw size={14} /> Reset to Bundled Test Model
+              <RotateCcw size={14} /> Reset to Bundled Model
             </button>
             <button
               type="button"

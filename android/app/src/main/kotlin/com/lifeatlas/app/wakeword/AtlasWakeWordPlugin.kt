@@ -371,7 +371,7 @@ class AtlasWakeWordPlugin : Plugin() {
     }
 
     @ActivityCallback
-    private fun onAssistantRoleResult(call: PluginCall?, result: ActivityResult) {
+    private fun onAssistantRoleResult(call: PluginCall?, @Suppress("UNUSED_PARAMETER") result: ActivityResult) {
         if (call == null) return
         call.resolve(JSObject.fromJSONObject(buildAssistantRoleStatusJson()))
     }

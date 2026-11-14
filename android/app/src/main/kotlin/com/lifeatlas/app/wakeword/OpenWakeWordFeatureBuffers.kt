@@ -38,8 +38,10 @@ class OpenWakeWordFeatureBuffers(
 
     fun reset() {
         rawPcmRing.fill(0)
-        rawCount = 0
-        rawWritePos = 0
+        // Pre-seed 480 overlap samples of silence so even the first 1280-sample chunk
+        // feeds an exact 1760-sample window (exact 8 mel frames per 80 ms step).
+        rawCount = MEL_OVERLAP_SAMPLES
+        rawWritePos = MEL_OVERLAP_SAMPLES
         remainder.fill(0)
         remainderLen = 0
         melRows.clear()
