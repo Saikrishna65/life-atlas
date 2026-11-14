@@ -1,7 +1,7 @@
 .trip-film-hero {
   position: relative;
   height: 100svh;
-  min-height: 660px;
+  min-height: 100vh;
   color: #ffffff;
   background: #18201c;
   isolation: isolate;
@@ -416,7 +416,7 @@
 }
 @media (max-width: 700px) {
   .trip-film-hero {
-    min-height: 650px;
+    min-height: 100vh;
   }
   .trip-film-header {
     top: 20px;
@@ -692,4 +692,87 @@
 }
 .trip-film-brand .atlas-white-ink {
   filter: url(#atlas-white-ink);
+}
+
+/* Let content determine its minimum size; never crop it behind fixed offsets. */
+.trip-film-hero {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 21vw, 398px);
+  grid-template-rows: 1fr auto;
+  column-gap: clamp(24px, 4vw, 72px);
+  row-gap: 24px;
+  padding: calc(112px + env(safe-area-inset-top, 0px)) 25px max(28px, env(safe-area-inset-bottom, 0px));
+}
+.trip-film-hero > .trip-film-main {
+  position: relative;
+  inset: auto;
+  grid-column: 1;
+  grid-row: 1;
+  align-self: end;
+  width: 100%;
+  max-width: 950px;
+  min-width: 0;
+}
+.trip-film-main h1 { overflow-wrap: anywhere; }
+.trip-film-hero > .trip-film-discover {
+  position: relative;
+  inset: auto;
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  width: 100%;
+}
+.trip-film-hero > .trip-film-footer {
+  position: relative;
+  inset: auto;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
+  padding-top: 0;
+}
+@media (max-width: 700px) {
+  .trip-film-hero {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 22px;
+    padding: calc(104px + env(safe-area-inset-top, 0px)) 20px max(18px, env(safe-area-inset-bottom, 0px));
+  }
+  .trip-film-hero > .trip-film-discover { display: none; }
+  .trip-film-main h1 { font-size: clamp(34px, 11vw, 66px); }
+  .trip-film-hero > .trip-film-footer { display: block; }
+  .trip-film-footer-note { gap: 8px; }
+  .trip-film-footer-note > span { min-width: 0; }
+}
+@media (max-height: 650px) {
+  .trip-film-hero { grid-template-columns: minmax(0, 1fr); }
+  .trip-film-hero > .trip-film-discover { display: none; }
+  .trip-film-hero > .trip-film-main { max-width: min(850px, 90vw); }
+}
+@media (max-height: 500px) {
+  .trip-film-hero {
+    padding-top: calc(96px + env(safe-area-inset-top, 0px));
+    padding-bottom: max(14px, env(safe-area-inset-bottom, 0px));
+    row-gap: 16px;
+  }
+  .trip-film-main h1 { font-size: clamp(28px, 8.4dvh, 42px); max-width: 850px; }
+  .trip-film-eyebrow { margin-bottom: 8px; }
+  .trip-film-cta { margin-top: 12px; font-size: 11px; }
+  .trip-film-cta > span { padding: 10px 16px; }
+  .trip-film-cta > svg { padding: 11px 16px; }
+  .trip-film-hero > .trip-film-footer { display: flex; gap: 16px; }
+  .trip-film-selectors { width: 65%; gap: 12px; }
+  .trip-film-selectors > button { display: flex; padding-top: 10px; padding-bottom: 0; }
+  .trip-film-selectors .trip-film-thumbnail { display: none; }
+  .trip-film-selector-copy { font-size: 9px; gap: 4px; }
+  .trip-film-footer-note { flex-direction: row; align-items: center; gap: 10px; margin-top: 0; max-width: 240px; font-size: 7px; }
+  .trip-film-footer-note > span { max-width: 100px; }
+  .trip-film-footer-note > a:last-child { display: none; }
+}
+@media (max-height: 500px) and (max-width: 500px) {
+  .trip-film-hero > .trip-film-footer { display: block; }
+  .trip-film-selectors { width: 100%; }
+  .trip-film-footer-note { max-width: none; margin-top: 10px; }
 }

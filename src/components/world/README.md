@@ -1,3 +1,17 @@
+# Responsive film hero height
+
+The hero uses a content-aware grid with a 100dvh minimum (svh/vh fallbacks),
+reserving actual space for the title, discovery panels and footer. It no longer
+forces 650–660px on short screens or positions those blocks with fixed bottom
+offsets. Compact viewports omit discovery panels; short landscape layouts use
+text trip selectors. Safe-area insets are included in the padding. Longer titles
+can grow the scene rather than clipping controls. The video handoff and globe
+implementations are unchanged.
+
+`hero-height-browser.mjs` verifies 12 viewport sizes, dynamic viewport changes,
+navbar/title/footer separation, horizontal overflow and a longer title. It uses
+local video fixtures and does not claim physical-device validation.
+
 # One persistent public navigation
 
 The hero no longer renders a second navigation/header or a separate menu.
