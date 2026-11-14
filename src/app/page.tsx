@@ -4,7 +4,6 @@ import { getLatestHeroTrips, getHeroGalleryPhotos } from "@/lib/queries/hero-tri
 import { NativeAppRedirect } from "@/components/native/NativeAppRedirect";
 import LivingWorld from "@/components/world/LivingWorld";
 import { getScrapbookMedia } from "@/lib/queries/scrapbook";
-import { getFeaturedJourney } from "@/lib/queries/featured-journey";
 import { getTripArchive } from "@/lib/queries/trip-archive";
 export const metadata: Metadata = {
   title: "Life Atlas — The Living World",
@@ -14,13 +13,13 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function Home() {
-  const [trips, galleryPhotos, scrapbookMedia, featuredJourney, archiveTrips] = await Promise.all([getLatestHeroTrips(), getHeroGalleryPhotos(), getScrapbookMedia(), getFeaturedJourney(), getTripArchive()]);
+  const [trips, galleryPhotos, scrapbookMedia, archiveTrips] = await Promise.all([getLatestHeroTrips(), getHeroGalleryPhotos(), getScrapbookMedia(), getTripArchive()]);
   return (
     <>
       <NativeAppRedirect />
       <div className="bg-background text-foreground min-h-screen">
         <TripFilmHero trips={trips} galleryPhotos={galleryPhotos} />
-        <LivingWorld scrapbookMedia={scrapbookMedia} featuredJourney={featuredJourney} trips={archiveTrips} />
+        <LivingWorld scrapbookMedia={scrapbookMedia} trips={archiveTrips} />
       </div>
     </>
   );

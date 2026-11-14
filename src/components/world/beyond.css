@@ -1,0 +1,9 @@
+/* End at the final control, without the former colophon space. */
+.world-beyond.world-scene {
+  min-height: 0;
+  padding-bottom: 0;
+  display: flow-root;
+}
+.world-beyond.world-scene .beyond-words {
+  margin-bottom: 0;
+}

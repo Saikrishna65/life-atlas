@@ -1,3 +1,14 @@
+# Current homepage composition
+
+Hero → Observatory → scrapbook → Trip Archive → closing door (with the optional
+published-media collection when configured). The featured fourth section and its
+query, components, map bundle, stylesheet and browser test have been removed.
+Old on-the-road links resolve to the Trip Archive. The closing section now ends
+at its last control: no minimum-height filler, bottom padding or bottom margin.
+The archive browser suite checks both the section order and closing spacing.
+
+Earlier implementation notes below document prior iterations.
+
 # Discovery cards remain available
 
 Hero discovery links are never hidden by viewport width or height. Compact

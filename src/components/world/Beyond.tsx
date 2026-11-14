@@ -4,6 +4,7 @@ import { ArrowUpRight, ArrowUp } from "lucide-react";
 import { useLenis } from "lenis/react";
 import { ChapterLabel } from "./primitives";
 import { returnToDoor } from "./navigation";
+import "./beyond.css";
 export default function Beyond() {
   const lenis = useLenis();
   return (
@@ -33,7 +34,6 @@ export default function Beyond() {
           Start another journey <ArrowUp size={16} />
         </button>
       </div>
-
     </section>
   );
 }

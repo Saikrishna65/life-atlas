@@ -15,7 +15,8 @@ try {
     await archive.waitFor();
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(700);
-    assert.equal(await page.locator('.world-expeditions').count(), 0);
+    assert.equal(await page.locator('.world-expeditions, .featured-journey, [data-chapter="on-the-road"]').count(), 0);
+    assert.equal(await archive.evaluate(el => el.closest('.world-deferred').previousElementSibling.dataset.chapter), 'collected-moments');
     assert.equal(await page.getByText('Some roads stay', { exact: false }).count(), 0);
     assert.equal(await archive.locator('.trip-archive-entry').count(), 9);
     assert.equal(await archive.locator('.trip-archive-entry h3').count(), 9);
@@ -48,6 +49,16 @@ try {
     await page.evaluate(() => window.dispatchEvent(new CustomEvent('world-chapter-request', { detail: 'beyond' })));
     await page.locator('.world-beyond').waitFor({ state: 'attached' });
     assert.equal(await page.locator('.world-colophon, .public-footer').count(), 0);
+    const closing = await page.locator('.world-beyond').evaluate(el => ({
+      padding: getComputedStyle(el).paddingBottom,
+      minHeight: getComputedStyle(el).minHeight,
+      margin: getComputedStyle(el.querySelector('.beyond-words')).marginBottom,
+      gap: el.getBoundingClientRect().bottom - el.querySelector('.beyond-words').getBoundingClientRect().bottom,
+    }));
+    assert.equal(closing.padding, '0px');
+    assert.equal(closing.minHeight, '0px');
+    assert.equal(closing.margin, '0px');
+    assert.ok(Math.abs(closing.gap) < 2, `No blank space below closing content: ${closing.gap}`);
     assert.equal(await page.locator('.world-beyond a[href="#memories"]').count(), 1);
     assert.deepEqual(errors, []);
     console.log(`PASS ${width}px: trip links, archive layout, search/empty/reset, destination filter, sorting, pagination, removed sections/footer and no page errors`);
