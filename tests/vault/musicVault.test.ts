@@ -37,7 +37,6 @@ import {
   getStorageReport,
   exportPlaylistM3U,
   exportLibraryJSON,
-  purgeDefaultSampleTracks,
 } from "@/lib/music/storage";
 import { MusicTrack, MusicPlaylist } from "@/lib/music/types";
 import {
@@ -502,7 +501,7 @@ describe("Phase 16: Life Atlas Music Vault Engine", () => {
   // 8. SAMPLE PURGE & CLOUD DUAL PERSISTENCE
   // ---------------------------------------------------------------------------
   describe("8. Sample Purge & Cloud Dual Persistence Operations", () => {
-    test("permanently purges default nature and adventure sample tracks", async () => {
+    test("preserves sample-like tracks during reads", async () => {
       // 1. Manually insert the default sample tracks
       const sample1: MusicTrack = {
         id: "sample_01",
@@ -555,17 +554,11 @@ describe("Phase 16: Life Atlas Music Vault Engine", () => {
       await saveTrack(sample2);
       await saveTrack(userTrack);
 
-      // Verify that getAllTracks automatically purges and excludes sample songs
       const all = await getAllTracks();
-      assert.equal(all.length, 1);
-      assert.equal(all[0].id, "user_custom_01");
-      assert.equal(all[0].title, "Real Personal Track");
-
-      // Verify sample songs are deleted from the underlying database
-      const checkSample1 = await getTrack("sample_01");
-      assert.equal(checkSample1, null);
-      const checkSample2 = await getTrack("sample_02");
-      assert.equal(checkSample2, null);
+      assert.equal(all.length, 3);
+      assert.ok(all.some(track=>track.id==='user_custom_01'));
+      assert.deepEqual(await getTrack('sample_01'),sample1);
+      assert.deepEqual(await getTrack('sample_02'),sample2);
     });
 
     test("handles cloud audio URL dual persistence and local storage re-addition", async () => {
