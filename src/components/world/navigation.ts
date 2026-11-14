@@ -43,6 +43,34 @@ export async function navigateChapter(
   if (request !== latestNavigation || !target.isConnected) return;
   const reduce =
     immediate || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const settleLayout = () => {
+    const world = document.getElementById("living-world");
+    if (!world) return;
+    let frame = 0;
+    const stop = () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      clearTimeout(timeout);
+      for (const event of ["wheel", "touchstart", "pointerdown", "keydown"])
+        window.removeEventListener(event, stop, true);
+    };
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        if (request !== latestNavigation || !target.isConnected) { stop(); return; }
+        // Earlier deferred scenes can grow after a deep link has already landed.
+        // Only compensate for that layout shift, and yield on any user input.
+        if (Math.abs(target.getBoundingClientRect().top - offset) <= 5) return;
+        const top = window.scrollY + target.getBoundingClientRect().top - offset;
+        if (lenis) { lenis.resize(); lenis.scrollTo(top, { immediate: true, force: true }); }
+        else window.scrollTo({ top, behavior: "instant" });
+      });
+    });
+    const timeout = setTimeout(stop, 4000);
+    for (const event of ["wheel", "touchstart", "pointerdown", "keydown"])
+      window.addEventListener(event, stop, { capture: true, passive: true });
+    observer.observe(world);
+  };
   if (lenis) {
     lenis.start();
     lenis.resize();
@@ -54,6 +82,7 @@ export async function navigateChapter(
       duration: reduce ? 0 : 1.3,
       immediate: reduce,
       onComplete: () => {
+        settleLayout();
         // Let lazy replacements and animation measurements finish before
         // correcting alignment. Never measure a hidden loading boundary.
         requestAnimationFrame(() => requestAnimationFrame(() => {

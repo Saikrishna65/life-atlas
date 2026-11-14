@@ -11,7 +11,7 @@ const typography = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500"
 export const chapters = [
   ["observatory", "The Observatory"],
   ["collected-moments", "Life, collected"],
-  ["on-the-road", "The art of going"],
+  ["on-the-road", "Beyond the frame"],
   ["expeditions", "The Expeditions"],
   ["memories", "The Memory Archive"],
   ["beyond", "The Beyond"],

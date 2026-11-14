@@ -1,6 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import { Suspense, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import type { FeaturedJourney as FeaturedJourneyData } from "@/lib/public-trips/featured-journey";
 import type { ScrapbookFrame } from "@/lib/public-trips/scrapbook";
 import { useLenis } from "lenis/react";
 import { navigateChapter } from "./navigation";
@@ -9,7 +10,7 @@ import WorldMotion from "./WorldMotion";
 import SceneBoundary from "./SceneBoundary";
 import "./world.css";
 import "./observatory.css";
-const AtlasPassage = dynamic(() => import("./AtlasPassage"));
+const FeaturedJourney = dynamic(() => import("./FeaturedJourney"));
 const Observatory = dynamic(() => import("./Observatory"));
 const TravelScrapbook = dynamic(() => import("./TravelScrapbook"));
 const Expeditions = dynamic(() => import("./Expeditions"));
@@ -88,7 +89,7 @@ function Deferred({
     </div>
   );
 }
-export default function LivingWorld({ scrapbookMedia = [] }: { scrapbookMedia?: ScrapbookFrame[] }) {
+export default function LivingWorld({ scrapbookMedia = [], featuredJourney }: { scrapbookMedia?: ScrapbookFrame[]; featuredJourney: FeaturedJourneyData }) {
   const lenis = useLenis();
   useEffect(() => {
     const alignHash = () => {
@@ -147,9 +148,8 @@ export default function LivingWorld({ scrapbookMedia = [] }: { scrapbookMedia?: 
         ><TravelScrapbook media={scrapbookMedia} /></Deferred>
         <Deferred
           id="on-the-road"
-          title="The art of going"
-          component={AtlasPassage}
-        />
+          title="Beyond the frame"
+        ><FeaturedJourney journey={featuredJourney} /></Deferred>
         <Deferred
           id="expeditions"
           title="The Expeditions"

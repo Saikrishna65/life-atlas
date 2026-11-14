@@ -346,3 +346,39 @@ The strip uses a fixed 8px gap without space distribution. Short collections
 repeat enough times to fill the measured viewport; duplicate copies are inert.
 Both strip cards and scattered prints contain no visible text. Accessible names
 remain available and titles/details appear only in the opened viewer.
+
+# Beyond the frame — featured journey
+
+`FeaturedJourney` replaces the old AtlasPassage in the `on-the-road` chapter,
+immediately after the scrapbook. A separate deferred bundle contains the cover
+film, editorial introduction, sticky geographic route, scrolling location chapters
+and full-trip link. The native app, existing hero, globe and scrapbook are unchanged.
+
+The server selects the latest public web trip, its visited places and associated
+photographs. Existing `publishedRoute` parsing preserves GPS recording gaps. No
+line connects unrecorded places. When the public database is unavailable, the
+Himalayan journey uses existing sample data and clearly discloses illustrative
+media and synthetic route geometry. Missing metrics are omitted. Catalog films
+match the trip collection; stop films additionally match a place tag.
+
+GSAP opens the cover crop, moves photographic layers and scrubs route progress.
+A Leaflet SVG path uses its measured geographic path length for the route drawing;
+tile imagery and permanent place labels remain geographic. Tile failure leaves
+the route visible with an explicit status. Maps do not trap scrolling. Stop buttons
+and map markers navigate using the existing Lenis engine. Mobile and reduced-motion
+layouts place the map above a vertical chapter sequence; reduced motion shows the
+complete route without scrubbing. Native video playback is muted, intersection-
+and visibility-aware, and respects reduced motion and the film pause control.
+The shared modal supports image/film inspection, Escape and focus restoration.
+
+`featured-journey-browser.mjs` covers three viewports, cover playback, route progress,
+chapter navigation, viewer dismissal, trip linking, reduced motion and forced tile
+failure using local video fixtures. Screenshots are written under work/qa-featured-journey.
+
+Chapter navigation compensates for late height changes in earlier deferred scenes
+for at most four seconds after landing. A wheel, touch, pointer or keyboard event
+immediately cancels that compensation. This keeps direct links aligned while
+leaving manual exploration in control. The featured journey browser suite checks
+that its deep link remains at the navbar offset after preceding scenes load.
+Sample chapter marker positions follow the synthetic sample geometry; they are
+not verified trail waypoints.
