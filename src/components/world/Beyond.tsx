@@ -26,31 +26,14 @@ export default function Beyond() {
           <br />
           And a little of the road comes home with you.
         </p>
-        <a className="world-button light" href="#expeditions">
+        <a className="world-button light" href="#memories">
           Find your next beginning <ArrowUpRight size={17} />
         </a>
         <button className="world-link" onClick={() => returnToDoor(lenis)}>
           Start another journey <ArrowUp size={16} />
         </button>
       </div>
-      <footer className="world-colophon">
-        <div>
-          <strong>LIFE ATLAS</strong>
-          <span>A world worth remembering.</span>
-        </div>
-        <p>
-          Public demonstration. Imagined stories.
-          <br />
-          Made for the endlessly curious.
-        </p>
-        <div>
-          <a href="/about">About the atlas ↗</a>
-          <a href="/images/world/LICENSES.txt" target="_blank" rel="noreferrer">
-            Image credits ↗
-          </a>
-          <span>© 2026 LIFE ATLAS</span>
-        </div>
-      </footer>
+
     </section>
   );
 }

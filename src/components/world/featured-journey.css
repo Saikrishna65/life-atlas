@@ -19,7 +19,7 @@
 .featured-follow { display: flex; align-items: center; gap: 30px; border: 0; background: none; font-size: 12px !important; }
 .featured-follow > span { display: grid; place-items: center; border: 1px solid #ffffff70; border-radius: 50%; height: 50px; width: 50px; transition: background .3s; }
 .featured-follow:hover > span { background: #ffffff25; }
-.featured-introduction { display: grid; grid-template-columns: .7fr 1.2fr 1fr; align-items: start; gap: 40px; padding: 100px clamp(24px,4vw,80px) 110px; }
+.featured-introduction { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 40px; padding: 100px clamp(24px,4vw,80px) 110px; }
 .featured-journey .featured-introduction h3 { font: 400 clamp(38px,4.3vw,78px)/1.1 var(--font-sans),sans-serif; letter-spacing: -.055em; }
 .featured-introduction h3 em, .featured-outro h3 em { font-style: normal; color: #a9c1af; }
 .featured-introduction > div > p { font-size: 13px; line-height: 1.85; color: #c3cfc6; max-width: 340px; }

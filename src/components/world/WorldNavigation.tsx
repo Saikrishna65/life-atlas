@@ -12,8 +12,7 @@ export const chapters = [
   ["observatory", "The Observatory"],
   ["collected-moments", "Life, collected"],
   ["on-the-road", "Beyond the frame"],
-  ["expeditions", "The Expeditions"],
-  ["memories", "The Memory Archive"],
+  ["memories", "The Trip Archive"],
   ["beyond", "The Beyond"],
 ];
 export default function WorldNavigation() {

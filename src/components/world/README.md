@@ -382,3 +382,21 @@ leaving manual exploration in control. The featured journey browser suite checks
 that its deep link remains at the navbar offset after preceding scenes load.
 Sample chapter marker positions follow the synthetic sample geometry; they are
 not verified trail waypoints.
+
+# Trip archive conversion
+
+The homepage omits the old Expeditions scene. Its Memory Archive composition is
+now `TripArchive`: the same staggered salon, varied cover proportions, animated
+route motif and hover depth, with trip titles, routes, durations and real trip-page
+links replacing individual-memory viewers. Standalone photography and trips pages
+retain their existing components. Public database journeys are preferred; only an
+empty/unavailable public database uses clearly labelled sample expeditions.
+
+Search matches words across title, places and country. Destination filtering,
+original/latest/alphabetical/duration sorting, empty-state reset and incremental
+loading are local operations. Unknown dates and durations are not invented.
+Missing real cover images use typographic journal artwork. The `memories` anchor
+is retained for incoming links; the old homepage `expeditions` hash resolves to it.
+The featured-story intro heading is removed and its remaining details reflow into
+two columns. The closing-door scene remains, with its bottom colophon removed and
+its journey link pointing to the new archive. Private modules are untouched.

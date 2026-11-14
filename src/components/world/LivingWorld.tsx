@@ -2,6 +2,7 @@
 import dynamic from "next/dynamic";
 import { Suspense, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import type { FeaturedJourney as FeaturedJourneyData } from "@/lib/public-trips/featured-journey";
+import type { TripArchiveEntry } from "@/lib/public-trips/archive";
 import type { ScrapbookFrame } from "@/lib/public-trips/scrapbook";
 import { useLenis } from "lenis/react";
 import { navigateChapter } from "./navigation";
@@ -13,8 +14,7 @@ import "./observatory.css";
 const FeaturedJourney = dynamic(() => import("./FeaturedJourney"));
 const Observatory = dynamic(() => import("./Observatory"));
 const TravelScrapbook = dynamic(() => import("./TravelScrapbook"));
-const Expeditions = dynamic(() => import("./Expeditions"));
-const MemoryArchive = dynamic(() => import("./MemoryArchive"));
+const TripArchive = dynamic(() => import("./TripArchive"));
 const PublishedMedia = dynamic(() => import("./PublishedMedia"));
 const Beyond = dynamic(() => import("./Beyond"));
 function ChapterLoading({ id, title }: { id: string; title: string }) {
@@ -89,11 +89,11 @@ function Deferred({
     </div>
   );
 }
-export default function LivingWorld({ scrapbookMedia = [], featuredJourney }: { scrapbookMedia?: ScrapbookFrame[]; featuredJourney: FeaturedJourneyData }) {
+export default function LivingWorld({ scrapbookMedia = [], featuredJourney, trips }: { scrapbookMedia?: ScrapbookFrame[]; featuredJourney: FeaturedJourneyData; trips: TripArchiveEntry[] }) {
   const lenis = useLenis();
   useEffect(() => {
     const alignHash = () => {
-      const id = location.hash.slice(1);
+      const id = location.hash === "#expeditions" ? "memories" : location.hash.slice(1);
       if (id === "place-browser")
         window.dispatchEvent(new CustomEvent("world-chapter-request", { detail: "observatory" }));
       if (id === "place-browser" || chapters.some(([chapter]) => chapter === id))
@@ -150,16 +150,7 @@ export default function LivingWorld({ scrapbookMedia = [], featuredJourney }: { 
           id="on-the-road"
           title="Beyond the frame"
         ><FeaturedJourney journey={featuredJourney} /></Deferred>
-        <Deferred
-          id="expeditions"
-          title="The Expeditions"
-          component={Expeditions}
-        />
-        <Deferred
-          id="memories"
-          title="The Memory Archive"
-          component={MemoryArchive}
-        />
+        <Deferred id="memories" title="The Trip Archive"><TripArchive trips={trips} /></Deferred>
         <Suspense fallback={null}><PublishedMedia /></Suspense>
         <Deferred id="beyond" title="The Beyond" component={Beyond} />
       </WorldMotion>
