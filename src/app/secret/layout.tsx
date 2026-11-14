@@ -1,4 +1,5 @@
 import TripVaultFrame from "@/components/trip-vault/TripVaultFrame";
+import AtlasLauncher from "@/components/secret/AtlasLauncher";
 import DataEpochGate from "@/components/secret/DataEpochGate";
 import ControlRoomBridge from "@/components/control-room/ControlRoomBridge";
 import TripFinanceBridge from "@/components/finance/trips/TripFinanceBridge";
@@ -36,6 +37,7 @@ export default function SecretLayout({ children }: { children: ReactNode }) {
             <TripVaultFrame>{children}</TripVaultFrame>
           </div>
 
+          <AtlasLauncher />
           <MiniPlayer />
           <NowPlayingModal />
           <GlobalYouTubeShareHandler />
