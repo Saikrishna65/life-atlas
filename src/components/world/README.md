@@ -1,14 +1,23 @@
+# Discovery cards remain available
+
+Hero discovery links are never hidden by viewport width or height. Compact
+landscape layouts keep smaller cards on the right. Narrow phones reflow them
+into a three-tile row below the title. The hero can grow when all content cannot
+fit in one short viewport, keeping the controls and cards accessible without
+overlap. The responsive browser suite now requires a visible discovery rail at
+every viewport size.
+
 # Responsive film hero height
 
 The hero uses a content-aware grid with a 100dvh minimum (svh/vh fallbacks),
 reserving actual space for the title, discovery panels and footer. It no longer
 forces 650–660px on short screens or positions those blocks with fixed bottom
-offsets. Compact viewports omit discovery panels; short landscape layouts use
-text trip selectors. Safe-area insets are included in the padding. Longer titles
+offsets. Compact viewports resize or reflow discovery panels; short landscape
+layouts use text trip selectors. Safe-area insets are included in the padding. Longer titles
 can grow the scene rather than clipping controls. The video handoff and globe
 implementations are unchanged.
 
-`hero-height-browser.mjs` verifies 12 viewport sizes, dynamic viewport changes,
+`hero-height-browser.mjs` verifies 14 viewport sizes, dynamic viewport changes,
 navbar/title/footer separation, horizontal overflow and a longer title. It uses
 local video fixtures and does not claim physical-device validation.
 
