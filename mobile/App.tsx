@@ -13,6 +13,7 @@ const routes = [
   { pattern: new RegExp("^/secret/vault/([^/]+)/money/?$"), params: ["tripId"], Page: lazyPage(() => import("../src/app/secret/vault/[tripId]/money/page")) },
   { pattern: new RegExp("^/secret/vault/([^/]+)/checklist/?$"), params: ["tripId"], Page: lazyPage(() => import("../src/app/secret/vault/[tripId]/checklist/page")) },
 
+  { pattern: /^\/secret\/control-room\/experiments\/hey-atlas\/?$/, params: [], Page: lazyPage(() => import("../src/app/secret/control-room/experiments/hey-atlas/page")) },
   { pattern: /^\/secret\/control-room\/?$/, params: [], Page: lazyPage(() => import("../src/app/secret/control-room/page")) },
   { pattern: new RegExp("^/secret/music/downloads/?$"), params: [], Page: lazyPage(() => import("../src/app/secret/music/downloads/page")) },
   { pattern: new RegExp("^/secret/music/playlists/?$"), params: [], Page: lazyPage(() => import("../src/app/secret/music/playlists/page")) },
