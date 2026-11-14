@@ -13,7 +13,7 @@
 .td-cover-art { display:grid; place-items:center; height:100%; background:radial-gradient(ellipse at 65% 30%,#49664f,#16211d 70%); color:#b8d5a52a; }
 .td-cover-top { display:flex; justify-content:space-between; gap:20px; font-size:9px; letter-spacing:.06em; }
 .td-cover-top a { display:flex; align-items:center; gap:12px; color:#fff; }
-.td-cover-top > span { text-align:right; max-width:190px; }
+.td-cover-tools > span { text-align:right; max-width:190px; }
 .td-cover-copy { align-self:end; padding:45px 0 10px; }
 .td-cover-copy > span { margin-bottom:20px; }
 .trip-detail-v3 .td-cover h1 { color:#fff; font:500 clamp(78px,min(12vw,20svh),230px)/1.02 var(--font-atlas-display),sans-serif; text-transform:uppercase; letter-spacing:-.035em; max-width:1250px; text-wrap:balance; }
@@ -25,18 +25,10 @@
 .td-circle-link { display:flex; align-items:center; gap:24px; font-size:11px !important; border:0; padding:0; background:none; flex-shrink:0; }
 .td-circle-link > span { display:grid; place-items:center; border:1px solid #ffffff70; border-radius:50%; width:48px; height:48px; transition:background .3s; }
 .td-circle-link:hover > span { background:#ffffff25; }
-.td-chapters { position:sticky; z-index:800; top:95px; display:flex; align-items:center; justify-content:space-between; gap:24px; padding:12px clamp(22px,4vw,80px); background:#16211df5; border-block:1px solid #ffffff25; }
-.td-chapter-label { font-size:8px; letter-spacing:.15em; color:#a7bdad; }
-.td-chapters > div { display:flex; align-items:center; gap:30px; }
-.td-chapters button { display:flex; align-items:center; justify-content:center; gap:10px; min-height:44px; border:0; padding:5px 0; background:none; font-size:11px; white-space:nowrap; }
-.td-chapters button small { font-size:8px; color:#91a396; }
-.td-chapters button[aria-current] { color:#b8d5a5; }
-.td-chapters .td-motion { width:44px; border:1px solid #ffffff35; border-radius:50%; flex-shrink:0; }
-.td-reading-progress { position:absolute; bottom:-1px; left:0; width:100%; height:2px; background:#b8d5a5; transform-origin:left; transform:scaleX(0); }
 .td-prologue { display:grid; grid-template-columns:.65fr 1.35fr; gap:28px 8vw; padding:90px clamp(22px,4vw,80px) 80px; }
 .td-prologue > p { font-size:clamp(21px,2.3vw,38px); line-height:1.45; letter-spacing:-.035em; max-width:900px; }
 .td-prologue > small { grid-column:2; color:#a7bdad; font-size:10px; line-height:1.6; max-width:490px; }
-.td-section { padding:75px clamp(22px,4vw,80px) 90px; scroll-margin-top:165px; }
+.td-section { padding:75px clamp(22px,4vw,80px) 90px; scroll-margin-top:110px; }
 .td-section-heading { display:flex; align-items:end; justify-content:space-between; gap:28px; margin-bottom:50px; }
 .td-section-heading .td-eyebrow { margin-bottom:25px; }
 .trip-detail-v3 .td-section-heading h2 { font:500 clamp(52px,7vw,120px)/1.03 var(--font-atlas-display),sans-serif; text-transform:uppercase; letter-spacing:-.035em; }
@@ -44,7 +36,7 @@
 .td-section-note { font-size:8px; letter-spacing:.12em; line-height:1.7; max-width:200px; text-align:right; padding-bottom:10px; }
 .td-route { border-top:1px solid #ffffff20; }
 .td-map-layout { display:grid; grid-template-columns:minmax(0,1.9fr) minmax(240px,1fr); gap:clamp(25px,4vw,70px); align-items:start; }
-.td-map-stage { height:clamp(430px,47vw,680px); min-width:0; position:relative; border:1px solid #ffffff25; border-radius:4px; overflow:hidden; background:#1e3125; }
+.td-map-stage { isolation:isolate; z-index:0; height:clamp(430px,47vw,680px); min-width:0; position:relative; border:1px solid #ffffff25; border-radius:4px; overflow:hidden; background:#1e3125; }
 .td-map-loading { display:grid; place-content:center; justify-items:center; gap:22px; height:100%; min-height:250px; padding:35px; text-align:center; color:#b4c5b9; font-size:12px; }
 .trip-detail-v3 .geographic-route { height:100%; width:100%; position:relative; }
 .trip-detail-v3 .geographic-route .leaflet-container { background:#1e3125 repeating-radial-gradient(ellipse at 35% 40%,transparent 0 28px,#ffffff08 29px 30px); }
@@ -79,7 +71,7 @@
 .td-itinerary :is(button,select):focus-visible { outline-color:#315f57; }
 .td-itinerary .td-section-heading h2 em { color:#6f8875; }
 .td-day-layout { display:grid; grid-template-columns:minmax(220px,.8fr) minmax(0,1.7fr); gap:clamp(35px,7vw,130px); }
-.td-day-layout > aside { position:sticky; top:185px; align-self:start; }
+.td-day-layout > aside { position:sticky; top:110px; align-self:start; }
 .td-day-index { display:flex; gap:18px; align-items:center; margin-bottom:25px; }
 .td-day-index strong { font:500 80px/.9 var(--font-atlas-display),sans-serif; letter-spacing:-.05em; }
 .td-day-index > span { max-width:85px; font-size:8px; letter-spacing:.12em; line-height:1.8; color:#6f8875; }
@@ -161,16 +153,10 @@
   .td-cover { padding-top:115px; gap:25px; }
   .trip-detail-v3 .td-cover h1 { font-size:clamp(65px,15vw,115px); }
   .td-cover-top { font-size:8px; }
-  .td-cover-top > span { max-width:125px; line-height:1.7; }
+  .td-cover-tools > span { max-width:125px; line-height:1.7; }
   .td-cover-bottom { align-items:start; flex-direction:column; gap:22px; }
   .td-cover-bottom > div { font-size:9px; gap:10px; }
   .td-cover-copy { padding-top:55px; }
-  .td-chapters { top:90px; gap:10px; padding:8px 18px; }
-  .td-chapter-label { display:none; }
-  .td-chapters > div { justify-content:space-between; flex:1; gap:14px; min-width:0; }
-  .td-chapters button { font-size:9px; gap:5px; }
-  .td-chapters button small { display:none; }
-  .td-chapters .td-motion { width:34px; min-height:34px; }
   .td-prologue { grid-template-columns:1fr; padding-block:55px; gap:22px; }
   .td-prologue > small { grid-column:1; }
   .td-prologue > p { font-size:23px; }
@@ -220,7 +206,12 @@
   .td-ending-links { margin-top:40px; gap:15px; }
   .td-ending-links :is(a,button) { font-size:9px; }
 }
-@media(prefers-reduced-motion:reduce) { .td-day,.td-place-note { animation:none; } .td-circle-link > span { transition:none; } .td-reading-progress { transform:scaleX(1); } }
 
 /* Keep the approved white mark readable over the itinerary's paper surface. */
 body:has(.trip-detail-v3[data-light-nav="true"]) .public-header .reference-nav-brand { background:#16211dbb; border-radius:40px; }
+
+@media(prefers-reduced-motion:reduce) { .td-day,.td-place-note { animation:none; } .td-circle-link > span { transition:none; } }
+
+.td-cover-tools { display:flex; align-items:center; justify-content:flex-end; gap:18px; }
+.td-cover-tools .td-film-toggle { display:flex; align-items:center; justify-content:center; gap:8px; border:1px solid #ffffff50; border-radius:24px; padding:8px 13px; min-height:40px; background:#16211d70; color:#fff; font-size:10px; white-space:nowrap; }
+@media(max-width:800px) { .td-cover-tools { flex-direction:column; align-items:flex-end; gap:10px; } }

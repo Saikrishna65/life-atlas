@@ -18,7 +18,6 @@ import "@/components/world/world.css";
 import "./trip-detail.css";
 
 const RouteMap = dynamic(() => import("./GeographicRouteMap"), { ssr: false, loading: () => <div className="td-map-loading"><Compass size={44} strokeWidth={.7} /><span>Unfolding the route…</span></div> });
-const chapters = [["route", "The route"], ["itinerary", "The days"], ["photo-journal", "Frames & films"]];
 const dateLabel = (date: string) => new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(date));
 
 export default function TripDetailExperience({ trip }: { trip: TripDetailData }) {
@@ -27,7 +26,6 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
   const lenis = useLenis();
   const { catalog, error } = usePublicCatalog();
   const [mapReady, setMapReady] = useState(false);
-  const [activeSection, setActiveSection] = useState("route");
   const [stop, setStop] = useState(trip.stops[0]?.id);
   const [day, setDay] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -54,7 +52,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
   const go = (id: string) => {
     const target = root.current?.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
     if (!target) return;
-    const top = scrollY + target.getBoundingClientRect().top - 165;
+    const top = scrollY + target.getBoundingClientRect().top - 110;
     const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (lenis) lenis.scrollTo(top, { duration: 1.25, immediate: reduce });
     else window.scrollTo({ top, behavior: reduce ? "instant" : "smooth" });
@@ -65,7 +63,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const target = root.current?.querySelector<HTMLElement>(".td-day");
       if (!target) return;
-      const top = scrollY + target.getBoundingClientRect().top - 180;
+      const top = scrollY + target.getBoundingClientRect().top - 120;
       const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
       if (lenis) lenis.scrollTo(top, { duration: .85, immediate: reduce });
       else window.scrollTo({ top, behavior: reduce ? "instant" : "smooth" });
@@ -78,19 +76,16 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    let observer: IntersectionObserver;
     let contrast: IntersectionObserver;
     const connect = () => {
-      observer?.disconnect(); contrast?.disconnect();
-      observer = new IntersectionObserver(entries => entries.forEach(entry => { if (entry.isIntersecting) setActiveSection(entry.target.id); }), { rootMargin: `-140px 0px -${Math.round(innerHeight * .4)}px 0px` });
-      chapters.forEach(([id]) => { const node = root.current?.querySelector(`#${id}`); if (node) observer.observe(node); });
+      contrast?.disconnect();
       contrast = new IntersectionObserver(([entry]) => { if (root.current) root.current.dataset.lightNav = String(entry.isIntersecting); }, { rootMargin: `-20px 0px -${Math.max(0, innerHeight - 90)}px 0px` });
       const paper = root.current?.querySelector(".td-itinerary");
       if (paper) contrast.observe(paper);
     };
     connect();
     window.addEventListener("resize", connect);
-    return () => { observer.disconnect(); contrast.disconnect(); window.removeEventListener("resize", connect); };
+    return () => { contrast.disconnect(); window.removeEventListener("resize", connect); };
   }, []);
   useEffect(() => {
     if (!selected) return;
@@ -113,7 +108,6 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
         gsap.fromTo(".td-title-line > span", { yPercent: 105, rotate: 3 }, { yPercent: 0, rotate: 0, stagger: .09, duration: 1.1, ease: "power4.out" });
         gsap.to(".td-cover-media", { yPercent: 18, scale: 1.12, ease: "none", scrollTrigger: { trigger: ".td-cover", start: "top top", end: "bottom top", scrub: 1 } });
         gsap.to(".td-cover-copy", { y: -65, ease: "none", scrollTrigger: { trigger: ".td-cover", start: "top top", end: "bottom top", scrub: 1 } });
-        gsap.fromTo(".td-reading-progress", { scaleX: 0 }, { scaleX: 1, ease: "none", scrollTrigger: { trigger: root.current, start: "top top", end: "bottom bottom", scrub: .3 } });
         gsap.fromTo(".td-next-image", { clipPath: "inset(18% 12% round 20px)" }, { clipPath: "inset(0% 0% round 0px)", ease: "none", scrollTrigger: { trigger: ".td-ending", start: "top 90%", end: "center 70%", scrub: 1 } });
       }, root);
       return () => context.revert();
@@ -125,11 +119,10 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
     <WorldMotion>
       <header className="td-cover" data-hero aria-label="Trip hero">
         <div className="td-cover-media">{coverFilm ? <DetailFilm src={coverFilm} poster={trip.cover} paused={paused || !!current} label="Trip cover film" /> : trip.cover ? <Image src={trip.cover} alt="" fill sizes="100vw" priority unoptimized={!trip.sample} /> : <div className="td-cover-art"><Compass size={360} strokeWidth={.15} /></div>}</div><div className="td-cover-shade" />
-        <div className="td-cover-top"><Link href="/#memories"><ArrowLeft size={14} /> Back to my journeys</Link><span>{trip.sample ? "ILLUSTRATIVE TRAVEL JOURNAL" : trip.date ? dateLabel(trip.date) : "MY TRAVEL JOURNAL"}</span></div>
+        <div className="td-cover-top"><Link href="/#memories"><ArrowLeft size={14} /> Back to my journeys</Link><div className="td-cover-tools"><span>{trip.sample ? "ILLUSTRATIVE TRAVEL JOURNAL" : trip.date ? dateLabel(trip.date) : "MY TRAVEL JOURNAL"}</span>{coverFilm && <button className="td-film-toggle" onClick={() => setPaused(value => !value)} aria-pressed={paused} aria-label={paused ? "Resume trip films" : "Pause trip films"}>{paused ? <Play size={14} /> : <Pause size={14} />}{paused ? "Resume films" : "Pause films"}</button>}</div></div>
         <div className="td-cover-copy"><span className="td-eyebrow">{trip.region}</span><h1>{trip.title.split(/\s+/).map((word, index) => <span className="td-title-line" key={index}><span>{word} </span></span>)}</h1></div>
         <div className="td-cover-bottom"><div><span>{trip.duration}</span><i /><span>{trip.stops.length} {trip.sample ? "sample stops" : "published stops"}</span><i /><span>{media.length} frames & films</span></div><button onClick={() => go("route")} className="td-circle-link">Follow the journey <span><ArrowDown size={20} /></span></button></div>
       </header>
-      <nav className="td-chapters" aria-label="Inside this journey"><span className="td-chapter-label">THE JOURNAL</span><div>{chapters.map(([id, label], index) => <button key={id} aria-label={label} aria-current={activeSection === id ? "location" : undefined} onClick={() => go(id)}><small>0{index + 1}</small>{label}</button>)}</div>{coverFilm && <button className="td-motion" onClick={() => setPaused(value => !value)} aria-pressed={paused} aria-label={paused ? "Resume trip films" : "Pause trip films"}>{paused ? <Play size={14} /> : <Pause size={14} />}</button>}<span className="td-reading-progress" aria-hidden="true" /></nav>
       <section className="td-prologue"><span className="td-eyebrow">A CHAPTER FROM MY ATLAS</span><p data-world-reveal>{trip.overview}</p>{trip.sample && <small>Sample itinerary, illustrative photography and films. The route is synthetic, not recorded personal travel.</small>}</section>
       <section className="td-route td-section" id="route">
         <header className="td-section-heading" data-world-reveal><div><span className="td-eyebrow">01 / THE WAY THERE</span><KineticHeading lines={["Every bend.", <em key="line">Part of the story.</em>]} /></div><span className="td-section-note">{trip.sample ? "A GEOGRAPHIC ROUTE STUDY" : trip.paths.length ? "FROM THE PUBLISHED GPS RECORDING" : "THE PUBLISHED PLACES"}</span></header>

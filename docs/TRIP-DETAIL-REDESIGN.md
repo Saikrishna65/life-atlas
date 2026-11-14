@@ -10,15 +10,16 @@ journal has its own next-trip ending.
 ## Composition and interaction
 
 - A full-viewport film/photo cover with masked type entrance and scroll parallax.
-- Sticky chapter navigation and a reading-progress line using the existing Lenis
-  engine and GSAP/ScrollTrigger, without a separate scrolling system.
+- A natural vertical reading flow with one site navigation. The cover retains
+  its film pause control and Follow the journey action. Existing Lenis and GSAP
+  coordinate motion without a second sticky journal bar or scroll engine.
 - A geographic route explorer with fit/street/terrain controls, selectable stops,
   location notes and available recorded metrics. Its Leaflet bundle loads near
   the map; the map height is reserved before loading. Failed tiles leave the
   path and controls available. No WebGL is required for the map.
 - A paper-toned itinerary with large day numbers, desktop day navigation, a
   mobile day selector, detailed sample schedules and previous/next controls.
-  Changing a day moves its beginning below the sticky chapter bar. Public day
+  Changing a day moves its beginning below the main site navigation. Public day
   descriptions are retained without inventing timed activities.
 - An asymmetric photo/film journal with place, media-type and category filters,
   empty/reset states and incremental loading. Image titles and location metadata
@@ -70,3 +71,7 @@ logo gains its existing charcoal surface only while over the light itinerary.
 
 Browser screenshots are written under `work/qa-trip-detail-v3`. Testing uses local
 sample films; it does not constitute physical Android or authenticated R2 testing.
+
+Leaflet controls are isolated within the map stacking context, so they cannot
+overlap the main site navigation. The trip browser suite checks actual pointer
+hit-testing where the map passes beneath the navbar, as well as bar removal.
