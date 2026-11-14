@@ -41,6 +41,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AtlasPermissionsPlugin.class);
         registerPlugin(KotakNotificationTrackerPlugin.class);
         registerPlugin(ExpeditionTrackingPlugin.class);
+        registerPlugin(com.lifeatlas.app.wakeword.AtlasWakeWordPlugin.class);
         super.onCreate(savedInstanceState);
         handleSendIntent(getIntent());
 
