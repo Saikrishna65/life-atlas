@@ -1,13 +1,8 @@
 import { expeditions } from "@/data/demo/expeditions";
-import JourneyStory, { JourneyFrame } from "@/components/world/JourneyStory";
+import TripDetailExperience from "@/components/trips/TripDetailExperience";
+import { demoTripDetail, publicTripDetail } from "@/lib/public-trips/detail";
 import { notFound } from "next/navigation";
 import { getTripBySlug, getNextTrip } from "@/lib/queries/trips";
-import TripOverview from "@/components/trips/TripOverview";
-import PublicTripRouteMap from "@/components/trips/PublicTripRouteMap";
-import TripDays from "@/components/trips/TripDays";
-import TripExperiences from "@/components/trips/TripExperiences";
-import TripGallery from "@/components/trips/TripGallery";
-import NextJourney from "@/components/trips/NextJourney";
 import { Metadata } from "next";
 
 export async function generateStaticParams() {
@@ -48,43 +43,8 @@ export default async function TripDetailPage({
   const { slug } = await params;
   const trip = await getTripBySlug(slug).catch(() => null);
   const demo = expeditions.find((e) => e.slug === slug);
-  if (!trip && demo) return <JourneyStory expedition={demo} />;
-
-  if (!trip) {
-    notFound();
-  }
-
-  const nextTrip = await getNextTrip(trip.startDate, trip.id);
-
-  return (
-    <JourneyFrame
-      title={trip.title}
-      image={trip.coverImage || "/images/world/mountains.webp"}
-      intro={trip.description || `A journey through ${trip.destination}.`}
-    >
-      <TripOverview trip={trip} photoCount={trip.photos.length} />
-
-      {/* Interactive Expedition Route Map */}
-      <PublicTripRouteMap
-        tripTitle={trip.title}
-        destination={trip.destination}
-        totalDistanceKm={trip.totalDistanceKm}
-        elevationGainMeters={trip.elevationGainMeters}
-        maxElevationMeters={trip.maxElevationMeters}
-        routeData={trip.routeData}
-        tripPlaces={trip.tripPlaces}
-      />
-
-      <TripDays days={trip.tripDays} />
-
-      <TripExperiences experiences={trip.experiences} />
-
-      <TripGallery
-        collection={{ slug: trip.slug, title: trip.title }}
-        photos={trip.photos}
-      />
-
-      {nextTrip && <NextJourney trip={nextTrip} />}
-    </JourneyFrame>
-  );
+  if (!trip && demo) return <TripDetailExperience key={demo.id} trip={demoTripDetail(demo)} />;
+  if (!trip) notFound();
+  const next = await getNextTrip(trip.startDate, trip.id).catch(() => null);
+  return <TripDetailExperience key={trip.id} trip={publicTripDetail(trip, next)} />;
 }

@@ -8,6 +8,7 @@ export default function Footer() {
   if (pathname?.startsWith("/admin")) return <AdminFooter />;
   if (
     pathname === "/" ||
+    (pathname?.startsWith("/trips/") ?? false) ||
     pathname?.startsWith("/secret") ||
     pathname?.startsWith("/admin")
   )
