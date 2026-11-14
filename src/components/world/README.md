@@ -1,3 +1,20 @@
+# Full-width globe atmosphere and selection
+
+The legacy public header is replaced by the approved split-pill navigation on
+public routes, including /map. The globe renderer spans the viewport width on
+desktop and mobile. A deterministic, non-interactive SVG star field extends the
+existing Three.js atmosphere behind the entire section without another renderer
+or animation loop. Mobile reduces the visible background star count.
+
+The selected place's native globe pillar uses a shared warm highlight material
+and a larger scale; the previous pillar returns to its normal appearance. The
+initial featured destination is highlighted too. Both materials are disposed
+with the existing renderer lifecycle, and the pillar reference map is cleared.
+Browser checks inspected real Three.js mesh colors and scales before and after
+selection, renderer widths at 1920px/390px, background coverage, public navigation,
+and overflow. Build, TypeScript and changed-file lint passed. No physical device
+testing or FPS claims are made.
+
 # Approved navigation continuity
 
 The homepage chapter navigation retains the hero’s split rounded pill groups,

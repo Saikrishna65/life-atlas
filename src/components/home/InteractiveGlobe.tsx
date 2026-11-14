@@ -33,6 +33,8 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
   const [isGlobeReady, setIsGlobeReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const generationRef = useRef(0);
+  const selectedRef = useRef(selectedPlaceId);
+  const pillars = useRef(new Map<string, { mesh: import("three").Mesh; height: number; normal: import("three").Material; active: import("three").Material }>());
   const selectRef = useRef(onSelect);
   useEffect(() => { selectRef.current = onSelect; }, [onSelect]);
 
@@ -259,6 +261,8 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
           circleTexture.dispose();
           sphereMaterial.dispose();
           pillarMaterial.dispose();
+          selectedPillarMaterial.dispose();
+          pillars.current.clear();
           baseGeometry.dispose();
           if (originalCleanup) originalCleanup();
         };
@@ -268,6 +272,7 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
 
         // Custom Floating 3D Destination Location Pillars (Visual Only — no click/hover listeners)
         const pillarMaterial = new THREE.MeshBasicMaterial({ color: colors.accent });
+        const selectedPillarMaterial = new THREE.MeshBasicMaterial({ color: "#ffe2a0" });
         const baseGeometry = new THREE.CylinderGeometry(0.6, 0.6, 1, 4);
 
         globe.customLayerData(validPlaces)
@@ -277,7 +282,10 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
             const physicalHeight = hRatio * 100;
             
             const mesh = new THREE.Mesh(baseGeometry, pillarMaterial);
-            mesh.scale.set(1, physicalHeight, 1);
+            const active = d.id === selectedRef.current;
+            mesh.material = active ? selectedPillarMaterial : pillarMaterial;
+            mesh.scale.set(active ? 2 : 1, physicalHeight * (active ? 1.6 : 1), active ? 2 : 1);
+            pillars.current.set(d.id, { mesh, height: physicalHeight, normal: pillarMaterial, active: selectedPillarMaterial });
             
             const coords = globe.getCoords(d.latitude, d.longitude, 0.08 + (hRatio / 2));
             mesh.position.set(coords.x, coords.y, coords.z);
@@ -375,6 +383,12 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
   }, [initGlobe]);
 
   useEffect(() => {
+    selectedRef.current = selectedPlaceId;
+    pillars.current.forEach((pillar, id) => {
+      const active = id === selectedPlaceId;
+      pillar.mesh.material = active ? pillar.active : pillar.normal;
+      pillar.mesh.scale.set(active ? 2 : 1, pillar.height * (active ? 1.6 : 1), active ? 2 : 1);
+    });
     const place = validPlaces.find(p => p.id === selectedPlaceId);
     if (!place || !globeInstanceRef.current) return;
     const globe = globeInstanceRef.current as { pointOfView: (p: object, ms: number) => void; controls: () => { autoRotate: boolean } };

@@ -26,7 +26,7 @@ const countries = new Set(destinations.map(place => place.country)).size;
 
 export default function Observatory() {
   const [selected, setSelected] = useState(destinations[0].id);
-  const [focused, setFocused] = useState<string | undefined>();
+  const [focused, setFocused] = useState<string | undefined>(destinations[0].id);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All places");
   const [page, setPage] = useState(0);
@@ -78,6 +78,12 @@ export default function Observatory() {
     <section id="observatory" ref={root}
       className={`${typography.variable} world-observatory world-scene observatory-v2`}
       aria-labelledby="observatory-title">
+      <svg className="observatory-stars" viewBox="0 0 1600 1000" preserveAspectRatio="none" aria-hidden="true">
+        {Array.from({ length: 200 }, (_, index) => (
+          <circle key={index} cx={(index * 977 + 53) % 1600} cy={(index * 613 + 97) % 1000}
+            r={index % 9 === 0 ? 1.6 : .65} fill="white" opacity={.12 + (index % 5) * .065} />
+        ))}
+      </svg>
       <div className="observatory-topline">
         <ChapterLabel number="02">Explore the world</ChapterLabel>
         <span className="observatory-atlas-note">A sample atlas / {destinations.length} places / {countries} countries</span>
