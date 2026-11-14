@@ -307,15 +307,36 @@ The supplied reference recording informed its oversized centered typography, loo
 photographic composition and scroll depth. No reference-site assets were copied.
 Existing local landscape assets and silent sample films are used with an explicit
 illustrative label; their existing license/source records remain applicable.
-Explicitly published catalog images and videos with thumbnails replace the sample
+Explicitly published catalog trip images and videos replace the sample
 frames when a public catalog is configured. No private media is queried.
 
-Eight prints remain semantic buttons in normal document flow, with no scroll pin
+Up to eight prints remain semantic buttons in a responsive composition, with no scroll pin
 or additional scroll engine. GSAP scrubs independent vertical layers and draws the
 route; scoped matchMedia contexts revert on unmount or reduced-motion changes.
 Reduced motion retains every image and control without scroll animation. Mobile
 uses a taller, rearranged composition rather than shrinking the desktop layout.
-Films load only in the user-opened viewer and never autoplay. The shared dialog
+Muted films load and loop only while visible; visibility, page focus, the pause control and reduced-motion preferences govern playback. The shared dialog
 provides focus containment, Escape dismissal and focus restoration; arrow keys
 browse the moments. The browser suite covers desktop, mobile, reduced motion,
 image loading and viewer interactions using local hero-video fixtures.
+
+
+## Personal voice, trip selection and infinite strips
+
+The scrapbook speaks in first person (I / me). A fresh seeded shuffle is chosen
+once after hydration and remains stable while browsing. The selection utility
+first takes one available photo and film per trip, then additional media until
+there are eight choices. Both infinitely looping strips retain the full selection
+when more than eight moments are needed to represent every trip. Duplicate strip
+copies are inert and hidden from assistive technology. Hover, focus and the
+explicit pause control stop the strips; reduced motion makes them manually
+scrollable. Non-visible strips stop animating.
+
+The server supplies existing public web trip photographs, up to eight candidates
+per trip. Public catalog expedition items add photos and films, matched by trip
+slug/title. Trips without a film contribute photographs only; no footage is
+invented or presented as personal media. When any real media exists, illustrative
+samples never pad it. Catalog movies without thumbnails can now appear as native
+video previews. Only intersecting movies are loaded and decoded, muted and inline;
+autoplay failure retains a poster and the clickable viewer. Off-screen, hidden-tab,
+paused and reduced-motion movies stop. Opening the viewer pauses background films.

@@ -1,6 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
-import { Suspense, useEffect, useRef, useState, type ComponentType } from "react";
+import { Suspense, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import type { ScrapbookFrame } from "@/lib/public-trips/scrapbook";
 import { useLenis } from "lenis/react";
 import { navigateChapter } from "./navigation";
 import WorldNavigation, { chapters } from "./WorldNavigation";
@@ -28,10 +29,12 @@ function Deferred({
   id,
   title,
   component: Component,
+  children,
 }: {
   id: string;
   title: string;
-  component: ComponentType;
+  component?: ComponentType;
+  children?: ReactNode;
 }) {
   const [ready, setReady] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -76,7 +79,7 @@ function Deferred({
       {ready ? (
         <SceneBoundary id={id} title={title}>
           <Suspense fallback={<ChapterLoading id={id} title={title} />}>
-            <Component />
+            {children ?? (Component ? <Component /> : null)}
           </Suspense>
         </SceneBoundary>
       ) : (
@@ -85,7 +88,7 @@ function Deferred({
     </div>
   );
 }
-export default function LivingWorld() {
+export default function LivingWorld({ scrapbookMedia = [] }: { scrapbookMedia?: ScrapbookFrame[] }) {
   const lenis = useLenis();
   useEffect(() => {
     const alignHash = () => {
@@ -141,8 +144,7 @@ export default function LivingWorld() {
         <Deferred
           id="collected-moments"
           title="Life, collected"
-          component={TravelScrapbook}
-        />
+        ><TravelScrapbook media={scrapbookMedia} /></Deferred>
         <Deferred
           id="on-the-road"
           title="The art of going"

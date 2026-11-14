@@ -38,7 +38,7 @@ export default function WorldNavigation() {
       const height = window.innerHeight;
       visibility = new IntersectionObserver(
         ([entry]) => setVisible(entry.isIntersecting),
-        { threshold: 0, rootMargin: `0px 0px -${height - 100}px 0px` },
+        { threshold: 0, rootMargin: `0px 0px ${100 - height}px 0px` },
       );
       visibility.observe(root);
       observer = new IntersectionObserver(
