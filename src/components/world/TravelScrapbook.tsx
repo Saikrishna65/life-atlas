@@ -39,6 +39,7 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
   const [selected, setSelected] = useState<number | null>(null);
   const [seed, setSeed] = useState(17);
   const [paused, setPaused] = useState(false);
+  const [stripRepeats, setStripRepeats] = useState(1);
   useEffect(() => {
     // A visit gets a fresh mix after hydration, without random render-time output.
     let alive = true;
@@ -52,6 +53,19 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
   const frames = moments.slice(0, 8);
   const current = selected === null ? null : moments[selected];
   const next = (direction: number) => setSelected(index => index === null ? null : (index + direction + moments.length) % moments.length);
+
+  useEffect(() => {
+    const strip = root.current!.querySelector<HTMLElement>(".scrapbook-strip")!;
+    // Repeat short collections to fill the viewport without distributing empty space.
+    const resize = new ResizeObserver(() => {
+      const card = strip.querySelector<HTMLElement>(".scrapbook-strip-item");
+      if (!card) return;
+      const stride = card.offsetWidth + 8;
+      setStripRepeats(Math.max(1, Math.ceil((strip.clientWidth + stride) / (stride * Math.max(1, moments.length)))));
+    });
+    resize.observe(strip);
+    return () => resize.disconnect();
+  }, [moments.length]);
 
   useEffect(() => {
     const strips = root.current!.querySelectorAll<HTMLElement>(".scrapbook-strip");
@@ -107,20 +121,15 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
     <section className="travel-scrapbook" id="collected-moments" ref={root} aria-labelledby="scrapbook-heading" data-paused={paused || selected !== null}>
       <div className="scrapbook-topline"><span>MY LIFE, COLLECTED.</span><button className="scrapbook-motion-toggle" onClick={() => setPaused(value => !value)} aria-pressed={paused}>{paused ? <Play size={12} /> : <Pause size={12} />}{paused ? "Resume films & strip" : "Pause films & strip"}</button></div>
       <div className="scrapbook-strips" aria-label="A moving collection from my trips">
-        {[0, 1].map(row => {
-          const picks = moments.filter((_, index) => index % 2 === row);
-          const strip = picks.length ? picks : moments;
-          return <div className={`scrapbook-strip scrapbook-strip-${row}`} key={row}>
-            <div className="scrapbook-strip-track">
-              {[0, 1].map(copy => <div className="scrapbook-strip-group" key={copy} aria-hidden={copy === 1 ? true : undefined} inert={copy === 1 ? true : undefined}>
-                {strip.map(frame => <button className="scrapbook-strip-item" key={frame.id} onClick={() => setSelected(moments.findIndex(item => item.id === frame.id))} tabIndex={copy === 1 ? -1 : undefined} aria-label={`Open ${frame.kind}: ${frame.title} · ${frame.tripTitle}`}>
-                  {frame.kind === "film" ? <AutoFilm frame={frame} paused={paused || selected !== null} /> : <Image src={frame.preview} alt={frame.title} fill sizes="(max-width: 700px) 160px, 260px" unoptimized={!frame.sample} loading="lazy" />}
-                  <span>{frame.sample ? "SAMPLE JOURNEY · " : ""}{frame.tripTitle}{frame.kind === "film" && <Play size={12} />}</span>
-                </button>)}
-              </div>)}
-            </div>
-          </div>;
-        })}
+        <div className="scrapbook-strip">
+          <div className="scrapbook-strip-track">
+            {[0, 1].map(copy => <div className="scrapbook-strip-group" key={copy} aria-hidden={copy === 1 ? true : undefined} inert={copy === 1 ? true : undefined}>
+              {Array.from({ length: stripRepeats }, (_, repeat) => moments.map((frame, index) => <button className="scrapbook-strip-item" key={`${repeat}-${frame.id}`} onClick={() => setSelected(index)} tabIndex={copy || repeat ? -1 : undefined} aria-hidden={repeat ? true : undefined} inert={repeat ? true : undefined} aria-label={`Open ${frame.kind}: ${frame.title} · ${frame.tripTitle}`}>
+                {frame.kind === "film" ? <AutoFilm frame={frame} paused={paused || selected !== null} /> : <Image src={frame.preview} alt={frame.title} fill sizes="(max-width: 700px) 160px, 260px" unoptimized={!frame.sample} loading="lazy" />}
+              </button>))}
+            </div>)}
+          </div>
+        </div>
       </div>
       <div className="scrapbook-stage">
         <svg className="scrapbook-route" viewBox="0 0 1400 1500" fill="none" preserveAspectRatio="none" aria-hidden="true"><path d="M-80 100C160 20 340 140 310 340S50 720 340 800 1160 350 1270 650 700 1020 910 1220 1390 1220 1480 1470" /></svg>
@@ -134,7 +143,6 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
           {frames.map((frame, index) => <div className={`scrapbook-drift scrapbook-position-${index + 1}`} key={index} data-trip={frame.tripId} data-media-id={frame.id}>
             <button className={`scrapbook-print ${frame.kind === "film" ? "scrapbook-film" : ""}`} onClick={() => setSelected(index)} aria-label={`Open ${frame.kind}: ${frame.title}`}>
               <div className="scrapbook-image">{frame.kind === "film" ? <AutoFilm frame={frame} paused={paused || selected !== null} /> : <Image src={frame.preview} alt={frame.title} fill sizes="(max-width: 700px) 45vw, 28vw" unoptimized={!frame.sample} loading="lazy" />}</div>
-              <span className="scrapbook-print-index" aria-hidden="true">L/A — {String(index + 1).padStart(2, "0")} <span>{frame.kind === "film" ? "IN MOTION" : "A STILL MOMENT"}</span></span>
             </button>
           </div>)}
         </div>

@@ -326,7 +326,7 @@ image loading and viewer interactions using local hero-video fixtures.
 The scrapbook speaks in first person (I / me). A fresh seeded shuffle is chosen
 once after hydration and remains stable while browsing. The selection utility
 first takes one available photo and film per trip, then additional media until
-there are eight choices. Both infinitely looping strips retain the full selection
+there are eight choices. The single infinitely looping strip retains the full selection
 when more than eight moments are needed to represent every trip. Duplicate strip
 copies are inert and hidden from assistive technology. Hover, focus and the
 explicit pause control stop the strips; reduced motion makes them manually
@@ -340,3 +340,9 @@ samples never pad it. Catalog movies without thumbnails can now appear as native
 video previews. Only intersecting movies are loaded and decoded, muted and inline;
 autoplay failure retains a poster and the clickable viewer. Off-screen, hidden-tab,
 paused and reduced-motion movies stop. Opening the viewer pauses background films.
+
+
+The strip uses a fixed 8px gap without space distribution. Short collections
+repeat enough times to fill the measured viewport; duplicate copies are inert.
+Both strip cards and scattered prints contain no visible text. Accessible names
+remain available and titles/details appear only in the opened viewer.

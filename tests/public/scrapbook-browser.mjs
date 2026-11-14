@@ -29,8 +29,14 @@ try {
     assert.equal(order, 'observatory');
     assert.match(await section.locator('h2').innerText(), /I GO PLACES/);
     assert.doesNotMatch(await section.locator('h2').innerText(), /WE|WITH US/);
-    assert.equal(await section.locator('.scrapbook-strip').count(), 2);
-    assert.equal(await section.locator('.scrapbook-strip-group[aria-hidden="true"][inert]').count(), 2);
+    assert.equal(await section.locator('.scrapbook-strip').count(), 1);
+    assert.equal(await section.locator('.scrapbook-strip-group[aria-hidden="true"][inert]').count(), 1);
+    assert.equal((await section.locator('.scrapbook-strip-item, .scrapbook-print').allInnerTexts()).join('').trim(), '');
+    const gap = await section.locator('.scrapbook-strip-group').first().evaluate(group => {
+      const cards = group.querySelectorAll('.scrapbook-strip-item');
+      return cards[1].getBoundingClientRect().left - cards[0].getBoundingClientRect().right;
+    });
+    assert.ok(Math.abs(gap - 8) < 1, `Strip gap should be 8px, got ${gap}`);
     const strip = section.locator('.scrapbook-strip').first();
     await strip.scrollIntoViewIfNeeded();
     await page.waitForTimeout(400);

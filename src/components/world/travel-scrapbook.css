@@ -7,11 +7,9 @@
 .scrapbook-strips { margin: 32px calc(-1 * clamp(20px, 4vw, 80px)) 0; display: grid; gap: 12px; overflow: hidden; }
 .scrapbook-strip { overflow: hidden; --strip-visibility: paused; }
 .scrapbook-strip-track { display: flex; width: max-content; animation: scrapbook-travel 65s linear infinite; animation-play-state: var(--strip-visibility); }
-.scrapbook-strip-1 .scrapbook-strip-track { animation-direction: reverse; animation-duration: 80s; }
-.scrapbook-strip-group { display: flex; flex-shrink: 0; justify-content: space-around; gap: 12px; padding-right: 12px; min-width: 100vw; }
+.scrapbook-strip-group { display: flex; flex-shrink: 0; gap: 8px; padding-right: 8px; }
 .scrapbook-strip-item { flex: 0 0 260px; width: 260px; height: 155px; position: relative; overflow: hidden; border-radius: 6px; color: white; background: #24382c; }
 .scrapbook-strip-item :is(img, video) { width: 100%; height: 100%; object-fit: cover; }
-.scrapbook-strip-item > span { position: absolute; inset: auto 0 0; padding: 26px 12px 10px; background: linear-gradient(transparent, #0009); display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 10px; }
 .scrapbook-strip-item:focus-visible { outline: 2px solid white; outline-offset: -4px; }
 .travel-scrapbook[data-paused="true"] .scrapbook-strip-track, .scrapbook-strip:hover .scrapbook-strip-track, .scrapbook-strip:focus-within .scrapbook-strip-track { animation-play-state: paused; }
 .scrapbook-auto-film { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -30,13 +28,12 @@
 .scrapbook-route { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .scrapbook-route path { stroke: #aec1b2; stroke-width: .7; opacity: .23; }
 .scrapbook-drift { position: absolute; z-index: 2; width: 16%; }
-.scrapbook-print { display: block; width: 100%; border: 0; padding: 7px 7px 0; background: #f6f7f5; color: #253a2d; box-shadow: 0 18px 42px #0003; cursor: pointer; transition: transform .5s cubic-bezier(.2,.7,.2,1), box-shadow .5s; transform: rotate(var(--angle, 0deg)); }
+.scrapbook-print { display: block; width: 100%; border: 0; padding: 7px; background: #f6f7f5; color: #253a2d; box-shadow: 0 18px 42px #0003; cursor: pointer; transition: transform .5s cubic-bezier(.2,.7,.2,1), box-shadow .5s; transform: rotate(var(--angle, 0deg)); }
 .scrapbook-image { position: relative; width: 100%; aspect-ratio: 1.25; overflow: hidden; background: #253a2d; }
 .scrapbook-image img { object-fit: cover; transition: transform .7s; }
 .scrapbook-print:hover, .scrapbook-print:focus-visible { transform: rotate(0deg) scale(1.045); box-shadow: 0 24px 55px #0006; }
 .scrapbook-print:hover img { transform: scale(1.05); }
 .scrapbook-print:focus-visible, .scrapbook-link:focus-visible { outline: 2px solid white; outline-offset: 7px; }
-.scrapbook-print-index { min-height: 25px; display: flex; justify-content: space-between; align-items: center; gap: 5px; font-size: 6px; letter-spacing: .1em; }
 .scrapbook-position-1 { top: 9%; left: -1%; width: 17%; --angle: -7deg; }
 .scrapbook-position-2 { top: 7%; right: -1%; width: 14%; --angle: 8deg; }
 .scrapbook-position-2 .scrapbook-image, .scrapbook-position-5 .scrapbook-image { aspect-ratio: .72; }
@@ -46,7 +43,7 @@
 .scrapbook-position-6 { top: 38%; right: 1%; width: 17%; --angle: -5deg; }
 .scrapbook-position-7 { top: 68%; left: 17%; width: 15%; --angle: -6deg; }
 .scrapbook-position-8 { top: 67%; right: 3%; width: 18%; --angle: 7deg; }
-.scrapbook-film { background: #101714; color: white; padding: 5px 5px 0; border: 1px solid #ffffff45; }
+.scrapbook-film { background: #101714; color: white; padding: 5px; border: 1px solid #ffffff45; }
 .scrapbook-position-3 .scrapbook-image { aspect-ratio: .76; }
 .scrapbook-play { display: grid; place-items: center; position: absolute; inset: 0; margin: auto; width: 43px; height: 43px; border-radius: 50%; border: 1px solid #fffb; background: #10171450; color: white; }
 .scrapbook-endnote { position: absolute; bottom: 1%; left: 0; right: 0; text-align: center; }
@@ -67,7 +64,6 @@
   .scrapbook-strip-item { flex-basis: 160px; width: 160px; height: 104px; }
   .scrapbook-strip-group { gap: 8px; padding-right: 8px; }
   .scrapbook-strips { gap: 8px; }
-  .scrapbook-strip-item > span { font-size: 8px; }
   .travel-scrapbook { padding-top: 24px; }
   .scrapbook-topline, .scrapbook-bottomline { font-size: 7px; letter-spacing: .07em; }
   .scrapbook-stage { height: 1480px; }
@@ -86,8 +82,7 @@
   .scrapbook-endnote { bottom: -1%; }
   .scrapbook-asterisk { font-size: 24px; margin-bottom: 8px; }
   .scrapbook-viewer-bar { flex-direction: column; align-items: flex-start; }
-  .scrapbook-print { padding: 5px 5px 0; }
-  .scrapbook-print-index { font-size: 5px; min-height: 20px; }
+  .scrapbook-print { padding: 5px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .scrapbook-strip { overflow-x: auto; }
