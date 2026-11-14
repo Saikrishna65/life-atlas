@@ -299,3 +299,23 @@ Run browser suites against a fresh production server on port 3008. Set
 ATLAS_QA_URL to use another local origin. Evidence is written under ignored
 work/qa-travel and work/qa-cinema. Do not build over a running production server’s
 .next directory. These are Chromium checks, not physical Android or iOS testing.
+
+# Life, collected — reference video composition
+
+`TravelScrapbook` is a separately deferred chapter immediately after the Observatory.
+The supplied reference recording informed its oversized centered typography, loose
+photographic composition and scroll depth. No reference-site assets were copied.
+Existing local landscape assets and silent sample films are used with an explicit
+illustrative label; their existing license/source records remain applicable.
+Explicitly published catalog images and videos with thumbnails replace the sample
+frames when a public catalog is configured. No private media is queried.
+
+Eight prints remain semantic buttons in normal document flow, with no scroll pin
+or additional scroll engine. GSAP scrubs independent vertical layers and draws the
+route; scoped matchMedia contexts revert on unmount or reduced-motion changes.
+Reduced motion retains every image and control without scroll animation. Mobile
+uses a taller, rearranged composition rather than shrinking the desktop layout.
+Films load only in the user-opened viewer and never autoplay. The shared dialog
+provides focus containment, Escape dismissal and focus restoration; arrow keys
+browse the moments. The browser suite covers desktop, mobile, reduced motion,
+image loading and viewer interactions using local hero-video fixtures.

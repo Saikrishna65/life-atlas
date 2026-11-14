@@ -10,6 +10,7 @@ import { navigateChapter, returnToDoor } from "./navigation";
 const typography = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-world-navigation", display: "swap" });
 export const chapters = [
   ["observatory", "The Observatory"],
+  ["collected-moments", "Life, collected"],
   ["on-the-road", "The art of going"],
   ["expeditions", "The Expeditions"],
   ["memories", "The Memory Archive"],

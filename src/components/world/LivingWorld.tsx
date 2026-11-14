@@ -10,6 +10,7 @@ import "./world.css";
 import "./observatory.css";
 const AtlasPassage = dynamic(() => import("./AtlasPassage"));
 const Observatory = dynamic(() => import("./Observatory"));
+const TravelScrapbook = dynamic(() => import("./TravelScrapbook"));
 const Expeditions = dynamic(() => import("./Expeditions"));
 const MemoryArchive = dynamic(() => import("./MemoryArchive"));
 const PublishedMedia = dynamic(() => import("./PublishedMedia"));
@@ -136,6 +137,11 @@ export default function LivingWorld() {
           id="observatory"
           title="The Observatory"
           component={Observatory}
+        />
+        <Deferred
+          id="collected-moments"
+          title="Life, collected"
+          component={TravelScrapbook}
         />
         <Deferred
           id="on-the-road"
