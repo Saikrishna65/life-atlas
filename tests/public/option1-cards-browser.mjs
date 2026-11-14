@@ -35,9 +35,9 @@ try {
   assert.equal(tripIds.length, 2);
   assert.equal(new Set(tripIds).size, 2);
   assert.equal(await page.locator(".hero-gallery-landscape").count(), 0);
-  await decoded(page.locator(".trip-film-brand img"));
-  assert.ok((await page.locator(".trip-film-brand img").getAttribute("src")).includes("life-atlas-white"));
-  assert.equal(await page.locator(".trip-film-brand img").evaluate(image => getComputedStyle(image).filter), 'url("#atlas-white-ink")');
+  await decoded(page.locator(".reference-nav-brand img"));
+  assert.ok((await page.locator(".reference-nav-brand img").getAttribute("src")).includes("life-atlas-white"));
+  assert.match(await page.locator(".reference-nav-brand img").evaluate(image => getComputedStyle(image).filter), /^url\(/);
   assert.equal(await page.locator(".trip-film-hero canvas").count(), 0);
   assert.ok(await page.locator(".trip-film-globe-tile > svg").isVisible());
   const gallery = page.getByRole("link", { name: "Photo Gallery", exact: true });
@@ -50,10 +50,10 @@ try {
   await gallery.click();
   await page.waitForURL("**/photography");
   await decoded(page.locator(".public-header .atlas-logo-brand img"));
-  assert.ok((await page.locator(".public-header .atlas-logo-brand img").getAttribute("src")).includes("life-atlas-black"));
+  assert.ok((await page.locator(".public-header .atlas-logo-brand img").getAttribute("src")).includes("life-atlas-white"));
   await page.screenshot({ path: "work/qa-option1/public-header.png" });
   await page.goBack();
-  await decoded(page.locator(".trip-film-brand img"));
+  await decoded(page.locator(".reference-nav-brand img"));
   await page.getByRole("link", { name: "Explore the Globe", exact: true }).click();
   await page.locator("#observatory .observatory-heading").waitFor();
   await page.locator("#observatory canvas").first().waitFor({ timeout: 45000 });
@@ -105,7 +105,7 @@ try {
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, reducedMotion: "reduce" });
   await media(mobile);
   await mobile.goto("http://localhost:3008", { waitUntil: "networkidle" });
-  await decoded(mobile.locator(".trip-film-brand img"));
+  await decoded(mobile.locator(".reference-nav-brand img"));
   assert.equal(await mobile.locator(".trip-film-hero canvas").count(), 0);
   assert.ok(await mobile.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await mobile.screenshot({ path: "work/qa-option1/mobile.png" });

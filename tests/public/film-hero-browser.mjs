@@ -73,7 +73,7 @@ try {
     await page.locator(".trip-film-stage video[data-showing=true]").count(),
     1,
   );
-  await page.getByRole("button", { name: "Open atlas menu" }).click();
+  await page.getByRole("button", { name: "The atlas", exact: true }).click();
   await page.getByRole("dialog").waitFor();
   assert.ok(
     await page
@@ -128,7 +128,7 @@ try {
     await mobile.locator(".trip-film-footer-note [role=status]").innerText(),
     /Local motion study/,
   );
-  await mobile.getByRole("button", { name: "Open atlas menu" }).click();
+  await mobile.getByRole("button", { name: "The atlas", exact: true }).click();
   await mobile.getByRole("dialog").waitFor();
   await mobile.keyboard.press("Escape");
   assert.deepEqual(errors, []);

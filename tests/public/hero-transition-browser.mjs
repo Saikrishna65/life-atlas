@@ -96,7 +96,7 @@ try {
     await page.locator('video[data-showing="true"]').evaluate((v) => v.paused),
   );
   await page.screenshot({ path: "work/qa-hero-white/desktop.png" });
-  await page.getByRole("button", { name: "Open atlas menu" }).click();
+  await page.getByRole("button", { name: "The atlas", exact: true }).click();
   await page.getByRole("dialog").waitFor();
   await page.keyboard.press("Escape");
   await page.locator(".trip-film-selectors button").first().click();

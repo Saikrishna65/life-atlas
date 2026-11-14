@@ -218,3 +218,8 @@
 }
 
 .public-header.reference-world-nav .reference-nav-brand img { filter: none; }
+
+/* One persistent navigation uses the supplied white artwork on every public route. */
+.reference-nav-brand img,
+.public-header.reference-world-nav .reference-nav-brand img { filter: url(#atlas-white-ink); }
+.reference-nav-brand .atlas-logo-filter { position: absolute; pointer-events: none; }

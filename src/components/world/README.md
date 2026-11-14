@@ -1,3 +1,13 @@
+# One persistent public navigation
+
+The hero no longer renders a second navigation/header or a separate menu.
+WorldNavigation remains visible from the first viewport through the public
+chapters. Its menu pauses hero playback via a scoped event; the real video
+play/pause control remains in the hero footer. Public headers use the supplied
+white logo too. Each white-ink SVG filter has a React-generated unique ID so
+cached routes cannot resolve another hidden page’s filter. The globe and video
+transition implementations are unchanged.
+
 # Full-width globe atmosphere and selection
 
 The legacy public header is replaced by the approved split-pill navigation on

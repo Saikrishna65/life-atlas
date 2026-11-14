@@ -1,5 +1,5 @@
 "use client";
-import Image from "next/image";
+import HeroLogo from "@/components/home/HeroLogo";
 import Link from "next/link";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { useState } from "react";
@@ -28,7 +28,7 @@ export default function PublicHeader() {
           <div className="reference-nav-pill">
             {[["/trips", "The journeys"], ["/places", "The places"], ["/photography", "Frames & films"]].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}
           </div>
-          <Link className="reference-nav-brand atlas-logo-brand" href="/" aria-label="Life Atlas home"><Image src="/brand/life-atlas-black.png" width={96} height={64} sizes="96px" alt="" /></Link>
+          <Link className="reference-nav-brand atlas-logo-brand" href="/" aria-label="Life Atlas home"><HeroLogo /></Link>
           <div className="reference-nav-pill">
             {[["/map", "The world"], ["/timeline", "Our timeline"], ["/about", "The story"]].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}
           </div>

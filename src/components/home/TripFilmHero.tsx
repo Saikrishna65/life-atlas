@@ -6,18 +6,15 @@ import { HERO_RELEASE_MS } from "./hero-playback";
 import TripFilmStage from "./TripFilmStage";
 import { ObservatoryInstrument } from "./AtlasObjects";
 import HeroGalleryPreview from "./HeroGalleryPreview";
-import HeroLogo from "./HeroLogo";
 import Image from "next/image";
 import {
   ArrowRight,
   ArrowUpRight,
-  Menu,
   Pause,
   Play,
 } from "lucide-react";
 import gsap from "gsap";
 import { heroFilms, type HeroTrip, type HeroGalleryPhoto } from "@/data/demo/hero-films";
-import { Modal } from "@/components/world/primitives";
 import "./trip-film-hero.css";
 
 const heroTypography = Plus_Jakarta_Sans({
@@ -46,6 +43,12 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
   const root = useRef<HTMLElement>(null);
   const heading = useRef<HTMLDivElement>(null);
   const progress = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const changed = (event: Event) => setMenu(Boolean((event as CustomEvent<boolean>).detail));
+    window.addEventListener("atlas-navigation-open", changed);
+    return () => window.removeEventListener("atlas-navigation-open", changed);
+  }, []);
 
   const current = trips[active];
   const playing =
@@ -157,57 +160,6 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
           }
         }}
       />
-      <header className="trip-film-header">
-        <button
-          className="trip-film-round"
-          aria-label={
-            paused || (reduced && !manualPlay) || blocked
-              ? "Play trip films"
-              : "Pause trip films"
-          }
-          aria-pressed={paused || (reduced && !manualPlay) || blocked}
-          onClick={() => {
-            if (paused || (reduced && !manualPlay) || blocked) {
-              setPaused(false);
-              setManualPlay(true);
-              setBlocked(false);
-            } else setPaused(true);
-          }}
-        >
-          {paused || (reduced && !manualPlay) || blocked ? (
-            <Play size={15} />
-          ) : (
-            <Pause size={15} />
-          )}
-        </button>
-        <nav className="trip-film-navigation" aria-label="Hero navigation">
-          <div>
-            <Link href="/trips">The journeys</Link>
-            <Link href="/places">The places</Link>
-            <Link href="/photography">Frames & films</Link>
-          </div>
-          <Link
-            className="trip-film-brand"
-            href="/"
-            aria-label="Life Atlas home"
-          >
-            <HeroLogo />
-          </Link>
-          <div>
-            <Link href="/map">The world</Link>
-            <Link href="/timeline">Our timeline</Link>
-            <Link href="/about">The story</Link>
-          </div>
-        </nav>
-        <button
-          className="trip-film-round"
-          aria-label="Open atlas menu"
-          aria-expanded={menu}
-          onClick={() => setMenu(true)}
-        >
-          <Menu size={17} />
-        </button>
-      </header>
       <div className="trip-film-main" ref={heading} key={current.id}>
         <p className="trip-film-eyebrow">
           {current.sample ? "A sample journey" : "From the latest journeys"} / 0
@@ -305,6 +257,29 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
           ))}
         </div>
         <div className="trip-film-footer-note">
+        <button
+          className="trip-film-round"
+          aria-label={
+            paused || (reduced && !manualPlay) || blocked
+              ? "Play trip films"
+              : "Pause trip films"
+          }
+          aria-pressed={paused || (reduced && !manualPlay) || blocked}
+          onClick={() => {
+            if (paused || (reduced && !manualPlay) || blocked) {
+              setPaused(false);
+              setManualPlay(true);
+              setBlocked(false);
+            } else setPaused(true);
+          }}
+        >
+          {paused || (reduced && !manualPlay) || blocked ? (
+            <Play size={15} />
+          ) : (
+            <Pause size={15} />
+          )}
+        </button>
+
           <span role="status">
             {failed
               ? "Video unavailable · explore the journey"
@@ -318,28 +293,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
           <a href="#observatory">Scroll to explore ↓</a>
         </div>
       </footer>
-      {menu && (
-        <Modal
-          title="Explore Life Atlas"
-          className={`${heroTypography.variable} world-chapter-dialog trip-film-menu`}
-          onClose={() => setMenu(false)}
-        >
-          <nav className="public-menu">
-            {[
-              ["/trips", "The journeys"],
-              ["/places", "The places"],
-              ["/photography", "Frames & films"],
-              ["/map", "The world"],
-              ["/about", "The story"],
-            ].map(([href, label]) => (
-              <Link href={href} key={href} onClick={() => setMenu(false)}>
-                {label}
-                <ArrowUpRight size={24} />
-              </Link>
-            ))}
-          </nav>
-        </Modal>
-      )}
+
     </section>
   );
 }

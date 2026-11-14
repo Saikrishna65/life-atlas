@@ -1,5 +1,5 @@
 "use client";
-import Image from "next/image";
+import HeroLogo from "@/components/home/HeroLogo";
 import Link from "next/link";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { useEffect, useState } from "react";
@@ -20,6 +20,10 @@ export default function WorldNavigation() {
   const [visible, setVisible] = useState(false);
   const [open, setOpen] = useState(false);
   const lenis = useLenis();
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("atlas-navigation-open", { detail: open }));
+    return () => { window.dispatchEvent(new CustomEvent("atlas-navigation-open", { detail: false })); };
+  }, [open]);
   useEffect(() => {
     const root = document.getElementById("living-world");
     if (!root) return;
@@ -83,9 +87,8 @@ export default function WorldNavigation() {
       </a>
       <nav
         aria-label="World chapters"
-        data-scene={active}
-        className={`${typography.variable} world-nav reference-world-nav ${visible ? "is-visible" : ""}`}
-        inert={!visible}
+        data-scene={visible ? active : "hero"}
+        className={`${typography.variable} world-nav reference-world-nav is-visible`}
       >
         <button className="reference-nav-round" aria-label="Search the atlas" onClick={() => window.dispatchEvent(new Event("open-search"))}>
           <Search size={17} />
@@ -97,7 +100,7 @@ export default function WorldNavigation() {
             <Link href="/photography">Frames &amp; films</Link>
           </div>
           <button className="reference-nav-brand" aria-label="Life Atlas home" onClick={() => navigate("top")}>
-            <Image src="/brand/life-atlas-black.png" width={96} height={64} sizes="96px" alt="" />
+            <HeroLogo />
           </button>
           <div className="reference-nav-pill">
             <button onClick={() => navigate("observatory")}>The world</button>

@@ -30,7 +30,7 @@ try {
  await page.waitForTimeout(1150);
  await page.getByRole('button',{name:'Pause trip films',exact:true}).click();
  assert.equal(await outgoing.getAttribute('src'),null);
- const material=await page.locator('.trip-film-navigation > div').first().evaluate(el=>({background:getComputedStyle(el).backgroundColor,blur:getComputedStyle(el).backdropFilter}));
+ const material=await page.locator('.reference-nav-pill').first().evaluate(el=>({background:getComputedStyle(el).backgroundColor,blur:getComputedStyle(el).backdropFilter}));
  assert.equal(material.blur,'blur(2px)');
  for(const selector of ['.trip-film-round','.trip-film-aside-label','.trip-film-journal-tile','.trip-film-photo-tile','.trip-film-world-link','.trip-film-cta > span','.trip-film-cta > svg']){
    assert.equal(await page.locator(selector).first().evaluate(el=>getComputedStyle(el).backgroundColor),material.background,selector);

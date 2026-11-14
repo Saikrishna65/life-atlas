@@ -1,12 +1,15 @@
+"use client";
 import Image from "next/image";
+import { useId } from "react";
 
 /** A white-ink knockout preserves the supplied mark while removing its dark stroke. */
 export default function HeroLogo() {
+  const filterId = useId();
   return (
     <>
       <svg className="atlas-logo-filter" width="0" height="0" aria-hidden="true" focusable="false">
         <defs>
-          <filter id="atlas-white-ink" colorInterpolationFilters="sRGB">
+          <filter id={filterId} colorInterpolationFilters="sRGB">
             <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .3333 .3333 .3333 0 0" result="ink" />
             <feComposite in="ink" in2="SourceAlpha" operator="in" />
             <feComponentTransfer>
@@ -17,6 +20,7 @@ export default function HeroLogo() {
       </svg>
       <Image
         className="atlas-white-ink"
+        style={{ filter: `url(#${filterId})` }}
         src="/brand/life-atlas-white.png"
         width={96}
         height={64}
