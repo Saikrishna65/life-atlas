@@ -102,6 +102,10 @@
             </intent-filter>
         </service>
 
+        <receiver
+            android:name=".wakeword.OvernightSnapshotReceiver"
+            android:exported="false" />
+
         <!-- Music Vault Android Home Screen Widget Provider -->
         <receiver
             android:name=".MusicAppWidgetProvider"

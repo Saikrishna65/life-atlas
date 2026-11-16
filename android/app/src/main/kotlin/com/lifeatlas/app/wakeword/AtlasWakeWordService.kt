@@ -142,6 +142,10 @@ class AtlasWakeWordService : Service() {
         @Volatile
         var isMicSilenced: Boolean = false
             private set
+
+        @Volatile
+        var isMicActuallyCapturing: Boolean = false
+            private set
     }
 
     override fun onCreate() {
@@ -346,17 +350,24 @@ class AtlasWakeWordService : Service() {
         var batchInferenceMs = 0.0
         var batchPeakScore = 0.0f
         var lastStatsFlushMs = System.currentTimeMillis()
+        var lastAudioTickElapsed = SystemClock.elapsedRealtime()
 
         try {
             record.startRecording()
             if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
                 throw IllegalStateException("AudioRecord failed to enter RECORDING state.")
             }
+            isMicActuallyCapturing = true
             Log.i(TAG, "AudioRecord started (session=$activeAudioSessionId, bufBytes=$minBufBytes)")
 
             while (running.get() && !paused.get() && !pausedForMic.get() && !destroyed.get()) {
                 if (!hasMicPermission()) {
                     WakeWordDiagnostics.updateServiceState(
+                        this,
+                        "error",
+                        "Microphone permission revoked during listening."
+                    )
+                    OvernightTestManager.onServiceStateChanged(
                         this,
                         "error",
                         "Microphone permission revoked during listening."
@@ -424,6 +435,11 @@ class AtlasWakeWordService : Service() {
                         batchInferenceMs,
                         batchPeakScore
                     )
+                    val nowElapsed = SystemClock.elapsedRealtime()
+                    if (OvernightTestManager.isTestRunning(this)) {
+                        OvernightTestManager.onAudioTick(this, nowElapsed, lastAudioTickElapsed)
+                    }
+                    lastAudioTickElapsed = nowElapsed
                     batchFrames = 0L
                     batchInferenceMs = 0.0
                     batchPeakScore = 0.0f
@@ -446,9 +462,15 @@ class AtlasWakeWordService : Service() {
                     "error",
                     "Audio capture error: ${e.message}"
                 )
+                OvernightTestManager.onServiceStateChanged(
+                    this,
+                    "error",
+                    "Audio capture error: ${e.message}"
+                )
                 AtlasWakeWordPlugin.emitStatusChange(this)
             }
         } finally {
+            isMicActuallyCapturing = false
             runCatching {
                 if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                     record.stop()
@@ -473,11 +495,13 @@ class AtlasWakeWordService : Service() {
             isMicSilenced = true
             releaseWakeLock()
             WakeWordDiagnostics.updateServiceState(this, "paused_mic_blocked", reason)
+            OvernightTestManager.onServiceStateChanged(this, "paused_mic_blocked", reason)
             AtlasWakeWordPlugin.emitStatusChange(this)
             mainHandler.post { refreshListeningNotification() }
             return
         }
         WakeWordDiagnostics.updateServiceState(this, "error", reason)
+        OvernightTestManager.onInterruption(this, "audio_start_failure", reason)
         AtlasWakeWordPlugin.emitStatusChange(this)
         mainHandler.post {
             stopPipeline(reason)
@@ -527,6 +551,7 @@ class AtlasWakeWordService : Service() {
             inferenceLatencyMs,
             env
         )
+        OvernightTestManager.onDetection(this, modelInfo.targetPhrase, score, inferenceLatencyMs)
         AtlasWakeWordPlugin.emitWakeWordDetected(eventJson)
         AtlasWakeWordPlugin.emitStatusChange(this)
 
@@ -602,6 +627,7 @@ class AtlasWakeWordService : Service() {
         engine = null
         releaseWakeLock()
         WakeWordDiagnostics.updateServiceState(this, "stopped", reason)
+        OvernightTestManager.onServiceStateChanged(this, "stopped", reason)
         AtlasWakeWordPlugin.emitStatusChange(this)
     }
 
@@ -680,6 +706,7 @@ class AtlasWakeWordService : Service() {
         mainHandler.post {
             WakeWordDiagnostics.recordMicCompetition(this, reason)
             WakeWordDiagnostics.updateServiceState(this, "silenced_by_mic_competition", reason)
+            OvernightTestManager.onInterruption(this, "mic_competition", reason)
             AtlasWakeWordPlugin.emitStatusChange(this)
             refreshListeningNotification()
         }

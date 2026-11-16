@@ -14,6 +14,7 @@ import {
   FlaskConical,
   Mic,
   MicOff,
+  Moon,
   Pause,
   Play,
   RefreshCw,
@@ -31,6 +32,7 @@ import {
   EXPERIMENT_SCENARIOS,
   isWakeWordNativeSupported,
   type AssistantRoleStatus,
+  type OvernightTestReport,
   type WakeWordDetectionEvent,
   type WakeWordDiagnosticReport,
   type WakeWordListeningStatus,
@@ -47,6 +49,7 @@ export default function HeyAtlasExperiment() {
   const [nativeSupported] = useState(() => isWakeWordNativeSupported());
   const [status, setStatus] = useState<WakeWordListeningStatus | null>(null);
   const [report, setReport] = useState<WakeWordDiagnosticReport | null>(null);
+  const [overnightReport, setOvernightReport] = useState<OvernightTestReport | null>(null);
   const [assistantRole, setAssistantRole] = useState<AssistantRoleStatus>({
     roleAvailable: false,
     roleHeld: false,
@@ -61,14 +64,16 @@ export default function HeyAtlasExperiment() {
 
   const refreshAll = useCallback(async () => {
     try {
-      const [nextStatus, nextReport, nextRole] = await Promise.all([
+      const [nextStatus, nextReport, nextRole, nextOvernight] = await Promise.all([
         atlasWakeWordBridge.getListeningStatus(),
         atlasWakeWordBridge.getDiagnosticReport(),
         atlasWakeWordBridge.getAssistantRoleStatus(),
+        atlasWakeWordBridge.getOvernightReport(),
       ]);
       setStatus(nextStatus);
       setReport(nextReport);
       setAssistantRole(nextRole);
+      setOvernightReport(nextOvernight);
       setScenarioNotes((prev) => {
         const merged = { ...prev };
         for (const [key, val] of Object.entries(nextReport.scenarioResults || {})) {
@@ -176,6 +181,38 @@ export default function HeyAtlasExperiment() {
     URL.revokeObjectURL(url);
     setNotice("Exported diagnostic JSON file.");
   };
+
+  const handleExportOvernightJson = () => {
+    if (!overnightReport) return;
+    const blob = new Blob([JSON.stringify(overnightReport, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hey-atlas-overnight-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setNotice("Exported overnight diagnostics JSON.");
+  };
+
+  const handleExportOvernightCsv = async () => {
+    try {
+      const { csv } = await atlasWakeWordBridge.exportOvernightCsv();
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `hey-atlas-overnight-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setNotice("Exported overnight diagnostics CSV.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to export overnight CSV.");
+    }
+  };
+
+  const activeOrLastOvernight = overnightReport?.activeTest ?? overnightReport?.lastCompletedTest ?? null;
+  const baselineCompare = overnightReport?.lastCompletedBaseline ?? null;
+  const activeCompare = overnightReport?.lastCompletedActive ?? null;
 
   return (
     <div className="control-orbit" data-control-room>
@@ -605,6 +642,239 @@ export default function HeyAtlasExperiment() {
               </button>
             </div>
           </div>
+        </section>
+
+        <section className="oc-panel">
+          <div className="oc-panel-title">
+            <div>
+              <p className="oc-eyebrow">~8 HOUR LOCKED-SCREEN DIAGNOSTIC</p>
+              <h2>Overnight Endurance Test</h2>
+            </div>
+            <span className="oc-tag">
+              {overnightReport?.isTestRunning
+                ? overnightReport.activeTest?.isBaseline
+                  ? "Baseline Running"
+                  : "Active Test Running"
+                : activeOrLastOvernight
+                  ? "Report Ready"
+                  : "Idle"}
+            </span>
+          </div>
+
+          <p style={{ marginTop: 0, color: "var(--oc-muted)", fontSize: "0.9rem" }}>
+            Tracks battery drain (~15-min snapshots), confirmed active mic capture vs service uptime, wake detections
+            (without raw audio), and unexpected interruptions overnight. Use Baseline mode with Atlas listening disabled
+            to measure your device&apos;s normal standby drain.
+          </p>
+
+          <div className="oc-actions" style={{ marginTop: 12, marginBottom: 16 }}>
+            {!overnightReport?.isTestRunning ? (
+              <>
+                <button
+                  type="button"
+                  className="oc-primary"
+                  disabled={busy || !nativeSupported}
+                  onClick={() =>
+                    void runAction("Overnight Endurance Test started (Active Listening).", () =>
+                      atlasWakeWordBridge.startOvernightTest({ isBaseline: false, useAssistantSession })
+                    )
+                  }
+                >
+                  <Moon size={15} /> Start Overnight Test
+                </button>
+                <button
+                  type="button"
+                  className="oc-secondary"
+                  disabled={busy || !nativeSupported}
+                  onClick={() =>
+                    void runAction("Overnight Baseline Test started (Atlas Listening Disabled).", () =>
+                      atlasWakeWordBridge.startOvernightTest({ isBaseline: true })
+                    )
+                  }
+                >
+                  <Play size={15} /> Start Baseline Test (Listening Off)
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="oc-danger"
+                disabled={busy}
+                onClick={() =>
+                  void runAction("Overnight Test stopped and Morning Report generated.", () =>
+                    atlasWakeWordBridge.stopOvernightTest()
+                  )
+                }
+              >
+                <Square size={15} /> Stop Test
+              </button>
+            )}
+
+            {activeOrLastOvernight && (
+              <>
+                <button
+                  type="button"
+                  className="oc-secondary"
+                  disabled={busy}
+                  onClick={handleExportOvernightJson}
+                >
+                  <Download size={15} /> Export JSON
+                </button>
+                <button
+                  type="button"
+                  className="oc-secondary"
+                  disabled={busy}
+                  onClick={() => void handleExportOvernightCsv()}
+                >
+                  <Download size={15} /> Export CSV
+                </button>
+              </>
+            )}
+
+            {!overnightReport?.isTestRunning && activeOrLastOvernight && (
+              <button
+                type="button"
+                className="oc-secondary"
+                disabled={busy || !nativeSupported}
+                onClick={() =>
+                  void runAction("Cleared overnight test data.", () => atlasWakeWordBridge.clearOvernightData())
+                }
+              >
+                <Trash2 size={15} /> Clear
+              </button>
+            )}
+          </div>
+
+          {activeOrLastOvernight && (
+            <div style={{ borderTop: "1px solid var(--oc-line)", paddingTop: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                <strong>
+                  Morning Report —{" "}
+                  {activeOrLastOvernight.isBaseline ? "Baseline Standby (Listening Off)" : "Active Wake-Word Test"}
+                </strong>
+                <span style={{ fontSize: "0.82rem", color: "var(--oc-muted)" }}>
+                  Started: {new Date(activeOrLastOvernight.startedAt).toLocaleString()}
+                  {activeOrLastOvernight.endedAt
+                    ? ` · Ended: ${new Date(activeOrLastOvernight.endedAt).toLocaleString()}`
+                    : " · In Progress"}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                  gap: 12,
+                  marginBottom: 14,
+                }}
+              >
+                <div className="oc-stat-box" style={{ padding: 12, border: "1px solid var(--oc-line)", borderRadius: 8 }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--oc-muted)" }}>Elapsed Duration</div>
+                  <div style={{ fontSize: "1.15rem", fontWeight: 600 }}>
+                    {activeOrLastOvernight.durationHours.toFixed(2)} hrs
+                  </div>
+                </div>
+                <div className="oc-stat-box" style={{ padding: 12, border: "1px solid var(--oc-line)", borderRadius: 8 }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--oc-muted)" }}>Battery Drain</div>
+                  <div style={{ fontSize: "1.15rem", fontWeight: 600 }}>
+                    {activeOrLastOvernight.batteryStartPct}% → {activeOrLastOvernight.batteryCurrentPct}% (
+                    {activeOrLastOvernight.batteryDrainPct}%)
+                  </div>
+                </div>
+                <div className="oc-stat-box" style={{ padding: 12, border: "1px solid var(--oc-line)", borderRadius: 8 }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--oc-muted)" }}>Avg Drain / Hour</div>
+                  <div style={{ fontSize: "1.15rem", fontWeight: 600 }}>
+                    {activeOrLastOvernight.drainPerHour.toFixed(2)}%/hr
+                  </div>
+                </div>
+                <div className="oc-stat-box" style={{ padding: 12, border: "1px solid var(--oc-line)", borderRadius: 8 }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--oc-muted)" }}>Service vs Confirmed Mic</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: 600 }}>
+                    {(activeOrLastOvernight.serviceRunningDurationMs / 3600000).toFixed(2)}h svc /{" "}
+                    {(activeOrLastOvernight.confirmedActiveListeningDurationMs / 3600000).toFixed(2)}h mic
+                  </div>
+                </div>
+                <div className="oc-stat-box" style={{ padding: 12, border: "1px solid var(--oc-line)", borderRadius: 8 }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--oc-muted)" }}>Wake Detections</div>
+                  <div style={{ fontSize: "1.15rem", fontWeight: 600 }}>
+                    {activeOrLastOvernight.detections?.length ?? 0}
+                  </div>
+                </div>
+                <div className="oc-stat-box" style={{ padding: 12, border: "1px solid var(--oc-line)", borderRadius: 8 }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--oc-muted)" }}>Interruptions / Gaps</div>
+                  <div style={{ fontSize: "1.15rem", fontWeight: 600 }}>
+                    {activeOrLastOvernight.interruptions?.length ?? 0} /{" "}
+                    {activeOrLastOvernight.monitoringGaps?.length ?? 0}
+                  </div>
+                </div>
+              </div>
+
+              {activeCompare && baselineCompare && (
+                <div
+                  style={{
+                    padding: 12,
+                    border: "1px solid var(--oc-line)",
+                    borderRadius: 8,
+                    marginBottom: 12,
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <strong>Baseline Comparison:</strong> Active ({activeCompare.drainPerHour.toFixed(2)}%/hr over{" "}
+                  {activeCompare.durationHours.toFixed(1)}h) vs Baseline ({baselineCompare.drainPerHour.toFixed(2)}%/hr
+                  over {baselineCompare.durationHours.toFixed(1)}h) — Estimated Atlas overhead:{" "}
+                  <strong>
+                    {(activeCompare.drainPerHour - baselineCompare.drainPerHour) >= 0 ? "+" : ""}
+                    {(activeCompare.drainPerHour - baselineCompare.drainPerHour).toFixed(2)}%/hr
+                  </strong>
+                </div>
+              )}
+
+              {(activeOrLastOvernight.monitoringGaps?.length ?? 0) > 0 && (
+                <div style={{ marginBottom: 10, fontSize: "0.84rem" }}>
+                  <strong>Monitoring Gaps:</strong>
+                  <ul style={{ margin: "4px 0 0 18px" }}>
+                    {activeOrLastOvernight.monitoringGaps.map((g, idx) => (
+                      <li key={idx}>
+                        {g.gapMinutes.toFixed(1)} min ({new Date(g.startAt).toLocaleTimeString()} →{" "}
+                        {new Date(g.endAt).toLocaleTimeString()}): {g.reasonNote}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(activeOrLastOvernight.interruptions?.length ?? 0) > 0 && (
+                <div style={{ marginBottom: 10, fontSize: "0.84rem" }}>
+                  <strong>Service Interruptions:</strong>
+                  <ul style={{ margin: "4px 0 0 18px" }}>
+                    {activeOrLastOvernight.interruptions.slice(0, 10).map((u, idx) => (
+                      <li key={idx}>
+                        [{new Date(u.at).toLocaleTimeString()}] {u.kind}: {u.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {(activeOrLastOvernight.detections?.length ?? 0) > 0 && (
+                <div style={{ marginBottom: 10, fontSize: "0.84rem" }}>
+                  <strong>Wake Detections (metadata only, no audio):</strong>
+                  <ul style={{ margin: "4px 0 0 18px" }}>
+                    {activeOrLastOvernight.detections.slice(0, 10).map((d, idx) => (
+                      <li key={idx}>
+                        [{new Date(d.at).toLocaleTimeString()}] &quot;{d.targetPhrase}&quot; · score{" "}
+                        {d.score.toFixed(3)} · {d.latencyMs.toFixed(0)} ms ({d.keyguardLocked ? "Locked" : "Unlocked"})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <p style={{ fontSize: "0.78rem", color: "var(--oc-muted)", marginBottom: 0 }}>
+                {activeOrLastOvernight.attributionDisclaimer}
+              </p>
+            </div>
+          )}
         </section>
 
         <section className="oc-panel">

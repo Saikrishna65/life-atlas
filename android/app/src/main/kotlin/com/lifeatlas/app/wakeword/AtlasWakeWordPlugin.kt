@@ -327,6 +327,83 @@ class AtlasWakeWordPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun startOvernightTest(call: PluginCall) {
+        val isBaseline = call.getBoolean("isBaseline", false) ?: false
+        if (!isBaseline && !hasMicPermission()) {
+            requestPermissionForAlias("microphone", call, "onMicPermissionForOvernightStart")
+            return
+        }
+        startOvernightTestInternal(call, isBaseline)
+    }
+
+    @PermissionCallback
+    private fun onMicPermissionForOvernightStart(call: PluginCall) {
+        if (getPermissionState("microphone") == PermissionState.GRANTED || hasMicPermission()) {
+            val isBaseline = call.getBoolean("isBaseline", false) ?: false
+            startOvernightTestInternal(call, isBaseline)
+        } else {
+            call.reject("RECORD_AUDIO permission is required to start an active Overnight Endurance Test.")
+        }
+    }
+
+    private fun startOvernightTestInternal(call: PluginCall, isBaseline: Boolean) {
+        if (isBaseline) {
+            if (AtlasWakeWordService.isServiceRunning) {
+                val stopIntent = Intent(context, AtlasWakeWordService::class.java).apply {
+                    action = AtlasWakeWordService.ACTION_STOP
+                }
+                context.startService(stopIntent)
+            }
+        } else {
+            val useAssistantSession = call.getBoolean("useAssistantSession", false) ?: false
+            if (!AtlasWakeWordService.isServiceRunning) {
+                val startIntent = Intent(context, AtlasWakeWordService::class.java).apply {
+                    action = AtlasWakeWordService.ACTION_START
+                    putExtra(AtlasWakeWordService.EXTRA_USE_ASSISTANT_SESSION, useAssistantSession)
+                }
+                try {
+                    ContextCompat.startForegroundService(context, startIntent)
+                } catch (e: Exception) {
+                    call.reject("Failed to start wake-word service for overnight test: ${e.message}", e)
+                    return
+                }
+            }
+        }
+        OvernightTestManager.startTest(context, isBaseline)
+        call.resolve(JSObject.fromJSONObject(OvernightTestManager.getReport(context)))
+    }
+
+    @PluginMethod
+    fun stopOvernightTest(call: PluginCall) {
+        val wasBaseline = OvernightTestManager.isTestBaseline(context)
+        OvernightTestManager.stopTest(context)
+        if (!wasBaseline && AtlasWakeWordService.isServiceRunning) {
+            val stopIntent = Intent(context, AtlasWakeWordService::class.java).apply {
+                action = AtlasWakeWordService.ACTION_STOP
+            }
+            context.startService(stopIntent)
+        }
+        call.resolve(JSObject.fromJSONObject(OvernightTestManager.getReport(context)))
+    }
+
+    @PluginMethod
+    fun getOvernightReport(call: PluginCall) {
+        call.resolve(JSObject.fromJSONObject(OvernightTestManager.getReport(context)))
+    }
+
+    @PluginMethod
+    fun exportOvernightCsv(call: PluginCall) {
+        val csv = OvernightTestManager.generateCsv(context)
+        call.resolve(JSObject().put("csv", csv))
+    }
+
+    @PluginMethod
+    fun clearOvernightData(call: PluginCall) {
+        OvernightTestManager.clear(context)
+        call.resolve(JSObject.fromJSONObject(OvernightTestManager.getReport(context)))
+    }
+
+    @PluginMethod
     fun requestNotificationPermission(call: PluginCall) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             call.resolve(JSObject.fromJSONObject(buildListeningStatusJson(context)))

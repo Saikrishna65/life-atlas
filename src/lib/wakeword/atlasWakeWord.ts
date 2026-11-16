@@ -109,6 +109,88 @@ export interface WakeWordScenarioDefinition {
   steps: string[];
 }
 
+export interface OvernightSnapshot {
+  timestamp: string;
+  elapsedRealtimeMs: number;
+  elapsedMinutes: number;
+  batteryPercent: number;
+  isCharging: boolean;
+  plugType: string;
+  interactive: boolean;
+  keyguardLocked: boolean;
+  serviceRunning: boolean;
+  micActuallyCapturing: boolean;
+  confirmedListeningDurationMs: number;
+  serviceRunningDurationMs: number;
+  detectionsSoFar: number;
+  interruptionsSoFar: number;
+}
+
+export interface OvernightDetection {
+  at: string;
+  elapsedRealtimeMs: number;
+  targetPhrase: string;
+  score: number;
+  latencyMs: number;
+  interactive: boolean;
+  keyguardLocked: boolean;
+}
+
+export interface OvernightInterruption {
+  at: string;
+  elapsedRealtimeMs: number;
+  kind: string;
+  reason: string;
+}
+
+export interface OvernightMonitoringGap {
+  gapMinutes: number;
+  startAt: string;
+  endAt: string;
+  reasonNote: string;
+}
+
+export interface OvernightTestRun {
+  testId: string;
+  isBaseline: boolean;
+  status: "running" | "completed" | string;
+  startedAt: string;
+  endedAt?: string;
+  startElapsedRealtimeMs: number;
+  endElapsedRealtimeMs?: number;
+  durationMs: number;
+  durationHours: number;
+  serviceRunningDurationMs: number;
+  confirmedActiveListeningDurationMs: number;
+  pausedOrSilencedDurationMs: number;
+  batteryStartPct: number;
+  batteryEndPct?: number;
+  batteryCurrentPct: number;
+  batteryDrainPct: number;
+  drainPerHour: number;
+  isChargingStart: boolean;
+  isChargingEnd?: boolean;
+  plugTypeStart: string;
+  plugTypeEnd?: string;
+  interactiveStart: boolean;
+  keyguardLockedStart: boolean;
+  deviceModel: string;
+  sdkInt: number;
+  snapshots: OvernightSnapshot[];
+  detections: OvernightDetection[];
+  interruptions: OvernightInterruption[];
+  monitoringGaps: OvernightMonitoringGap[];
+  attributionDisclaimer: string;
+}
+
+export interface OvernightTestReport {
+  isTestRunning: boolean;
+  activeTest?: OvernightTestRun | null;
+  lastCompletedTest?: OvernightTestRun | null;
+  lastCompletedBaseline?: OvernightTestRun | null;
+  lastCompletedActive?: OvernightTestRun | null;
+}
+
 export interface AtlasWakeWordNativePlugin {
   startListening(options?: { useAssistantSession?: boolean }): Promise<WakeWordListeningStatus>;
   stopListening(): Promise<WakeWordListeningStatus>;
@@ -132,6 +214,11 @@ export interface AtlasWakeWordNativePlugin {
   requestAssistantRole(): Promise<AssistantRoleStatus>;
   openAssistantSettings(): Promise<{ opened: boolean }>;
   openBatteryOptimizationSettings(): Promise<{ opened: boolean }>;
+  startOvernightTest(options?: { isBaseline?: boolean; useAssistantSession?: boolean }): Promise<OvernightTestReport>;
+  stopOvernightTest(): Promise<OvernightTestReport>;
+  getOvernightReport(): Promise<OvernightTestReport>;
+  exportOvernightCsv(): Promise<{ csv: string }>;
+  clearOvernightData(): Promise<OvernightTestReport>;
   addListener(
     eventName: "wakeWordDetected",
     listenerFunc: (event: WakeWordDetectionEvent) => void
@@ -449,6 +536,34 @@ export const atlasWakeWordBridge = {
   async openBatteryOptimizationSettings(): Promise<{ opened: boolean }> {
     if (!isWakeWordNativeSupported()) return { opened: false };
     return NativePlugin.openBatteryOptimizationSettings();
+  },
+
+  async startOvernightTest(options?: {
+    isBaseline?: boolean;
+    useAssistantSession?: boolean;
+  }): Promise<OvernightTestReport> {
+    if (!isWakeWordNativeSupported()) return { isTestRunning: false };
+    return NativePlugin.startOvernightTest(options);
+  },
+
+  async stopOvernightTest(): Promise<OvernightTestReport> {
+    if (!isWakeWordNativeSupported()) return { isTestRunning: false };
+    return NativePlugin.stopOvernightTest();
+  },
+
+  async getOvernightReport(): Promise<OvernightTestReport> {
+    if (!isWakeWordNativeSupported()) return { isTestRunning: false };
+    return NativePlugin.getOvernightReport();
+  },
+
+  async exportOvernightCsv(): Promise<{ csv: string }> {
+    if (!isWakeWordNativeSupported()) return { csv: "# Android native APK required for Overnight Endurance Test." };
+    return NativePlugin.exportOvernightCsv();
+  },
+
+  async clearOvernightData(): Promise<OvernightTestReport> {
+    if (!isWakeWordNativeSupported()) return { isTestRunning: false };
+    return NativePlugin.clearOvernightData();
   },
 
   async addWakeWordDetectedListener(
