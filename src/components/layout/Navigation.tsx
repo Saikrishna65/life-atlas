@@ -32,6 +32,13 @@ const isHeroRoute = (path: string | null) => {
 };
 
 export default function Navigation() {
+  const pathname=usePathname();
+  if(pathname==='/'||pathname?.startsWith('/secret'))return null;
+  if(!pathname?.startsWith('/admin'))return <PublicHeader/>;
+  return <LegacyNavigation/>;
+}
+
+function LegacyNavigation() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);

@@ -1,9 +1,12 @@
+import {cache} from "react";
 import { expeditions } from "@/data/demo/expeditions";
 import TripDetailExperience from "@/components/trips/TripDetailExperience";
 import { demoTripDetail, publicTripDetail } from "@/lib/public-trips/detail";
 import { notFound } from "next/navigation";
 import { getTripBySlug, getNextTrip } from "@/lib/queries/trips";
 import { Metadata } from "next";
+
+const readTrip=cache((slug:string)=>getTripBySlug(slug).catch(()=>null));
 
 export async function generateStaticParams() {
   // Existing database journeys still resolve dynamically; demo builds need no database.
@@ -16,7 +19,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const trip = await getTripBySlug(slug).catch(() => null);
+  const trip = await readTrip(slug);
   const demo = expeditions.find((e) => e.slug === slug);
   if (!trip && demo) return { title: demo.name, description: demo.overview };
 
@@ -41,7 +44,7 @@ export default async function TripDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const trip = await getTripBySlug(slug).catch(() => null);
+  const trip = await readTrip(slug);
   const demo = expeditions.find((e) => e.slug === slug);
   if (!trip && demo) return <TripDetailExperience key={demo.id} trip={demoTripDetail(demo)} />;
   if (!trip) notFound();

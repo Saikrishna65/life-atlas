@@ -1,5 +1,6 @@
 "use client";
 
+import PublicPageReady from "@/components/layout/PublicPageReady";
 import { useEffect } from "react";
 
 export default function Error({
@@ -15,6 +16,7 @@ export default function Error({
 
   return (
     <main className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6 text-center pt-32">
+      <PublicPageReady />
       <h1 className="font-display text-4xl md:text-5xl text-foreground mb-6">A discontinuity occurred.</h1>
       <p className="font-body text-xl text-muted-foreground mb-12 max-w-md mx-auto">
         Something went wrong while trying to access this part of the archive.

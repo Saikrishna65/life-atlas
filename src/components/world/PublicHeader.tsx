@@ -1,4 +1,5 @@
 "use client";
+import {usePublicLoading} from "@/components/layout/PublicPageReady";
 import HeroLogo from "@/components/home/HeroLogo";
 import Link from "next/link";
 import { navigationTypography as typography } from "@/lib/public-fonts";
@@ -17,6 +18,7 @@ const links = [
   ["/about", "About"],
 ];
 export default function PublicHeader() {
+  const publicLoading=usePublicLoading();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   return (
@@ -25,11 +27,11 @@ export default function PublicHeader() {
         <button aria-label="Search the atlas" className="reference-nav-round" onClick={() => window.dispatchEvent(new Event("open-search"))}><Search size={17} /></button>
         <nav className="reference-nav-center" aria-label="Public navigation">
           <div className="reference-nav-pill">
-            {[["/trips", "The journeys"], ["/places", "The places"], ["/photography", "Frames & films"]].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}
+            {[["/trips", "The journeys"], ["/places", "The places"], ["/photography", "Frames & films"]].map(([href, label]) => <Link prefetch={publicLoading?false:null} key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}
           </div>
-          <Link className="reference-nav-brand atlas-logo-brand" href="/" aria-label="Life Atlas home"><HeroLogo /></Link>
+          <Link prefetch={publicLoading?false:null} className="reference-nav-brand atlas-logo-brand" href="/" aria-label="Life Atlas home"><HeroLogo /></Link>
           <div className="reference-nav-pill">
-            {[["/map", "The world"], ["/timeline", "Our timeline"], ["/about", "The story"]].map(([href, label]) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}
+            {[["/map", "The world"], ["/timeline", "Our timeline"], ["/about", "The story"]].map(([href, label]) => <Link prefetch={publicLoading?false:null} key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}
           </div>
         </nav>
         <button aria-label="Open public navigation" className="reference-nav-round" onClick={() => setOpen(true)}><Menu size={17} /></button>
@@ -47,7 +49,7 @@ export default function PublicHeader() {
               ["/cinema", "Cinema"],
               ["/experiences", "Experiences"],
             ].map(([href, label]) => (
-              <Link onClick={() => setOpen(false)} href={href} key={href}>
+              <Link prefetch={publicLoading?false:null} onClick={() => setOpen(false)} href={href} key={href}>
                 {label}
                 <ArrowUpRight size={23} />
               </Link>

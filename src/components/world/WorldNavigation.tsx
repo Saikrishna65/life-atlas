@@ -1,4 +1,5 @@
 "use client";
+import {usePublicLoading} from "@/components/layout/PublicPageReady";
 import HeroLogo from "@/components/home/HeroLogo";
 import Link from "next/link";
 import { navigationTypography as typography } from "@/lib/public-fonts";
@@ -15,6 +16,7 @@ export const chapters = [
   ["beyond", "The Beyond"],
 ];
 export default function WorldNavigation() {
+  const publicLoading=usePublicLoading();
   const [active, setActive] = useState("observatory");
   const [visible, setVisible] = useState(false);
   const [open, setOpen] = useState(false);
@@ -94,17 +96,17 @@ export default function WorldNavigation() {
         </button>
         <div className="reference-nav-center">
           <div className="reference-nav-pill">
-            <Link href="/trips">The journeys</Link>
-            <Link href="/places">The places</Link>
-            <Link href="/photography">Frames &amp; films</Link>
+            <Link prefetch={publicLoading?false:null} href="/trips">The journeys</Link>
+            <Link prefetch={publicLoading?false:null} href="/places">The places</Link>
+            <Link prefetch={publicLoading?false:null} href="/photography">Frames &amp; films</Link>
           </div>
           <button className="reference-nav-brand" aria-label="Life Atlas home" onClick={() => navigate("top")}>
             <HeroLogo />
           </button>
           <div className="reference-nav-pill">
             <button onClick={() => navigate("observatory")}>The world</button>
-            <Link href="/timeline">Our timeline</Link>
-            <Link href="/about">The story</Link>
+            <Link prefetch={publicLoading?false:null} href="/timeline">Our timeline</Link>
+            <Link prefetch={publicLoading?false:null} href="/about">The story</Link>
           </div>
         </div>
         <button className="reference-nav-round" aria-label="The atlas" onClick={() => setOpen(true)} aria-expanded={open} aria-controls="world-chapter-menu">

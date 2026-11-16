@@ -1,12 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import {publicPreloading} from "@/lib/public-loading/readiness";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
+}
+
+let countryData:Promise<{features?:unknown[]}>|undefined;
+function loadCountries(){
+  if(!countryData){
+    countryData=fetch('/data/countries.geojson').then(response=>{if(!response.ok)throw new Error('Geography unavailable');return response.json();});
+    void countryData.catch(()=>{countryData=undefined;});
+  }
+  return countryData;
 }
 
 export interface GlobePlace {
@@ -49,6 +59,8 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
     const generation = generationRef.current;
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    // Fetch geography in parallel with the large rendering module.
+    const countriesRequest=loadCountries();
     // Dynamically import to avoid SSR issues
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const GlobeModule = await import("globe.gl") as any;
@@ -150,11 +162,7 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
     globe.renderer().setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1.25 : 1.75));
 
     // Fetch GeoJSON for the dotted landmasses
-    fetch('/data/countries.geojson')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
+    const terrainReady=countriesRequest
       .then(countries => {
         if (generation !== generationRef.current) return;
         if (countries?.features) {
@@ -167,12 +175,14 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
       })
       .catch((err) => {
         console.warn("Could not load local country geojson for globe terrain", err?.message || err);
+        throw err;
       });
 
     // Setup 3D materials, lights, and pillars
     const scene = globe.scene();
+    let materialsReady:Promise<unknown>=Promise.resolve();
     if (scene) {
-      import('three').then((THREE) => {
+      materialsReady=import('three').then((THREE) => {
         if (generation !== generationRef.current) return;
         // Clear default lights for custom lighting
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -242,6 +252,7 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
           const yTo = gsap.quickTo(particlesMesh.rotation, "y", { duration: 2, ease: "power2.out" });
           
           handleMouseMove = (e: MouseEvent) => {
+            if(!globe.__visible||document.hidden||publicPreloading())return;
             const mouseX = (e.clientX / window.innerWidth) - 0.5;
             const mouseY = (e.clientY / window.innerHeight) - 0.5;
             xTo(mouseY * 0.3);
@@ -333,12 +344,16 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
     }
 
     globeInstanceRef.current = globe;
-    setIsGlobeReady(true);
-    if (typeof window !== "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).__globeReady = true;
-      window.dispatchEvent(new CustomEvent("globe-ready"));
-    }
+    void Promise.allSettled([terrainReady,materialsReady]).then(results=>{
+      if(generation!==generationRef.current)return;
+      if(results.some(result=>result.status==='rejected')){setFailed(true);return;}
+      try {
+        globe.renderer().render(globe.scene(),globe.camera());
+        setIsGlobeReady(true);
+        (window as Window & {__globeReady?:boolean}).__globeReady=true;
+        window.dispatchEvent(new CustomEvent('globe-ready'));
+      } catch {setFailed(true);}
+    });
 
     // Responsive resize handler
     const handleResize = () => {
@@ -350,18 +365,22 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
     };
     window.addEventListener("resize", handleResize);
 
+    const onVisibility = () => {
+      if(document.hidden||publicPreloading()||!globe.__visible)globe.pauseAnimation?.();
+      else globe.resumeAnimation?.();
+    };
     const visibility = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !document.hidden) globe.resumeAnimation?.();
-      else globe.pauseAnimation?.();
+      globe.__visible=entry.isIntersecting;onVisibility();
     }, { rootMargin: '100px' });
-    visibility.observe(containerEl);
-    const onVisibility = () => { if (document.hidden) globe.pauseAnimation?.(); else if (containerEl.getBoundingClientRect().bottom > 0 && containerEl.getBoundingClientRect().top < window.innerHeight) globe.resumeAnimation?.(); };
+    visibility.observe(containerEl);onVisibility();
     document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('atlas-public-loading',onVisibility);
     const previousCleanup = globe._cleanup;
     globe._cleanup = () => {
       clearTimeout(cameraTimer);
       visibility.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('atlas-public-loading',onVisibility);
       window.removeEventListener("resize", handleResize);
       previousCleanup?.();
       globe._destructor?.();
@@ -508,6 +527,7 @@ export default function InteractiveGlobe({ places, onSelect, selectedPlaceId }: 
 
   return (
     <section
+      data-public-ready={failed?"error":isGlobeReady?"ready":"pending"}
       id="globe-section"
       ref={containerRef}
       className="relative py-28 md:py-36 flex flex-col items-center justify-center bg-background min-h-screen overflow-hidden border-t border-muted/60"

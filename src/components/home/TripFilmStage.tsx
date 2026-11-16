@@ -1,4 +1,5 @@
 "use client";
+import {usePublicLoading} from "@/components/layout/PublicPageReady";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { heroFilms } from "@/data/demo/hero-films";
 import { heroHandoffAt, HERO_PRELOAD_AT_SECONDS } from "./hero-playback";
@@ -27,6 +28,8 @@ export default function TripFilmStage({
   onEnd: () => void;
   onStatus: (status: "stock" | "fallback" | "failed" | "blocked") => void;
 }) {
+  const publicLoading=usePublicLoading();
+  const [prepared,setPrepared]=useState<number[]>([]);
   const [prewarmed, setPrewarmed] = useState<number | null>(null);
   const videos = useRef<(HTMLVideoElement | null)[]>([]);
   const failedSlots = useRef(new Set<number>());
@@ -54,9 +57,23 @@ export default function TripFilmStage({
       onStatus,
     };
   });
+  useEffect(()=>{
+    if(!publicLoading)return;
+    let alive=true;
+    queueMicrotask(()=>{
+      if(!alive)return;
+      // Cached frames/errors can arrive before React attaches media listeners.
+      const broken=videos.current.flatMap((video,index)=>video?.error&&!fallbacks[index]?[index]:[]);
+      if(broken.length)setFallbacks(previous=>previous.map((value,index)=>value||broken.includes(index)));
+      const ready=videos.current.flatMap((video,index)=>video&&video.readyState>=2?[index]:[]);
+      setPrepared(previous=>ready.some(index=>!previous.includes(index))?[...new Set([...previous,...ready])]:previous);
+    });
+    return ()=>{alive=false;};
+  },[publicLoading,fallbacks]);
   const reveal = useCallback((index: number, element: HTMLVideoElement) => {
     const state = current.current;
     if (index !== state.requested || element.readyState < 2) return;
+    if(index!==state.active)setPrepared(previous=>previous.filter(slot=>slot!==state.active));
     state.onReveal(index);
   }, []);
   useEffect(() => {
@@ -155,7 +172,7 @@ export default function TripFilmStage({
     >
       {heroFilms.slice(0, count).map((film, index) => {
         const mounted =
-          index === active ||
+          publicLoading || prepared.includes(index) || index === active ||
           index === requested ||
           index === outgoing ||
           (index === prewarmed && playing && !reduced);
@@ -177,7 +194,8 @@ export default function TripFilmStage({
             }
             muted
             playsInline
-            preload={mounted ? "auto" : "none"}
+            preload={publicLoading?"metadata":mounted?(index===active||index===requested||index===outgoing||(index===prewarmed&&playing&&!reduced)?"auto":"metadata"):"none"}
+            onLoadedData={()=>{if(index!==outgoing)setPrepared(previous=>previous.includes(index)?previous:[...previous,index]);}}
             disablePictureInPicture
             tabIndex={-1}
             onError={() => {

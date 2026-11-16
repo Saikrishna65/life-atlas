@@ -1,5 +1,6 @@
 "use client";
 
+import {onPublicPreload,publicPreloading} from "@/lib/public-loading/readiness";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, ArrowUpRight, Pause, Play } from "lucide-react";
@@ -20,16 +21,19 @@ function AutoFilm({ frame, paused }: { frame: ScrapbookFrame; paused: boolean })
     const motion = matchMedia("(prefers-reduced-motion: reduce)");
     let visible = false;
     const update = () => {
-      if (visible && !paused && !motion.matches && !document.hidden) {
+      if(publicPreloading()&&!motion.matches&&!video.getAttribute("src")){video.src=frame.src;video.preload="metadata";}
+      if (visible && !publicPreloading() && !paused && !motion.matches && !document.hidden) {
         if (!video.hasAttribute("src")) video.src = frame.src;
         void video.play().catch(() => { /* Poster remains if autoplay is blocked. */ });
       } else video.pause();
     };
+    const releasePreload=onPublicPreload(update);
+    window.addEventListener("atlas-public-loading",update);
     const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; update(); }, { threshold: .1 });
     observer.observe(video);
     document.addEventListener("visibilitychange", update);
     motion.addEventListener("change", update);
-    return () => { observer.disconnect(); video.pause(); document.removeEventListener("visibilitychange", update); motion.removeEventListener("change", update); };
+    return () => {releasePreload();window.removeEventListener("atlas-public-loading",update); observer.disconnect(); video.pause(); document.removeEventListener("visibilitychange", update); motion.removeEventListener("change", update); };
   }, [frame.src, paused]);
   return <video ref={ref} className="scrapbook-auto-film" poster={frame.preview || undefined} autoPlay muted loop playsInline preload="none" aria-label={frame.title} />;
 }
@@ -70,7 +74,7 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
     };
     const tick = (now: number) => {
       raf = 0;
-      if (!visible || motion.matches || document.hidden || paused || selected !== null || stripHeld.current) { previous = 0; return; }
+      if (!visible || motion.matches || document.hidden || publicPreloading() || paused || selected !== null || stripHeld.current) { previous = 0; return; }
       if (previous) stripPhase.current = (stripPhase.current + Math.min(50, now - previous) / 4200) % cards.length;
       previous = now;
       draw();
@@ -103,8 +107,9 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
     ['pointerover','pointerout','focusin','focusout'].forEach(event => strip.addEventListener(event, interaction));
     motion.addEventListener("change", update);
     document.addEventListener("visibilitychange", update);
+    window.addEventListener("atlas-public-loading",update);
     update();
-    return () => { cancelAnimationFrame(raf); observer.disconnect(); resize.disconnect(); motion.removeEventListener("change", update); document.removeEventListener("visibilitychange", update); ['pointerover','pointerout','focusin','focusout'].forEach(event => strip.removeEventListener(event, interaction)); };
+    return () => {window.removeEventListener("atlas-public-loading",update); cancelAnimationFrame(raf); observer.disconnect(); resize.disconnect(); motion.removeEventListener("change", update); document.removeEventListener("visibilitychange", update); ['pointerover','pointerout','focusin','focusout'].forEach(event => strip.removeEventListener(event, interaction)); };
   }, [moments, paused, selected]);
 
   useEffect(() => {

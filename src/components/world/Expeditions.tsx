@@ -1,4 +1,5 @@
 "use client";
+import {usePublicLoading} from "@/components/layout/PublicPageReady";
 import { KineticHeading, RouteDrawing } from "./EditorialElements";
 import Link from "next/link";
 import Image from "next/image";
@@ -13,6 +14,7 @@ import { expeditions } from "@/data/demo/expeditions";
 import { searchRecords } from "@/data/demo/selectors";
 import { DemoNote, Empty, SearchField } from "./primitives";
 export default function Expeditions() {
+  const publicLoading=usePublicLoading();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All terrains");
   const [sort, setSort] = useState("Curated");
@@ -108,6 +110,7 @@ export default function Expeditions() {
           <div className="expedition-cinema">
             {items.slice(offset, offset + 3).map((e, i) => (
               <Link
+              prefetch={publicLoading?false:null}
                 href={`/trips/${e.slug}`}
                 className={`expedition-panel panel-${i}`}
                 key={e.id}

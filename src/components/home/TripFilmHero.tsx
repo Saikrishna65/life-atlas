@@ -1,4 +1,5 @@
 "use client";
+import PublicPageReady, {usePublicLoading} from "@/components/layout/PublicPageReady";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { heroTypography } from "@/lib/public-fonts";
@@ -20,6 +21,7 @@ import "./trip-film-hero.css";
 
 
 export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip[]; galleryPhotos: HeroGalleryPhoto[] }) {
+  const publicLoading=usePublicLoading();
   const [active, setActive] = useState(0);
   const [requested, setRequested] = useState(0);
   const [outgoing, setOutgoing] = useState<number | null>(null);
@@ -47,6 +49,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
 
   const current = trips[active];
   const playing =
+    !publicLoading &&
     !paused &&
     (!reduced || manualPlay) &&
     visible &&
@@ -96,7 +99,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
     return () => clearTimeout(timer);
   }, [outgoing, reduced]);
   useEffect(() => {
-    if (reduced) return;
+    if (reduced || publicLoading) return;
     const context = gsap.context(() => {
       gsap.fromTo(
         heading.current?.children ?? [],
@@ -105,7 +108,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
       );
     }, root);
     return () => context.revert();
-  }, [active, reduced]);
+  }, [active, reduced, publicLoading]);
   if (!current) return null;
   return (
     <section
@@ -125,6 +128,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
         }
       }}
     >
+      <PublicPageReady />
       <TripFilmStage
         active={active}
         outgoing={outgoing}
@@ -161,7 +165,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
           {active + 1}
         </p>
         <h1>
-          <Link href={`/trips/${current.slug}`}>
+          <Link prefetch={publicLoading?false:null} href={`/trips/${current.slug}`}>
             {current.title
               .split(" ")
               .slice(0, Math.ceil(current.title.split(" ").length / 2))
@@ -174,22 +178,23 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
             .
           </Link>
         </h1>
-        <Link className="trip-film-cta" href={`/trips/${current.slug}`}>
+        <Link prefetch={publicLoading?false:null} className="trip-film-cta" href={`/trips/${current.slug}`}>
           <span>Explore this trip</span>
           <ArrowRight size={17} />
         </Link>
       </div>
       <aside className="trip-film-discover" aria-label="More to discover">
-        <Link href="/explore" className="trip-film-aside-label">
+        <Link prefetch={publicLoading?false:null} href="/explore" className="trip-film-aside-label">
           Explore <ArrowRight size={20} />
         </Link>
-        <Link className="trip-film-journal-tile" href="/photography" aria-label="Photo Gallery">
+        <Link prefetch={publicLoading?false:null} className="trip-film-journal-tile" href="/photography" aria-label="Photo Gallery">
           <HeroGalleryPreview photos={galleryPhotos} trips={trips} />
           <span className="hero-card-arrow">
             <ArrowUpRight size={17} />
           </span>
         </Link>
         <Link
+              prefetch={publicLoading?false:null}
           className="trip-film-photo-tile trip-film-globe-tile"
           href="/#observatory"
         >
@@ -199,7 +204,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
           </span>
           <span>Explore the Globe</span>
         </Link>
-        <Link className="trip-film-world-link" href={`/trips/${trips[0].slug}`}>
+        <Link prefetch={publicLoading?false:null} className="trip-film-world-link" href={`/trips/${trips[0].slug}`}>
           <span className="trip-film-latest-image">
             <Image src={trips[0].image} alt="" fill sizes="120px" unoptimized />
           </span>

@@ -79,6 +79,7 @@ export default function GeographicRouteMap({
 }) {
   const [failed, setFailed] = useState(false),
     [terrain, setTerrain] = useState(false);
+  const [tilesReady,setTilesReady]=useState(false);
   const [fit, setFit] = useState(0);
   const points = useMemo<[number, number][]>(
     () => [
@@ -90,7 +91,7 @@ export default function GeographicRouteMap({
     [paths, stops],
   );
   return (
-    <div className="geographic-route">
+    <div className="geographic-route" data-public-ready={tilesReady?"ready":"pending"}>
       <div className="route-layer-control">
         <button onClick={() => setFit((n) => n + 1)}>Fit route</button>
         <button
@@ -133,7 +134,7 @@ export default function GeographicRouteMap({
               ? "Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap (CC-BY-SA)"
               : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           }
-          eventHandlers={{ tileerror: () => setFailed(true) }}
+          eventHandlers={{ load:()=>setTilesReady(true),tileerror: () => setFailed(true) }}
         />
         <View
           points={points}

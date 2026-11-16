@@ -3,8 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import {
   PUBLIC_CATALOG_STORAGE,
   publicCatalogSource,
-  readPublicCatalog,
 } from "@/lib/r2/public-catalog";
+import {cachedPublicCatalog} from "./public-catalog-cache";
+import {beginPublicTask} from "@/lib/public-loading/readiness";
 import type { PublicMediaCatalog } from "@/lib/r2/types";
 
 /** Only a public, validated catalog URL crosses this boundary. Never cloud credentials. */
@@ -36,16 +37,14 @@ export function usePublicCatalog() {
     queueMicrotask(() => {
       if (alive) setSource(address);
     });
-    let request: AbortController | undefined;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let finish=()=>{};
     const load = async () => {
       if (Date.now() - lastFetch.current < 30000) return;
       lastFetch.current = Date.now();
-      request?.abort();
-      request = new AbortController();
-      timeout = setTimeout(() => request?.abort(), 10000);
+      finish();
+      finish=beginPublicTask("Published media catalog");
       try {
-        const next = await readPublicCatalog(address, request.signal);
+        const next = await cachedPublicCatalog(address);
         if (!alive) return;
         setCatalog(next);
         setError(false);
@@ -57,7 +56,7 @@ export function usePublicCatalog() {
       } catch {
         if (alive) setError(true);
       } finally {
-        clearTimeout(timeout);
+        finish();
       }
     };
     void load();
@@ -69,8 +68,7 @@ export function usePublicCatalog() {
     return () => {
       alive = false;
       lastFetch.current = 0;
-      request?.abort();
-      clearTimeout(timeout);
+      finish();
       window.removeEventListener("focus", focus);
       document.removeEventListener("visibilitychange", focus);
     };

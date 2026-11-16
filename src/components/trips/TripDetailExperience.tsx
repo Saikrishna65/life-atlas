@@ -1,4 +1,6 @@
 "use client";
+import {onPublicPreload} from "@/lib/public-loading/readiness";
+import PublicPageReady, {usePublicLoading} from "@/components/layout/PublicPageReady";
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -19,10 +21,11 @@ import TripJournalGallery from "./TripJournalGallery";
 import "@/components/world/world.css";
 import "./trip-detail.css";
 
-const RouteMap = dynamic(() => import("./GeographicRouteMap"), { ssr: false, loading: () => <div className="td-map-loading"><Compass size={44} strokeWidth={.7} /><span>Unfolding the route…</span></div> });
+const RouteMap = dynamic(() => import("./GeographicRouteMap"), { ssr: false, loading: () => <div className="td-map-loading" data-public-ready="pending"><Compass size={44} strokeWidth={.7} /><span>Unfolding the route…</span></div> });
 const dateLabel = (date: string) => new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(date));
 
 export default function TripDetailExperience({ trip }: { trip: TripDetailData }) {
+  const publicLoading=usePublicLoading();
   const root = useRef<HTMLDivElement>(null);
   const mapStage = useRef<HTMLDivElement>(null);
   const lenis = useLenis();
@@ -76,9 +79,10 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
   };
   const navigateMedia = (delta: number) => { setSelected(visible[(currentIndex + delta + visible.length) % visible.length]?.id ?? null); setZoom(false); setFailed(null); };
   useEffect(() => {
+    const releasePreload=onPublicPreload(()=>setMapReady(true));
     const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setMapReady(true); observer.disconnect(); } }, { rootMargin: "500px" });
     if (mapStage.current) observer.observe(mapStage.current);
-    return () => observer.disconnect();
+    return () => {observer.disconnect();releasePreload();};
   }, []);
   useEffect(() => {
     let contrast: IntersectionObserver;
@@ -106,6 +110,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
     return () => window.removeEventListener("keydown", key);
   }, [selected, visible, currentIndex]);
   useEffect(() => {
+    if(publicLoading)return;
     gsap.registerPlugin(ScrollTrigger);
     const responsive = gsap.matchMedia();
     responsive.add("(prefers-reduced-motion: no-preference)", () => {
@@ -118,20 +123,21 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
       return () => context.revert();
     });
     return () => responsive.revert();
-  }, []);
+  }, [publicLoading]);
 
   return <div ref={root} className="living-world trip-detail-v3">
+      <PublicPageReady />
     <WorldMotion>
       <header className="td-cover" data-hero aria-label="Trip hero">
         <div className="td-cover-media">{coverFilm ? <DetailFilm src={coverFilm} poster={trip.cover} posterPolicy="reduced-motion" paused={paused || !!current} label="Trip cover film" /> : trip.cover ? <Image src={trip.cover} alt="" fill sizes="100vw" priority unoptimized={!trip.sample} /> : <div className="td-cover-art"><Compass size={360} strokeWidth={.15} /></div>}</div><div className="td-cover-shade" />
-        <div className="td-cover-top"><Link href="/#memories"><ArrowLeft size={14} /> Back to my journeys</Link><div className="td-cover-tools"><span>{trip.sample ? "ILLUSTRATIVE TRAVEL JOURNAL" : trip.date ? dateLabel(trip.date) : "MY TRAVEL JOURNAL"}</span>{coverFilm && <button className="td-film-toggle" onClick={() => setPaused(value => !value)} aria-pressed={paused} aria-label={paused ? "Resume trip films" : "Pause trip films"}>{paused ? <Play size={14} /> : <Pause size={14} />}{paused ? "Resume films" : "Pause films"}</button>}</div></div>
+        <div className="td-cover-top"><Link prefetch={publicLoading?false:null} href="/#memories"><ArrowLeft size={14} /> Back to my journeys</Link><div className="td-cover-tools"><span>{trip.sample ? "ILLUSTRATIVE TRAVEL JOURNAL" : trip.date ? dateLabel(trip.date) : "MY TRAVEL JOURNAL"}</span>{coverFilm && <button className="td-film-toggle" onClick={() => setPaused(value => !value)} aria-pressed={paused} aria-label={paused ? "Resume trip films" : "Pause trip films"}>{paused ? <Play size={14} /> : <Pause size={14} />}{paused ? "Resume films" : "Pause films"}</button>}</div></div>
         <div className="td-cover-copy"><span className="td-eyebrow">{trip.region}</span><h1>{trip.title.split(/\s+/).map((word, index) => <span className="td-title-line" key={index}><span>{word} </span></span>)}</h1></div>
         <div className="td-cover-bottom"><div><span>{trip.duration}</span><i /><span>{trip.stops.length} {trip.sample ? "sample stops" : "published stops"}</span><i /><span>{media.length} frames & films</span></div><button onClick={() => go("route")} className="td-circle-link">Follow the journey <span><ArrowDown size={20} /></span></button></div>
       </header>
       <section className="td-prologue"><span className="td-eyebrow">A CHAPTER FROM MY ATLAS</span><p data-world-reveal>{trip.overview}</p>{trip.sample && <small>Sample itinerary, illustrative photography and films. The route is synthetic, not recorded personal travel.</small>}</section>
       <section className="td-route td-section" id="route">
         <header className="td-section-heading" data-world-reveal><div><span className="td-eyebrow">01 / THE WAY THERE</span><KineticHeading lines={["Every bend.", <em key="line">Part of the story.</em>]} /></div><span className="td-section-note">{trip.sample ? "A GEOGRAPHIC ROUTE STUDY" : trip.paths.length ? "FROM THE PUBLISHED GPS RECORDING" : "THE PUBLISHED PLACES"}</span></header>
-        <div className="td-map-layout"><div className="td-map-stage" ref={mapStage}>{mapReady && (trip.paths.length || trip.stops.length) ? <RouteMap stops={trip.stops} paths={trip.paths} illustrative={trip.sample} activeId={stop} onSelect={setStop} /> : <div className="td-map-loading"><Compass size={45} strokeWidth={.7} /><p>{trip.paths.length || trip.stops.length ? "The map opens as you approach." : "No GPS track or geographic stops have been published yet."}</p></div>}</div>
+        <div className="td-map-layout"><div className="td-map-stage" ref={mapStage} data-public-ready={!mapReady&&(trip.paths.length||trip.stops.length)?"pending":"ready"}>{mapReady && (trip.paths.length || trip.stops.length) ? <RouteMap stops={trip.stops} paths={trip.paths} illustrative={trip.sample} activeId={stop} onSelect={setStop} /> : <div className="td-map-loading"><Compass size={45} strokeWidth={.7} /><p>{trip.paths.length || trip.stops.length ? "The map opens as you approach." : "No GPS track or geographic stops have been published yet."}</p></div>}</div>
           <aside className="td-route-aside"><span className="td-eyebrow">PLACES ALONG THE WAY</span><nav aria-label="Choose a route stop">{trip.stops.map((item, index) => <button key={item.id} onClick={() => setStop(item.id)} aria-pressed={stop === item.id}><small>{String(index + 1).padStart(2, "0")}</small><span>{item.name}</span><ArrowUpRight size={17} /></button>)}</nav>{activeStop && <div className="td-place-note" key={activeStop.id}><span>IN FOCUS</span><h3>{activeStop.name}</h3>{activeStop.description && <p>{activeStop.description}</p>}</div>}{!trip.paths.length && !trip.sample && <p className="td-muted">No recorded route was published. Stops are shown without inventing a travelled path.</p>}</aside>
         </div>
         <div className="td-route-record"><div className="td-stat-heading"><h3>The journey, in numbers.</h3><span>{trip.sample ? "EXAMPLE VALUES / SAMPLE JOURNEY" : "PUBLISHED TRIP FIGURES"}</span></div><p className="td-stat-note">{trip.sample ? "Illustrative telemetry for this sample journey. These are not my personal recordings." : trip.metrics.length ? "From this journey’s published travel record." : "Recorded figures are not available for this journey yet."}</p><dl className="td-metrics td-metrics-primary">{primaryMetrics.map(metric => <div key={metric.label} data-unrecorded={metric.value === "Not recorded"}><dt>{metric.label}</dt><dd>{metric.value}<span>{metric.unit}</span></dd></div>)}</dl>{!!otherMetrics.length && <dl className="td-metrics td-metrics-secondary">{otherMetrics.map(metric => <div key={metric.label}><dt>{metric.label}</dt><dd>{metric.value}<span>{metric.unit}</span></dd></div>)}</dl>}</div>
@@ -148,7 +154,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
         {!visible.length && <div className="td-empty"><p>No media matches this selection.</p>{!!media.length && <button onClick={() => { setPlace("All places"); setKind("All media"); setCategory("All categories"); }}>Reset journal filters <ArrowRight size={16} /></button>}</div>}
         <div className="td-journal-foot"><span aria-live="polite">{Math.min(limit, visible.length)} / {visible.length} MOMENTS</span>{limit < visible.length && <button onClick={() => setLimit(value => value + 18)}>Unfold more <Plus size={16} /></button>}</div>
       </section>
-      <section className="td-ending"><span className="td-eyebrow">THE LAST FRAME. ANOTHER BEGINNING.</span><h2>The road<br /><em>goes on.</em></h2>{trip.next ? <Link className="td-next" href={`/trips/${trip.next.slug}`}>{trip.next.image && <div className="td-next-image"><Image src={trip.next.image} alt="" fill sizes="(max-width: 700px) 85vw, 50vw" loading="lazy" unoptimized /></div>}<span>NEXT JOURNAL</span><h3>{trip.next.title}</h3><span className="td-next-arrow"><ArrowUpRight size={28} /></span></Link> : <Link href="/#memories" className="td-all-journeys">Back to my journeys <ArrowUpRight size={20} /></Link>}<div className="td-ending-links"><Link href="/#memories">All journeys <ArrowUpRight size={15} /></Link><button onClick={() => { if (lenis) lenis.scrollTo(0, { immediate: matchMedia("(prefers-reduced-motion: reduce)").matches }); else window.scrollTo({ top: 0, behavior: "smooth" }); }}>Back to the beginning <ArrowUpRight size={15} /></button></div></section>
+      <section className="td-ending"><span className="td-eyebrow">THE LAST FRAME. ANOTHER BEGINNING.</span><h2>The road<br /><em>goes on.</em></h2>{trip.next ? <Link prefetch={publicLoading?false:null} className="td-next" href={`/trips/${trip.next.slug}`}>{trip.next.image && <div className="td-next-image"><Image src={trip.next.image} alt="" fill sizes="(max-width: 700px) 85vw, 50vw" loading="lazy" unoptimized /></div>}<span>NEXT JOURNAL</span><h3>{trip.next.title}</h3><span className="td-next-arrow"><ArrowUpRight size={28} /></span></Link> : <Link prefetch={publicLoading?false:null} href="/#memories" className="td-all-journeys">Back to my journeys <ArrowUpRight size={20} /></Link>}<div className="td-ending-links"><Link prefetch={publicLoading?false:null} href="/#memories">All journeys <ArrowUpRight size={15} /></Link><button onClick={() => { if (lenis) lenis.scrollTo(0, { immediate: matchMedia("(prefers-reduced-motion: reduce)").matches }); else window.scrollTo({ top: 0, behavior: "smooth" }); }}>Back to the beginning <ArrowUpRight size={15} /></button></div></section>
     </WorldMotion>
     {current && <Modal title={current.place === "Unassigned" ? "From the trip journal" : current.place} className="td-viewer" onClose={() => { setSelected(null); setZoom(false); }}><div className={`td-viewer-media ${zoom ? "is-zoomed" : ""}`}>{current.kind === "video" ? <video key={current.id} src={current.url} poster={current.poster} autoPlay muted playsInline controls onError={() => setFailed(current.id)} /> : <Image key={current.id} src={current.url} alt={current.caption || `Trip photograph from ${current.place}`} width={1600} height={1100} unoptimized />}</div>{failed === current.id && <p role="status">This film could not be loaded. <a href={current.url} target="_blank" rel="noreferrer">Open the original ↗</a></p>}<div className="td-viewer-details"><div><span>{current.category}</span><h3>{current.place}</h3>{current.caption && <p>{current.caption}</p>}{trip.sample && <p>Illustrative sample media, not a personal travel record.</p>}</div><div className="td-viewer-tools">{current.kind === "photo" && <button aria-label={zoom ? "Zoom out" : "Zoom in"} aria-pressed={zoom} onClick={() => setZoom(value => !value)}>{zoom ? <Minus size={18} /> : <Plus size={18} />}</button>}<button onClick={() => navigateMedia(-1)} aria-label="Previous journal moment"><ArrowLeft size={19} /></button><span>{currentIndex + 1} / {visible.length}</span><button onClick={() => navigateMedia(1)} aria-label="Next journal moment"><ArrowRight size={19} /></button></div></div></Modal>}
   </div>;

@@ -1,12 +1,15 @@
 "use client";
+import {usePublicLoading} from "@/components/layout/PublicPageReady";
 import { useEffect, useRef, type ReactNode } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 /** A single scoped motion director; the original hero and scroll engine are outside it. */
 export default function WorldMotion({ children }: { children: ReactNode }) {
+  const loading=usePublicLoading();
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    if(loading)return;
     gsap.registerPlugin(ScrollTrigger);
     const media = gsap.matchMedia();
     media.add("(prefers-reduced-motion: no-preference)", () => {
@@ -339,7 +342,10 @@ export default function WorldMotion({ children }: { children: ReactNode }) {
         cancelAnimationFrame(pending);
         pending = requestAnimationFrame(scan);
       };
-      const observer = new MutationObserver(schedule);
+      const targets='[data-world-reveal],.editorial-route,.journey-route-ink,.route-traveler,[data-world-parallax],.memory-print,.sound-art-stack,.observatory-dial,.system-constellation,[data-world-tilt],.world-button,.world-nav-explore';
+      const observer = new MutationObserver(records=>{
+        if(records.some(record=>[...record.addedNodes,...record.removedNodes].some(node=>node instanceof Element&&(node.matches(targets)||node.querySelector(targets)))))schedule();
+      });
       let height = root.current?.getBoundingClientRect().height ?? 0;
       const resize = new ResizeObserver(([entry]) => {
         const next =
@@ -362,7 +368,7 @@ export default function WorldMotion({ children }: { children: ReactNode }) {
       };
     });
     return () => media.revert();
-  }, []);
+  }, [loading]);
   return (
     <div className="world-motion-root" ref={root}>
       {children}

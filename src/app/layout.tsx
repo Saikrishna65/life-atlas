@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { atlasDisplay } from "@/lib/public-fonts";
 import { display, sans, body } from "@/lib/fonts";
 import "./globals.css";
+import PublicPageLoader from "@/components/layout/PublicPageLoader";
 import SmoothScroll from "@/components/layout/SmoothScroll";
 import Navigation from "@/components/layout/Navigation";
 import Footer from "@/components/layout/Footer";
@@ -57,6 +58,7 @@ export default function RootLayout({
         <MobileAppBridge />
         <div className="grain-overlay" />
         <SmoothScroll>
+          <PublicPageLoader />
           <Navigation />
           <SearchOverlay />
           <main>

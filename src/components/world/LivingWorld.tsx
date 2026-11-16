@@ -1,4 +1,6 @@
 "use client";
+import PublicPageReady from "@/components/layout/PublicPageReady";
+import {onPublicPreload} from "@/lib/public-loading/readiness";
 import dynamic from "next/dynamic";
 import { Suspense, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import type { TripArchiveEntry } from "@/lib/public-trips/archive";
@@ -10,15 +12,16 @@ import WorldMotion from "./WorldMotion";
 import SceneBoundary from "./SceneBoundary";
 import "./world.css";
 import "./observatory.css";
-const Observatory = dynamic(() => import("./Observatory"));
-const TravelScrapbook = dynamic(() => import("./TravelScrapbook"));
-const PeopleMoments = dynamic(() => import("./PeopleMoments"));
-const TripArchive = dynamic(() => import("./TripArchive"));
-const PublishedMedia = dynamic(() => import("./PublishedMedia"));
-const Beyond = dynamic(() => import("./Beyond"));
+const pendingChapter = () => <span hidden data-public-ready="pending" />;
+const Observatory = dynamic(() => import("./Observatory"), {loading:pendingChapter});
+const TravelScrapbook = dynamic(() => import("./TravelScrapbook"), {loading:pendingChapter});
+const PeopleMoments = dynamic(() => import("./PeopleMoments"), {loading:pendingChapter});
+const TripArchive = dynamic(() => import("./TripArchive"), {loading:pendingChapter});
+const PublishedMedia = dynamic(() => import("./PublishedMedia"), {loading:pendingChapter});
+const Beyond = dynamic(() => import("./Beyond"), {loading:pendingChapter});
 function ChapterLoading({ id, title }: { id: string; title: string }) {
   return (
-    <section id={id} className="world-scene world-loading" aria-label={title}>
+    <section id={id} className="world-scene world-loading" data-public-ready="pending" aria-label={title}>
       <span className="world-eyebrow">The next chapter</span>
       <h2>{title}</h2>
       <p>Keep wandering. A new world is coming into view.</p>
@@ -41,6 +44,7 @@ function Deferred({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const releasePreload = onPublicPreload(() => setReady(true));
     const io = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting) {
@@ -69,6 +73,7 @@ function Deferred({
     document.addEventListener("click", activate);
     return () => {
       io.disconnect();
+      releasePreload();
       window.removeEventListener("hashchange", hash);
       window.removeEventListener("world-chapter-request", request);
       document.removeEventListener("click", activate);
@@ -114,10 +119,12 @@ export default function LivingWorld({ scrapbookMedia = [], trips }: { scrapbookM
     };
     document.addEventListener("click", enterChapter, true);
     window.addEventListener("hashchange", alignHash);
+    window.addEventListener("atlas-public-ready", alignHash);
     return () => {
       cancelAnimationFrame(frame);
       document.removeEventListener("click", enterChapter, true);
       window.removeEventListener("hashchange", alignHash);
+      window.removeEventListener("atlas-public-ready", alignHash);
     };
   }, [lenis]);
   return (
@@ -134,6 +141,7 @@ export default function LivingWorld({ scrapbookMedia = [], trips }: { scrapbookM
         }
       }}
     >
+      <PublicPageReady />
       <WorldNavigation />
       <WorldMotion>
         <Deferred

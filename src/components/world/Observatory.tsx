@@ -1,4 +1,5 @@
 "use client";
+import {onPublicPreload} from "@/lib/public-loading/readiness";
 import { KineticHeading, RouteDrawing } from "./EditorialElements";
 import Link from "next/link";
 import Image from "next/image";
@@ -11,6 +12,7 @@ import "./observatory.css";
 
 const Globe = dynamic(() => import("@/components/home/InteractiveGlobe"), {
   ssr: false,
+  loading:()=> <span hidden data-public-ready="pending" />,
 });
 
 
@@ -41,6 +43,7 @@ export default function Observatory() {
   useEffect(() => {
     const element = root.current;
     if (!element) return;
+    const releasePreload = onPublicPreload(() => setReady(true));
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return;
       // The globe owns its renderer and error fallback. A separate capability
@@ -49,7 +52,7 @@ export default function Observatory() {
       observer.disconnect();
     }, { rootMargin: "100px" });
     observer.observe(element.querySelector(".observatory-core") ?? element);
-    return () => observer.disconnect();
+    return () => {observer.disconnect();releasePreload();};
   }, []);
 
   return (
@@ -73,7 +76,7 @@ export default function Observatory() {
 
         <div className="observatory-core" aria-label="Interactive destination globe">
           {ready ? <Globe places={points} onSelect={selectPlace} selectedPlaceId={focused} /> : (
-            <div className="observatory-globe-placeholder" role="status">
+            <div className="observatory-globe-placeholder" data-public-ready="pending" role="status">
               <div className="observatory-placeholder-ring" aria-hidden="true" />
               <p>A world coming into view…</p>
             </div>
