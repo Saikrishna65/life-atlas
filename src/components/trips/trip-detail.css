@@ -104,14 +104,12 @@
 .td-media-filters { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:20px 0 45px; }
 .td-media-filters > div { display:flex; gap:8px; }
 .td-media-filters select { border:0; border-bottom:1px solid #ffffff35; padding:8px 22px 8px 0; background:#111b17; color:#fff; min-height:44px; font:10px var(--font-sans),sans-serif; }
-/* Natural media proportions, with editorial widths and staggered alignment. */
-.td-photo-wall { columns:2; column-gap:clamp(16px,2vw,30px); }
-.td-frame { display:block; width:var(--td-media-width,100%); margin:0 0 24px; break-inside:avoid; perspective:1000px; padding:0; border:0; background:none; min-width:0; }
-.td-frame:nth-child(even) { margin-left:auto; }
-.td-frame:nth-child(3n) { margin-bottom:18px; }
-.td-frame:nth-child(4n+2) { margin-bottom:32px; }
+/* A close-set editorial contact sheet; media retains its natural proportions. */
+.td-photo-wall { columns:4; column-gap:12px; }
+.td-frame { display:block; width:100%; margin:0 0 12px; break-inside:avoid; perspective:1000px; padding:0; border:0; background:none; min-width:0; }
 .td-frame > div { width:100%; overflow:hidden; position:relative; }
 .td-frame :is(img,video) { width:100%; height:auto; display:block; }
+@media (min-width:801px) and (max-width:1100px) { .td-photo-wall { columns:3; } }
 .td-journal-foot { display:flex; justify-content:space-between; gap:25px; border-top:1px solid #ffffff25; padding-top:25px; margin-top:65px; font-size:9px; letter-spacing:.1em; }
 .td-journal-foot button { display:flex; align-items:center; gap:15px; border:0; background:none; padding:0; font-size:10px; }
 .td-empty { padding:50px 0; font-size:13px; line-height:1.7; color:#9db3a5; }

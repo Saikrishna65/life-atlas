@@ -7,6 +7,7 @@ import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Compass, Pause, Play, P
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useLenis } from "lenis/react";
+import { mixJournalMedia } from "@/lib/public-trips/journal-order";
 import type { DetailMedia, TripDetailData } from "@/lib/public-trips/detail";
 import { mediaForTrip, mediaKind } from "@/lib/r2/public-media";
 import { usePublicCatalog } from "@/components/world/usePublicCatalog";
@@ -19,14 +20,6 @@ import "./trip-detail.css";
 
 const RouteMap = dynamic(() => import("./GeographicRouteMap"), { ssr: false, loading: () => <div className="td-map-loading"><Compass size={44} strokeWidth={.7} /><span>Unfolding the route…</span></div> });
 const dateLabel = (date: string) => new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(date));
-
-/** Size editorial frames from the media itself, without forcing artificial crops. */
-function sizeJournalMedia(media: HTMLImageElement | HTMLVideoElement) {
-  const width = media instanceof HTMLVideoElement ? media.videoWidth : media.naturalWidth;
-  const height = media instanceof HTMLVideoElement ? media.videoHeight : media.naturalHeight;
-  if (!width || !height) return;
-  media.closest<HTMLElement>(".td-frame")?.style.setProperty("--td-media-width", `${Math.min(100, Math.max(72, 80 + (width / height - 1) * 25))}%`);
-}
 
 export default function TripDetailExperience({ trip }: { trip: TripDetailData }) {
   const root = useRef<HTMLDivElement>(null);
@@ -51,7 +44,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
     }));
     return [...new Map([...published, ...trip.media].map(item => [`${item.kind}:${item.place}:${item.url}`, item])).values()];
   }, [catalog, trip]);
-  const visible = media.filter(item => (place === "All places" || item.place === place) && (kind === "All media" || (kind === "Films" ? item.kind === "video" : item.kind === "photo")) && (category === "All categories" || item.category === category));
+  const visible = mixJournalMedia(media.filter(item => (place === "All places" || item.place === place) && (kind === "All media" || (kind === "Films" ? item.kind === "video" : item.kind === "photo")) && (category === "All categories" || item.category === category)));
   const currentIndex = visible.findIndex(item => item.id === selected);
   const current = visible[currentIndex];
   const activeStop = trip.stops.find(item => item.id === stop);
@@ -150,7 +143,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
       <section className="td-journal td-section" id="photo-journal"><RouteDrawing variant="memory" /><header className="td-section-heading" data-world-reveal><div><span className="td-eyebrow">03 / FRAMES & FILMS</span><KineticHeading lines={["The things", <em key="frames">I brought home.</em>]} /></div><span className="td-section-note">{visible.length} MOMENTS / {trip.sample ? "ILLUSTRATIVE COLLECTION" : "THE PUBLIC JOURNAL"}</span></header>
         <div className="td-journal-toolbar"><nav aria-label="Filter journal by place">{["All places", ...new Set(media.map(item => item.place))].map(value => <button key={value} aria-pressed={place === value} onClick={() => { setPlace(value); setLimit(18); setSelected(null); }}>{value}</button>)}</nav><div className="td-media-filters"><div aria-label="Journal media type">{["All media", "Photos", "Films"].map(value => <button key={value} aria-pressed={kind === value} onClick={() => { setKind(value); setLimit(18); setSelected(null); }}>{value}</button>)}</div><label><span className="sr-only">Filter journal category</span><select aria-label="Filter journal category" value={category} onChange={event => { setCategory(event.target.value); setLimit(18); setSelected(null); }}>{["All categories", ...new Set(media.map(item => item.category))].map(value => <option key={value}>{value}</option>)}</select></label></div></div>
         {error && <p role="status" className="td-muted">Published media is temporarily unavailable. The existing trip journal remains accessible.</p>}
-        <div className="td-photo-wall">{visible.slice(0,limit).map((item,index) => <button key={item.id} className={`td-frame td-frame-${index % 6}`} data-world-tilt onClick={() => { setSelected(item.id); setZoom(false); setFailed(null); }} aria-label={`Open ${item.kind === "video" ? "film" : "photo"} ${index + 1} from ${item.place}`}><div data-tilt-plane>{item.kind === "video" ? <DetailFilm src={item.url} poster={item.poster} paused={paused || !!current} label={`Silent film from ${item.place}`} onMetadata={sizeJournalMedia} /> : <Image src={item.poster || item.url} alt={`Trip photograph from ${item.place}`} width={1400} height={1000} onLoad={event => sizeJournalMedia(event.currentTarget)} loading="lazy" sizes="(max-width: 800px) 90vw, 50vw" unoptimized />}</div></button>)}</div>
+        <div className="td-photo-wall">{visible.slice(0,limit).map((item,index) => <button key={item.id} className={`td-frame td-frame-${index % 6}`} data-world-tilt onClick={() => { setSelected(item.id); setZoom(false); setFailed(null); }} aria-label={`Open ${item.kind === "video" ? "film" : "photo"} ${index + 1} from ${item.place}`}><div data-tilt-plane>{item.kind === "video" ? <DetailFilm src={item.url} poster={item.poster} paused={paused || !!current} label={`Silent film from ${item.place}`} /> : <Image src={item.poster || item.url} alt={`Trip photograph from ${item.place}`} width={1400} height={1000} loading="lazy" sizes="(max-width: 800px) 90vw, 50vw" unoptimized />}</div></button>)}</div>
         {!visible.length && <div className="td-empty"><p>No media matches this selection.</p>{!!media.length && <button onClick={() => { setPlace("All places"); setKind("All media"); setCategory("All categories"); }}>Reset journal filters <ArrowRight size={16} /></button>}</div>}
         <div className="td-journal-foot"><span aria-live="polite">{Math.min(limit, visible.length)} / {visible.length} MOMENTS</span>{limit < visible.length && <button onClick={() => setLimit(value => value + 18)}>Unfold more <Plus size={16} /></button>}</div>
       </section>

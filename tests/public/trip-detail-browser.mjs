@@ -79,6 +79,10 @@ try {
     await page.waitForTimeout(1500);
     await page.screenshot({path:`work/qa-trip-detail-v3/journal-${profile.width}.png`});
     const wallWidth=await root.locator('.td-photo-wall').evaluate(el=>el.clientWidth);
+    const columns=await root.locator('.td-photo-wall').evaluate(el=>getComputedStyle(el).columnCount);
+    assert.equal(columns,profile.width<=800?'1':'4','Responsive editorial column count');
+    const mixedKinds=await root.locator('.td-frame').evaluateAll(frames=>frames.map(frame=>frame.querySelector('video')?'video':'photo'));
+    assert.ok(mixedKinds.indexOf('video')<mixedKinds.lastIndexOf('photo'),'Films appear among photos instead of a separate trailing group');
     const widths=await root.locator('.td-frame > div').evaluateAll(frames=>frames.slice(0,6).map(frame=>frame.getBoundingClientRect().width));
     if(profile.width<=800) assert.ok(widths.every(width=>Math.abs(width-wallWidth)<2),'Mobile media use one equal-width column');
     const photos=await root.locator('.td-frame img').evaluateAll(images=>images.filter(img=>img.complete && img.naturalWidth>0).map(img=>({natural:img.naturalWidth/img.naturalHeight,rendered:img.clientWidth/img.clientHeight})));

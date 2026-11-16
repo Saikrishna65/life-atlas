@@ -122,3 +122,11 @@ alignment and modest uneven gaps; equal proportions can share widths. Mobile
 uses one full-width column and natural heights. Videos supply dimensions when
 metadata is available, retaining lazy native streaming. The browser suite checks
 mobile equal widths and loaded photographs’ rendered versus natural proportions.
+
+## Desktop contact sheet
+
+The reference-inspired desktop gallery replaces staggered narrow frames with four
+close-set columns, aligned at the top, natural media heights and 12px gutters.
+Tablet uses three columns; mobile retains one full-width column. Photos and films
+are interleaved deterministically after filtering, preserving order within each
+kind and spreading films through the collection. Captions stay in the viewer.
