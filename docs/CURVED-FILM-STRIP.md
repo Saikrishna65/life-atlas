@@ -29,3 +29,13 @@ collage canvas. The existing random selection, autoplay/pause, modal, keyboard
 navigation and sample labels remain. Browser coverage checks heading-before-strip
 DOM order, absence of the old stage, projection/motion, user pause, photo-to-film
 viewer browsing and focus restoration on desktop/mobile/reduced motion.
+
+## Real stock imagery and precise hover pause
+
+Ribbon sample photos now use documented real Unsplash images stored under
+public/images/stock. Sample films are explicitly titled silent pan/zoom animations
+of those real photographs, not recorded trip footage. The hero’s assets and
+behavior remain unchanged. Pointer-over/out delegates to actual image buttons,
+so empty space within the ribbon no longer pauses motion; keyboard focus, the
+user pause control, document visibility and modal state retain their behavior.
+Browser tests separately verify image-hover pause and empty-space continuation.

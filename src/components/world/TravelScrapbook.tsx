@@ -89,14 +89,25 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
     observer.observe(strip);
     const resize = new ResizeObserver(() => { width = strip.clientWidth; update(); });
     resize.observe(strip);
-    strip.addEventListener("pointerenter", update);
-    strip.addEventListener("pointerleave", update);
-    strip.addEventListener("focusin", update);
-    strip.addEventListener("focusout", update);
+    let hovered = cards.some(card => card.matches(':hover'));
+    let focused = strip.contains(document.activeElement);
+    const interaction = (event: Event) => {
+      const pointer = event as PointerEvent;
+      const focus = event as FocusEvent;
+      const isCard = (target: EventTarget | null) => target instanceof Element && strip.contains(target) && !!target.closest('.scrapbook-strip-item');
+      if (event.type === 'pointerover') hovered = isCard(event.target);
+      if (event.type === 'pointerout') hovered = isCard(pointer.relatedTarget);
+      if (event.type === 'focusin') focused = isCard(event.target);
+      if (event.type === 'focusout') focused = isCard(focus.relatedTarget);
+      stripHeld.current = hovered || focused;
+      update();
+    };
+    stripHeld.current = hovered || focused;
+    ['pointerover','pointerout','focusin','focusout'].forEach(event => strip.addEventListener(event, interaction));
     motion.addEventListener("change", update);
     document.addEventListener("visibilitychange", update);
     update();
-    return () => { cancelAnimationFrame(raf); observer.disconnect(); resize.disconnect(); motion.removeEventListener("change", update); document.removeEventListener("visibilitychange", update); ["pointerenter", "pointerleave", "focusin", "focusout"].forEach(event => strip.removeEventListener(event, update)); };
+    return () => { cancelAnimationFrame(raf); observer.disconnect(); resize.disconnect(); motion.removeEventListener("change", update); document.removeEventListener("visibilitychange", update); ['pointerover','pointerout','focusin','focusout'].forEach(event => strip.removeEventListener(event, interaction)); };
   }, [moments, paused, selected]);
 
   useEffect(() => {
@@ -138,7 +149,7 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
           <p>A road. A face. A few seconds I wish lasted longer. Little pieces of my world, brought home.</p>
         </header>
       <div className="scrapbook-strips" aria-label="A moving collection from my trips">
-        <div className="scrapbook-strip" onPointerEnter={() => { stripHeld.current = true; }} onPointerLeave={() => { stripHeld.current = false; }} onFocus={() => { stripHeld.current = true; }} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) stripHeld.current = false; }}>
+        <div className="scrapbook-strip">
           <div className="scrapbook-strip-track"><div className="scrapbook-strip-group">
             {Array.from({ length: Math.max(9, moments.length) }, (_, slot) => {
               const index = slot % moments.length;

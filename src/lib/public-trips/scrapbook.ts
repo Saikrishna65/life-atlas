@@ -12,14 +12,14 @@ export interface ScrapbookFrame {
 }
 
 export const scrapbookSamples: ScrapbookFrame[] = [
-  { id: "ridge", tripId: "himalayan-journey", tripTitle: "The Himalayan Journey", src: "/images/world/ridge.webp", preview: "/images/world/ridge.webp", title: "The long way up", kind: "photo", sample: true },
-  { id: "mist", tripId: "river-ritual-repeat", tripTitle: "River, ritual, repeat", src: "/images/world/mist.webp", preview: "/images/world/mist.webp", title: "Before the world wakes", kind: "photo", sample: true },
-  { id: "highlands", tripId: "himalayan-journey", tripTitle: "The Himalayan Journey", src: "/films/hero/highlands.mp4", preview: "/images/world/mountains.webp", title: "A little mountain daydream", kind: "film", sample: true },
-  { id: "valley", tripId: "the-green-southern-road", tripTitle: "The green southern road", src: "/images/world/valley.webp", preview: "/images/world/valley.webp", title: "Somewhere worth stopping", kind: "photo", sample: true },
-  { id: "mountains", tripId: "himalayan-journey", tripTitle: "The Himalayan Journey", src: "/images/world/mountains.webp", preview: "/images/world/mountains.webp", title: "Nothing but the view", kind: "photo", sample: true },
-  { id: "coast", tripId: "river-ritual-repeat", tripTitle: "River, ritual, repeat", src: "/films/hero/coast.mp4", preview: "/images/world/ocean.webp", title: "Let the day drift", kind: "film", sample: true },
-  { id: "ocean", tripId: "the-green-southern-road", tripTitle: "The green southern road", src: "/images/world/ocean.webp", preview: "/images/world/ocean.webp", title: "At the edge of everything", kind: "photo", sample: true },
-  { id: "garden", tripId: "the-green-southern-road", tripTitle: "The green southern road", src: "/films/hero/gardens.mp4", preview: "/images/world/valley.webp", title: "A slower kind of afternoon", kind: "film", sample: true },
+  { id:"stock-peaks", tripId:"himalayan-journey", tripTitle:"The Himalayan Journey", src:"/images/stock/wall-peaks.webp", preview:"/images/stock/wall-peaks.webp", title:"Above the clouds · Stock photograph", kind:"photo", sample:true },
+  { id:"stock-starry", tripId:"himalayan-journey", tripTitle:"The Himalayan Journey", src:"/images/stock/wall-starry.webp", preview:"/images/stock/wall-starry.webp", title:"Under the stars · Stock photograph", kind:"photo", sample:true },
+  { id:"stock-trail", tripId:"the-green-southern-road", tripTitle:"The green southern road", src:"/images/stock/phone-mountain.webp", preview:"/images/stock/phone-mountain.webp", title:"The next ridge · Stock photograph", kind:"photo", sample:true },
+  { id:"stock-coffee", tripId:"river-ritual-repeat", tripTitle:"River, ritual, repeat", src:"/images/stock/coffee.webp", preview:"/images/stock/coffee.webp", title:"A shared pause · Stock photograph", kind:"photo", sample:true },
+  { id:"stock-friends", tripId:"river-ritual-repeat", tripTitle:"River, ritual, repeat", src:"/images/stock/people-friends.webp", preview:"/images/stock/people-friends.webp", title:"Good company · Stock photograph", kind:"photo", sample:true },
+  { id:"stock-peaks-motion", tripId:"himalayan-journey", tripTitle:"The Himalayan Journey", src:"/films/stock/peaks.mp4", preview:"/images/stock/wall-peaks.webp", title:"Above the clouds · Animated stock photo, not travel footage", kind:"film", sample:true },
+  { id:"stock-starry-motion", tripId:"river-ritual-repeat", tripTitle:"River, ritual, repeat", src:"/films/stock/stars.mp4", preview:"/images/stock/wall-starry.webp", title:"Under the stars · Animated stock photo, not travel footage", kind:"film", sample:true },
+  { id:"stock-trail-motion", tripId:"the-green-southern-road", tripTitle:"The green southern road", src:"/films/stock/trail.mp4", preview:"/images/stock/phone-mountain.webp", title:"The next ridge · Animated stock photo, not travel footage", kind:"film", sample:true },
 ];
 const normalize = (value: string) => value.trim().normalize("NFC").toLocaleLowerCase("en");
 

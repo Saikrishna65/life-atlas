@@ -55,6 +55,10 @@ try {
       const held=await card.getAttribute('style');
       await page.waitForTimeout(300);
       assert.equal(await card.getAttribute('style'),held,'Hover pauses the ribbon');
+      const stripBounds=await strip.boundingBox();
+      await page.mouse.move(stripBounds.x+stripBounds.width/2,stripBounds.y+8);
+      await page.waitForTimeout(500);
+      assert.notEqual(await card.getAttribute('style'),held,'Empty space inside the strip does not pause it');
       await page.mouse.move(0,0);
     }
     await strip.screenshot({path:`work/qa-scrapbook/ribbon-${profile.width}.png`});

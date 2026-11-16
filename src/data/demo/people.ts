@@ -10,12 +10,12 @@ export interface PeoplePhoto {
   sample: boolean;
 }
 export const peoplePhotos: PeoplePhoto[] = [
-  { id:'lake-friends', src:'/images/people/people-1.webp', alt:'Adult friends together beside an alpine lake', title:'The best part of the view', context:'A shared afternoon', sample:true },
-  { id:'mountain-portrait', src:'/images/people/people-2.webp', alt:'Candid portrait of a woman in hiking fleece', title:'A familiar smile', context:'Between the miles', sample:true },
-  { id:'chai-stop', src:'/images/people/people-3.webp', alt:'Travel companions sharing tea at a mountain roadside stall', title:'One more cup', context:'The unplanned stop', sample:true },
-  { id:'green-jacket', src:'/images/people/people-4.webp', alt:'Smiling man in a green jacket in warm sunlight', title:'Good company', context:'A moment along the way', sample:true },
-  { id:'ridge-evening', src:'/images/people/people-5.webp', alt:'Friends sitting together on a mountain ridge at sunset', title:'Nowhere else to be', context:'The evening pause', sample:true },
-  { id:'camera-companion', src:'/images/people/people-6.webp', alt:'Woman with a camera smiling in a leafy village', title:'Behind the camera', context:'The person behind the photograph', sample:true },
-  { id:'seaside-laughter', src:'/images/people/people-7.webp', alt:'Two friends walking and laughing beside the sea', title:'The long way back', context:'A conversation worth keeping', sample:true },
-  { id:'camp-table', src:'/images/people/people-8.webp', alt:'Travel companions around a campsite table under warm lights', title:'Stay a little longer', context:'After the sun went down', sample:true },
+  {"id": "lakeside-friends", "src": "/images/people/stock-friends.webp", "alt": "Friends sitting side by side overlooking water", "title": "Better together", "context": "Friends by the water", "sample": true},
+  {"id": "blue-door-portrait", "src": "/images/people/stock-creator.webp", "alt": "Woman in a blue hoodie standing beside a blue wall", "title": "A familiar smile", "context": "A candid portrait", "sample": true},
+  {"id": "shared-table", "src": "/images/people/stock-students.webp", "alt": "People smiling together around a table with laptops", "title": "Time together", "context": "A shared afternoon", "sample": true},
+  {"id": "studio-portrait", "src": "/images/people/stock-portrait.webp", "alt": "Portrait of a woman in contrasting blue and warm light", "title": "A face to remember", "context": "Portrait study", "sample": true},
+  {"id": "coffee-with-friends", "src": "/images/people/stock-coffee.webp", "alt": "Hands holding three cups of coffee together", "title": "One more cup", "context": "Around the table", "sample": true},
+  {"id": "warm-portrait", "src": "/images/people/stock-pro.webp", "alt": "Woman seated beside an orange wall with a laptop", "title": "Good company", "context": "A quiet moment", "sample": true},
+  {"id": "shared-work", "src": "/images/people/stock-devs.webp", "alt": "Two people working side by side at computers", "title": "Side by side", "context": "Everyday company", "sample": true},
+  {"id": "cafe-moment", "src": "/images/people/stock-shop.webp", "alt": "Woman smiling at the counter of a cafe", "title": "Little conversations", "context": "A cafe encounter", "sample": true},
 ];

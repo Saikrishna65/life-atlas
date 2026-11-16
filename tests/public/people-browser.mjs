@@ -12,15 +12,23 @@ try {
   const section=page.locator('#people.people-moments');await section.waitFor();
   await page.evaluate(()=>document.fonts.ready);
   assert.equal(await section.locator('.people-print').count(),8);
-  assert.match(await section.innerText(),/FICTIONAL PEOPLE/);
+  assert.match(await section.innerText(),/SAMPLE STOCK PHOTOGRAPHY/);
   const previous=await section.evaluate(el=>el.closest('.world-deferred').previousElementSibling.dataset.chapter);
   assert.equal(previous,'collected-moments');
   const next=await section.evaluate(el=>el.closest('.world-deferred').nextElementSibling.dataset.chapter);
   assert.equal(next,'memories');
   assert.equal((await section.locator('.people-print').allInnerTexts()).join(''),'');
+  const route=section.locator('.people-route path');
+  assert.equal(await route.count(),1);
+  const initialOffset=await route.evaluate(el=>parseFloat(getComputedStyle(el).strokeDashoffset));
   for(const img of await section.locator('.people-print img').all()) {
    await img.scrollIntoViewIfNeeded();
    await img.evaluate(el=>el.complete&&el.naturalWidth?Promise.resolve():new Promise((resolve,reject)=>{el.onload=resolve;el.onerror=reject;}));
+  }
+  await page.waitForTimeout(1200);
+  if(profile.reducedMotion!=='reduce') {
+    const afterOffset=await route.evaluate(el=>parseFloat(getComputedStyle(el).strokeDashoffset));
+    assert.ok(afterOffset<initialOffset,'Background line draws with scroll');
   }
   if(profile.width<=800) assert.ok(await section.locator('.people-float').evaluateAll(frames=>frames.every(el=>getComputedStyle(el).transform==='none')));
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
@@ -29,7 +37,7 @@ try {
   await section.screenshot({path:`work/qa-people/section-${profile.width}.png`});
   const first=section.locator('.people-print').first();await first.click();
   const dialog=page.getByRole('dialog');await dialog.waitFor();
-  assert.match(await dialog.innerText(),/Generated sample photography/);
+  assert.match(await dialog.innerText(),/Real stock photography/);
   await page.getByRole('button',{name:'Next people photo'}).click();
   assert.match(await dialog.innerText(),/2 \/ 8/);
   await page.keyboard.press('ArrowLeft');assert.match(await dialog.innerText(),/1 \/ 8/);
