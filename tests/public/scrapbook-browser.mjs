@@ -19,8 +19,10 @@ try {
     await section.waitFor();
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(1600);
-    assert.equal(await section.locator('.scrapbook-print').count(), 8);
-    assert.equal(await section.locator('.scrapbook-film').count(), 3);
+    assert.equal(await section.locator('.scrapbook-print,.scrapbook-stage').count(), 0);
+    assert.ok(await section.locator('.scrapbook-strip-item img').count()>0);
+    assert.ok(await section.locator('.scrapbook-strip-item video').count()>0);
+    assert.ok(await section.evaluate(el=>el.querySelector('.scrapbook-heading').compareDocumentPosition(el.querySelector('.scrapbook-strips')) & Node.DOCUMENT_POSITION_FOLLOWING),'Heading introduces the ribbon');
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     const order = await page.evaluate(() => {
       const scene = document.querySelector('#collected-moments');
@@ -56,33 +58,26 @@ try {
       await page.mouse.move(0,0);
     }
     await strip.screenshot({path:`work/qa-scrapbook/ribbon-${profile.width}.png`});
-    const filmPreview = section.locator('.scrapbook-frames video').first();
-    await filmPreview.scrollIntoViewIfNeeded();
-    if (profile.reducedMotion !== 'reduce') {
-      await page.waitForFunction(() => Array.from(document.querySelectorAll('.scrapbook-frames video')).some(video => !video.paused && video.currentTime > 0));
-    } else assert.equal(await filmPreview.evaluate(video => video.paused), true);
     await page.getByRole('button', { name: 'Pause films & strip' }).click();
-    await filmPreview.scrollIntoViewIfNeeded();
-    assert.equal(await filmPreview.evaluate(video => video.paused), true);
-    await page.getByRole('button', { name: 'Resume films & strip' }).click();
-    await section.screenshot({ path: `work/qa-scrapbook/${profile.width}.png`, timeout: 30000 });
-    const first = section.locator('.scrapbook-print:not(.scrapbook-film)').first();
+    await strip.scrollIntoViewIfNeeded();
+    assert.ok(await strip.locator('video').evaluateAll(videos=>videos.every(video=>video.paused)),'Global pause stops ribbon films');
+    await section.screenshot({ path: `work/qa-scrapbook/${profile.width}.png`, timeout:30000 });
+    const photoIndex=await strip.locator('.scrapbook-strip-item').evaluateAll(cards=>cards.findIndex(el=>{const r=el.getBoundingClientRect();return el.querySelector('img') && getComputedStyle(el).visibility!=='hidden' && r.left+r.width/2>20 && r.left+r.width/2<innerWidth-20;}));
+    assert.ok(photoIndex>=0);
+    const first=strip.locator('.scrapbook-strip-item').nth(photoIndex);
     await first.click();
-    await page.getByRole('dialog').waitFor();
-    const before = await page.getByRole('dialog').innerText();
+    const dialog=page.getByRole('dialog');
+    await dialog.waitFor();
+    const before=await dialog.innerText();
     await page.keyboard.press('ArrowRight');
-    assert.notEqual(await page.getByRole('dialog').innerText(), before);
+    assert.notEqual(await dialog.innerText(),before);
+    for(let i=0;i<30 && await dialog.locator('video').count()===0;i++) await page.keyboard.press('ArrowRight');
+    assert.equal(await dialog.locator('video[controls][autoplay]').count(),1,'Films remain reachable through the viewer');
     await page.keyboard.press('Escape');
-    assert.equal(await page.getByRole('dialog').count(), 0);
-    await section.locator('.scrapbook-film').first().click();
-    assert.equal(await page.getByRole('dialog').locator('video[controls]').count(), 1);
-    assert.equal(await page.getByRole('dialog').locator('video[autoplay]').count(), 1);
-    await page.keyboard.press('Escape');
-    assert.equal(await page.getByRole('dialog').count(), 0);
-    const images = await section.locator('.scrapbook-frames img').evaluateAll(images => images.every(image => image.complete && image.naturalWidth > 0));
-    assert.ok(images, 'Collage images must load');
+    assert.equal(await page.getByRole('dialog').count(),0);
+    assert.ok(await first.evaluate(el=>document.activeElement===el),'Viewer restores ribbon focus');
     assert.deepEqual(errors, []);
-    console.log(`PASS ${profile.width}x${profile.height} ${profile.reducedMotion}: placement, 8 frames, images, photo viewer, keyboard navigation, film controls, dismissal, overflow and page errors`);
+    console.log(`PASS ${profile.width}x${profile.height} ${profile.reducedMotion}: heading-first composition, curved ribbon, photo viewer, keyboard navigation, film controls, dismissal, overflow and page errors`);
     await page.close();
   }
 } finally { await browser.close(); }

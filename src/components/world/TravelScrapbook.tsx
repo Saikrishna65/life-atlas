@@ -51,7 +51,6 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
     ...catalogScrapbookFrames(catalog?.items ?? [], media),
     ...(media.length ? media : scrapbookSamples),
   ], seed), [catalog, media, seed]);
-  const frames = moments.slice(0, 8);
   const current = selected === null ? null : moments[selected];
   const next = (direction: number) => setSelected(index => index === null ? null : (index + direction + moments.length) % moments.length);
 
@@ -117,24 +116,12 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
     const media = gsap.matchMedia();
     media.add("(prefers-reduced-motion: no-preference)", () => {
       const el = root.current!;
-      const mobile = matchMedia("(max-width: 700px)").matches;
       const context = gsap.context(() => {
-        gsap.fromTo(".scrapbook-title span", { yPercent: 110, rotate: 3 }, {
+        gsap.fromTo(".scrapbook-line > span", { yPercent: 110, rotate: 3 }, {
           yPercent: 0, rotate: 0, duration: 1.15, stagger: .12, ease: "power4.out",
           scrollTrigger: { trigger: ".scrapbook-heading", start: "top 86%", once: true },
         });
-        gsap.utils.toArray<HTMLElement>(".scrapbook-drift").forEach((frame, index) => {
-          gsap.fromTo(frame, { y: mobile ? 25 : 90 + (index % 3) * 55 }, {
-            y: mobile ? -25 : -80 - (index % 3) * 65, ease: "none",
-            scrollTrigger: { trigger: el, start: "top bottom", end: "bottom top", scrub: 1 },
-          });
-        });
-        const path = el.querySelector<SVGPathElement>(".scrapbook-route path")!;
-        const length = path.getTotalLength();
-        gsap.fromTo(path, { strokeDasharray: length, strokeDashoffset: length }, {
-          strokeDashoffset: 0, ease: "none",
-          scrollTrigger: { trigger: el, start: "top 65%", end: "bottom 75%", scrub: 1.3 },
-        });
+
       }, el);
       return () => context.revert();
     });
@@ -144,6 +131,12 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
   return (
     <section className="travel-scrapbook" id="collected-moments" ref={root} aria-labelledby="scrapbook-heading" data-paused={paused || selected !== null}>
       <div className="scrapbook-topline"><span>MY LIFE, COLLECTED.</span><button className="scrapbook-motion-toggle" onClick={() => setPaused(value => !value)} aria-pressed={paused}>{paused ? <Play size={12} /> : <Pause size={12} />}{paused ? "Resume films & strip" : "Pause films & strip"}</button></div>
+        <header className="scrapbook-heading">
+          <span className="scrapbook-overline">THE SOUVENIRS THAT MATTER</span>
+          <h2 id="scrapbook-heading" className="scrapbook-title"><span className="scrapbook-line"><span>I GO PLACES.</span></span><span className="scrapbook-line"><span>THEY STAY <em>WITH ME.</em></span></span></h2>
+          <a className="scrapbook-link" href="/photography">Open the visual journal <span><ArrowUpRight size={18} /></span></a>
+          <p>A road. A face. A few seconds I wish lasted longer. Little pieces of my world, brought home.</p>
+        </header>
       <div className="scrapbook-strips" aria-label="A moving collection from my trips">
         <div className="scrapbook-strip" onPointerEnter={() => { stripHeld.current = true; }} onPointerLeave={() => { stripHeld.current = false; }} onFocus={() => { stripHeld.current = true; }} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) stripHeld.current = false; }}>
           <div className="scrapbook-strip-track"><div className="scrapbook-strip-group">
@@ -158,24 +151,8 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
           </div></div>
         </div>
       </div>
-      <div className="scrapbook-stage">
-        <svg className="scrapbook-route" viewBox="0 0 1400 1500" fill="none" preserveAspectRatio="none" aria-hidden="true"><path d="M-80 100C160 20 340 140 310 340S50 720 340 800 1160 350 1270 650 700 1020 910 1220 1390 1220 1480 1470" /></svg>
-        <header className="scrapbook-heading">
-          <span className="scrapbook-overline">THE SOUVENIRS THAT MATTER</span>
-          <h2 id="scrapbook-heading" className="scrapbook-title"><span className="scrapbook-line"><span>I GO PLACES.</span></span><span className="scrapbook-line"><span>THEY STAY <em>WITH ME.</em></span></span></h2>
-          <a className="scrapbook-link" href="/photography">Open the visual journal <span><ArrowUpRight size={18} /></span></a>
-          <p>A road. A face. A few seconds I wish lasted longer. Little pieces of my world, brought home.</p>
-        </header>
-        <div className="scrapbook-frames">
-          {frames.map((frame, index) => <div className={`scrapbook-drift scrapbook-position-${index + 1}`} key={index} data-trip={frame.tripId} data-media-id={frame.id}>
-            <button className={`scrapbook-print ${frame.kind === "film" ? "scrapbook-film" : ""}`} onClick={() => setSelected(index)} aria-label={`Open ${frame.kind}: ${frame.title}`}>
-              <div className="scrapbook-image">{frame.kind === "film" ? <AutoFilm frame={frame} paused={paused || selected !== null} /> : <Image src={frame.preview} alt={frame.title} fill sizes="(max-width: 700px) 45vw, 28vw" unoptimized={!frame.sample} loading="lazy" />}</div>
-            </button>
-          </div>)}
-        </div>
-        <div className="scrapbook-endnote"><span className="scrapbook-asterisk" aria-hidden="true">✳</span><p>Not everything fits<br />in a suitcase.</p><span>Keep the feeling.</span></div>
-      </div>
-      <footer className="scrapbook-bottomline"><span>{frames.some(frame => frame.sample) ? "ILLUSTRATIVE COLLECTION · SAMPLE PHOTOS & FILMS" : "FROM THE PUBLIC JOURNAL"}</span><span>MORE ROADS. MORE STORIES. ↓</span></footer>
+      <div className="scrapbook-endnote"><span aria-hidden="true">✳</span><p>Not everything fits in a suitcase.</p><span>Keep the feeling.</span></div>
+      <footer className="scrapbook-bottomline"><span>{moments.some(frame => frame.sample) ? "ILLUSTRATIVE COLLECTION · SAMPLE PHOTOS & FILMS" : "FROM THE PUBLIC JOURNAL"}</span><span>MORE ROADS. MORE STORIES. ↓</span></footer>
       {current && <Modal title={current.title} className="scrapbook-viewer" onClose={() => setSelected(null)}>
         <div className="scrapbook-viewer-media">{current.kind === "film" ? <video key={current.id} src={current.src} poster={current.preview} controls autoPlay muted playsInline preload="metadata" /> : <Image key={current.id} src={current.src} alt={current.title} width={1600} height={1200} unoptimized />}</div>
         <div className="scrapbook-viewer-bar"><div><h3>{current.title}</h3><p>{current.sample ? "Illustrative sample · Not a personal travel record" : "From my published collection"}</p></div><div className="scrapbook-viewer-nav"><button onClick={() => next(-1)} aria-label="Previous moment"><ArrowLeft size={20} /></button><span>{String(selected! + 1).padStart(2, "0")} / {String(moments.length).padStart(2, "0")}</span><button onClick={() => next(1)} aria-label="Next moment"><ArrowRight size={20} /></button></div></div>
