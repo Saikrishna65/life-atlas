@@ -79,8 +79,17 @@ try {
     await page.waitForTimeout(1500);
     await page.screenshot({path:`work/qa-trip-detail-v3/journal-${profile.width}.png`});
     const wallWidth=await root.locator('.td-photo-wall').evaluate(el=>el.clientWidth);
-    const columns=await root.locator('.td-photo-wall').evaluate(el=>getComputedStyle(el).columnCount);
-    assert.equal(columns,profile.width<=800?'1':'4','Responsive editorial column count');
+    const columns=await root.locator('.td-photo-wall').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(" ").length);
+    assert.equal(columns,profile.width<=800?1:3,'Responsive editorial column count');
+    if(profile.width>800) {
+      await root.locator('.td-photo-wall').evaluate(el=>window.__lenis.scrollTo(scrollY+el.getBoundingClientRect().top-160,{immediate:true,force:true}));
+      await page.waitForTimeout(1100);
+      const offsets=await root.locator('.td-gallery-column').evaluateAll(columns=>columns.map(el=>new DOMMatrix(getComputedStyle(el).transform).m42));
+      assert.ok(Math.abs(offsets[0]-offsets[1])>5,'Gallery columns drift at distinct scroll offsets');
+      await page.screenshot({path:`work/qa-trip-detail-v3/gallery-flow-${profile.width}.png`});
+    } else {
+      assert.ok(await root.locator('.td-gallery-column').evaluateAll(columns=>columns.every(el=>getComputedStyle(el).transform==='none')),'Mobile gallery avoids spatial motion');
+    }
     const mixedKinds=await root.locator('.td-frame').evaluateAll(frames=>frames.map(frame=>frame.querySelector('video')?'video':'photo'));
     assert.ok(mixedKinds.indexOf('video')<mixedKinds.lastIndexOf('photo'),'Films appear among photos instead of a separate trailing group');
     const widths=await root.locator('.td-frame > div').evaluateAll(frames=>frames.slice(0,6).map(frame=>frame.getBoundingClientRect().width));

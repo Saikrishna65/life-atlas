@@ -130,3 +130,15 @@ close-set columns, aligned at the top, natural media heights and 12px gutters.
 Tablet uses three columns; mobile retains one full-width column. Photos and films
 are interleaved deterministically after filtering, preserving order within each
 kind and spreading films through the collection. Captions stay in the viewer.
+
+## Flowing gallery reference (16 November)
+
+The supplied recording shows three full-width columns on black, a raised centre
+column and independently drifting scroll offsets. `TripJournalGallery` recreates
+that treatment with a centre-out entry reveal, tightly spaced native-aspect media
+and GSAP scrubbed column motion on the existing Lenis/ScrollTrigger clock. No
+pinning or scroll interception is added. Filters rebuild scoped timelines; all
+contexts revert on unmount. Mobile remains a static single column; reduced motion
+omits the reveal and parallax. Keyboard focus opens the reveal immediately so
+clipping never hides a focused gallery control. Photos and films stay interleaved,
+with location/captions only in the existing accessible viewer.
