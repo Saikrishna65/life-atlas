@@ -30,8 +30,11 @@ body:has(.living-world) { background:var(--atlas-public-paper); }
 .living-world .world-beyond .world-button { background:#18221c; color:#fff; }
 .living-world .world-beyond .beyond-door { top:70px; border-color:#536c5c; background:#b4c2ae; box-shadow:0 0 70px #18221c18; }
 .living-world .world-beyond .door-leaf { background:#33463a; border-color:#536c5c; }
-/* White identity mark on its existing charcoal surface over paper sections. */
-body:has(.living-world) .world-nav:not([data-scene="hero"]) .reference-nav-brand { background:#18221ce8; border-radius:45px; }
+/* Standalone mark: forest ink over paper, white over the hero and dark finale. */
+body:has(.living-world) .world-nav[data-scene]:not([data-scene="hero"]) .reference-nav-brand { --atlas-logo-ink:#536c5c; }
+@media(prefers-reduced-motion:no-preference) {
+ body:has(.beyond-physical[data-night="true"]) .world-nav[data-scene="beyond"] .reference-nav-brand { --atlas-logo-ink:#fff; }
+}
 /* Trip journals share the paper canvas, while covers, maps and media stay intact. */
 .living-world.trip-detail-v3 { background:var(--atlas-public-paper); color:var(--atlas-public-ink); }
 .living-world.trip-detail-v3 .td-cover { color:#fff; background:#16211d; }

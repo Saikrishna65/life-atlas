@@ -63,5 +63,3 @@
  .archive-current { animation:none; }
  .archive-scroll-hint { visibility:hidden; }
 }
-
-.world-nav[data-scene="memories"] .reference-nav-brand { background:#18221ce8; border-radius:45px; }

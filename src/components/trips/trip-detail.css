@@ -202,8 +202,8 @@
   .td-ending-links :is(a,button) { font-size:9px; }
 }
 
-/* Keep the approved white mark readable over the itinerary's paper surface. */
-body:has(.trip-detail-v3[data-light-nav="true"]) .public-header .reference-nav-brand { background:#16211dbb; border-radius:40px; }
+/* Use forest ink over the itinerary paper without a backing pill. */
+body:has(.trip-detail-v3[data-light-nav="true"]) .public-header .reference-nav-brand { --atlas-logo-ink:#536c5c; }
 
 @media(prefers-reduced-motion:reduce) { .td-day,.td-place-note { animation:none; } .td-circle-link > span { transition:none; } }
 
