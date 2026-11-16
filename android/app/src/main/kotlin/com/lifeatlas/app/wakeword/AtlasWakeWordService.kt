@@ -86,7 +86,7 @@ class AtlasWakeWordService : Service() {
             focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
             val h = micMonitorHandler ?: mainHandler
             h.post {
-                if (running.get() && !pausedForMic.get() && !paused.get() && !destroyed.get()) {
+                if (running.get() && !pausedForMic.get() && !pausedForVoiceSession.get() && !paused.get() && !destroyed.get()) {
                     pauseForMicCompetition("Pre-emptive release: audio focus lost to another recording/call app")
                 }
             }
@@ -694,6 +694,7 @@ class AtlasWakeWordService : Service() {
         isServicePaused = false
         isMicSilenced = false
         voiceCoordinator?.onWakeServiceStopped()
+        AtlasAudioOwnershipCoordinator.release(AtlasAudioOwnershipCoordinator.Owner.EXTERNAL_APP)
         clearMicRecoveryCallbacks()
         abandonAudioFocus()
         runCatching { audioRecord?.stop() }
@@ -764,6 +765,7 @@ class AtlasWakeWordService : Service() {
 
     private fun pauseForMicCompetition(reason: String) {
         if (!running.get() || destroyed.get()) return
+        if (pausedForVoiceSession.get() && !isInCallMode()) return
         if (pausedForMic.getAndSet(true)) return
         isMicSilenced = true
         AtlasAudioOwnershipCoordinator.forceExternalPreemption()
@@ -801,6 +803,7 @@ class AtlasWakeWordService : Service() {
         Log.i(TAG, "External mic app closed; attempting AudioRecord re-acquisition")
         pausedForMic.set(false)
         isMicSilenced = false
+        AtlasAudioOwnershipCoordinator.release(AtlasAudioOwnershipCoordinator.Owner.EXTERNAL_APP)
         clearMicRecoveryCallbacks()
         captureThread?.join(350L)
         engine?.reset()
@@ -823,7 +826,7 @@ class AtlasWakeWordService : Service() {
         val am = audioManager ?: return
         val cb = object : AudioManager.AudioRecordingCallback() {
             override fun onRecordingConfigChanged(configs: MutableList<AudioRecordingConfiguration>) {
-                if (!running.get() || paused.get() || destroyed.get()) return
+                if (!running.get() || paused.get() || pausedForVoiceSession.get() || destroyed.get()) return
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     val ours = activeAudioSessionId
                     val oursSilenced = ours != -1 && configs.any {
