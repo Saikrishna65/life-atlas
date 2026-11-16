@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { demoTripDetail, publicTripDetail, type PublicTripInput } from '../../src/lib/public-trips/detail';
+import { demoTripDetail, publicTripDetail, formatJourneyDuration, type PublicTripInput } from '../../src/lib/public-trips/detail';
+import { sampleJourneyTelemetry } from '../../src/data/demo/journey-telemetry';
 import { expeditions } from '../../src/data/demo/expeditions';
 const trip: PublicTripInput = {
   id:'real-trip', slug:'my-journey', title:'My journey', destination:'Japan', description:'A published journal', coverImage:null, duration:null,
@@ -19,7 +20,11 @@ test('every demo trip has a complete itinerary, media, a valid next journey and 
     assert.ok(expeditions.some(trip => trip.slug === detail.next?.slug));
     assert.ok(detail.paths.every(path => path.length > 1));
     assert.ok(detail.stops.every(stop => Number.isFinite(stop.latitude) && Number.isFinite(stop.longitude)));
-    assert.equal(detail.metrics.length, 0, 'No invented telemetry');
+    assert.equal(detail.metrics.length, 7, 'Clearly labelled example figures');
+    const telemetry = sampleJourneyTelemetry(detail.id, expedition.duration)!;
+    assert.equal(telemetry.example, true);
+    assert.ok(telemetry.elapsedSeconds >= telemetry.movingSeconds);
+    assert.ok(telemetry.distanceKm / (telemetry.movingSeconds / 3600) <= telemetry.maxSpeedKmh);
   }
 });
 test('a real trip without a GPS recording or media never gains a fictional path, photo or statistic', () => {
@@ -36,9 +41,9 @@ test('a real trip without a GPS recording or media never gains a fictional path,
 test('public recordings preserve segment gaps and only publish available metrics', () => {
   const detail = publicTripDetail({ ...trip, routeData:{ totalDistanceKm:12, movingSeconds:7200, legs:[{ coordinates:[{latitude:30,longitude:79},{latitude:30.01,longitude:79.02},null,{latitude:31,longitude:80},{latitude:31.01,longitude:80.02}]}] } });
   assert.equal(detail.paths.length, 2);
-  assert.ok(detail.metrics.some(metric => metric.label === 'Distance' && metric.value === '12'));
-  assert.ok(detail.metrics.some(metric => metric.label === 'Moving average' && metric.value === '6'));
-  assert.ok(!detail.metrics.some(metric => metric.label === 'Highest point'));
+  assert.ok(detail.metrics.some(metric => metric.label === 'Distance travelled' && metric.value === '12'));
+  assert.ok(detail.metrics.some(metric => metric.label === 'Average moving speed' && metric.value === '6'));
+  assert.ok(!detail.metrics.some(metric => metric.label === 'Highest altitude'));
 });
 test('real photographs keep optional captions and place metadata; unknown location fixes are excluded', () => {
   const detail = publicTripDetail({ ...trip, photos:[{id:'p',url:'https://example.com/original.jpg',caption:null,place:{name:'Kyoto'}}], tripPlaces:[{place:{id:'bad',name:'Invalid',latitude:100,longitude:500,description:null}}], tripDays:[{id:'day',dayIndex:1,date:new Date('2026-02-01'),title:'Arrival',description:'The original public description.'}] });
@@ -47,4 +52,20 @@ test('real photographs keep optional captions and place metadata; unknown locati
   assert.equal(detail.stops.length, 0);
   assert.equal(detail.days[0].description, 'The original public description.');
   assert.deepEqual(detail.days[0].beats, []);
+});
+
+test('recorded totals drive average speed consistently and below-sea-level altitudes remain valid', () => {
+  const detail = publicTripDetail({ ...trip, totalDistanceKm:120, maxElevationMeters:-20, routeData:{totalDistanceKm:12,movingSeconds:7200,totalDurationSeconds:9000} });
+  assert.ok(detail.metrics.some(metric => metric.label === 'Distance travelled' && metric.value === '120'));
+  assert.ok(detail.metrics.some(metric => metric.label === 'Average moving speed' && metric.value === '60'));
+  assert.ok(detail.metrics.some(metric => metric.label === 'Highest altitude' && metric.value === '-20'));
+  assert.ok(detail.metrics.some(metric => metric.label === 'Moving time' && metric.value === '2h 0m'));
+  assert.ok(detail.metrics.some(metric => metric.label === 'Elapsed time' && metric.value === '2h 30m'));
+});
+test('invalid stored totals fall back to valid published GPS figures without creating sample statistics', () => {
+  const detail = publicTripDetail({ ...trip, totalDistanceKm:-10, routeData:{totalDistanceKm:12,movingSeconds:7200} });
+  assert.equal(detail.sample,false);
+  assert.ok(detail.metrics.some(metric => metric.label === 'Distance travelled' && metric.value === '12'));
+  assert.equal(sampleJourneyTelemetry('unknown-trip',5),null);
+  assert.equal(formatJourneyDuration(94500),'1d 2h 15m');
 });

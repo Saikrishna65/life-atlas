@@ -1,6 +1,7 @@
 import { destinations, expeditions } from "../../data/demo/expeditions";
 import { gallery } from "../../data/demo/memories";
 import { detailedDays, sampleJourneyRoute } from "../../data/demo/journey-details";
+import { sampleJourneyTelemetry } from "../../data/demo/journey-telemetry";
 import type { Expedition } from "../../data/demo/types";
 import { publishedRoute, validPoint, type RoutePoint, type RouteStop } from "./route";
 
@@ -22,6 +23,13 @@ export interface TripDetailData {
   next?: { slug: string; title: string; image: string };
 }
 
+export function formatJourneyDuration(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor(minutes % 1440 / 60);
+  return `${days ? `${days}d ` : ""}${hours}h ${minutes % 60}m`;
+}
+
 export function demoTripDetail(trip: Expedition): TripDetailData {
   const route = publishedRoute(sampleJourneyRoute(trip));
   const fixes = route.paths.flat();
@@ -32,6 +40,8 @@ export function demoTripDetail(trip: Expedition): TripDetailData {
   const sameCenter = places.every(place => place.latitude === places[0]?.latitude && place.longitude === places[0]?.longitude);
   const next = expeditions[(expeditions.indexOf(trip) + 1) % expeditions.length];
   const film = trip.category === "Coast" ? "coast" : trip.category === "Nature" ? "gardens" : "highlands";
+  const telemetry = sampleJourneyTelemetry(trip.id, trip.duration);
+  const number = (value: number) => value.toLocaleString("en", { maximumFractionDigits: 1 });
   return {
     id: trip.id, slug: trip.slug, title: trip.name, region: [...new Set(places.map(place => place.region))].join(" / "),
     overview: trip.overview, cover: trip.image, coverFilm: `/films/hero/${film}.mp4`, sample: true, duration: `${trip.duration} days`,
@@ -42,7 +52,15 @@ export function demoTripDetail(trip: Expedition): TripDetailData {
       const fix = sameCenter ? fixes[Math.round(index * (fixes.length - 1) / Math.max(1, places.length - 1))] : place;
       return { id: place.id, name: place.name, latitude: fix?.latitude ?? place.latitude, longitude: fix?.longitude ?? place.longitude, description: place.description };
     }),
-    metrics: [],
+    metrics: telemetry ? [
+      { label: "Distance travelled", value: number(telemetry.distanceKm), unit: "km" },
+      { label: "Highest altitude", value: number(telemetry.highestMeters), unit: "m" },
+      { label: "Total ascent", value: number(telemetry.ascentMeters), unit: "m" },
+      { label: "Moving time", value: formatJourneyDuration(telemetry.movingSeconds), unit: "" },
+      { label: "Elapsed time", value: formatJourneyDuration(telemetry.elapsedSeconds), unit: "" },
+      { label: "Average moving speed", value: number(telemetry.distanceKm / (telemetry.movingSeconds / 3600)), unit: "km/h" },
+      { label: "Top speed", value: number(telemetry.maxSpeedKmh), unit: "km/h" },
+    ] : [],
     days: detailedDays(trip).map(day => ({ ...day, id: `day-${day.day}`, title: day.headline })),
     media: [
       ...gallery.filter(photo => trip.galleryIds.includes(photo.id) && (!["Mountains", "Nature"].includes(trip.category) || !["ocean", "space"].includes(photo.sourceId))).map(photo => ({ id: photo.id, url: photo.src, poster: photo.thumbnail, kind: "photo" as const, place: destinations.find(place => place.id === photo.destinationId)?.name || "Unassigned", category: "Landscape study", caption: undefined })),
@@ -63,14 +81,19 @@ export interface PublicTripInput {
 export function publicTripDetail(trip: PublicTripInput, next?: { slug: string; title: string; coverImage: string | null } | null): TripDetailData {
   const route = publishedRoute(trip.routeData);
   const metrics: TripDetailData["metrics"] = [];
+  const nonnegative = (value: number | null) => value !== null && Number.isFinite(value) && value >= 0 ? value : null;
+  const distance = nonnegative(trip.totalDistanceKm) ?? route.distance;
+  const altitude = trip.maxElevationMeters !== null && Number.isFinite(trip.maxElevationMeters) ? trip.maxElevationMeters : route.maxAltitude;
+  const average = distance !== null && route.moving !== null && route.moving > 0 ? distance / (route.moving / 3600) : null;
   for (const [label, value, unit] of [
-    ["Distance", trip.totalDistanceKm ?? route.distance, "km"],
-    ["Highest point", trip.maxElevationMeters ?? route.maxAltitude, "m"],
-    ["Ascent", trip.elevationGainMeters ?? route.ascent, "m"],
+    ["Distance travelled", distance, "km"],
+    ["Highest altitude", altitude, "m"],
+    ["Total ascent", nonnegative(trip.elevationGainMeters) ?? route.ascent, "m"],
     ["Top speed", route.maxSpeed, "km/h"],
-    ["Moving average", route.averageSpeed, "km/h"],
-  ] as const) if (value !== null && Number.isFinite(value) && value >= 0) metrics.push({ label, value: value.toLocaleString("en", { maximumFractionDigits: 1 }), unit });
-  if (route.elapsed !== null) metrics.push({ label: "Elapsed time", value: `${Math.floor(route.elapsed / 3600)}h ${Math.floor(route.elapsed % 3600 / 60)}m`, unit: "" });
+    ["Average moving speed", average, "km/h"],
+  ] as const) if (value !== null && Number.isFinite(value) && (value >= 0 || label === "Highest altitude")) metrics.push({ label, value: value.toLocaleString("en", { maximumFractionDigits: 1 }), unit });
+  if (route.moving !== null) metrics.push({ label: "Moving time", value: formatJourneyDuration(route.moving), unit: "" });
+  if (route.elapsed !== null) metrics.push({ label: "Elapsed time", value: formatJourneyDuration(route.elapsed), unit: "" });
   return {
     id: trip.id, slug: trip.slug, title: trip.title, region: trip.destination, overview: trip.description || "The places and moments from this journey.",
     cover: trip.coverImage || trip.photos.find(photo => photo.url)?.url || "", sample: false, date: trip.startDate.toISOString(),

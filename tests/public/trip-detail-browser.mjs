@@ -33,7 +33,12 @@ try {
     await root.getByRole('button',{name:'Pause trip films',exact:true}).click();
     assert.equal(await root.getByRole('button',{name:'Resume trip films',exact:true}).getAttribute('aria-pressed'),'true');
     await root.getByRole('button',{name:'Resume trip films',exact:true}).click();
-    assert.equal(await root.locator('.td-metrics').count(),0,'No synthetic telemetry');
+    assert.equal(await root.locator('.td-metrics-primary dt').first().innerText(),'Distance travelled');
+    assert.match(await root.locator('.td-route-record').innerText(),/EXAMPLE VALUES/);
+    assert.match(await root.locator('.td-stat-note').innerText(),/not my personal recordings/);
+    assert.match(await root.locator('.td-metrics-primary dd').first().innerText(),/86.4/);
+    assert.match(await root.locator('.td-metrics-primary dd').nth(1).innerText(),/3,980/);
+    assert.equal(await root.locator('.td-metrics-secondary dt').count(),5);
     if(profile.reducedMotion!=='reduce') await page.waitForFunction(()=>{const v=Array.from(document.querySelectorAll('.td-cover video')).find(video=>video.getBoundingClientRect().height>0);return v && !v.paused && v.currentTime>0;});
     const poster=await root.locator('.td-cover video').getAttribute('poster');
     if(profile.reducedMotion!=='reduce') assert.equal(poster,null,'No substitute photo before the cover film');
@@ -75,6 +80,8 @@ try {
     await page.screenshot({path:`work/qa-trip-detail-v3/journal-${profile.width}.png`});
     const heights=await root.locator('.td-frame > div').evaluateAll(frames=>frames.slice(0,6).map(frame=>frame.getBoundingClientRect().height));
     assert.ok(Math.max(...heights)/Math.min(...heights)>2,'Journal frame heights should be strongly varied');
+    const widths=await root.locator('.td-frame > div').evaluateAll(frames=>frames.slice(1,6).map(frame=>frame.getBoundingClientRect().width));
+    assert.ok(Math.max(...widths)/Math.min(...widths)>1.35,'Gallery widths should visibly vary, not all follow one column width');
     await root.locator('nav[aria-label="Filter journal by place"]').getByRole('button',{name:'Tungnath',exact:true}).click();
     assert.ok(await root.locator('.td-frame').count()>0);
     assert.ok((await root.locator('.td-frame').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label')))).every(label=>label.includes('Tungnath')));

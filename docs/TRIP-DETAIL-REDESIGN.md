@@ -94,3 +94,22 @@ in the actual decoded first frame. Reduced motion still receives a static poster
 A trip-specific dark loading boundary avoids the former full-screen white spinner
 without changing private application loading screens. A delayed-video browser check
 confirms no poster/image flashes before the video becomes ready.
+
+## Varied widths and journey figures
+
+Journal previews now vary from 70–100% of a column, with staggered alignment.
+Container-relative crop heights preserve the previously approved heights while
+widths change; the mobile opening frame remains full width. Original media is
+unchanged and remains available in the viewer.
+
+The Way There gives distance travelled and highest altitude prominent positions.
+Real journeys show only published totals and valid route metrics; absent primary
+figures read “Not recorded.” Available ascent, moving/elapsed time and speeds
+appear below. Average moving speed uses the same distance total as the display.
+Below-sea-level elevations remain valid. Demo telemetry is a separate fixture and
+is explicitly labelled as illustrative, never as personal recordings.
+
+The public data suite covers metric derivation and all 24 sample journeys. The
+browser suite checks the figures, example disclosure and actual rendered width
+variation at desktop and mobile sizes. A comparison against pre-change frame
+measurements verifies that approved preview heights remain unchanged.
