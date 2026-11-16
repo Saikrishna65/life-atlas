@@ -8,6 +8,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Modal } from "./primitives";
 import { usePublicCatalog } from "./usePublicCatalog";
 import "./travel-scrapbook.css";
+import { projectRibbonFrame } from "@/lib/public-trips/ribbon-projection";
 
 import { catalogScrapbookFrames, scrapbookSamples, selectScrapbookFrames, type ScrapbookFrame } from "@/lib/public-trips/scrapbook";
 
@@ -60,14 +61,10 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
     const motion = matchMedia("(prefers-reduced-motion: reduce)");
     let visible = false, width = strip.clientWidth, raf = 0, previous = 0;
     const draw = () => {
-      const mobile = width < 700;
-      const stride = width / (mobile ? 4 : 7.6);
       cards.forEach((card, index) => {
         const position = ((index - stripPhase.current + cards.length / 2) % cards.length + cards.length) % cards.length - cards.length / 2;
-        const normal = position * stride / (width / 2);
-        const bend = Math.min(1.3, Math.abs(normal));
-        const x = position * stride * (1 + .15 * normal * normal);
-        card.style.transform = `translate(-50%, -50%) translateX(${x}px) perspective(900px) rotateY(${-normal * 32}deg) scale(${.88 + (mobile ? .8 : 1) * bend * bend})`;
+        const { x, angle, scale } = projectRibbonFrame(position, width);
+        card.style.transform = `translate(-50%, -50%) translateX(${x}px) perspective(900px) rotateY(${angle}deg) scale(${scale})`;
         card.style.visibility = Math.abs(x) > width * .72 ? "hidden" : "visible";
       });
     };

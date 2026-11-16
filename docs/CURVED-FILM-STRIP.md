@@ -45,3 +45,11 @@ lines; the pause control now sits beneath the journal link. Ribbon spacing is
 slightly tighter (desktop stride width/7.6, mobile width/4), with a stronger
 position-based scale toward the viewport edges. Mobile uses a gentler growth
 factor. Sample/source disclosure remains in the viewer and asset provenance.
+
+## Smooth height envelope
+
+Replaced accelerating quadratic growth with a bounded rational envelope and more
+closely spaced frames. The centre stays gently scaled, the corners remain larger,
+and neighbouring frames have smaller height differences. The pure projection
+helper has numerical continuity, monotonic-growth, symmetry and adjacent-size
+regression checks; the browser suite also compares actual neighbouring heights.
