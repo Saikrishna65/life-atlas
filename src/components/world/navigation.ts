@@ -7,7 +7,7 @@ export async function navigateChapter(
   immediate = false,
 ) {
   const request = ++latestNavigation;
-  const offset = ["observatory", "through-the-lens"].includes(id) ? 0 : 74;
+  const offset = id === "observatory" ? 0 : 74;
   window.dispatchEvent(
     new CustomEvent("world-chapter-request", { detail: id }),
   );

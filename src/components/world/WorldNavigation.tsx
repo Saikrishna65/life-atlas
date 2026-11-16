@@ -8,7 +8,6 @@ import { useLenis } from "lenis/react";
 import { Modal } from "./primitives";
 import { navigateChapter, returnToDoor } from "./navigation";
 export const chapters = [
-  ["through-the-lens", "Through the lens"],
   ["observatory", "The Observatory"],
   ["collected-moments", "Life, collected"],
   ["people", "People & moments"],
