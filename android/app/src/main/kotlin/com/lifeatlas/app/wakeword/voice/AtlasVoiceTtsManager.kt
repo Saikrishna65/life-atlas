@@ -67,6 +67,16 @@ class AtlasVoiceTtsManager(private val context: Context) {
         return selectBestOfflineVoice(engine) != null
     }
 
+    /**
+     * Pre-warms Android TextToSpeech on startup without acquiring audio focus
+     * so the first spoken reply starts without cold-init latency.
+     */
+    fun warmUp() {
+        mainHandler.post {
+            ensureInitialized { _ -> }
+        }
+    }
+
     fun speak(text: String, listener: Listener) {
         val clean = text.trim().take(4000)
         if (clean.isEmpty()) {

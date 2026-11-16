@@ -467,6 +467,9 @@ class AtlasWakeWordPlugin : Plugin() {
         call.getBoolean("allowOnlineSpeechFallback")?.let { allow ->
             AtlasWakeWordService.activeVoiceCoordinator?.setAllowOnlineSpeechFallback(allow)
         }
+        call.getBoolean("greetOnWake")?.let { greet ->
+            AtlasWakeWordService.activeVoiceCoordinator?.greetOnWake = greet
+        }
         call.resolve(JSObject.fromJSONObject(buildVoiceSessionStatusJson()))
     }
 
@@ -478,6 +481,7 @@ class AtlasWakeWordPlugin : Plugin() {
             .put("sessionId", coord?.currentSessionId ?: JSONObject.NULL)
             .put("audioOwner", AtlasAudioOwnershipCoordinator.currentOwner.name)
             .put("voiceAssistantEnabled", AtlasWakeWordService.voiceAssistantEnabled)
+            .put("greetOnWake", coord?.greetOnWake ?: true)
             .put("onDeviceSpeechAvailable", caps.onDeviceAvailable)
             .put("systemSpeechAvailable", caps.systemRecognizerAvailable)
             .put("speechReason", caps.reason)

@@ -71,6 +71,8 @@ class AtlasVoiceCoordinator(
     private var currentTurnId: String? = null
     private var pendingEndSession = false
     private var allowOnlineSpeechFallback = false
+    @Volatile
+    var greetOnWake: Boolean = true
     private var jsReplyTimeoutRunnable: Runnable? = null
 
     fun setAllowOnlineSpeechFallback(allow: Boolean) {
@@ -85,6 +87,7 @@ class AtlasVoiceCoordinator(
 
     fun onWakeServiceStarted() {
         mainHandler.post {
+            ttsManager.warmUp()
             if (!isSessionActive()) {
                 transitionTo(State.WAKE_LISTENING, "Wake-word service listening")
             }
@@ -116,6 +119,17 @@ class AtlasVoiceCoordinator(
      * Triggered when Hey Atlas wake-word fires. Prevents duplicate sessions.
      */
     fun onWakeWordDetected(phrase: String, score: Float, @Suppress("UNUSED_PARAMETER") latencyMs: Double) {
+        startSessionInternal(phrase = phrase, score = score, speakGreeting = greetOnWake)
+    }
+
+    /**
+     * Manual push-to-talk or programmatic start from UI while wake service is running.
+     */
+    fun startManualSession() {
+        startSessionInternal(phrase = "Manual trigger", score = 1.0f, speakGreeting = false)
+    }
+
+    private fun startSessionInternal(phrase: String, score: Float, speakGreeting: Boolean) {
         mainHandler.post {
             if (isSessionActive()) {
                 Log.w(TAG, "Ignoring wake detection; voice session already active (state=$state)")
@@ -142,7 +156,11 @@ class AtlasVoiceCoordinator(
                     if (currentSessionId == sessionId && state == State.SESSION_STARTING) {
                         playActivationCue {
                             if (currentSessionId == sessionId && state == State.SESSION_STARTING) {
-                                beginListeningTurn(isFollowUp = false)
+                                if (speakGreeting) {
+                                    speakGreetingThenListen(sessionId)
+                                } else {
+                                    beginListeningTurn(isFollowUp = false)
+                                }
                             }
                         }
                     }
@@ -151,11 +169,24 @@ class AtlasVoiceCoordinator(
         }
     }
 
-    /**
-     * Manual push-to-talk or programmatic start from UI while wake service is running.
-     */
-    fun startManualSession() {
-        onWakeWordDetected("Hey Atlas", 1.0f, 0.0)
+    private fun speakGreetingThenListen(sessionId: String) {
+        val greeting = "Hey! What's up?"
+        transitionTo(State.SPEAKING, greeting)
+        ttsManager.speak(greeting, object : AtlasVoiceTtsManager.Listener {
+            override fun onSpeakStarted() {}
+
+            override fun onSpeakCompleted() {
+                if (currentSessionId == sessionId) {
+                    beginListeningTurn(isFollowUp = false)
+                }
+            }
+
+            override fun onSpeakError(message: String) {
+                if (currentSessionId == sessionId) {
+                    beginListeningTurn(isFollowUp = false)
+                }
+            }
+        })
     }
 
     fun stopSession(reason: String = "Stopped by user") {
@@ -220,6 +251,7 @@ class AtlasVoiceCoordinator(
 
                 override fun onFinalResult(text: String) {
                     if (currentSessionId != sessionId) return
+                    Log.i(TAG, "Final transcript (followUp=$isFollowUp): \"$text\"")
                     emitTranscriptEvent(text, isFinal = true)
                     handleRecognizedTranscript(sessionId, text, isFollowUp)
                 }

@@ -229,6 +229,7 @@ export interface VoiceSessionStatus {
   sessionId?: string | null;
   audioOwner: string;
   voiceAssistantEnabled: boolean;
+  greetOnWake?: boolean;
   onDeviceSpeechAvailable: boolean;
   systemSpeechAvailable: boolean;
   speechReason: string;
@@ -274,6 +275,7 @@ export interface AtlasWakeWordNativePlugin {
   setVoiceAssistantConfig(options: {
     voiceAssistantEnabled?: boolean;
     allowOnlineSpeechFallback?: boolean;
+    greetOnWake?: boolean;
   }): Promise<VoiceSessionStatus>;
   addListener(
     eventName: "wakeWordDetected",
@@ -689,6 +691,7 @@ export const atlasWakeWordBridge = {
   async setVoiceAssistantConfig(options: {
     voiceAssistantEnabled?: boolean;
     allowOnlineSpeechFallback?: boolean;
+    greetOnWake?: boolean;
   }): Promise<VoiceSessionStatus> {
     if (!isWakeWordNativeSupported()) {
       return {

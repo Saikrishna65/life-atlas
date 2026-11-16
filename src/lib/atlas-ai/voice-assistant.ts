@@ -1,3 +1,4 @@
+import { appServiceUrl } from "../appNetwork";
 import { createLocalAdapters, type LocalPlayback } from "./local-adapters";
 import { parseAction, type AtlasAction } from "./gateway";
 import { generateLocal, runtimeStatus } from "./native";
@@ -12,6 +13,7 @@ export interface VoiceAssistantSessionContext {
   turns: VoiceTurn[];
   activeTripId?: string;
   activeTripTitle?: string;
+  lastTripDay?: number;
 }
 
 export interface VoiceAssistantReply {
@@ -20,7 +22,11 @@ export interface VoiceAssistantReply {
   actionExecuted?: string;
 }
 
+export type CloudAiProvider = "gemini" | "openai";
+
 const CLOUD_CONSENT_KEY = "atlas_voice_cloud_consent_v1";
+const CLOUD_PROVIDER_KEY = "atlas_voice_cloud_provider_v1";
+const CLOUD_API_KEY_KEY = "atlas_voice_cloud_api_key_v1";
 const sessions = new Map<string, VoiceAssistantSessionContext>();
 
 export function getVoiceCloudConsent(): boolean {
@@ -31,6 +37,24 @@ export function getVoiceCloudConsent(): boolean {
 export function setVoiceCloudConsent(enabled: boolean): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(CLOUD_CONSENT_KEY, enabled ? "true" : "false");
+}
+
+export function getVoiceCloudConfig(): { provider: CloudAiProvider; apiKey: string } {
+  if (typeof window === "undefined") return { provider: "gemini", apiKey: "" };
+  const rawProvider = window.localStorage.getItem(CLOUD_PROVIDER_KEY);
+  const provider: CloudAiProvider = rawProvider === "openai" ? "openai" : "gemini";
+  const apiKey = window.localStorage.getItem(CLOUD_API_KEY_KEY) ?? "";
+  return { provider, apiKey };
+}
+
+export function setVoiceCloudConfig(provider: CloudAiProvider, apiKey: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CLOUD_PROVIDER_KEY, provider);
+  if (apiKey.trim()) {
+    window.localStorage.setItem(CLOUD_API_KEY_KEY, apiKey.trim());
+  } else {
+    window.localStorage.removeItem(CLOUD_API_KEY_KEY);
+  }
 }
 
 function getOrCreateSession(sessionId: string): VoiceAssistantSessionContext {
@@ -87,11 +111,18 @@ function isExplicitEndCommand(lower: string): boolean {
     "goodbye",
     "exit",
     "nothing",
+    "no thanks",
+    "no thank you",
+    "i'm good",
+    "im good",
   ]);
   return exact.has(lower) || lower.startsWith("stop listening");
 }
 
-function parseDayNumber(lower: string): number | null {
+function parseDayNumber(lower: string, lastDay?: number): number | null {
+  if ((lower.includes("next day") || lower.includes("following day")) && lastDay) {
+    return lastDay + 1;
+  }
   const numeric = lower.match(/\bday\s*(\d{1,2})\b/);
   if (numeric) return Number(numeric[1]);
   const ordinals: Record<string, number> = {
@@ -111,6 +142,111 @@ function parseDayNumber(lower: string): number | null {
       return num;
     }
   }
+  return null;
+}
+
+function trySimpleMath(lower: string): string | null {
+  const clean = lower
+    .replace(/^(what is|what's|calculate|compute)\s+/i, "")
+    .replace(/\?$/, "")
+    .trim();
+  const match = clean.match(
+    /^(-?\d+(?:\.\d+)?)\s*(plus|\+|minus|-|times|multiplied by|\*|x|divided by|over|\/)\s*(-?\d+(?:\.\d+)?)$/i
+  );
+  if (!match) return null;
+  const a = Number(match[1]);
+  const op = match[2].toLowerCase();
+  const b = Number(match[3]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  let res: number;
+  if (op === "plus" || op === "+") res = a + b;
+  else if (op === "minus" || op === "-") res = a - b;
+  else if (op === "times" || op === "multiplied by" || op === "*" || op === "x") res = a * b;
+  else {
+    if (b === 0) return "You can't divide by zero.";
+    res = a / b;
+  }
+  const formatted = Number.isInteger(res) ? String(res) : res.toFixed(2).replace(/\.?0+$/, "");
+  return `That's ${formatted}.`;
+}
+
+async function queryCloudAi(
+  raw: string,
+  turns: VoiceTurn[]
+): Promise<string | null> {
+  const { provider, apiKey } = getVoiceCloudConfig();
+  const systemPrompt =
+    "You are Atlas, a warm, friendly, expressive female voice assistant inside Life Atlas. Reply naturally in conversational English in 1 to 3 concise sentences suitable for spoken audio. Never claim you performed a private vault mutation.";
+
+  if (apiKey) {
+    if (provider === "gemini") {
+      const contents = turns.slice(-8).map((t) => ({
+        role: t.role === "assistant" ? "model" : "user",
+        parts: [{ text: t.text }],
+      }));
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents,
+          generationConfig: { temperature: 0.7, maxOutputTokens: 220 },
+        }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as {
+          candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+        };
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (text) return text;
+      }
+    } else {
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...turns.slice(-8).map((t) => ({ role: t.role, content: t.text })),
+      ];
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages,
+          temperature: 0.7,
+          max_tokens: 200,
+        }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as {
+          choices?: Array<{ message?: { content?: string } }>;
+        };
+        const text = data.choices?.[0]?.message?.content?.trim();
+        if (text) return text;
+      }
+    }
+  }
+
+  // Fallback to backend chat endpoint if configured/deployed
+  try {
+    const res = await fetch(appServiceUrl("/api/atlas/chat"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: raw,
+        history: turns.slice(-6),
+      }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { reply?: string };
+      if (data.reply?.trim()) return data.reply.trim();
+    }
+  } catch {
+    // Endpoint unavailable
+  }
+
   return null;
 }
 
@@ -175,7 +311,7 @@ export async function processVoiceTurn(options: {
     return adapter.execute(validated, noopGuard);
   };
 
-  // Greetings
+  // Conversational greetings & friendly social turns
   if (
     lower === "hey atlas" ||
     lower === "atlas" ||
@@ -187,37 +323,64 @@ export async function processVoiceTurn(options: {
   ) {
     return finish("Hey! What's up?", false);
   }
+  if (lower.includes("how are you") || lower.includes("how's it going") || lower.includes("how you doing")) {
+    return finish("I'm doing great, thanks for asking! What can I help you with?", false);
+  }
+  if (lower.includes("who are you") || lower.includes("what is your name") || lower.includes("what's your name")) {
+    return finish("I'm Atlas, your voice companion for Life Atlas.", false);
+  }
+  if (lower.includes("good morning")) {
+    return finish("Good morning! Ready whenever you are.", false);
+  }
+  if (lower.includes("good afternoon")) {
+    return finish("Good afternoon! How can I help?", false);
+  }
+  if (lower.includes("good evening")) {
+    return finish("Good evening! What's on your mind?", false);
+  }
+  if (lower.includes("good night") || lower.includes("goodnight")) {
+    return finish("Good night! Talk to you tomorrow.", true, "session.end");
+  }
+  if (lower === "thank you" || lower === "thanks" || lower.includes("thank you atlas")) {
+    return finish("You're welcome! Anything else?", false);
+  }
 
   // Time & Date
-  if (lower.includes("what time") || lower === "time") {
+  if (lower.includes("what time") || lower === "time" || lower.includes("tell me the time")) {
     const now = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     return finish(`It's ${now}.`, false);
   }
-  if (lower.includes("what date") || lower.includes("today's date") || lower.includes("what day is it")) {
+  if (lower.includes("what date") || lower.includes("today's date") || lower.includes("what day is it") || lower === "date") {
     const today = new Date().toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" });
     return finish(`Today is ${today}.`, false);
   }
 
+  // Simple offline arithmetic
+  const mathAnswer = trySimpleMath(lower);
+  if (mathAnswer) {
+    return finish(mathAnswer, false, "utility.math");
+  }
+
   // Capabilities
-  if (lower.includes("what can you do") || lower.includes("help")) {
+  if (lower.includes("what can you do") || lower === "help") {
     return finish(
-      "I can open your Music or Trip Vault, control downloaded music playback, read your trip itinerary when unlocked, and save local reminders.",
+      "I can open your Music, Trip, or Finance Vault, play downloaded music, check your unlocked trip plan or balance, save reminders, or chat with Cloud AI if enabled.",
       false
     );
   }
 
   // Safe Navigation
-  if (lower.includes("open music") || lower.includes("music vault")) {
+  if (lower.includes("open music") || lower.includes("music vault") || lower.includes("go to music")) {
     if (isLocked) return finish("Unlock your phone first so I can open Music Vault.", true);
     await runTypedAction({ kind: "navigate", section: "music" });
     return finish("Opening Music Vault.", false, "navigate:music");
   }
-  if (lower.includes("open trip") || lower.includes("trip vault")) {
+  if (lower.includes("open trip") || lower.includes("trip vault") || lower.includes("go to trips")) {
     if (isLocked) return finish("Unlock your phone first so I can open Trip Vault.", true);
     await runTypedAction({ kind: "navigate", section: "trips" });
     return finish("Opening Trip Vault.", false, "navigate:trips");
   }
-  if (lower.includes("open finance") || lower.includes("finance vault")) {
+  if (lower.includes("open finance") || lower.includes("finance vault") || lower.includes("go to finance")) {
     if (isLocked) return finish("Unlock your phone first to view Finance Vault.", true);
     await runTypedAction({ kind: "navigate", section: "finance" });
     return finish("Opening Finance Vault.", false, "navigate:finance");
@@ -228,7 +391,21 @@ export async function processVoiceTurn(options: {
   }
 
   // Safe Music Playback Controls
-  if (lower.includes("pause music") || lower === "pause") {
+  if (lower.includes("what's playing") || lower.includes("what song is playing") || lower.includes("current track")) {
+    const st = (await runTypedAction({ kind: "music.state" })) as {
+      track: { id: string; title: string } | null;
+      playing: boolean;
+    };
+    if (st.track) {
+      return finish(
+        st.playing ? `Currently playing ${st.track.title}.` : `${st.track.title} is paused right now.`,
+        false,
+        "music.state"
+      );
+    }
+    return finish("Nothing is playing right now.", false, "music.state");
+  }
+  if (lower.includes("pause music") || lower === "pause" || lower.includes("stop music")) {
     await runTypedAction({ kind: "music.pause" });
     return finish("Paused your music.", false, "music.pause");
   }
@@ -248,6 +425,25 @@ export async function processVoiceTurn(options: {
       return finish(e instanceof Error ? e.message : "No next downloaded track in the queue.", false);
     }
   }
+  if (
+    lower === "play music" ||
+    lower === "play a song" ||
+    lower === "play some music" ||
+    lower === "play songs"
+  ) {
+    const { getAllTracks } = await import("../music/storage");
+    const tracks = await getAllTracks();
+    const playable = tracks.find((t) => t.audioBlob && t.audioBlob.size > 2500);
+    if (playable) {
+      await runTypedAction({ kind: "music.play", id: playable.id });
+      return finish(
+        `Playing ${playable.title}${playable.artist ? ` by ${playable.artist}` : ""}.`,
+        false,
+        "music.play"
+      );
+    }
+    return finish("No downloaded tracks are saved offline yet. Open Music Vault to download one.", false);
+  }
   if (lower.startsWith("play ")) {
     const query = raw.slice(5).trim();
     if (query) {
@@ -261,7 +457,11 @@ export async function processVoiceTurn(options: {
         const playable = matches.find((m) => m.downloaded);
         if (playable) {
           await runTypedAction({ kind: "music.play", id: playable.id });
-          return finish(`Playing ${playable.title}${playable.artist ? ` by ${playable.artist}` : ""}.`, false, "music.play");
+          return finish(
+            `Playing ${playable.title}${playable.artist ? ` by ${playable.artist}` : ""}.`,
+            false,
+            "music.play"
+          );
         }
         if (matches.length > 0) {
           return finish(`I found ${matches[0].title}, but it isn't downloaded offline on this device yet.`, false);
@@ -274,10 +474,18 @@ export async function processVoiceTurn(options: {
   }
 
   // Reminders (local-first)
-  if (lower.startsWith("remind me to ") || lower.startsWith("create a reminder to ") || lower.startsWith("add reminder ")) {
+  if (
+    lower.startsWith("remind me to ") ||
+    lower.startsWith("remind me ") ||
+    lower.startsWith("create a reminder to ") ||
+    lower.startsWith("set a reminder to ") ||
+    lower.startsWith("add reminder ")
+  ) {
     const title = raw
       .replace(/^remind me to\s+/i, "")
+      .replace(/^remind me\s+/i, "")
       .replace(/^create a reminder to\s+/i, "")
+      .replace(/^set a reminder to\s+/i, "")
       .replace(/^add reminder\s+/i, "")
       .trim();
     if (title) {
@@ -303,13 +511,43 @@ export async function processVoiceTurn(options: {
     );
   }
 
+  // Finance summary (Unlocked only, read-only)
+  if (
+    !isLocked &&
+    (lower.includes("finance summary") ||
+      lower.includes("account balance") ||
+      lower.includes("my balance") ||
+      lower.includes("check finance"))
+  ) {
+    try {
+      const summary = (await runTypedAction({ kind: "finance.summary" })) as {
+        accounts: Array<{ name: string; currency: string; balances: { currentPaise?: number } }>;
+      };
+      if (!summary.accounts.length) {
+        return finish("You don't have any active finance accounts yet.", false, "finance.summary");
+      }
+      const first = summary.accounts[0];
+      const amt = typeof first.balances?.currentPaise === "number" ? (first.balances.currentPaise / 100).toFixed(2) : null;
+      return finish(
+        amt
+          ? `Your ${first.name} account balance is ${first.currency} ${amt}.`
+          : `You have ${summary.accounts.length} active account in Finance Vault.`,
+        false,
+        "finance.summary"
+      );
+    } catch (e) {
+      return finish(e instanceof Error ? e.message : "Could not read your finance summary.", false);
+    }
+  }
+
   // Trip Plan & Multi-Turn Follow-Up (Unlocked only)
-  const dayRequest = parseDayNumber(lower);
+  const dayRequest = parseDayNumber(lower, ctx.lastTripDay);
   if (
     !isLocked &&
     (lower.includes("trip plan") ||
       lower.includes("my trip") ||
       lower.includes("itinerary") ||
+      lower.includes("trips") ||
       (dayRequest !== null && ctx.activeTripId))
   ) {
     try {
@@ -338,24 +576,25 @@ export async function processVoiceTurn(options: {
 
       const targetDayNum = dayRequest ?? 1;
       const target = days.find((d) => d.day === targetDayNum) ?? days[0];
+      ctx.lastTripDay = target.day;
       const actSummary = (target.activities ?? [])
         .slice(0, 3)
         .map((a) => a.title)
         .filter(Boolean)
         .join(", ");
       const base = `On day ${target.day} of ${tripTitle ?? "your trip"}, ${target.title}`;
-      return finish(
-        actSummary ? `${base}: ${actSummary}.` : `${base}.`,
-        false,
-        "trips.itinerary"
-      );
+      return finish(actSummary ? `${base}: ${actSummary}.` : `${base}.`, false, "trips.itinerary");
     } catch (e) {
       return finish(e instanceof Error ? e.message : "Could not read your trip itinerary right now.", false);
     }
   }
 
   // Local LLM runtime check
-  const rt = await runtimeStatus().catch(() => ({ available: false, reason: "Local AI runtime unavailable.", engine: "none" }));
+  const rt = await runtimeStatus().catch(() => ({
+    available: false,
+    reason: "Local AI runtime unavailable.",
+    engine: "none",
+  }));
   if (rt.available) {
     try {
       const historyText = ctx.turns
@@ -363,7 +602,7 @@ export async function processVoiceTurn(options: {
         .map((t) => `${t.role === "user" ? "User" : "Atlas"}: ${t.text}`)
         .join("\n");
       const prompt =
-        "You are Atlas, a friendly, warm, concise voice assistant. Answer naturally in 1-3 short spoken sentences.\n" +
+        "You are Atlas, a friendly, warm, concise female voice assistant. Answer naturally in 1-3 short spoken sentences.\n" +
         historyText +
         "\nAtlas:";
       const abort = new AbortController();
@@ -382,28 +621,18 @@ export async function processVoiceTurn(options: {
   // Optional Cloud AI fallback (only with explicit user consent + online)
   if (getVoiceCloudConsent() && typeof navigator !== "undefined" && navigator.onLine) {
     try {
-      const res = await fetch("/api/atlas/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: raw,
-          history: ctx.turns.slice(-6),
-        }),
-      });
-      if (res.ok) {
-        const data = (await res.json()) as { reply?: string };
-        if (data.reply?.trim()) {
-          return finish(data.reply.trim(), false, "llm.cloud");
-        }
+      const cloudReply = await queryCloudAi(raw, ctx.turns);
+      if (cloudReply) {
+        return finish(cloudReply, false, "llm.cloud");
       }
     } catch {
       // Fall through to honest offline fallback
     }
   }
 
-  // Honest offline fallback (never fabricate AI responses)
+  // Honest, transparent fallback that echoes what was heard so the user gets direct feedback
   return finish(
-    "I'm running offline without a local language model loaded right now. I can still open vaults, play downloaded music, check your unlocked trip plan, or save reminders.",
+    `I heard "${raw}". No offline language model or Cloud AI key is configured right now, so I can't answer open-ended questions yet—but I can play music, check your unlocked trip or balance, or save reminders.`,
     false,
     "fallback.offline"
   );

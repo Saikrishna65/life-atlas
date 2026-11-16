@@ -38,7 +38,13 @@ import {
   type WakeWordDiagnosticReport,
   type WakeWordListeningStatus,
 } from "@/lib/wakeword/atlasWakeWord";
-import { getVoiceCloudConsent, setVoiceCloudConsent } from "@/lib/atlas-ai/voice-assistant";
+import {
+  getVoiceCloudConfig,
+  getVoiceCloudConsent,
+  setVoiceCloudConfig,
+  setVoiceCloudConsent,
+  type CloudAiProvider,
+} from "@/lib/atlas-ai/voice-assistant";
 
 const SCENARIO_STATUS_OPTIONS = [
   { value: "passed", label: "Pass" },
@@ -55,6 +61,8 @@ export default function HeyAtlasExperiment() {
   const [voiceSessionStatus, setVoiceSessionStatus] = useState<VoiceSessionStatus | null>(null);
   const [allowOnlineSpeech, setAllowOnlineSpeech] = useState(false);
   const [cloudAiConsent, setCloudAiConsent] = useState(() => getVoiceCloudConsent());
+  const [cloudProvider, setCloudProvider] = useState<CloudAiProvider>(() => getVoiceCloudConfig().provider);
+  const [cloudApiKey, setCloudApiKey] = useState(() => getVoiceCloudConfig().apiKey);
   const [assistantRole, setAssistantRole] = useState<AssistantRoleStatus>({
     roleAvailable: false,
     roleHeld: false,
@@ -693,6 +701,24 @@ export default function HeyAtlasExperiment() {
 
           <div className="oc-rule">
             <div>
+              <strong>Quick Spoken Greeting on Wake</strong>
+              <p>Immediately speak &quot;Hey! What&apos;s up?&quot; right after &quot;Hey Atlas&quot; before listening for your command.</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={voiceSessionStatus?.greetOnWake ?? true}
+              onChange={(e) =>
+                void runAction("Updated wake greeting preference.", () =>
+                  atlasWakeWordBridge.setVoiceAssistantConfig({ greetOnWake: e.target.checked })
+                )
+              }
+              disabled={busy || !nativeSupported}
+              aria-label="Quick Spoken Greeting on Wake"
+            />
+          </div>
+
+          <div className="oc-rule">
+            <div>
               <strong>Allow Online Speech Recognizer Fallback</strong>
               <p>Off by default. Only enable if on-device STT is unavailable and you consent to system recognizer use.</p>
             </div>
@@ -714,7 +740,7 @@ export default function HeyAtlasExperiment() {
           <div className="oc-rule">
             <div>
               <strong>Allow Cloud AI Conversation Fallback</strong>
-              <p>Off by default. Private vault data stays local; enables `/api/atlas/chat` when no local LLM is loaded.</p>
+              <p>Off by default. Private vault data stays local; enables open-ended conversational answers when no local LLM is loaded.</p>
             </div>
             <input
               type="checkbox"
@@ -729,6 +755,41 @@ export default function HeyAtlasExperiment() {
               aria-label="Allow Cloud AI Conversation Fallback"
             />
           </div>
+
+          {cloudAiConsent && (
+            <div style={{ padding: "12px 0", borderTop: "1px solid var(--oc-line)", display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <label style={{ fontSize: "0.84rem" }}>
+                  Provider{" "}
+                  <select
+                    value={cloudProvider}
+                    onChange={(e) => {
+                      const p = e.target.value as CloudAiProvider;
+                      setCloudProvider(p);
+                      setVoiceCloudConfig(p, cloudApiKey);
+                    }}
+                    style={{ marginLeft: 6 }}
+                  >
+                    <option value="gemini">Google Gemini (gemini-2.5-flash)</option>
+                    <option value="openai">OpenAI (gpt-4o-mini)</option>
+                  </select>
+                </label>
+                <input
+                  type="password"
+                  placeholder="Optional personal API key (stored locally on device)"
+                  value={cloudApiKey}
+                  onChange={(e) => {
+                    setCloudApiKey(e.target.value);
+                    setVoiceCloudConfig(cloudProvider, e.target.value);
+                  }}
+                  style={{ flex: 1, minWidth: 220 }}
+                />
+              </div>
+              <small style={{ color: "var(--oc-muted)" }}>
+                Stored only on this device. Leave blank to try the configured Life Atlas server `/api/atlas/chat` endpoint.
+              </small>
+            </div>
+          )}
 
           <div className="oc-actions" style={{ marginTop: 12 }}>
             <button

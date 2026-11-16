@@ -108,7 +108,7 @@ class AtlasVoiceSpeechManager(private val context: Context) {
                 rec.setRecognitionListener(object : RecognitionListener {
                     override fun onReadyForSpeech(params: Bundle?) {
                         if (epoch != activeEpoch) return
-                        scheduleWatchdog(epoch, if (isFollowUp) 6500L else 12000L, listener)
+                        scheduleWatchdog(epoch, if (isFollowUp) 5000L else 7500L, listener)
                         listener.onReadyForSpeech()
                     }
 
@@ -173,14 +173,14 @@ class AtlasVoiceSpeechManager(private val context: Context) {
                         putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
                     }
                     // VAD & silence tuning
-                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 600L)
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 450L)
                     putExtra(
                         RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
-                        if (isFollowUp) 2200L else 1500L
+                        if (isFollowUp) 1100L else 900L
                     )
                     putExtra(
                         RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
-                        if (isFollowUp) 1800L else 1200L
+                        if (isFollowUp) 900L else 700L
                     )
                 }
                 rec.startListening(intent)
