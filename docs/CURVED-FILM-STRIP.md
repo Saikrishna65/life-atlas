@@ -53,3 +53,11 @@ closely spaced frames. The centre stays gently scaled, the corners remain larger
 and neighbouring frames have smaller height differences. The pure projection
 helper has numerical continuity, monotonic-growth, symmetry and adjacent-size
 regression checks; the browser suite also compares actual neighbouring heights.
+
+## Restore original proportions
+
+At the owner's request, the ribbon projection is restored to the exact geometry
+from 2dbb0dc, before the larger-corner and smoother-envelope experiments: original
+spacing, perspective angles and scale profile. The label cleanup, real licensed
+photos, image-only hover pause, background drawing and globe directory removal
+are retained. Reference geometry tests cover both desktop and mobile.

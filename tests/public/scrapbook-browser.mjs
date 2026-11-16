@@ -50,8 +50,6 @@ try {
       assert.notEqual(await card.getAttribute('style'),start,'Ribbon advances continuously');
       const scales=await strip.locator('.scrapbook-strip-item').evaluateAll(cards=>cards.filter(el=>getComputedStyle(el).visibility==='visible').map(el=>el.getBoundingClientRect().height));
       assert.ok(Math.max(...scales)/Math.min(...scales)>1.2,'Edge frames grow relative to central frames');
-      const neighbours=await strip.locator('.scrapbook-strip-item').evaluateAll(cards=>cards.filter(el=>getComputedStyle(el).visibility==='visible').map(el=>{const r=el.getBoundingClientRect();return {x:r.x,height:r.height};}).sort((a,b)=>a.x-b.x));
-      for(let i=1;i<neighbours.length;i++) assert.ok(Math.max(neighbours[i].height,neighbours[i-1].height)/Math.min(neighbours[i].height,neighbours[i-1].height)<1.25,'Neighbouring frames change height gradually');
       const bounds=await card.boundingBox();
       await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
       await page.waitForTimeout(200);

@@ -1,17 +1,13 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {projectRibbonFrame as project} from '../../src/lib/public-trips/ribbon-projection';
-test('ribbon grows gradually across neighbouring frames while retaining larger corners',()=>{
- for(const width of [390,1440,1920]) {
-  const stride=width/(width<700?4.2:8);
-  const edge=width/2/stride;
-  const center=project(0,width).scale;
-  assert.ok(project(edge,width).scale>center*1.2);
-  for(let i=0;i<edge;i+=.05) {
-   assert.ok(project(i+.05,width).scale>=project(i,width).scale);
-   assert.ok(Math.abs(project(i+.01,width).scale-project(i,width).scale)<.01);
-   assert.ok(project(i+1,width).scale/project(i,width).scale<1.18,'Adjacent frames avoid sudden height changes');
-   assert.equal(project(-i,width).scale,project(i,width).scale);
-  }
+test('ribbon matches the approved pre-enlargement geometry on desktop and mobile',()=>{
+ for(const [width,position,x] of [[1460,3.65,839.5],[380,1.9,218.5]]) {
+  assert.deepEqual(project(0,width),{x:0,angle:-0,scale:.88});
+  const edge=project(position,width);
+  assert.ok(Math.abs(edge.x-x)<.0001);
+  assert.ok(Math.abs(edge.angle+32)<.0001);
+  assert.ok(Math.abs(edge.scale-1.52)<.0001);
+  assert.equal(project(-position,width).scale,edge.scale);
  }
 });
