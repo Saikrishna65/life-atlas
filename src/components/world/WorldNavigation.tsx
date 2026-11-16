@@ -10,6 +10,7 @@ import { navigateChapter, returnToDoor } from "./navigation";
 export const chapters = [
   ["observatory", "The Observatory"],
   ["collected-moments", "Life, collected"],
+  ["people", "People & moments"],
   ["memories", "The Trip Archive"],
   ["beyond", "The Beyond"],
 ];

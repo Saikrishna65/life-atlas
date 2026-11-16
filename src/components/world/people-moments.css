@@ -1,0 +1,46 @@
+.people-moments { position:relative; overflow:clip; background:#1c2923; color:#fff; padding:36px clamp(22px,4vw,80px) 30px; scroll-margin-top:110px; }
+.people-topline,.people-bottomline { display:flex; justify-content:space-between; gap:25px; font:8px/1.6 var(--font-sans),sans-serif; letter-spacing:.12em; color:#b3c1b8; border-top:1px solid #ffffff24; padding-top:20px; }
+.people-canvas { position:relative; max-width:1700px; height:clamp(1050px,86vw,1400px); margin:auto; }
+.people-heading { position:absolute; top:12%; width:66%; left:17%; text-align:center; z-index:2; pointer-events:none; }
+.people-eyebrow { font:9px var(--font-sans),sans-serif; letter-spacing:.17em; color:#b3c1b8; }
+.people-moments .people-heading h2 { font:500 clamp(65px,7.5vw,130px)/1.02 var(--font-atlas-display),sans-serif; text-transform:uppercase; letter-spacing:-.035em; margin:24px 0; }
+.people-heading h2 em { color:#abc2b2; font-style:normal; }
+.people-heading p { font:12px/1.8 var(--font-sans),sans-serif; color:#c3cec7; }
+.people-float { position:absolute; width:18%; z-index:1; }
+.people-print { display:block; width:100%; background:#f3f4ef; padding:6px; border:0; transform:rotate(var(--angle,0deg)); box-shadow:0 16px 38px #0004; transition:transform .5s; cursor:zoom-in; }
+.people-print > div { position:relative; aspect-ratio:1.3; overflow:hidden; }
+.people-print img { object-fit:cover; }
+.people-print:hover,.people-print:focus-visible { transform:rotate(0deg) scale(1.035); }
+.people-print:focus-visible { outline:2px solid white; outline-offset:7px; }
+.people-position-1 { top:6%; left:0; width:19%; --angle:-8deg; }
+.people-position-2 { top:5%; right:0; width:16%; --angle:7deg; }
+.people-position-2 .people-print > div,.people-position-4 .people-print > div,.people-position-6 .people-print > div { aspect-ratio:.78; }
+.people-position-3 { top:39%; left:14%; width:19%; --angle:-6deg; }
+.people-position-4 { top:38%; right:12%; width:16%; --angle:8deg; }
+.people-position-5 { top:57%; left:35%; width:31%; --angle:-4deg; }
+.people-position-6 { top:55%; right:0; width:18%; --angle:-6deg; }
+.people-position-7 { top:72%; left:7%; width:19%; --angle:6deg; }
+.people-position-8 { top:77%; right:9%; width:22%; --angle:5deg; }
+.people-signoff { position:absolute; bottom:1%; left:0; width:45%; text-align:left; font:15px/1.6 var(--font-sans),sans-serif; }
+.people-signoff em { font-size:10px; color:#b3c1b8; font-style:normal; }
+.people-viewer.world-modal { background:#1c2923; color:white; width:min(1100px,94vw); padding:50px 24px 24px; }
+.people-viewer-image { height:65dvh; display:grid; place-items:center; }
+.people-viewer-image img { width:100%; height:100%; object-fit:contain; }
+.people-viewer-bar { display:flex; justify-content:space-between; gap:22px; padding-top:18px; font:12px var(--font-sans),sans-serif; }
+.people-viewer-bar small { display:block; font-size:10px; line-height:1.6; color:#b3c1b8; margin-top:8px; }
+.people-viewer-nav { display:flex; align-items:center; gap:15px; flex-shrink:0; }
+.people-viewer-nav button { display:grid; place-items:center; width:44px; height:44px; border:1px solid #ffffff40; border-radius:50%; background:none; }
+@media(max-width:800px) {
+ .people-canvas { height:auto; padding-bottom:35px; }
+ .people-heading { position:relative; top:auto; left:auto; width:100%; padding:55px 0 45px; }
+ .people-moments .people-heading h2 { font-size:clamp(56px,13vw,85px); }
+ .people-photos { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:34px 20px; padding:12px 5px 35px; align-items:center; }
+ .people-float { position:relative; top:auto; left:auto; right:auto; width:100%; }
+ .people-float:nth-child(even) { margin-top:40px; }
+ .people-position-5 { grid-column:span 2; width:80%; margin:auto; }
+ .people-print { padding:4px; }
+ .people-signoff { position:relative; bottom:auto; left:auto; width:100%; padding-top:15px; text-align:center; }
+ .people-topline,.people-bottomline { font-size:7px; letter-spacing:.06em; }
+ .people-viewer-bar { flex-direction:column; }
+}
+@media(prefers-reduced-motion:reduce) { .people-print { transition:none; } }

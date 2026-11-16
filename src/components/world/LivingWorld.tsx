@@ -12,6 +12,7 @@ import "./world.css";
 import "./observatory.css";
 const Observatory = dynamic(() => import("./Observatory"));
 const TravelScrapbook = dynamic(() => import("./TravelScrapbook"));
+const PeopleMoments = dynamic(() => import("./PeopleMoments"));
 const TripArchive = dynamic(() => import("./TripArchive"));
 const PublishedMedia = dynamic(() => import("./PublishedMedia"));
 const Beyond = dynamic(() => import("./Beyond"));
@@ -144,6 +145,7 @@ export default function LivingWorld({ scrapbookMedia = [], trips }: { scrapbookM
           id="collected-moments"
           title="Life, collected"
         ><TravelScrapbook media={scrapbookMedia} /></Deferred>
+        <Deferred id="people" title="The people along the way" component={PeopleMoments} />
         <Deferred id="memories" title="The Trip Archive"><TripArchive trips={trips} /></Deferred>
         <Suspense fallback={null}><PublishedMedia /></Suspense>
         <Deferred id="beyond" title="The Beyond" component={Beyond} />
