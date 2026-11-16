@@ -276,7 +276,11 @@ export interface AtlasWakeWordNativePlugin {
     voiceAssistantEnabled?: boolean;
     allowOnlineSpeechFallback?: boolean;
     greetOnWake?: boolean;
+    cloudConsent?: boolean;
+    cloudProvider?: string;
+    cloudApiKey?: string;
   }): Promise<VoiceSessionStatus>;
+  consumePendingNativeReminders(): Promise<{ reminders: Array<{ title: string; createdAt: string }> }>;
   addListener(
     eventName: "wakeWordDetected",
     listenerFunc: (event: WakeWordDetectionEvent) => void
@@ -692,6 +696,9 @@ export const atlasWakeWordBridge = {
     voiceAssistantEnabled?: boolean;
     allowOnlineSpeechFallback?: boolean;
     greetOnWake?: boolean;
+    cloudConsent?: boolean;
+    cloudProvider?: string;
+    cloudApiKey?: string;
   }): Promise<VoiceSessionStatus> {
     if (!isWakeWordNativeSupported()) {
       return {
@@ -704,6 +711,11 @@ export const atlasWakeWordBridge = {
       };
     }
     return NativePlugin.setVoiceAssistantConfig(options);
+  },
+
+  async consumePendingNativeReminders(): Promise<{ reminders: Array<{ title: string; createdAt: string }> }> {
+    if (!isWakeWordNativeSupported()) return { reminders: [] };
+    return NativePlugin.consumePendingNativeReminders();
   },
 
   async addVoiceSessionStateListener(

@@ -56,7 +56,11 @@ class AtlasWakeWordPlugin : Plugin() {
         @Volatile
         private var activePluginRef: WeakReference<AtlasWakeWordPlugin>? = null
 
+        @Volatile
+        private var appInForeground: Boolean = false
+
         fun hasActivePlugin(): Boolean = activePluginRef?.get() != null
+        fun isAppForeground(): Boolean = hasActivePlugin() && appInForeground
 
         private fun emitEvent(eventName: String, json: JSONObject) {
             val plugin = activePluginRef?.get() ?: return
@@ -138,9 +142,21 @@ class AtlasWakeWordPlugin : Plugin() {
     override fun load() {
         super.load()
         activePluginRef = WeakReference(this)
+        appInForeground = true
+    }
+
+    override fun handleOnResume() {
+        super.handleOnResume()
+        appInForeground = true
+    }
+
+    override fun handleOnPause() {
+        appInForeground = false
+        super.handleOnPause()
     }
 
     override fun handleOnDestroy() {
+        appInForeground = false
         val current = activePluginRef?.get()
         if (current === this) {
             activePluginRef = null
@@ -461,6 +477,7 @@ class AtlasWakeWordPlugin : Plugin() {
 
     @PluginMethod
     fun setVoiceAssistantConfig(call: PluginCall) {
+        val prefs = context.getSharedPreferences("atlas_voice_prefs", Context.MODE_PRIVATE).edit()
         call.getBoolean("voiceAssistantEnabled")?.let { enabled ->
             AtlasWakeWordService.voiceAssistantEnabled = enabled
         }
@@ -470,7 +487,30 @@ class AtlasWakeWordPlugin : Plugin() {
         call.getBoolean("greetOnWake")?.let { greet ->
             AtlasWakeWordService.activeVoiceCoordinator?.greetOnWake = greet
         }
+        call.getBoolean("cloudConsent")?.let { consent ->
+            prefs.putBoolean("cloudConsent", consent)
+        }
+        call.getString("cloudProvider")?.let { provider ->
+            prefs.putString("cloudProvider", provider)
+        }
+        call.getString("cloudApiKey")?.let { apiKey ->
+            prefs.putString("cloudApiKey", apiKey)
+        }
+        prefs.apply()
         call.resolve(JSObject.fromJSONObject(buildVoiceSessionStatusJson()))
+    }
+
+    @PluginMethod
+    fun consumePendingNativeReminders(call: PluginCall) {
+        val prefs = context.getSharedPreferences("atlas_voice_prefs", Context.MODE_PRIVATE)
+        val raw = prefs.getString("pendingRemindersJson", "[]") ?: "[]"
+        prefs.edit().remove("pendingRemindersJson").apply()
+        val arr = try {
+            org.json.JSONArray(raw)
+        } catch (_: Exception) {
+            org.json.JSONArray()
+        }
+        call.resolve(JSObject.fromJSONObject(JSONObject().put("reminders", arr)))
     }
 
     private fun buildVoiceSessionStatusJson(): JSONObject {

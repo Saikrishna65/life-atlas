@@ -5,7 +5,8 @@ import {useEffect, useRef, useState, useSyncExternalStore} from 'react';
 import {createPortal} from 'react-dom';
 import {useMusicPlayer} from '@/lib/music/MusicPlayerContext';
 import {canShowAtlasLauncher} from '@/lib/atlas-ai/visibility';
-import {processVoiceTurn} from '@/lib/atlas-ai/voice-assistant';
+import {createReminder} from '@/lib/atlas-ai/reminders';
+import {getVoiceCloudConfig, getVoiceCloudConsent, processVoiceTurn} from '@/lib/atlas-ai/voice-assistant';
 import {
   atlasWakeWordBridge,
   isWakeWordNativeSupported,
@@ -85,6 +86,32 @@ export default function AtlasLauncher() {
     let disposed = false;
     const handles: Array<{ remove: () => Promise<void> }> = [];
 
+    const syncNativePrefsAndReminders = () => {
+      const consent = getVoiceCloudConsent();
+      const cfg = getVoiceCloudConfig();
+      void atlasWakeWordBridge.setVoiceAssistantConfig({
+        cloudConsent: consent,
+        cloudProvider: cfg.provider,
+        cloudApiKey: cfg.apiKey,
+      });
+      void atlasWakeWordBridge.consumePendingNativeReminders().then(({ reminders }) => {
+        for (const r of reminders) {
+          if (r.title) {
+            try {
+              createReminder(r.title);
+            } catch {
+              // ignore invalid title
+            }
+          }
+        }
+      });
+    };
+    syncNativePrefsAndReminders();
+    const onVis = () => {
+      if (document.visibilityState === 'visible') syncNativePrefsAndReminders();
+    };
+    document.addEventListener('visibilitychange', onVis);
+
     void atlasWakeWordBridge.getVoiceSessionStatus().then((st) => {
       if (!disposed) setVoiceState(st.state);
     });
@@ -149,6 +176,7 @@ export default function AtlasLauncher() {
 
     return () => {
       disposed = true;
+      document.removeEventListener('visibilitychange', onVis);
       for (const h of handles) void h.remove();
     };
   }, [router]);

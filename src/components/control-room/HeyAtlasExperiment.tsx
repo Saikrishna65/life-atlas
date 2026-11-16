@@ -749,6 +749,11 @@ export default function HeyAtlasExperiment() {
                 const next = e.target.checked;
                 setCloudAiConsent(next);
                 setVoiceCloudConsent(next);
+                void atlasWakeWordBridge.setVoiceAssistantConfig({
+                  cloudConsent: next,
+                  cloudProvider,
+                  cloudApiKey,
+                });
                 setNotice(next ? "Cloud AI consent enabled." : "Cloud AI consent disabled (offline-only).");
               }}
               disabled={busy}
@@ -767,6 +772,11 @@ export default function HeyAtlasExperiment() {
                       const p = e.target.value as CloudAiProvider;
                       setCloudProvider(p);
                       setVoiceCloudConfig(p, cloudApiKey);
+                      void atlasWakeWordBridge.setVoiceAssistantConfig({
+                        cloudConsent: cloudAiConsent,
+                        cloudProvider: p,
+                        cloudApiKey,
+                      });
                     }}
                     style={{ marginLeft: 6 }}
                   >
@@ -779,8 +789,14 @@ export default function HeyAtlasExperiment() {
                   placeholder="Optional personal API key (stored locally on device)"
                   value={cloudApiKey}
                   onChange={(e) => {
-                    setCloudApiKey(e.target.value);
-                    setVoiceCloudConfig(cloudProvider, e.target.value);
+                    const key = e.target.value;
+                    setCloudApiKey(key);
+                    setVoiceCloudConfig(cloudProvider, key);
+                    void atlasWakeWordBridge.setVoiceAssistantConfig({
+                      cloudConsent: cloudAiConsent,
+                      cloudProvider,
+                      cloudApiKey: key,
+                    });
                   }}
                   style={{ flex: 1, minWidth: 220 }}
                 />

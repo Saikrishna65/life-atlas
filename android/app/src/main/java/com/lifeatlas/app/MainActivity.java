@@ -160,6 +160,15 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
+        if (intent.hasExtra("target_route")) {
+            String route = intent.getStringExtra("target_route");
+            if ("/secret/atlas".equals(route) || "/secret".equals(route)) {
+                pendingTargetRoute = route;
+                dispatchPendingRoute();
+                return;
+            }
+        }
+
         if (Intent.ACTION_SEND.equals(action) && type != null && "text/plain".equals(type)) {
             String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
             if (sharedText != null && (sharedText.contains("youtube.com") || sharedText.contains("youtu.be"))) {

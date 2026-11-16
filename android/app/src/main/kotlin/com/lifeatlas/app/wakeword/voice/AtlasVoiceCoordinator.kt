@@ -1,15 +1,31 @@
 package com.lifeatlas.app.wakeword.voice
 
 import android.app.KeyguardManager
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
+import android.view.KeyEvent
+import androidx.core.app.NotificationCompat
+import com.lifeatlas.app.MainActivity
+import com.lifeatlas.app.R
 import com.lifeatlas.app.wakeword.AtlasWakeWordPlugin
+import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -292,7 +308,7 @@ class AtlasVoiceCoordinator(
         val turnId = UUID.randomUUID().toString()
         currentTurnId = turnId
 
-        if (AtlasWakeWordPlugin.hasActivePlugin()) {
+        if (AtlasWakeWordPlugin.isAppForeground()) {
             val payload = JSONObject()
                 .put("sessionId", sessionId)
                 .put("turnId", turnId)
@@ -304,18 +320,14 @@ class AtlasVoiceCoordinator(
             cancelTimers()
             val timeout = Runnable {
                 if (currentSessionId == sessionId && currentTurnId == turnId && state == State.THINKING) {
-                    Log.w(TAG, "JS bridge reply timed out; using native fallback")
-                    val fallback = buildNativeFallbackReply(transcript, isLocked)
-                    pendingEndSession = fallback.second
-                    speakResponse(fallback.first)
+                    Log.w(TAG, "JS bridge reply timed out; using native handler")
+                    resolveNativeTurnAsync(sessionId, turnId, transcript, isLocked)
                 }
             }
             jsReplyTimeoutRunnable = timeout
             mainHandler.postDelayed(timeout, JS_REPLY_TIMEOUT_MS)
         } else {
-            val fallback = buildNativeFallbackReply(transcript, isLocked)
-            pendingEndSession = fallback.second
-            speakResponse(fallback.first)
+            resolveNativeTurnAsync(sessionId, turnId, transcript, isLocked)
         }
     }
 
@@ -406,7 +418,47 @@ class AtlasVoiceCoordinator(
         return normalized.startsWith("stop ") || normalized == "that is all"
     }
 
-    private fun buildNativeFallbackReply(transcript: String, isLocked: Boolean): Pair<String, Boolean> {
+    private fun resolveNativeTurnAsync(sessionId: String, turnId: String, transcript: String, isLocked: Boolean) {
+        val quick = buildNativeFallbackReply(transcript, isLocked)
+        if (quick != null) {
+            pendingEndSession = quick.second
+            speakResponse(quick.first)
+            return
+        }
+
+        // Check if user consented to Cloud AI and stored an API key on device
+        val prefs = context.getSharedPreferences("atlas_voice_prefs", Context.MODE_PRIVATE)
+        val cloudConsent = prefs.getBoolean("cloudConsent", false)
+        val cloudProvider = prefs.getString("cloudProvider", "gemini") ?: "gemini"
+        val cloudApiKey = prefs.getString("cloudApiKey", "") ?: ""
+
+        if (cloudConsent && cloudApiKey.isNotBlank()) {
+            Thread({
+                val cloudAnswer = callNativeCloudAi(transcript, cloudProvider, cloudApiKey)
+                mainHandler.post {
+                    if (currentSessionId != sessionId || currentTurnId != turnId) return@post
+                    if (!cloudAnswer.isNullOrBlank()) {
+                        pendingEndSession = false
+                        speakResponse(cloudAnswer)
+                    } else {
+                        pendingEndSession = false
+                        speakResponse("I heard \"$transcript\", and couldn't reach your Cloud AI provider right now.")
+                    }
+                }
+            }, "AtlasNativeCloudAI").start()
+            return
+        }
+
+        pendingEndSession = false
+        val msg = if (isLocked) {
+            "I heard \"$transcript\". Unlock your phone to open Life Atlas or enable Cloud AI in Hey Atlas settings for general conversation."
+        } else {
+            "I heard \"$transcript\". Open Life Atlas or enable Cloud AI in Hey Atlas settings for general conversation; right now I can open vaults, control music, tell time, or save reminders."
+        }
+        speakResponse(msg)
+    }
+
+    private fun buildNativeFallbackReply(transcript: String, isLocked: Boolean): Pair<String, Boolean>? {
         val lower = transcript.lowercase(Locale.ROOT)
         if (isLocked && (
                 lower.contains("finance") || lower.contains("balance") || lower.contains("bank") ||
@@ -417,8 +469,16 @@ class AtlasVoiceCoordinator(
         ) {
             return "Your phone is locked, so I can't access private Life Atlas vault data right now. Unlock your device and ask again." to true
         }
-        if (lower == "hey atlas" || lower == "atlas" || lower.contains("hello") || lower.contains("hi atlas") || lower.contains("what's up")) {
+
+        // Social & basic queries
+        if (lower == "hey atlas" || lower == "atlas" || lower == "hi" || lower == "hello" || lower == "hi atlas" || lower.contains("what's up")) {
             return "Hey! What's up?" to false
+        }
+        if (lower.contains("how are you") || lower.contains("how you doing")) {
+            return "I'm doing great, thanks for asking! How can I help?" to false
+        }
+        if (lower.contains("who are you") || lower.contains("your name")) {
+            return "I'm Atlas, your voice assistant for Life Atlas." to false
         }
         if (lower.contains("time")) {
             val now = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
@@ -428,10 +488,178 @@ class AtlasVoiceCoordinator(
             val today = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).format(Date())
             return "Today is $today." to false
         }
-        if (isLocked) {
-            return "I'm listening in lock-screen mode. Unlock your phone and open Life Atlas for full AI chat and vault actions." to true
+
+        // Media controls via Android system media keys
+        if (lower.contains("pause music") || lower == "pause" || lower.contains("stop music")) {
+            dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PAUSE)
+            return "Paused music." to false
         }
-        return "Open Life Atlas to use full AI conversation and vault actions." to true
+        if (lower.contains("resume music") || lower == "resume" || lower.contains("play music")) {
+            dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY)
+            return "Resuming playback." to false
+        }
+        if (lower.contains("next song") || lower.contains("next track") || lower == "skip") {
+            dispatchMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT)
+            return "Skipping to the next track." to false
+        }
+
+        // Native reminder capture (synced into JS reminders on next app foreground)
+        if (lower.startsWith("remind me to ") || lower.startsWith("remind me ") || lower.startsWith("set a reminder ")) {
+            val title = transcript
+                .replace(Regex("^(remind me to|remind me|set a reminder to|set a reminder)\\s+", RegexOption.IGNORE_CASE), "")
+                .trim()
+            if (title.isNotEmpty()) {
+                savePendingNativeReminder(title)
+                return "Got it. I saved a reminder: $title." to false
+            }
+        }
+
+        // Opening Life Atlas routes when unlocked
+        val routeRequest: Pair<String, String>? = when {
+            lower.contains("open music") || lower.contains("music vault") -> "/secret/music" to "Music Vault"
+            lower.contains("open trip") || lower.contains("trip vault") -> "/secret/vault" to "Trip Vault"
+            lower.contains("open finance") || lower.contains("finance vault") -> "/secret/finance" to "Finance Vault"
+            lower.contains("open life atlas") || lower.contains("open atlas") || lower.contains("open the app") || lower.contains("open app") ->
+                "/secret/atlas" to "Life Atlas"
+            else -> null
+        }
+        if (routeRequest != null) {
+            if (isLocked) {
+                return "Unlock your phone first so I can open ${routeRequest.second}." to true
+            }
+            val openedDirectly = tryOpenAppRoute(routeRequest.first, routeRequest.second)
+            return if (openedDirectly) {
+                "Opening ${routeRequest.second}." to false
+            } else {
+                "I sent a notification to open ${routeRequest.second}; Android blocks launching windows directly from background unless Life Atlas is set as your default assistant or allowed to display over apps." to false
+            }
+        }
+
+        return null
+    }
+
+    private fun dispatchMediaKey(keyCode: Int) {
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+        val now = SystemClock.uptimeMillis()
+        runCatching {
+            am.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0))
+            am.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0))
+        }
+    }
+
+    private fun savePendingNativeReminder(title: String) {
+        val prefs = context.getSharedPreferences("atlas_voice_prefs", Context.MODE_PRIVATE)
+        val existing = try {
+            JSONArray(prefs.getString("pendingRemindersJson", "[]") ?: "[]")
+        } catch (_: Exception) {
+            JSONArray()
+        }
+        existing.put(
+            JSONObject()
+                .put("title", title.take(180))
+                .put("createdAt", java.time.Instant.now().toString())
+        )
+        prefs.edit().putString("pendingRemindersJson", existing.toString()).apply()
+    }
+
+    private fun tryOpenAppRoute(route: String, label: String): Boolean {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("target_route", route)
+        }
+        val pi = PendingIntent.getActivity(
+            context,
+            route.hashCode(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        nm?.notify(
+            4105,
+            NotificationCompat.Builder(context, "atlas_wakeword_alerts")
+                .setSmallIcon(R.mipmap.ic_launcher)
+                .setContentTitle("Open $label")
+                .setContentText("Tap to open $label")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .build()
+        )
+        return try {
+            context.startActivity(intent)
+            true
+        } catch (e: Exception) {
+            Log.w(TAG, "Background launch blocked by Android BAL for $route: ${e.message}")
+            false
+        }
+    }
+
+    private fun callNativeCloudAi(transcript: String, provider: String, apiKey: String): String? {
+        return try {
+            val system = "You are Atlas, a warm, friendly, expressive female voice assistant. Answer in 1 to 3 concise conversational English sentences suitable for spoken audio."
+            if (provider == "openai") {
+                val url = URL("https://api.openai.com/v1/chat/completions")
+                val conn = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 8000
+                    readTimeout = 10000
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Authorization", "Bearer $apiKey")
+                }
+                val body = JSONObject()
+                    .put("model", "gpt-4o-mini")
+                    .put("temperature", 0.7)
+                    .put("max_tokens", 180)
+                    .put(
+                        "messages",
+                        JSONArray()
+                            .put(JSONObject().put("role", "system").put("content", system))
+                            .put(JSONObject().put("role", "user").put("content", transcript))
+                    )
+                OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
+                if (conn.responseCode in 200..299) {
+                    val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                    val json = JSONObject(text)
+                    json.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("message")?.optString("content")?.trim()
+                } else null
+            } else {
+                val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${URLEncoder.encode(apiKey, "UTF-8")}"
+                val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 8000
+                    readTimeout = 10000
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
+                }
+                val body = JSONObject()
+                    .put("system_instruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", system))))
+                    .put(
+                        "contents",
+                        JSONArray().put(
+                            JSONObject()
+                                .put("role", "user")
+                                .put("parts", JSONArray().put(JSONObject().put("text", transcript)))
+                        )
+                    )
+                    .put("generationConfig", JSONObject().put("temperature", 0.7).put("maxOutputTokens", 180))
+                OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
+                if (conn.responseCode in 200..299) {
+                    val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                    val json = JSONObject(text)
+                    json.optJSONArray("candidates")
+                        ?.optJSONObject(0)
+                        ?.optJSONObject("content")
+                        ?.optJSONArray("parts")
+                        ?.optJSONObject(0)
+                        ?.optString("text")
+                        ?.trim()
+                } else null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Native Cloud AI call failed: ${e.message}")
+            null
+        }
     }
 
     private fun playActivationCue(onDone: () -> Unit) {
