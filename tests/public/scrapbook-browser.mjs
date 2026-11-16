@@ -30,24 +30,32 @@ try {
     assert.match(await section.locator('h2').innerText(), /I GO PLACES/);
     assert.doesNotMatch(await section.locator('h2').innerText(), /WE|WITH US/);
     assert.equal(await section.locator('.scrapbook-strip').count(), 1);
-    assert.equal(await section.locator('.scrapbook-strip-group[aria-hidden="true"][inert]').count(), 1);
+    assert.equal(await section.locator('.scrapbook-strip-group').count(), 1);
     assert.equal((await section.locator('.scrapbook-strip-item, .scrapbook-print').allInnerTexts()).join('').trim(), '');
-    const gap = await section.locator('.scrapbook-strip-group').first().evaluate(group => {
-      const cards = group.querySelectorAll('.scrapbook-strip-item');
-      return cards[1].getBoundingClientRect().left - cards[0].getBoundingClientRect().right;
-    });
-    assert.ok(Math.abs(gap - 8) < 1, `Strip gap should be 8px, got ${gap}`);
     const strip = section.locator('.scrapbook-strip').first();
     await strip.scrollIntoViewIfNeeded();
-    await page.waitForTimeout(400);
-    const track = strip.locator('.scrapbook-strip-track');
+    await page.mouse.move(0,0);
+    await page.waitForTimeout(500);
     if (profile.reducedMotion === 'reduce') {
-      assert.equal(await track.evaluate(el => getComputedStyle(el).animationName), 'none');
+      assert.equal(await strip.getAttribute('data-curved'),'false');
+      assert.equal(await strip.locator('.scrapbook-strip-item').first().evaluate(el=>getComputedStyle(el).transform),'none');
     } else {
-      const start = await track.evaluate(el => getComputedStyle(el).transform);
-      await page.waitForTimeout(400);
-      assert.notEqual(await track.evaluate(el => getComputedStyle(el).transform), start);
+      assert.equal(await strip.getAttribute('data-curved'),'true');
+      const card=strip.locator('.scrapbook-strip-item').first();
+      const start=await card.getAttribute('style');
+      await page.waitForTimeout(500);
+      assert.notEqual(await card.getAttribute('style'),start,'Ribbon advances continuously');
+      const scales=await strip.locator('.scrapbook-strip-item').evaluateAll(cards=>cards.filter(el=>getComputedStyle(el).visibility==='visible').map(el=>el.getBoundingClientRect().height));
+      assert.ok(Math.max(...scales)/Math.min(...scales)>1.2,'Edge frames grow relative to central frames');
+      const bounds=await card.boundingBox();
+      await page.mouse.move(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
+      await page.waitForTimeout(200);
+      const held=await card.getAttribute('style');
+      await page.waitForTimeout(300);
+      assert.equal(await card.getAttribute('style'),held,'Hover pauses the ribbon');
+      await page.mouse.move(0,0);
     }
+    await strip.screenshot({path:`work/qa-scrapbook/ribbon-${profile.width}.png`});
     const filmPreview = section.locator('.scrapbook-frames video').first();
     await filmPreview.scrollIntoViewIfNeeded();
     if (profile.reducedMotion !== 'reduce') {

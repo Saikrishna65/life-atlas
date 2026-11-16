@@ -39,7 +39,8 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
   const [selected, setSelected] = useState<number | null>(null);
   const [seed, setSeed] = useState(17);
   const [paused, setPaused] = useState(false);
-  const [stripRepeats, setStripRepeats] = useState(1);
+  const stripPhase = useRef(0);
+  const stripHeld = useRef(false);
   useEffect(() => {
     // A visit gets a fresh mix after hydration, without random render-time output.
     let alive = true;
@@ -56,25 +57,48 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
 
   useEffect(() => {
     const strip = root.current!.querySelector<HTMLElement>(".scrapbook-strip")!;
-    // Repeat short collections to fill the viewport without distributing empty space.
-    const resize = new ResizeObserver(() => {
-      const card = strip.querySelector<HTMLElement>(".scrapbook-strip-item");
-      if (!card) return;
-      const stride = card.offsetWidth + 8;
-      setStripRepeats(Math.max(1, Math.ceil((strip.clientWidth + stride) / (stride * Math.max(1, moments.length)))));
-    });
+    const cards = Array.from(strip.querySelectorAll<HTMLElement>(".scrapbook-strip-item"));
+    const motion = matchMedia("(prefers-reduced-motion: reduce)");
+    let visible = false, width = strip.clientWidth, raf = 0, previous = 0;
+    const draw = () => {
+      const mobile = width < 700;
+      const stride = width / (mobile ? 3.8 : 7.3);
+      cards.forEach((card, index) => {
+        const position = ((index - stripPhase.current + cards.length / 2) % cards.length + cards.length) % cards.length - cards.length / 2;
+        const normal = position * stride / (width / 2);
+        const bend = Math.min(1.3, Math.abs(normal));
+        const x = position * stride * (1 + .15 * normal * normal);
+        card.style.transform = `translate(-50%, -50%) translateX(${x}px) perspective(900px) rotateY(${-normal * 32}deg) scale(${.88 + .64 * bend * bend})`;
+        card.style.visibility = Math.abs(x) > width * .72 ? "hidden" : "visible";
+      });
+    };
+    const tick = (now: number) => {
+      raf = 0;
+      if (!visible || motion.matches || document.hidden || paused || selected !== null || stripHeld.current) { previous = 0; return; }
+      if (previous) stripPhase.current = (stripPhase.current + Math.min(50, now - previous) / 4200) % cards.length;
+      previous = now;
+      draw();
+      raf = requestAnimationFrame(tick);
+    };
+    const update = () => {
+      strip.dataset.curved = String(!motion.matches);
+      if (motion.matches) cards.forEach(card => { card.style.removeProperty("transform"); card.style.removeProperty("visibility"); });
+      else draw();
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    const observer = new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; update(); });
+    observer.observe(strip);
+    const resize = new ResizeObserver(() => { width = strip.clientWidth; update(); });
     resize.observe(strip);
-    return () => resize.disconnect();
-  }, [moments.length]);
-
-  useEffect(() => {
-    const strips = root.current!.querySelectorAll<HTMLElement>(".scrapbook-strip");
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => (entry.target as HTMLElement).style.setProperty("--strip-visibility", entry.isIntersecting ? "running" : "paused"));
-    });
-    strips.forEach(strip => observer.observe(strip));
-    return () => observer.disconnect();
-  }, []);
+    strip.addEventListener("pointerenter", update);
+    strip.addEventListener("pointerleave", update);
+    strip.addEventListener("focusin", update);
+    strip.addEventListener("focusout", update);
+    motion.addEventListener("change", update);
+    document.addEventListener("visibilitychange", update);
+    update();
+    return () => { cancelAnimationFrame(raf); observer.disconnect(); resize.disconnect(); motion.removeEventListener("change", update); document.removeEventListener("visibilitychange", update); ["pointerenter", "pointerleave", "focusin", "focusout"].forEach(event => strip.removeEventListener(event, update)); };
+  }, [moments, paused, selected]);
 
   useEffect(() => {
     if (selected === null) return;
@@ -121,14 +145,17 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
     <section className="travel-scrapbook" id="collected-moments" ref={root} aria-labelledby="scrapbook-heading" data-paused={paused || selected !== null}>
       <div className="scrapbook-topline"><span>MY LIFE, COLLECTED.</span><button className="scrapbook-motion-toggle" onClick={() => setPaused(value => !value)} aria-pressed={paused}>{paused ? <Play size={12} /> : <Pause size={12} />}{paused ? "Resume films & strip" : "Pause films & strip"}</button></div>
       <div className="scrapbook-strips" aria-label="A moving collection from my trips">
-        <div className="scrapbook-strip">
-          <div className="scrapbook-strip-track">
-            {[0, 1].map(copy => <div className="scrapbook-strip-group" key={copy} aria-hidden={copy === 1 ? true : undefined} inert={copy === 1 ? true : undefined}>
-              {Array.from({ length: stripRepeats }, (_, repeat) => moments.map((frame, index) => <button className="scrapbook-strip-item" key={`${repeat}-${frame.id}`} onClick={() => setSelected(index)} tabIndex={copy || repeat ? -1 : undefined} aria-hidden={repeat ? true : undefined} inert={repeat ? true : undefined} aria-label={`Open ${frame.kind}: ${frame.title} · ${frame.tripTitle}`}>
-                {frame.kind === "film" ? <AutoFilm frame={frame} paused={paused || selected !== null} /> : <Image src={frame.preview} alt={frame.title} fill sizes="(max-width: 700px) 160px, 260px" unoptimized={!frame.sample} loading="lazy" />}
-              </button>))}
-            </div>)}
-          </div>
+        <div className="scrapbook-strip" onPointerEnter={() => { stripHeld.current = true; }} onPointerLeave={() => { stripHeld.current = false; }} onFocus={() => { stripHeld.current = true; }} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) stripHeld.current = false; }}>
+          <div className="scrapbook-strip-track"><div className="scrapbook-strip-group">
+            {Array.from({ length: Math.max(9, moments.length) }, (_, slot) => {
+              const index = slot % moments.length;
+              const frame = moments[index];
+              if (!frame) return null;
+              return <button className="scrapbook-strip-item" key={`${slot}-${frame.id}`} onClick={() => setSelected(index)} tabIndex={slot >= moments.length ? -1 : undefined} aria-hidden={slot >= moments.length ? true : undefined} inert={slot >= moments.length ? true : undefined} aria-label={`Open ${frame.kind}: ${frame.title} · ${frame.tripTitle}`}>
+                {frame.kind === "film" ? <AutoFilm frame={frame} paused={paused || selected !== null} /> : <Image src={frame.preview} alt={frame.title} fill sizes="(max-width:700px) 160px, 260px" unoptimized={!frame.sample} loading="lazy" />}
+              </button>;
+            })}
+          </div></div>
         </div>
       </div>
       <div className="scrapbook-stage">
