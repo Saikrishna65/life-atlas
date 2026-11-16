@@ -19,7 +19,6 @@ import {
 import { formatDuration, searchRecords } from "@/data/demo/selectors";
 import {
   AlbumArt,
-  ChapterLabel,
   DemoNote,
   Empty,
   Modal,
@@ -87,12 +86,6 @@ export default function SoundDimension() {
           );
   return (
     <section ref={root} id="sound" className="world-sound world-scene">
-      <div className="world-section-bar">
-        <ChapterLabel number="05">The Sound Dimension</ChapterLabel>
-        <span className="world-eyebrow">
-          <AudioLines size={14} /> Feel something different
-        </span>
-      </div>
       <header className="world-editorial-header" data-world-reveal>
         <div>
           <p className="world-eyebrow">A soundtrack for the in-between.</p>

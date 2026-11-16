@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { expeditions } from "@/data/demo/expeditions";
 import { searchRecords } from "@/data/demo/selectors";
-import { ChapterLabel, DemoNote, Empty, SearchField } from "./primitives";
+import { DemoNote, Empty, SearchField } from "./primitives";
 export default function Expeditions() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All terrains");
@@ -34,10 +34,6 @@ export default function Expeditions() {
   return (
     <section id="expeditions" className="world-expeditions world-scene">
       <RouteDrawing className="expedition-route-background" />
-      <div className="world-section-bar">
-        <ChapterLabel number="04">The Expeditions</ChapterLabel>
-        <span className="world-eyebrow">24 ways to take the long way</span>
-      </div>
       <header className="world-editorial-header" data-world-reveal>
         <KineticHeading
           lines={["Go somewhere", <em key="stay">that stays with you.</em>]}

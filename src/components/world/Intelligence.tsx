@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Copy, Check, Sparkles } from "lucide-react";
 import { conversations, workflows } from "@/data/demo/conversations";
 import type { DemoTopic } from "@/data/demo/types";
-import { ChapterLabel, DemoNote } from "./primitives";
+import { DemoNote } from "./primitives";
 const AtlasOrb = dynamic(() => import("./AtlasOrb"), {
   ssr: false,
   loading: () => (
@@ -38,12 +38,6 @@ export default function Intelligence() {
   };
   return (
     <section id="intelligence" className="world-intelligence world-scene">
-      <div className="world-section-bar">
-        <ChapterLabel number="07">The Intelligence</ChapterLabel>
-        <span className="world-eyebrow">
-          A little perspective changes everything.
-        </span>
-      </div>
       <div className="intelligence-layout">
         <div className="intelligence-presence">
           <p className="world-eyebrow">Meet Atlas. Your curious counterpart.</p>

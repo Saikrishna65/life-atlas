@@ -1,0 +1,59 @@
+/* Shared paper palette. Every selector is scoped to the PUBLIC experience. */
+:root { --atlas-public-paper:#eeefec; --atlas-public-ink:#18221c; --atlas-public-muted:#53665a; --atlas-public-line:#18221c30; }
+body:has(.living-world) { background:var(--atlas-public-paper); }
+.living-world { --w-paper:var(--atlas-public-paper); --w-ink:var(--atlas-public-ink); --w-muted:var(--atlas-public-muted); --w-line:var(--atlas-public-line); --w-focus:#315f57; --background:var(--atlas-public-paper); --foreground:var(--atlas-public-ink); background:var(--atlas-public-paper); color:var(--atlas-public-ink); }
+.living-world .world-scene { --w-paper:var(--atlas-public-paper); --w-ink:var(--atlas-public-ink); --w-muted:var(--atlas-public-muted); --w-line:var(--atlas-public-line); --w-focus:#315f57; background:var(--atlas-public-paper); color:var(--atlas-public-ink); }
+.living-world .world-section-bar,.living-world .observatory-topline { display:none; }
+.living-world :is(.public-page-title,.public-crossroads,.world-loading) { background:var(--atlas-public-paper); color:var(--atlas-public-ink); }
+/* The globe keeps its transparent renderer; its surrounding editorial UI is paper. */
+.living-world .world-observatory.observatory-v2 { --observatory-surface:#f6f7f3eb; background:var(--atlas-public-paper); color:var(--atlas-public-ink); padding-top:65px; }
+.living-world .observatory-v2 .observatory-heading .kinetic-heading,.living-world .observatory-v2 .observatory-focus h3 { color:var(--atlas-public-ink); }
+.living-world .observatory-v2 :is(.observatory-overline,.observatory-heading > p,.observatory-heading-note,.observatory-gesture,.observatory-focus-top,.observatory-focus-region,.observatory-focus-meta,.observatory-focus p,.observatory-place-controls > span) { color:var(--atlas-public-muted); }
+.living-world .observatory-v2 :is(.observatory-text-link,.observatory-journey-link) { color:var(--atlas-public-ink); border-color:var(--atlas-public-line); }
+.living-world .observatory-v2 .observatory-focus { border-color:var(--atlas-public-line); }
+.living-world .observatory-v2 .observatory-place-controls button { border-color:var(--atlas-public-line); }
+.living-world .observatory-v2 .observatory-trail .route-draw { stroke:#53665a; }
+.living-world .observatory-v2 .observatory-globe-placeholder p { color:var(--atlas-public-muted); }
+.living-world .observatory-v2 .observatory-placeholder-ring { border-color:var(--atlas-public-line); }
+/* The two curated photographic sections. */
+.living-world :is(.travel-scrapbook,.people-moments) { background:var(--atlas-public-paper); color:var(--atlas-public-ink); }
+.living-world .travel-scrapbook :is(.scrapbook-overline,.scrapbook-heading p,.scrapbook-controls,.scrapbook-endnote),.living-world .people-moments :is(.people-eyebrow,.people-heading p,.people-signoff em) { color:var(--atlas-public-muted); }
+.living-world .travel-scrapbook .scrapbook-title em,.living-world .people-moments .people-heading h2 em { color:#536c5c; }
+.living-world .travel-scrapbook .scrapbook-link { background:#18221c; color:#fff; }
+.living-world .travel-scrapbook .scrapbook-link > span { border-color:#ffffff60; }
+.living-world .people-moments .people-route path { stroke:#536c5c; opacity:.27; }
+.living-world .people-moments .people-print { box-shadow:0 12px 28px #18221c26; }
+/* The closing door retains its geometry and closing timeline. */
+.living-world .world-beyond :is(.kinetic-heading,.world-link) { color:var(--atlas-public-ink); }
+.living-world .world-beyond .kinetic-heading em { color:#536c5c; }
+.living-world .world-beyond .beyond-words > p { color:var(--atlas-public-muted); }
+.living-world .world-beyond .world-button { background:#18221c; color:#fff; }
+.living-world .world-beyond .beyond-door { top:70px; border-color:#536c5c; background:#b4c2ae; box-shadow:0 0 70px #18221c18; }
+.living-world .world-beyond .door-leaf { background:#33463a; border-color:#536c5c; }
+/* White identity mark on its existing charcoal surface over paper sections. */
+body:has(.living-world) .world-nav:not([data-scene="hero"]) .reference-nav-brand { background:#18221ce8; border-radius:45px; }
+/* Trip journals share the paper canvas, while covers, maps and media stay intact. */
+.living-world.trip-detail-v3 { background:var(--atlas-public-paper); color:var(--atlas-public-ink); }
+.living-world.trip-detail-v3 .td-cover { color:#fff; background:#16211d; }
+.living-world.trip-detail-v3 :is(.td-itinerary,.td-journal,.td-ending) { background:var(--atlas-public-paper); color:var(--atlas-public-ink); }
+.living-world.trip-detail-v3 :is(.td-section-heading h2 em,.td-ending h2 em) { color:#536c5c; }
+.living-world.trip-detail-v3 :is(.td-prologue > small,.td-route-aside > .td-eyebrow,.td-route-aside small,.td-place-note > span,.td-place-note p,.td-muted,.td-metrics dt,.td-metrics dd span,.td-stat-heading > span,.td-stat-note,.td-empty,.td-ending-links a,.td-ending-links button) { color:var(--atlas-public-muted); }
+.living-world.trip-detail-v3 :is(.td-route,.td-route-aside nav,.td-route-aside nav button,.td-metrics,.td-route-record,.td-metrics-primary,.td-journal-toolbar > nav,.td-journal-foot,.td-ending-links) { border-color:var(--atlas-public-line); }
+.living-world.trip-detail-v3 .td-route-aside nav button[aria-pressed="true"] { color:#315f57; }
+.living-world.trip-detail-v3 .td-journal-toolbar button { border-color:var(--atlas-public-line); }
+.living-world.trip-detail-v3 .td-journal-toolbar button[aria-pressed="true"] { color:#fff; background:#315f57; border-color:#315f57; }
+.living-world.trip-detail-v3 .td-media-filters select { background:var(--atlas-public-paper); color:var(--atlas-public-ink); border-color:var(--atlas-public-line); }
+.living-world.trip-detail-v3 .td-metrics-primary [data-unrecorded="true"] dd { color:var(--atlas-public-muted); }
+/* Public portals use the same canvas; image/video pixels are never recoloured. */
+body:has(.living-world) .world-modal { --w-paper:var(--atlas-public-paper); --w-ink:var(--atlas-public-ink); --w-line:var(--atlas-public-line); --w-muted:var(--atlas-public-muted); background:var(--atlas-public-paper); color:var(--atlas-public-ink); }
+body:has(.living-world) .world-modal :is(.people-viewer-bar small,.scrapbook-viewer-bar p,.td-viewer-details p,.td-viewer-details > div:first-child > span) { color:var(--atlas-public-muted); }
+body:has(.living-world) .world-modal :is(.people-viewer-nav button,.scrapbook-viewer-nav button,.td-viewer-tools button) { color:var(--atlas-public-ink); border-color:var(--atlas-public-line); }
+body:has(.living-world) :is(.living-world,.world-modal) :focus-visible { outline-color:#315f57; }
+
+body:has(.living-world) .world-nav :focus-visible { outline-color:#fff; }
+
+body:has(.living-world) .public-footer { background:var(--atlas-public-paper); color:var(--atlas-public-ink); border-color:var(--atlas-public-line); }
+body:has(.living-world) .public-footer p { color:var(--atlas-public-muted); }
+.living-world .observatory-v2 .observatory-core p { color:var(--atlas-public-muted); }
+.living-world .world-progress[data-scene] { color:var(--atlas-public-muted); --w-accent:#315f57; --w-focus:#315f57; }
+.living-world .world-progress[data-scene] button[aria-current]::after { background:#315f57; }

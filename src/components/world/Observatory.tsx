@@ -7,14 +7,12 @@ import { observatoryTypography as typography } from "@/lib/public-fonts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, ArrowLeft, ArrowRight, MoveUpRight, Rotate3D } from "lucide-react";
 import { destinations, expeditions } from "@/data/demo/expeditions";
-import { ChapterLabel } from "./primitives";
 import "./observatory.css";
 
 const Globe = dynamic(() => import("@/components/home/InteractiveGlobe"), {
   ssr: false,
 });
 
-const countries = new Set(destinations.map(place => place.country)).size;
 
 export default function Observatory() {
   const [selected, setSelected] = useState(destinations[0].id);
@@ -58,10 +56,6 @@ export default function Observatory() {
     <section id="observatory" ref={root}
       className={`${typography.variable} world-observatory world-scene observatory-v2`}
       aria-labelledby="observatory-title">
-      <div className="observatory-topline">
-        <ChapterLabel number="02">Explore the world</ChapterLabel>
-        <span className="observatory-atlas-note">A sample atlas / {destinations.length} places / {countries} countries</span>
-      </div>
 
       <div className="observatory-stage">
         <RouteDrawing className="observatory-trail" />

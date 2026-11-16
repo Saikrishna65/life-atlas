@@ -24,7 +24,7 @@ import {
 } from "@/data/demo/finance";
 import { activities } from "@/data/demo/activity";
 import { formatDate, formatMoney } from "@/data/demo/selectors";
-import { ChapterLabel, DemoNote, Modal } from "./primitives";
+import { DemoNote, Modal } from "./primitives";
 const modules = [
   {
     name: "Travel",
@@ -124,10 +124,6 @@ export default function AtlasSystem() {
       );
   return (
     <section id="system" className="world-system world-scene">
-      <div className="world-section-bar">
-        <ChapterLabel number="08">The Atlas System</ChapterLabel>
-        <span className="world-eyebrow">Many dimensions. One life.</span>
-      </div>
       <header className="world-editorial-header" data-world-reveal>
         <KineticHeading
           lines={[

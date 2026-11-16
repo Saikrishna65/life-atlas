@@ -2,17 +2,12 @@
 import { KineticHeading } from "./EditorialElements";
 import { ArrowUpRight, ArrowUp } from "lucide-react";
 import { useLenis } from "lenis/react";
-import { ChapterLabel } from "./primitives";
 import { returnToDoor } from "./navigation";
 import "./beyond.css";
 export default function Beyond() {
   const lenis = useLenis();
   return (
     <section id="beyond" className="world-beyond world-scene">
-      <div className="world-section-bar">
-        <ChapterLabel number="06">Home, again</ChapterLabel>
-        <span className="world-eyebrow">The last mile brings you home.</span>
-      </div>
       <div className="beyond-door" aria-hidden="true">
         <div className="door-leaf" />
         <span />

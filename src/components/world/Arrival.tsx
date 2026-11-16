@@ -2,7 +2,6 @@
 import { KineticHeading, RouteDrawing } from "./EditorialElements";
 import { useState } from "react";
 import { ArrowDownRight, Plus, X } from "lucide-react";
-import { ChapterLabel } from "./primitives";
 const points = [
   {
     name: "A world to discover",
@@ -33,10 +32,6 @@ export default function Arrival() {
       <div className="arrival-coordinates" aria-hidden="true">
         <span>REALITY</span>
         <span>↳ IMAGINATION</span>
-      </div>
-      <div className="world-section-bar">
-        <ChapterLabel number="02">The Arrival</ChapterLabel>
-        <span className="world-eyebrow">Reality meets imagination</span>
       </div>
       <div className="arrival-heading" data-world-reveal>
         <p className="world-eyebrow">You’re on the other side.</p>

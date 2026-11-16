@@ -15,7 +15,6 @@ import { memories, gallery } from "@/data/demo/memories";
 import { destinations, expeditions } from "@/data/demo/expeditions";
 import { searchRecords, formatDate } from "@/data/demo/selectors";
 import {
-  ChapterLabel,
   DemoNote,
   Empty,
   Modal,
@@ -72,10 +71,6 @@ export default function MemoryArchive() {
   }, [selected, items]);
   return (
     <section id="memories" className="world-memories world-scene">
-      <div className="world-section-bar">
-        <ChapterLabel number="05">The Memory Archive</ChapterLabel>
-        <span className="world-eyebrow">Collect moments. Not just miles.</span>
-      </div>
       <header className="world-editorial-header" data-world-reveal>
         <div>
           <p className="world-eyebrow">Small things. Infinite meaning.</p>

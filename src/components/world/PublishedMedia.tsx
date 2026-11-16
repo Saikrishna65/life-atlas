@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { usePublicCatalog } from "./usePublicCatalog";
-import { ChapterLabel, Modal } from "./primitives";
+import { Modal } from "./primitives";
 import { KineticHeading } from "./EditorialElements";
 import "./published-media.css";
 export default function PublishedMedia() {
@@ -67,12 +67,6 @@ export default function PublishedMedia() {
   if (!source && !error) return null;
   return (
     <section className="world-published world-scene" id="published">
-      <div className="world-section-bar">
-        <ChapterLabel number="↗">The published world</ChapterLabel>
-        <span className="world-eyebrow">
-          Explicitly shared / Always original
-        </span>
-      </div>
       <header className="world-editorial-header" data-world-reveal>
         <KineticHeading
           lines={[
