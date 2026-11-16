@@ -29,3 +29,6 @@ commit and the free-use license are retained in /images/people/README.md.
 The section’s organic SVG line draws progressively with ScrollTrigger on desktop
 and mobile. Reduced motion shows the full line statically. No new scroll engine
 or private app integration was added.
+
+Removed the small top and bottom label/divider rows to keep the floating
+composition clean. The background route and viewer provenance are retained.

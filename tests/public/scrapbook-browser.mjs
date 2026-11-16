@@ -32,6 +32,7 @@ try {
     assert.match(await section.locator('h2').innerText(), /I GO PLACES/);
     assert.doesNotMatch(await section.locator('h2').innerText(), /WE|WITH US/);
     assert.equal(await section.locator('.scrapbook-strip').count(), 1);
+    assert.equal(await section.locator('.scrapbook-topline,.scrapbook-bottomline').count(),0);
     assert.equal(await section.locator('.scrapbook-strip-group').count(), 1);
     assert.equal((await section.locator('.scrapbook-strip-item, .scrapbook-print').allInnerTexts()).join('').trim(), '');
     const strip = section.locator('.scrapbook-strip').first();

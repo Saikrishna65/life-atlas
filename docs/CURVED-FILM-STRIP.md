@@ -39,3 +39,9 @@ behavior remain unchanged. Pointer-over/out delegates to actual image buttons,
 so empty space within the ribbon no longer pauses motion; keyboard focus, the
 user pause control, document visibility and modal state retain their behavior.
 Browser tests separately verify image-hover pause and empty-space continuation.
+
+Section refinements: removed the small top/bottom editorial rows and divider
+lines; the pause control now sits beneath the journal link. Ribbon spacing is
+slightly tighter (desktop stride width/7.6, mobile width/4), with a stronger
+position-based scale toward the viewport edges. Mobile uses a gentler growth
+factor. Sample/source disclosure remains in the viewer and asset provenance.

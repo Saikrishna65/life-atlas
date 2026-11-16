@@ -12,7 +12,7 @@ try {
   const section=page.locator('#people.people-moments');await section.waitFor();
   await page.evaluate(()=>document.fonts.ready);
   assert.equal(await section.locator('.people-print').count(),8);
-  assert.match(await section.innerText(),/SAMPLE STOCK PHOTOGRAPHY/);
+  assert.equal(await section.locator('.people-topline,.people-bottomline').count(),0);
   const previous=await section.evaluate(el=>el.closest('.world-deferred').previousElementSibling.dataset.chapter);
   assert.equal(previous,'collected-moments');
   const next=await section.evaluate(el=>el.closest('.world-deferred').nextElementSibling.dataset.chapter);

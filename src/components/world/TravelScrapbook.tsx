@@ -61,13 +61,13 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
     let visible = false, width = strip.clientWidth, raf = 0, previous = 0;
     const draw = () => {
       const mobile = width < 700;
-      const stride = width / (mobile ? 3.8 : 7.3);
+      const stride = width / (mobile ? 4 : 7.6);
       cards.forEach((card, index) => {
         const position = ((index - stripPhase.current + cards.length / 2) % cards.length + cards.length) % cards.length - cards.length / 2;
         const normal = position * stride / (width / 2);
         const bend = Math.min(1.3, Math.abs(normal));
         const x = position * stride * (1 + .15 * normal * normal);
-        card.style.transform = `translate(-50%, -50%) translateX(${x}px) perspective(900px) rotateY(${-normal * 32}deg) scale(${.88 + .64 * bend * bend})`;
+        card.style.transform = `translate(-50%, -50%) translateX(${x}px) perspective(900px) rotateY(${-normal * 32}deg) scale(${.88 + (mobile ? .8 : 1) * bend * bend})`;
         card.style.visibility = Math.abs(x) > width * .72 ? "hidden" : "visible";
       });
     };
@@ -141,12 +141,13 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
 
   return (
     <section className="travel-scrapbook" id="collected-moments" ref={root} aria-labelledby="scrapbook-heading" data-paused={paused || selected !== null}>
-      <div className="scrapbook-topline"><span>MY LIFE, COLLECTED.</span><button className="scrapbook-motion-toggle" onClick={() => setPaused(value => !value)} aria-pressed={paused}>{paused ? <Play size={12} /> : <Pause size={12} />}{paused ? "Resume films & strip" : "Pause films & strip"}</button></div>
+
         <header className="scrapbook-heading">
           <span className="scrapbook-overline">THE SOUVENIRS THAT MATTER</span>
           <h2 id="scrapbook-heading" className="scrapbook-title"><span className="scrapbook-line"><span>I GO PLACES.</span></span><span className="scrapbook-line"><span>THEY STAY <em>WITH ME.</em></span></span></h2>
           <a className="scrapbook-link" href="/photography">Open the visual journal <span><ArrowUpRight size={18} /></span></a>
           <p>A road. A face. A few seconds I wish lasted longer. Little pieces of my world, brought home.</p>
+          <div className="scrapbook-controls"><button className="scrapbook-motion-toggle" onClick={() => setPaused(value => !value)} aria-pressed={paused}>{paused ? <Play size={12} /> : <Pause size={12} />}{paused ? "Resume films & strip" : "Pause films & strip"}</button></div>
         </header>
       <div className="scrapbook-strips" aria-label="A moving collection from my trips">
         <div className="scrapbook-strip">
@@ -163,7 +164,7 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
         </div>
       </div>
       <div className="scrapbook-endnote"><span aria-hidden="true">✳</span><p>Not everything fits in a suitcase.</p><span>Keep the feeling.</span></div>
-      <footer className="scrapbook-bottomline"><span>{moments.some(frame => frame.sample) ? "ILLUSTRATIVE COLLECTION · SAMPLE PHOTOS & FILMS" : "FROM THE PUBLIC JOURNAL"}</span><span>MORE ROADS. MORE STORIES. ↓</span></footer>
+
       {current && <Modal title={current.title} className="scrapbook-viewer" onClose={() => setSelected(null)}>
         <div className="scrapbook-viewer-media">{current.kind === "film" ? <video key={current.id} src={current.src} poster={current.preview} controls autoPlay muted playsInline preload="metadata" /> : <Image key={current.id} src={current.src} alt={current.title} width={1600} height={1200} unoptimized />}</div>
         <div className="scrapbook-viewer-bar"><div><h3>{current.title}</h3><p>{current.sample ? "Illustrative sample · Not a personal travel record" : "From my published collection"}</p></div><div className="scrapbook-viewer-nav"><button onClick={() => next(-1)} aria-label="Previous moment"><ArrowLeft size={20} /></button><span>{String(selected! + 1).padStart(2, "0")} / {String(moments.length).padStart(2, "0")}</span><button onClick={() => next(1)} aria-label="Next moment"><ArrowRight size={20} /></button></div></div>

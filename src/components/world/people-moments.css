@@ -1,5 +1,4 @@
 .people-moments { position:relative; overflow:clip; background:#1c2923; color:#fff; padding:36px clamp(22px,4vw,80px) 30px; scroll-margin-top:110px; }
-.people-topline,.people-bottomline { display:flex; justify-content:space-between; gap:25px; font:8px/1.6 var(--font-sans),sans-serif; letter-spacing:.12em; color:#b3c1b8; border-top:1px solid #ffffff24; padding-top:20px; }
 .people-canvas { position:relative; max-width:1700px; height:clamp(1050px,86vw,1400px); margin:auto; }
 .people-route { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; overflow:visible; }
 .people-route path { stroke:#b2cab8; stroke-width:1.1; opacity:.25; }
@@ -42,7 +41,6 @@
  .people-position-5 { grid-column:span 2; width:80%; margin:auto; }
  .people-print { padding:4px; }
  .people-signoff { position:relative; bottom:auto; left:auto; width:100%; padding-top:15px; text-align:center; }
- .people-topline,.people-bottomline { font-size:7px; letter-spacing:.06em; }
  .people-viewer-bar { flex-direction:column; }
 }
 @media(prefers-reduced-motion:reduce) { .people-print { transition:none; } }
