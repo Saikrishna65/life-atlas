@@ -51,7 +51,49 @@
 }
 .living-world .world-beyond.beyond-physical :focus-visible { outline-color:var(--beyond-ink); }
 @media(prefers-reduced-motion:no-preference) {
- .living-world:has(.beyond-physical) .world-progress[data-scene="beyond"] { color:#e1e9e1; --w-focus:#e1e9e1; }
- .living-world:has(.beyond-physical) .world-progress[data-scene="beyond"] button[aria-current]::after { background:#e1e9e1; }
- .living-world:has(.beyond-physical) .world-progress[data-scene="beyond"] :focus-visible { outline-color:#e1e9e1; }
+ .living-world:has(.beyond-physical[data-night="true"]) .world-progress[data-scene="beyond"] { color:#e1e9e1; --w-focus:#e1e9e1; }
+ .living-world:has(.beyond-physical[data-night="true"]) .world-progress[data-scene="beyond"] button[aria-current]::after { background:#e1e9e1; }
+ .living-world:has(.beyond-physical[data-night="true"]) .world-progress[data-scene="beyond"] :focus-visible { outline-color:#e1e9e1; }
+}
+
+/* A full-screen room, with a short scroll passage rather than an undersized footer. */
+.living-world .world-beyond.beyond-physical {
+  --beyond-door-height:clamp(220px,32svh,360px);
+  --beyond-door-top:clamp(85px,12svh,140px);
+  min-height:165svh; padding:0; display:block;
+}
+.beyond-stage {
+  position:sticky; top:0; height:100dvh; min-height:100svh;
+  display:flex; flex-direction:column; justify-content:flex-end; align-items:center;
+  padding:35px clamp(22px,4vw,80px) clamp(20px,3svh,35px);
+  box-sizing:border-box; overflow:clip; isolation:isolate;
+}
+.beyond-room-depth { position:absolute; inset:0; z-index:0; pointer-events:none; background:linear-gradient(180deg,transparent 44%,#6572610c 44.2%,transparent 44.5%),radial-gradient(ellipse at 50% 43%,#ffedc51a,transparent 55%); }
+.beyond-contact-shadow { position:absolute; top:calc(var(--beyond-door-top) + var(--beyond-door-height) - 4px); left:50%; width:calc(var(--beyond-door-height)*.95); height:24px; transform:translateX(-50%); border-radius:50%; background:#17251b; opacity:calc(.12 + var(--beyond-darkness)*.2); filter:blur(13px); pointer-events:none; z-index:1; }
+.living-world .world-beyond.beyond-physical .beyond-door { top:var(--beyond-door-top); height:var(--beyond-door-height); width:calc(var(--beyond-door-height)*.56); perspective:1000px; }
+.living-world .world-beyond.beyond-physical .beyond-door::after { content:""; position:absolute; inset:-7px; border:1px solid #62715d55; box-shadow:inset 0 0 5px #17251b4d; pointer-events:none; }
+.living-world .world-beyond.beyond-physical .door-leaf::before { content:""; position:absolute; inset:0; background:linear-gradient(90deg,#d6e1cc1c,transparent 9%,#00000017 85%),repeating-linear-gradient(90deg,transparent 0 17px,#00000005 18px,#ffffff04 19px,transparent 20px 29px); pointer-events:none; }
+.living-world .world-beyond.beyond-physical .door-leaf::after { background:linear-gradient(90deg,#7e8c80,#dce1d5,#8b998b); box-shadow:1px 2px 3px #0006; }
+.living-world .world-beyond.beyond-physical .beyond-door > span { height:clamp(200px,43svh,520px); }
+.living-world .world-beyond.beyond-physical .beyond-words { margin:0 auto; width:100%; max-width:1400px; }
+.living-world .world-beyond.beyond-physical .beyond-words > .world-eyebrow { margin-bottom:18px; }
+.living-world .world-beyond.beyond-physical .kinetic-heading { font-size:clamp(52px,min(7.5vw,12svh),116px); }
+@media(max-width:700px) {
+ .living-world .world-beyond.beyond-physical .kinetic-heading { font-size:clamp(38px,min(11.5vw,6svh),56px); }
+ .living-world .world-beyond.beyond-physical .beyond-words > p:not(.world-eyebrow) { font-size:12px; line-height:1.7; margin-top:18px; }
+ .living-world .world-beyond.beyond-physical .beyond-words > .world-button { margin-top:22px; }
+ .living-world .world-beyond.beyond-physical .beyond-words > .world-link { margin-top:15px; }
+}
+@media(max-height:720px) {
+ .living-world .world-beyond.beyond-physical { --beyond-door-height:clamp(135px,24svh,190px); --beyond-door-top:100px; }
+ .beyond-stage { padding-bottom:14px; }
+ .living-world .world-beyond.beyond-physical .kinetic-heading { font-size:clamp(28px,5.2svh,44px); }
+ .living-world .world-beyond.beyond-physical .beyond-words > .world-eyebrow { font-size:8px; margin-bottom:10px; }
+ .living-world .world-beyond.beyond-physical .beyond-words > p:not(.world-eyebrow) { font-size:11px; line-height:1.6; margin-top:12px; }
+ .living-world .world-beyond.beyond-physical .beyond-words > .world-button { margin-top:14px; min-height:44px; }
+ .living-world .world-beyond.beyond-physical .beyond-words > .world-link { margin-top:7px; min-height:32px; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .living-world .world-beyond.beyond-physical { min-height:100svh; }
+ .beyond-stage { position:relative; }
 }

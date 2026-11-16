@@ -19,3 +19,15 @@ ending with a closed door and the same working controls.
 Browser evidence at work/qa-door-light checks five scroll positions, the matched
 light/dark values, reverse scrolling, isolation from other sections, mobile,
 reduced motion, overflow and runtime errors.
+
+## Full-viewport finale
+
+The ending now has a 100dvh sticky room inside a short 165svh scroll passage.
+Closure starts exactly when the section top reaches 50% of the viewport; the
+extra passage lets the viewer experience the close with the room fully framed.
+At the page end the room covers the viewport, so the previous archive cannot
+remain visible above it. Reduced motion uses a single static viewport instead.
+
+Adaptive door/copy proportions keep controls in view on short mobile screens.
+A recessed jamb, subtle timber surface and floor/contact shadows add depth to
+the existing aperture-driven lighting without assets, audio or a new renderer.

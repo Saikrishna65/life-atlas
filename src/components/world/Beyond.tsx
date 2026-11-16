@@ -25,14 +25,16 @@ export default function Beyond() {
         section.style.setProperty('--beyond-light',String(light));
         section.style.setProperty('--beyond-darkness',String(1-light));
         section.dataset.closure = state.closed.toFixed(4);
+        const night = light < .45 ? 'true' : 'false';
+        if(section.dataset.night !== night) section.dataset.night = night;
         leaf.style.transform = `rotateY(${-angle}deg)`;
         frame.style.transform = `translateX(-50%) translateY(${(1-state.closed)*35}px) scale(${.92+.08*state.closed})`;
       };
-      const animation = gsap.to(state,{closed:1,ease:'none',onUpdate:draw,scrollTrigger:{trigger:section,start:'top 70%',end:'bottom bottom',scrub:.9,invalidateOnRefresh:true}});
+      const animation = gsap.to(state,{closed:1,ease:'none',onUpdate:draw,scrollTrigger:{trigger:section,start:'top 50%',end:'bottom bottom',scrub:.9,invalidateOnRefresh:true}});
       draw();
       return () => {
         animation.scrollTrigger?.kill(); animation.kill();
-        section.style.removeProperty('--beyond-light');section.style.removeProperty('--beyond-darkness');delete section.dataset.closure;
+        section.style.removeProperty('--beyond-light');section.style.removeProperty('--beyond-darkness');delete section.dataset.closure;delete section.dataset.night;
         leaf.style.removeProperty('transform');frame.style.removeProperty('transform');
       };
     });
@@ -40,6 +42,9 @@ export default function Beyond() {
   }, []);
   return (
     <section id="beyond" ref={root} className="world-beyond world-scene beyond-physical">
+      <div className="beyond-stage">
+      <div className="beyond-room-depth" aria-hidden="true" />
+      <div className="beyond-contact-shadow" aria-hidden="true" />
       <div className="beyond-room-shadow" aria-hidden="true" />
       <div className="beyond-door" aria-hidden="true">
         <div className="door-leaf" />
@@ -61,6 +66,7 @@ export default function Beyond() {
         <button className="world-link" onClick={() => returnToDoor(lenis)}>
           Start another journey <ArrowUp size={16} />
         </button>
+      </div>
       </div>
     </section>
   );
