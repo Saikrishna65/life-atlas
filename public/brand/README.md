@@ -1,16 +1,16 @@
 # Life Atlas logo assets
 
-- `life-atlas-white.png`: white mark used over the hero films.
-- `life-atlas-black.png`: black mark used on the light public navigation.
+- `life-atlas-white.png`: archived white raster derivative.
+- `life-atlas-black.png`: archived black raster derivative.
 
 These are transparent web derivatives prepared from the two user-supplied inline
 logo images. They are not the original attachment bytes. The source inline files
-were not exposed as downloadable attachments in this workspace. No generated
-wordmark or additional branding is included. Next Image serves appropriately sized
-variants; the full-resolution transparent derivatives are retained here.
+were not exposed as downloadable attachments in this workspace. Both derivatives
+remain unchanged.
 
-Logo links have a textual accessible name; the marks inside are decorative.
+The public navigation renders the geometric mark as inline vector paths in
+`src/components/home/HeroLogo.tsx`, without the raster glow or runtime colour/alpha
+filters. The public theme supplies white ink over films and dark scenes, and
+forest ink over light sections. No black logo is used in the navigation.
 
-The hero applies the `atlas-white-ink` SVG filter to the white asset, making dark
-outline pixels transparent and retaining a clean white silhouette. The saved
-source derivative remains available unchanged; the black logo is unaffected.
+Logo links have a textual accessible name; the vector inside is decorative.
