@@ -200,6 +200,7 @@ class AtlasWakeWordService : Service() {
                     isServicePaused = false
                     captureThread?.join(300L)
                     engine?.reset()
+                    ignoreAudioUntilElapsedMs = SystemClock.elapsedRealtime() + 400L
                     val model = engine?.modelInfo ?: WakeWordModelManager.getActiveModel(this@AtlasWakeWordService)
                     WakeWordDiagnostics.updateServiceState(
                         this@AtlasWakeWordService,

@@ -12,6 +12,7 @@ import android.media.AudioTrack
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
 import androidx.core.app.NotificationCompat
@@ -280,9 +281,8 @@ class AtlasVoiceCoordinator(
                         return
                     }
                     if (!isFollowUp && isTimeoutOrNoMatch) {
-                        transitionTo(State.ERROR_RECOVERY, message)
-                        pendingEndSession = true
-                        speakResponse("I didn't catch that. Just say Hey Atlas whenever you need me.")
+                        // Dismiss silently (like standard voice assistants) so ambient chatter doesn't cause a spoken error.
+                        endSessionInternal(resumeWakeWord = true, reason = "No command heard")
                         return
                     }
                     transitionTo(State.ERROR_RECOVERY, message)
@@ -531,7 +531,7 @@ class AtlasVoiceCoordinator(
             return if (openedDirectly) {
                 "Opening ${routeRequest.second}." to false
             } else {
-                "I sent a notification to open ${routeRequest.second}; Android blocks launching windows directly from background unless Life Atlas is set as your default assistant or allowed to display over apps." to false
+                "I sent a notification to open ${routeRequest.second}. Allow Display over other apps in Hey Atlas settings to open screens directly from the Home screen." to false
             }
         }
 
@@ -585,6 +585,11 @@ class AtlasVoiceCoordinator(
                 .setContentIntent(pi)
                 .build()
         )
+        val canLaunchFromBackground = AtlasWakeWordPlugin.isAppForeground() ||
+            (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M || Settings.canDrawOverlays(context))
+        if (!canLaunchFromBackground) {
+            return false
+        }
         return try {
             context.startActivity(intent)
             true

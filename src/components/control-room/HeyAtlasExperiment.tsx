@@ -811,6 +811,20 @@ export default function HeyAtlasExperiment() {
             <button
               type="button"
               className="oc-secondary"
+              disabled={busy || !nativeSupported}
+              onClick={() =>
+                void runAction("Opened Display over other apps settings.", () =>
+                  atlasWakeWordBridge.openOverlayPermissionSettings()
+                )
+              }
+            >
+              {voiceSessionStatus?.overlayPermissionGranted
+                ? "Overlay Permission: Granted"
+                : "Allow Display Over Other Apps"}
+            </button>
+            <button
+              type="button"
+              className="oc-secondary"
               disabled={busy || !nativeSupported || !status?.running}
               onClick={() =>
                 void runAction("Started manual Atlas voice session.", () =>

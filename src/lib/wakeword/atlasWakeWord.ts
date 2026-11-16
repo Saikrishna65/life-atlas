@@ -230,6 +230,7 @@ export interface VoiceSessionStatus {
   audioOwner: string;
   voiceAssistantEnabled: boolean;
   greetOnWake?: boolean;
+  overlayPermissionGranted?: boolean;
   onDeviceSpeechAvailable: boolean;
   systemSpeechAvailable: boolean;
   speechReason: string;
@@ -258,6 +259,7 @@ export interface AtlasWakeWordNativePlugin {
   requestAssistantRole(): Promise<AssistantRoleStatus>;
   openAssistantSettings(): Promise<{ opened: boolean }>;
   openBatteryOptimizationSettings(): Promise<{ opened: boolean }>;
+  openOverlayPermissionSettings(): Promise<{ opened: boolean }>;
   startOvernightTest(options?: { isBaseline?: boolean; useAssistantSession?: boolean }): Promise<OvernightTestReport>;
   stopOvernightTest(): Promise<OvernightTestReport>;
   getOvernightReport(): Promise<OvernightTestReport>;
@@ -610,6 +612,11 @@ export const atlasWakeWordBridge = {
   async openBatteryOptimizationSettings(): Promise<{ opened: boolean }> {
     if (!isWakeWordNativeSupported()) return { opened: false };
     return NativePlugin.openBatteryOptimizationSettings();
+  },
+
+  async openOverlayPermissionSettings(): Promise<{ opened: boolean }> {
+    if (!isWakeWordNativeSupported()) return { opened: false };
+    return NativePlugin.openOverlayPermissionSettings();
   },
 
   async startOvernightTest(options?: {

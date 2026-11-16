@@ -513,15 +513,35 @@ class AtlasWakeWordPlugin : Plugin() {
         call.resolve(JSObject.fromJSONObject(JSONObject().put("reminders", arr)))
     }
 
+    @PluginMethod
+    fun openOverlayPermissionSettings(call: PluginCall) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.fromParts("package", context.packageName, null)
+            ).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            if (intent.resolveActivity(context.packageManager) != null) {
+                context.startActivity(intent)
+                call.resolve(JSObject().put("opened", true))
+                return
+            }
+        }
+        openBatteryOptimizationSettings(call)
+    }
+
     private fun buildVoiceSessionStatusJson(): JSONObject {
         val coord = AtlasWakeWordService.activeVoiceCoordinator
         val caps = coord?.getSpeechCapabilities() ?: AtlasVoiceSpeechManager(context).checkCapabilities()
+        val overlayGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)
         return JSONObject()
             .put("state", (coord?.state ?: AtlasVoiceCoordinator.State.IDLE).name)
             .put("sessionId", coord?.currentSessionId ?: JSONObject.NULL)
             .put("audioOwner", AtlasAudioOwnershipCoordinator.currentOwner.name)
             .put("voiceAssistantEnabled", AtlasWakeWordService.voiceAssistantEnabled)
             .put("greetOnWake", coord?.greetOnWake ?: true)
+            .put("overlayPermissionGranted", overlayGranted)
             .put("onDeviceSpeechAvailable", caps.onDeviceAvailable)
             .put("systemSpeechAvailable", caps.systemRecognizerAvailable)
             .put("speechReason", caps.reason)
