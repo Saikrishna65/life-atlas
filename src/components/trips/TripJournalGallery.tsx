@@ -20,7 +20,7 @@ export default function TripJournalGallery({ items, paused, onOpen }: { items: D
           const middle = index === 1;
           gsap.fromTo(column, { y: middle ? -35 : 65 }, { y: middle ? 35 : -65, ease: "none", scrollTrigger: { trigger: root.current, start: "top bottom", end: "bottom top", scrub: .8, invalidateOnRefresh: true } });
         });
-        gsap.fromTo(root.current, { clipPath: "inset(0 32% 0 32%)" }, { clipPath: "inset(0 0% 0 0%)", ease: "power2.out", scrollTrigger: { trigger: root.current, start: "top 98%", end: "top 35%", scrub: .65 } });
+        gsap.fromTo(root.current, { clipPath: "inset(0 32% 0 32%)" }, { clipPath: "inset(0 0% 0 0%)", ease: "none", scrollTrigger: { trigger: root.current, start: "top 70%", end: "top 15%", scrub: .65 } });
       }, root);
       return () => context.revert();
     });

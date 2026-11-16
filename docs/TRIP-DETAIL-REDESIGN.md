@@ -142,3 +142,9 @@ contexts revert on unmount. Mobile remains a static single column; reduced motio
 omits the reveal and parallax. Keyboard focus opens the reveal immediately so
 clipping never hides a focused gallery control. Photos and films stay interleaved,
 with location/captions only in the existing accessible viewer.
+
+The gallery entrance now waits until the gallery top reaches 70% of viewport
+height and finishes at 15%. Linear scroll progress keeps the reveal visible
+throughout that approach, replacing the earlier 98% trigger and fast-out easing.
+The browser regression checks that the reveal remains closed at 85% and starts
+opening only after the gallery reaches the intended viewport area.

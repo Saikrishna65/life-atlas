@@ -78,6 +78,17 @@ try {
     await root.locator('#photo-journal').evaluate(el=>window.__lenis.scrollTo(scrollY+el.getBoundingClientRect().top-110,{immediate:true,force:true}));
     await page.waitForTimeout(1500);
     await page.screenshot({path:`work/qa-trip-detail-v3/journal-${profile.width}.png`});
+    if(profile.width>800) {
+      const wall=root.locator('.td-photo-wall');
+      await wall.evaluate(el=>window.__lenis.scrollTo(scrollY+el.getBoundingClientRect().top-innerHeight*.85,{immediate:true,force:true}));
+      await page.waitForTimeout(1100);
+      const before=await wall.evaluate(el=>getComputedStyle(el).clipPath);
+      assert.match(before,/32%/,'Entrance stays closed while gallery is only approaching the viewport');
+      await wall.evaluate(el=>window.__lenis.scrollTo(scrollY+el.getBoundingClientRect().top-innerHeight*.4,{immediate:true,force:true}));
+      await page.waitForTimeout(1100);
+      const during=await wall.evaluate(el=>getComputedStyle(el).clipPath);
+      assert.notEqual(during,before,'Entrance opens after gallery arrives in view');
+    }
     const wallWidth=await root.locator('.td-photo-wall').evaluate(el=>el.clientWidth);
     const columns=await root.locator('.td-photo-wall').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(" ").length);
     assert.equal(columns,profile.width<=800?1:3,'Responsive editorial column count');
