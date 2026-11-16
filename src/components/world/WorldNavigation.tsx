@@ -1,13 +1,12 @@
 "use client";
 import HeroLogo from "@/components/home/HeroLogo";
 import Link from "next/link";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { navigationTypography as typography } from "@/lib/public-fonts";
 import { useEffect, useState } from "react";
 import { ArrowUpRight, Search, Menu } from "lucide-react";
 import { useLenis } from "lenis/react";
 import { Modal } from "./primitives";
 import { navigateChapter, returnToDoor } from "./navigation";
-const typography = Plus_Jakarta_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-world-navigation", display: "swap" });
 export const chapters = [
   ["observatory", "The Observatory"],
   ["collected-moments", "Life, collected"],

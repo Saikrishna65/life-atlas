@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { heroTypography } from "@/lib/public-fonts";
 import { HERO_RELEASE_MS } from "./hero-playback";
 import TripFilmStage from "./TripFilmStage";
 import { ObservatoryInstrument } from "./AtlasObjects";
@@ -17,12 +17,7 @@ import gsap from "gsap";
 import { heroFilms, type HeroTrip, type HeroGalleryPhoto } from "@/data/demo/hero-films";
 import "./trip-film-hero.css";
 
-const heroTypography = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-hero",
-  display: "swap",
-});
+
 
 export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip[]; galleryPhotos: HeroGalleryPhoto[] }) {
   const [active, setActive] = useState(0);

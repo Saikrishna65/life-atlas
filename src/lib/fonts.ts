@@ -1,19 +1,24 @@
-import { Playfair_Display, Manrope, Inter } from 'next/font/google';
+import localFont from 'next/font/local';
 
-export const display = Playfair_Display({
-  subsets: ['latin'],
+// Checked-in variable fonts keep builds independent of Google Fonts availability.
+export const display = localFont({
+  src: '../assets/fonts/playfair-display.woff2',
+  weight: '400 900',
   variable: '--font-display',
   display: 'swap',
+  adjustFontFallback: 'Times New Roman',
 });
 
-export const sans = Manrope({
-  subsets: ['latin'],
+export const sans = localFont({
+  src: '../assets/fonts/manrope.woff2',
+  weight: '200 800',
   variable: '--font-sans',
   display: 'swap',
 });
 
-export const body = Inter({
-  subsets: ['latin'],
+export const body = localFont({
+  src: '../assets/fonts/inter.woff2',
+  weight: '100 900',
   variable: '--font-body',
   display: 'swap',
 });

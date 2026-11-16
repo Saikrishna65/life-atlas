@@ -3,7 +3,7 @@ import { KineticHeading, RouteDrawing } from "./EditorialElements";
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { observatoryTypography as typography } from "@/lib/public-fonts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, ArrowLeft, ArrowRight, MoveUpRight, Rotate3D } from "lucide-react";
 import { destinations, expeditions } from "@/data/demo/expeditions";
@@ -14,12 +14,7 @@ import "./observatory.css";
 const Globe = dynamic(() => import("@/components/home/InteractiveGlobe"), {
   ssr: false,
 });
-const typography = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-observatory",
-  display: "swap",
-});
+
 const categories = ["All places", "Mountains", "Nature", "Coast", "Culture", "City"];
 const pageSize = 4;
 const countries = new Set(destinations.map(place => place.country)).size;
