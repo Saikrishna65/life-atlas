@@ -171,11 +171,12 @@ class AtlasVoiceCoordinator(
             AtlasAudioOwnershipCoordinator.awaitRelease(AtlasAudioOwnershipCoordinator.Owner.WAKE_WORD) {
                 mainHandler.post {
                     if (currentSessionId == sessionId && state == State.SESSION_STARTING) {
-                        playActivationCue {
-                            if (currentSessionId == sessionId && state == State.SESSION_STARTING) {
-                                if (speakGreeting) {
-                                    speakGreetingThenListen(sessionId)
-                                } else {
+                        if (speakGreeting) {
+                            // Speak greeting immediately with zero chime delay
+                            speakGreetingThenListen(sessionId)
+                        } else {
+                            playActivationCue {
+                                if (currentSessionId == sessionId && state == State.SESSION_STARTING) {
                                     beginListeningTurn(isFollowUp = false)
                                 }
                             }
@@ -529,9 +530,9 @@ class AtlasVoiceCoordinator(
             }
             val openedDirectly = tryOpenAppRoute(routeRequest.first, routeRequest.second)
             return if (openedDirectly) {
-                "Opening ${routeRequest.second}." to false
+                "Opening ${routeRequest.second}." to true
             } else {
-                "I sent a notification to open ${routeRequest.second}. Allow Display over other apps in Hey Atlas settings to open screens directly from the Home screen." to false
+                "Sent notification to open ${routeRequest.second}. Allow Display over other apps in settings for direct launch." to true
             }
         }
 

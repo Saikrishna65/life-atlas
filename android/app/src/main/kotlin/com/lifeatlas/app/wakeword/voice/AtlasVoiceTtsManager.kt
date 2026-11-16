@@ -163,9 +163,9 @@ class AtlasVoiceTtsManager(private val context: Context) {
                         engine.voice = v
                         Log.i(TAG, "Selected TTS voice: ${v.name} (${v.locale})")
                     }
-                    // Warm, soft, natural conversational cadence
+                    // Warm, natural, responsive conversational cadence
                     engine.setPitch(1.04f)
-                    engine.setSpeechRate(0.98f)
+                    engine.setSpeechRate(1.10f)
                     engine.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                         override fun onStart(utteranceId: String?) {
                             mainHandler.post {

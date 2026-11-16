@@ -373,21 +373,21 @@ export async function processVoiceTurn(options: {
   if (lower.includes("open music") || lower.includes("music vault") || lower.includes("go to music")) {
     if (isLocked) return finish("Unlock your phone first so I can open Music Vault.", true);
     await runTypedAction({ kind: "navigate", section: "music" });
-    return finish("Opening Music Vault.", false, "navigate:music");
+    return finish("Opening Music Vault.", true, "navigate:music");
   }
   if (lower.includes("open trip") || lower.includes("trip vault") || lower.includes("go to trips")) {
     if (isLocked) return finish("Unlock your phone first so I can open Trip Vault.", true);
     await runTypedAction({ kind: "navigate", section: "trips" });
-    return finish("Opening Trip Vault.", false, "navigate:trips");
+    return finish("Opening Trip Vault.", true, "navigate:trips");
   }
   if (lower.includes("open finance") || lower.includes("finance vault") || lower.includes("go to finance")) {
     if (isLocked) return finish("Unlock your phone first to view Finance Vault.", true);
     await runTypedAction({ kind: "navigate", section: "finance" });
-    return finish("Opening Finance Vault.", false, "navigate:finance");
+    return finish("Opening Finance Vault.", true, "navigate:finance");
   }
   if (lower.includes("open home") || lower.includes("go home")) {
     await runTypedAction({ kind: "navigate", section: "home" });
-    return finish("Heading to your Life Atlas home.", false, "navigate:home");
+    return finish("Opening Life Atlas home.", true, "navigate:home");
   }
 
   // Safe Music Playback Controls

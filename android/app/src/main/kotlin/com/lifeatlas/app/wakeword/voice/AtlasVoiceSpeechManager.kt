@@ -172,15 +172,15 @@ class AtlasVoiceSpeechManager(private val context: Context) {
                     if (caps.onDeviceAvailable || !allowOnlineFallback) {
                         putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
                     }
-                    // VAD & silence tuning
-                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 450L)
+                    // VAD & silence tuning for responsive end-of-utterance
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 350L)
                     putExtra(
                         RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
-                        if (isFollowUp) 1100L else 900L
+                        if (isFollowUp) 900L else 650L
                     )
                     putExtra(
                         RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
-                        if (isFollowUp) 900L else 700L
+                        if (isFollowUp) 750L else 500L
                     )
                 }
                 rec.startListening(intent)
