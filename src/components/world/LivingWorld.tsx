@@ -10,6 +10,9 @@ import WorldMotion from "./WorldMotion";
 import SceneBoundary from "./SceneBoundary";
 import "./world.css";
 import "./observatory.css";
+import "./photo-depth.css";
+import Image from "next/image";
+const PhotoDepth = dynamic(() => import("./PhotoDepth"));
 const Observatory = dynamic(() => import("./Observatory"));
 const TravelScrapbook = dynamic(() => import("./TravelScrapbook"));
 const PeopleMoments = dynamic(() => import("./PeopleMoments"));
@@ -17,6 +20,7 @@ const TripArchive = dynamic(() => import("./TripArchive"));
 const PublishedMedia = dynamic(() => import("./PublishedMedia"));
 const Beyond = dynamic(() => import("./Beyond"));
 function ChapterLoading({ id, title }: { id: string; title: string }) {
+  if(id === 'through-the-lens') return <section id={id} className="photo-depth photo-depth-loading" aria-label={title}><div className="photo-depth-stage">{['wall-peaks','phone-mountain','wall-starry'].map(name=><Image key={name} src={`/images/stock/${name}.webp`} alt="Sample landscape photograph" width={400} height={500} sizes="25vw" loading="lazy" />)}</div></section>;
   return (
     <section id={id} className="world-scene world-loading" aria-label={title}>
       <span className="world-eyebrow">The next chapter</span>
@@ -136,6 +140,7 @@ export default function LivingWorld({ scrapbookMedia = [], trips }: { scrapbookM
     >
       <WorldNavigation />
       <WorldMotion>
+        <Deferred id="through-the-lens" title="Through the lens"><PhotoDepth media={scrapbookMedia} /></Deferred>
         <Deferred
           id="observatory"
           title="The Observatory"
