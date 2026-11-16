@@ -61,3 +61,7 @@ from 2dbb0dc, before the larger-corner and smoother-envelope experiments: origin
 spacing, perspective angles and scale profile. The label cleanup, real licensed
 photos, image-only hover pause, background drawing and globe directory removal
 are retained. Reference geometry tests cover both desktop and mobile.
+
+Original sizes/tilt are retained, with horizontal positions independently
+contracted by 5% on desktop and 2% on mobile to reduce gaps without enlarging
+frames or changing the height progression.

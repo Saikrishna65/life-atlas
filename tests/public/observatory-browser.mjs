@@ -13,6 +13,7 @@ try {
   const section=page.locator('#observatory.observatory-v2');await section.waitFor();
   assert.equal(await section.locator('.observatory-browser,.observatory-destination-list,.observatory-pagination').count(),0);
   assert.equal(await section.getByRole('searchbox').count(),0);
+  assert.equal(await section.locator('.observatory-stars').count(),0,'Fixed decorative dots are removed');
   if(profile.fallback) await section.getByText('The map is taking a rest. Explore the destinations beside it.').waitFor();
   else await section.locator('.observatory-core canvas').waitFor({timeout:45000});
   const first=await section.locator('.observatory-focus h3').innerText();
