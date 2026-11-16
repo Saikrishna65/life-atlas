@@ -113,3 +113,12 @@ The public data suite covers metric derivation and all 24 sample journeys. The
 browser suite checks the figures, example disclosure and actual rendered width
 variation at desktop and mobile sizes. A comparison against pre-change frame
 measurements verifies that approved preview heights remain unchanged.
+
+## Natural gallery proportions
+
+The gallery now supersedes forced frame crops with each image/video’s intrinsic
+aspect ratio. Desktop widths respond to the media proportions with staggered
+alignment and modest uneven gaps; equal proportions can share widths. Mobile
+uses one full-width column and natural heights. Videos supply dimensions when
+metadata is available, retaining lazy native streaming. The browser suite checks
+mobile equal widths and loaded photographs’ rendered versus natural proportions.

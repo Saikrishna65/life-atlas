@@ -78,10 +78,12 @@ try {
     await root.locator('#photo-journal').evaluate(el=>window.__lenis.scrollTo(scrollY+el.getBoundingClientRect().top-110,{immediate:true,force:true}));
     await page.waitForTimeout(1500);
     await page.screenshot({path:`work/qa-trip-detail-v3/journal-${profile.width}.png`});
-    const heights=await root.locator('.td-frame > div').evaluateAll(frames=>frames.slice(0,6).map(frame=>frame.getBoundingClientRect().height));
-    assert.ok(Math.max(...heights)/Math.min(...heights)>2,'Journal frame heights should be strongly varied');
-    const widths=await root.locator('.td-frame > div').evaluateAll(frames=>frames.slice(1,6).map(frame=>frame.getBoundingClientRect().width));
-    assert.ok(Math.max(...widths)/Math.min(...widths)>1.35,'Gallery widths should visibly vary, not all follow one column width');
+    const wallWidth=await root.locator('.td-photo-wall').evaluate(el=>el.clientWidth);
+    const widths=await root.locator('.td-frame > div').evaluateAll(frames=>frames.slice(0,6).map(frame=>frame.getBoundingClientRect().width));
+    if(profile.width<=800) assert.ok(widths.every(width=>Math.abs(width-wallWidth)<2),'Mobile media use one equal-width column');
+    const photos=await root.locator('.td-frame img').evaluateAll(images=>images.filter(img=>img.complete && img.naturalWidth>0).map(img=>({natural:img.naturalWidth/img.naturalHeight,rendered:img.clientWidth/img.clientHeight})));
+    assert.ok(photos.length>0,'At least one journal photograph loaded');
+    assert.ok(photos.every(photo=>Math.abs(photo.natural-photo.rendered)<.03),'Journal photographs retain natural proportions');
     await root.locator('nav[aria-label="Filter journal by place"]').getByRole('button',{name:'Tungnath',exact:true}).click();
     assert.ok(await root.locator('.td-frame').count()>0);
     assert.ok((await root.locator('.td-frame').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label')))).every(label=>label.includes('Tungnath')));

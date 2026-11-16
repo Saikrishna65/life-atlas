@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 
 /** Native streaming, with no video decoding for off-screen journal frames. */
-export default function DetailFilm({ src, poster, paused, label, posterPolicy = "always" }: { src: string; poster?: string; paused: boolean; label: string; posterPolicy?: "always" | "reduced-motion" }) {
+export default function DetailFilm({ src, poster, paused, label, posterPolicy = "always", onMetadata }: { src: string; poster?: string; paused: boolean; label: string; posterPolicy?: "always" | "reduced-motion"; onMetadata?: (video: HTMLVideoElement) => void }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const video = ref.current!;
@@ -24,5 +24,5 @@ export default function DetailFilm({ src, poster, paused, label, posterPolicy = 
     motion.addEventListener("change", update);
     return () => { observer.disconnect(); video.pause(); document.removeEventListener("visibilitychange", update); motion.removeEventListener("change", update); };
   }, [src, paused, poster, posterPolicy]);
-  return <video ref={ref} className="td-auto-film" data-poster-policy={posterPolicy} poster={posterPolicy === "always" ? poster || undefined : undefined} onLoadedData={event => { event.currentTarget.dataset.ready = "true"; }} muted loop playsInline autoPlay preload="none" aria-label={label} />;
+  return <video ref={ref} className="td-auto-film" data-poster-policy={posterPolicy} poster={posterPolicy === "always" ? poster || undefined : undefined} onLoadedMetadata={event => onMetadata?.(event.currentTarget)} onLoadedData={event => { event.currentTarget.dataset.ready = "true"; }} muted loop playsInline autoPlay preload="none" aria-label={label} />;
 }

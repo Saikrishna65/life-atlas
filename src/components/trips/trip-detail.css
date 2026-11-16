@@ -104,17 +104,14 @@
 .td-media-filters { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:20px 0 45px; }
 .td-media-filters > div { display:flex; gap:8px; }
 .td-media-filters select { border:0; border-bottom:1px solid #ffffff35; padding:8px 22px 8px 0; background:#111b17; color:#fff; min-height:44px; font:10px var(--font-sans),sans-serif; }
-/* Column flow packs beneath each frame instead of reserving empty grid rows. */
-.td-photo-wall { --td-gallery-gap:clamp(16px,2vw,30px); container-type:inline-size; columns:2; column-gap:var(--td-gallery-gap); }
-.td-frame { display:inline-block; vertical-align:top; width:100%; margin:0 0 24px; break-inside:avoid; perspective:1000px; padding:0; border:0; background:none; min-width:0; }
-.td-frame > div { width:100%; overflow:hidden; position:relative; aspect-ratio:var(--td-frame-ratio,1.05); height:calc((100cqw - var(--td-gallery-gap)) / 2 * var(--td-height-scale,1) / var(--td-frame-ratio,1.05)); }
-.td-frame :is(img,video) { width:100%; height:100%; object-fit:cover; display:block; }
-.td-frame-0 { --td-frame-ratio:.72; margin-bottom:22px; }
-.td-frame-1 { --td-frame-ratio:1.6; --td-height-scale:.96; width:70%; margin-left:30%; margin-bottom:34px; }
-.td-frame-2 { --td-frame-ratio:.63; width:92%; margin-bottom:18px; }
-.td-frame-3 { --td-frame-ratio:1.18; --td-height-scale:.97; width:80%; margin-bottom:28px; }
-.td-frame-4 { --td-frame-ratio:1.85; margin-bottom:38px; }
-.td-frame-5 { --td-frame-ratio:.82; --td-height-scale:.95; width:76%; margin-left:24%; margin-bottom:20px; }
+/* Natural media proportions, with editorial widths and staggered alignment. */
+.td-photo-wall { columns:2; column-gap:clamp(16px,2vw,30px); }
+.td-frame { display:block; width:var(--td-media-width,100%); margin:0 0 24px; break-inside:avoid; perspective:1000px; padding:0; border:0; background:none; min-width:0; }
+.td-frame:nth-child(even) { margin-left:auto; }
+.td-frame:nth-child(3n) { margin-bottom:18px; }
+.td-frame:nth-child(4n+2) { margin-bottom:32px; }
+.td-frame > div { width:100%; overflow:hidden; position:relative; }
+.td-frame :is(img,video) { width:100%; height:auto; display:block; }
 .td-journal-foot { display:flex; justify-content:space-between; gap:25px; border-top:1px solid #ffffff25; padding-top:25px; margin-top:65px; font-size:9px; letter-spacing:.1em; }
 .td-journal-foot button { display:flex; align-items:center; gap:15px; border:0; background:none; padding:0; font-size:10px; }
 .td-empty { padding:50px 0; font-size:13px; line-height:1.7; color:#9db3a5; }
@@ -190,12 +187,9 @@
   .td-media-filters { flex-wrap:wrap; gap:12px; padding-bottom:30px; }
   .td-media-filters > div { gap:5px; }
   .td-media-filters button { padding:8px 12px; font-size:9px; }
-  .td-photo-wall { --td-gallery-gap:12px; columns:2; column-gap:var(--td-gallery-gap); }
-  .td-photo-wall .td-frame { margin-bottom:18px; }
-  .td-photo-wall .td-frame:nth-child(4n+2) { margin-bottom:28px; }
-  .td-photo-wall .td-frame:nth-child(4n+3) { margin-bottom:12px; }
-  .td-photo-wall .td-frame:first-child { column-span:all; display:block; width:100%; margin-left:0; margin-bottom:24px; }
-  .td-photo-wall .td-frame:first-child > div { aspect-ratio:1.6; height:calc(100cqw / 1.6); }
+  .td-photo-wall { columns:1; }
+  .td-photo-wall .td-frame { width:100%; margin-left:0; margin-bottom:18px; }
+  .td-photo-wall .td-frame:nth-child(3n) { margin-bottom:26px; }
   .td-ending { padding-top:70px; }
   .td-next-image { height:250px; }
   .td-viewer-details { flex-direction:column; }
@@ -218,7 +212,7 @@ body:has(.trip-detail-v3[data-light-nav="true"]) .public-header .reference-nav-b
 .td-cover-media video[data-ready="true"] { opacity:1; }
 @media(prefers-reduced-motion:reduce) { .td-cover-media video[data-poster-policy="reduced-motion"] { opacity:1; transition:none; } }
 
-/* Independent crop heights retain the approved tall/wide rhythm as widths vary. */
+/* Journey figures. */
 .td-route-record { margin-top:45px; padding-top:28px; border-top:1px solid #ffffff30; }
 .td-stat-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; }
 .trip-detail-v3 .td-stat-heading h3 { font:400 25px/1.2 var(--font-sans),sans-serif; letter-spacing:-.04em; }
