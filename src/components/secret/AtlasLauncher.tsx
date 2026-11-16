@@ -1,27 +1,205 @@
 'use client';
 import Link from 'next/link';
-import {usePathname} from 'next/navigation';
-import {useEffect,useState,useSyncExternalStore} from 'react';
+import {usePathname, useRouter} from 'next/navigation';
+import {useEffect, useRef, useState, useSyncExternalStore} from 'react';
 import {createPortal} from 'react-dom';
 import {useMusicPlayer} from '@/lib/music/MusicPlayerContext';
 import {canShowAtlasLauncher} from '@/lib/atlas-ai/visibility';
+import {processVoiceTurn} from '@/lib/atlas-ai/voice-assistant';
+import {
+  atlasWakeWordBridge,
+  isWakeWordNativeSupported,
+  type VoiceSessionStateName,
+} from '@/lib/wakeword/atlasWakeWord';
 import styles from './atlas-launcher.module.css';
-const subscribeHydration=()=>()=>{};
+
+const subscribeHydration = () => () => {};
+
+function orbAppearance(state: VoiceSessionStateName): { cls: string; label: string; title: string } {
+  switch (state) {
+    case 'WAKE_DETECTED':
+    case 'SESSION_STARTING':
+      return { cls: styles.wake, label: 'Wake', title: 'Hey Atlas detected' };
+    case 'COMMAND_LISTENING':
+    case 'TRANSCRIBING':
+      return { cls: styles.listening, label: 'Listen', title: 'Listening…' };
+    case 'FOLLOW_UP_LISTENING':
+      return { cls: styles.followup, label: 'Follow', title: 'Listening for follow-up…' };
+    case 'THINKING':
+      return { cls: styles.thinking, label: 'Think', title: 'Thinking…' };
+    case 'SPEAKING':
+      return { cls: styles.speaking, label: 'Speak', title: 'Atlas speaking' };
+    case 'ERROR_RECOVERY':
+      return { cls: styles.error, label: 'Error', title: 'Voice session error' };
+    default:
+      return { cls: '', label: 'Atlas', title: 'Atlas standby' };
+  }
+}
+
 export default function AtlasLauncher() {
-  const pathname=usePathname();
-  const {currentTrack,isNowPlayingOpen}=useMusicPlayer();
-  const mounted=useSyncExternalStore(subscribeHydration,()=>true,()=>false);
-  const [keyboard,setKeyboard]=useState(false),[blocked,setBlocked]=useState(false);
-  useEffect(()=>{
-    const update=()=>{
-      const active=document.activeElement;
-      setKeyboard(!!active?.matches('input,textarea,[contenteditable="true"]') || (window.visualViewport?.height??window.innerHeight)<window.innerHeight-120);
+  const pathname = usePathname();
+  const router = useRouter();
+  const player = useMusicPlayer();
+  const { currentTrack, isNowPlayingOpen } = player;
+  const playerRef = useRef(player);
+  useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
+
+  const mounted = useSyncExternalStore(subscribeHydration, () => true, () => false);
+  const [keyboard, setKeyboard] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [voiceState, setVoiceState] = useState<VoiceSessionStateName>('IDLE');
+  const [voiceText, setVoiceText] = useState('');
+
+  useEffect(() => {
+    const update = () => {
+      const active = document.activeElement;
+      setKeyboard(
+        !!active?.matches('input,textarea,[contenteditable="true"]') ||
+          (window.visualViewport?.height ?? window.innerHeight) < window.innerHeight - 120
+      );
       setBlocked(!!document.querySelector('[role="dialog"][aria-modal="true"], [data-atlas-security-screen]'));
     };
-    const observer=new MutationObserver(update);observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-modal','data-atlas-security-screen']});
-    window.visualViewport?.addEventListener('resize',update);document.addEventListener('focusin',update);document.addEventListener('focusout',update);update();
-    return()=>{observer.disconnect();window.visualViewport?.removeEventListener('resize',update);document.removeEventListener('focusin',update);document.removeEventListener('focusout',update);};
-  },[]);
-  if(!mounted||!canShowAtlasLauncher(pathname,blocked||isNowPlayingOpen,keyboard))return null;
-  return createPortal(<Link href="/secret/atlas" aria-label="Open Atlas local assistant" className={styles.orb} style={{bottom:`calc(env(safe-area-inset-bottom, 0px) + ${currentTrack?190:100}px)`}}><span aria-hidden="true">✦</span><small>Atlas</small></Link>,document.body);
+    const observer = new MutationObserver(update);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-modal', 'data-atlas-security-screen'],
+    });
+    window.visualViewport?.addEventListener('resize', update);
+    document.addEventListener('focusin', update);
+    document.addEventListener('focusout', update);
+    update();
+    return () => {
+      observer.disconnect();
+      window.visualViewport?.removeEventListener('resize', update);
+      document.removeEventListener('focusin', update);
+      document.removeEventListener('focusout', update);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isWakeWordNativeSupported()) return;
+    let disposed = false;
+    const handles: Array<{ remove: () => Promise<void> }> = [];
+
+    void atlasWakeWordBridge.getVoiceSessionStatus().then((st) => {
+      if (!disposed) setVoiceState(st.state);
+    });
+
+    void atlasWakeWordBridge
+      .addVoiceSessionStateListener((ev) => {
+        if (disposed) return;
+        setVoiceState(ev.state);
+        if (ev.state === 'SPEAKING' && ev.detail) {
+          setVoiceText(ev.detail);
+        } else if (ev.state === 'IDLE' || ev.state === 'WAKE_LISTENING') {
+          setVoiceText('');
+        }
+      })
+      .then((h) => {
+        if (disposed) void h?.remove();
+        else if (h) handles.push(h);
+      });
+
+    void atlasWakeWordBridge
+      .addVoiceTranscriptListener((ev) => {
+        if (disposed) return;
+        if (ev.text) setVoiceText(ev.text);
+      })
+      .then((h) => {
+        if (disposed) void h?.remove();
+        else if (h) handles.push(h);
+      });
+
+    void atlasWakeWordBridge
+      .addVoiceCommandListener((ev) => {
+        if (disposed) return;
+        setVoiceText(ev.transcript);
+        void processVoiceTurn({
+          sessionId: ev.sessionId,
+          transcript: ev.transcript,
+          isLocked: ev.isLocked,
+          player: () => playerRef.current,
+          navigate: (href) => router.push(href),
+        })
+          .then((reply) =>
+            atlasWakeWordBridge.submitVoiceReply({
+              sessionId: ev.sessionId,
+              turnId: ev.turnId,
+              replyText: reply.replyText,
+              endSession: reply.endSession,
+            })
+          )
+          .catch(() =>
+            atlasWakeWordBridge.submitVoiceReply({
+              sessionId: ev.sessionId,
+              turnId: ev.turnId,
+              replyText: 'Sorry, something went wrong while handling that request.',
+              endSession: true,
+            })
+          );
+      })
+      .then((h) => {
+        if (disposed) void h?.remove();
+        else if (h) handles.push(h);
+      });
+
+    return () => {
+      disposed = true;
+      for (const h of handles) void h.remove();
+    };
+  }, [router]);
+
+  const isSessionActive =
+    voiceState !== 'IDLE' && voiceState !== 'WAKE_LISTENING' && voiceState !== 'SESSION_ENDING';
+
+  if (!mounted) return null;
+  if (!isSessionActive && !canShowAtlasLauncher(pathname, blocked || isNowPlayingOpen, keyboard)) {
+    return null;
+  }
+
+  const orb = orbAppearance(voiceState);
+  const bottomOffset = `calc(env(safe-area-inset-bottom, 0px) + ${currentTrack ? 190 : 100}px)`;
+
+  return createPortal(
+    <>
+      {isSessionActive && (
+        <div className={styles.voicePill} style={{ bottom: bottomOffset }} role="status" aria-live="polite">
+          <div className={styles.voicePillHeader}>
+            <span>{orb.title}</span>
+          </div>
+          {voiceText && <p className={styles.voicePillText}>{voiceText}</p>}
+          <div className={styles.voicePillActions}>
+            <button
+              type="button"
+              className={styles.voicePillBtn}
+              onClick={() => void atlasWakeWordBridge.stopVoiceSession()}
+            >
+              Stop
+            </button>
+            {pathname !== '/secret/atlas' && (
+              <Link href="/secret/atlas" className={styles.voicePillBtn}>
+                Open Atlas
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+      {canShowAtlasLauncher(pathname, blocked || isNowPlayingOpen, keyboard) && (
+        <Link
+          href="/secret/atlas"
+          aria-label="Open Atlas local assistant"
+          className={`${styles.orb} ${orb.cls}`}
+          style={{ bottom: bottomOffset }}
+        >
+          <span aria-hidden="true">✦</span>
+          <small>{orb.label}</small>
+        </Link>
+      )}
+    </>,
+    document.body
+  );
 }

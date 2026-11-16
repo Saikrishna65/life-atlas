@@ -23,6 +23,9 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
 import com.lifeatlas.app.wakeword.assistant.AtlasExperimentVoiceInteractionService
+import com.lifeatlas.app.wakeword.voice.AtlasAudioOwnershipCoordinator
+import com.lifeatlas.app.wakeword.voice.AtlasVoiceCoordinator
+import com.lifeatlas.app.wakeword.voice.AtlasVoiceSpeechManager
 import org.json.JSONObject
 import java.lang.ref.WeakReference
 
@@ -52,6 +55,23 @@ class AtlasWakeWordPlugin : Plugin() {
     companion object {
         @Volatile
         private var activePluginRef: WeakReference<AtlasWakeWordPlugin>? = null
+
+        fun hasActivePlugin(): Boolean = activePluginRef?.get() != null
+
+        private fun emitEvent(eventName: String, json: JSONObject) {
+            val plugin = activePluginRef?.get() ?: return
+            try {
+                val payload = JSObject.fromJSONObject(json)
+                plugin.bridge?.executeOnMainThread {
+                    plugin.notifyListeners(eventName, payload, false)
+                }
+            } catch (_: Exception) {
+            }
+        }
+
+        fun emitVoiceSessionState(json: JSONObject) = emitEvent("voiceSessionState", json)
+        fun emitVoiceTranscript(json: JSONObject) = emitEvent("voiceTranscript", json)
+        fun emitVoiceCommand(json: JSONObject) = emitEvent("voiceCommand", json)
 
         fun emitWakeWordDetected(eventJson: JSONObject) {
             val plugin = activePluginRef?.get() ?: return
@@ -401,6 +421,66 @@ class AtlasWakeWordPlugin : Plugin() {
     fun clearOvernightData(call: PluginCall) {
         OvernightTestManager.clear(context)
         call.resolve(JSObject.fromJSONObject(OvernightTestManager.getReport(context)))
+    }
+
+    @PluginMethod
+    fun submitVoiceReply(call: PluginCall) {
+        val sessionId = call.getString("sessionId")?.trim().orEmpty()
+        val turnId = call.getString("turnId")?.trim().orEmpty()
+        val replyText = call.getString("replyText") ?: ""
+        val endSession = call.getBoolean("endSession", false) ?: false
+        if (sessionId.isEmpty() || turnId.isEmpty()) {
+            call.reject("sessionId and turnId are required.")
+            return
+        }
+        AtlasWakeWordService.activeVoiceCoordinator?.submitJsReply(sessionId, turnId, replyText, endSession)
+        call.resolve(JSObject().put("accepted", true))
+    }
+
+    @PluginMethod
+    fun stopVoiceSession(call: PluginCall) {
+        AtlasWakeWordService.activeVoiceCoordinator?.stopSession("Stopped from Atlas UI")
+        call.resolve(JSObject.fromJSONObject(buildVoiceSessionStatusJson()))
+    }
+
+    @PluginMethod
+    fun startManualVoiceSession(call: PluginCall) {
+        val coord = AtlasWakeWordService.activeVoiceCoordinator
+        if (coord == null || !AtlasWakeWordService.isServiceRunning) {
+            call.reject("Wake-word service must be running to start a voice session.")
+            return
+        }
+        coord.startManualSession()
+        call.resolve(JSObject.fromJSONObject(buildVoiceSessionStatusJson()))
+    }
+
+    @PluginMethod
+    fun getVoiceSessionStatus(call: PluginCall) {
+        call.resolve(JSObject.fromJSONObject(buildVoiceSessionStatusJson()))
+    }
+
+    @PluginMethod
+    fun setVoiceAssistantConfig(call: PluginCall) {
+        call.getBoolean("voiceAssistantEnabled")?.let { enabled ->
+            AtlasWakeWordService.voiceAssistantEnabled = enabled
+        }
+        call.getBoolean("allowOnlineSpeechFallback")?.let { allow ->
+            AtlasWakeWordService.activeVoiceCoordinator?.setAllowOnlineSpeechFallback(allow)
+        }
+        call.resolve(JSObject.fromJSONObject(buildVoiceSessionStatusJson()))
+    }
+
+    private fun buildVoiceSessionStatusJson(): JSONObject {
+        val coord = AtlasWakeWordService.activeVoiceCoordinator
+        val caps = coord?.getSpeechCapabilities() ?: AtlasVoiceSpeechManager(context).checkCapabilities()
+        return JSONObject()
+            .put("state", (coord?.state ?: AtlasVoiceCoordinator.State.IDLE).name)
+            .put("sessionId", coord?.currentSessionId ?: JSONObject.NULL)
+            .put("audioOwner", AtlasAudioOwnershipCoordinator.currentOwner.name)
+            .put("voiceAssistantEnabled", AtlasWakeWordService.voiceAssistantEnabled)
+            .put("onDeviceSpeechAvailable", caps.onDeviceAvailable)
+            .put("systemSpeechAvailable", caps.systemRecognizerAvailable)
+            .put("speechReason", caps.reason)
     }
 
     @PluginMethod

@@ -191,6 +191,49 @@ export interface OvernightTestReport {
   lastCompletedActive?: OvernightTestRun | null;
 }
 
+export type VoiceSessionStateName =
+  | "IDLE"
+  | "WAKE_LISTENING"
+  | "WAKE_DETECTED"
+  | "SESSION_STARTING"
+  | "COMMAND_LISTENING"
+  | "TRANSCRIBING"
+  | "THINKING"
+  | "SPEAKING"
+  | "FOLLOW_UP_LISTENING"
+  | "SESSION_ENDING"
+  | "ERROR_RECOVERY";
+
+export interface VoiceSessionStateEvent {
+  state: VoiceSessionStateName;
+  sessionId?: string | null;
+  detail?: string;
+}
+
+export interface VoiceTranscriptEvent {
+  sessionId?: string | null;
+  text: string;
+  isFinal: boolean;
+}
+
+export interface VoiceCommandEvent {
+  sessionId: string;
+  turnId: string;
+  transcript: string;
+  isLocked: boolean;
+  isFollowUp: boolean;
+}
+
+export interface VoiceSessionStatus {
+  state: VoiceSessionStateName;
+  sessionId?: string | null;
+  audioOwner: string;
+  voiceAssistantEnabled: boolean;
+  onDeviceSpeechAvailable: boolean;
+  systemSpeechAvailable: boolean;
+  speechReason: string;
+}
+
 export interface AtlasWakeWordNativePlugin {
   startListening(options?: { useAssistantSession?: boolean }): Promise<WakeWordListeningStatus>;
   stopListening(): Promise<WakeWordListeningStatus>;
@@ -219,6 +262,19 @@ export interface AtlasWakeWordNativePlugin {
   getOvernightReport(): Promise<OvernightTestReport>;
   exportOvernightCsv(): Promise<{ csv: string }>;
   clearOvernightData(): Promise<OvernightTestReport>;
+  submitVoiceReply(options: {
+    sessionId: string;
+    turnId: string;
+    replyText: string;
+    endSession?: boolean;
+  }): Promise<{ accepted: boolean }>;
+  stopVoiceSession(): Promise<VoiceSessionStatus>;
+  startManualVoiceSession(): Promise<VoiceSessionStatus>;
+  getVoiceSessionStatus(): Promise<VoiceSessionStatus>;
+  setVoiceAssistantConfig(options: {
+    voiceAssistantEnabled?: boolean;
+    allowOnlineSpeechFallback?: boolean;
+  }): Promise<VoiceSessionStatus>;
   addListener(
     eventName: "wakeWordDetected",
     listenerFunc: (event: WakeWordDetectionEvent) => void
@@ -226,6 +282,18 @@ export interface AtlasWakeWordNativePlugin {
   addListener(
     eventName: "statusChanged",
     listenerFunc: (status: WakeWordListeningStatus) => void
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: "voiceSessionState",
+    listenerFunc: (event: VoiceSessionStateEvent) => void
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: "voiceTranscript",
+    listenerFunc: (event: VoiceTranscriptEvent) => void
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: "voiceCommand",
+    listenerFunc: (event: VoiceCommandEvent) => void
   ): Promise<PluginListenerHandle>;
 }
 
@@ -564,6 +632,96 @@ export const atlasWakeWordBridge = {
   async clearOvernightData(): Promise<OvernightTestReport> {
     if (!isWakeWordNativeSupported()) return { isTestRunning: false };
     return NativePlugin.clearOvernightData();
+  },
+
+  async submitVoiceReply(options: {
+    sessionId: string;
+    turnId: string;
+    replyText: string;
+    endSession?: boolean;
+  }): Promise<{ accepted: boolean }> {
+    if (!isWakeWordNativeSupported()) return { accepted: false };
+    return NativePlugin.submitVoiceReply(options);
+  },
+
+  async stopVoiceSession(): Promise<VoiceSessionStatus> {
+    if (!isWakeWordNativeSupported()) {
+      return {
+        state: "IDLE",
+        audioOwner: "NONE",
+        voiceAssistantEnabled: false,
+        onDeviceSpeechAvailable: false,
+        systemSpeechAvailable: false,
+        speechReason: "Android native APK required.",
+      };
+    }
+    return NativePlugin.stopVoiceSession();
+  },
+
+  async startManualVoiceSession(): Promise<VoiceSessionStatus> {
+    if (!isWakeWordNativeSupported()) {
+      return {
+        state: "IDLE",
+        audioOwner: "NONE",
+        voiceAssistantEnabled: false,
+        onDeviceSpeechAvailable: false,
+        systemSpeechAvailable: false,
+        speechReason: "Android native APK required.",
+      };
+    }
+    return NativePlugin.startManualVoiceSession();
+  },
+
+  async getVoiceSessionStatus(): Promise<VoiceSessionStatus> {
+    if (!isWakeWordNativeSupported()) {
+      return {
+        state: "IDLE",
+        audioOwner: "NONE",
+        voiceAssistantEnabled: false,
+        onDeviceSpeechAvailable: false,
+        systemSpeechAvailable: false,
+        speechReason: "Android native APK required.",
+      };
+    }
+    return NativePlugin.getVoiceSessionStatus();
+  },
+
+  async setVoiceAssistantConfig(options: {
+    voiceAssistantEnabled?: boolean;
+    allowOnlineSpeechFallback?: boolean;
+  }): Promise<VoiceSessionStatus> {
+    if (!isWakeWordNativeSupported()) {
+      return {
+        state: "IDLE",
+        audioOwner: "NONE",
+        voiceAssistantEnabled: false,
+        onDeviceSpeechAvailable: false,
+        systemSpeechAvailable: false,
+        speechReason: "Android native APK required.",
+      };
+    }
+    return NativePlugin.setVoiceAssistantConfig(options);
+  },
+
+  async addVoiceSessionStateListener(
+    listener: (event: VoiceSessionStateEvent) => void
+  ): Promise<PluginListenerHandle | null> {
+    if (!isWakeWordNativeSupported()) return null;
+    return NativePlugin.addListener("voiceSessionState", listener);
+  },
+
+  async addVoiceTranscriptListener(
+    listener: (event: VoiceTranscriptEvent) => void
+  ): Promise<PluginListenerHandle | null> {
+    if (!isWakeWordNativeSupported()) return null;
+    return NativePlugin.addListener("voiceTranscript", listener);
+  },
+
+  async addVoiceCommandListener(
+    listener: (event: VoiceCommandEvent) => void
+  ): Promise<PluginListenerHandle | null> {
+    if (!isWakeWordNativeSupported()) return null;
+    return NativePlugin.addListener("voiceCommand", listener);
   },
 
   async addWakeWordDetectedListener(

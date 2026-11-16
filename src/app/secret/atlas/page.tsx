@@ -14,7 +14,7 @@ import {createLocalAdapters} from '@/lib/atlas-ai/local-adapters';
 import {AtlasNative, generateLocal, requireNativeTrust, runtimeStatus, type RuntimeStatus} from '@/lib/atlas-ai/native';
 import styles from './atlas.module.css';
 type OrbState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error';
-const permissionsList: Permission[] = ['music.read','music.control','finance.read','finance.write','trips.read','trips.write','navigate'];
+const permissionsList: Permission[] = ['music.read','music.control','finance.read','finance.write','trips.read','trips.write','reminders.read','reminders.write','navigate'];
 const errorText = (error: unknown) => error instanceof Error ? error.message : 'The local operation failed.';
 const subscribePlatform=()=>()=>{};
 export default function AtlasPage() {

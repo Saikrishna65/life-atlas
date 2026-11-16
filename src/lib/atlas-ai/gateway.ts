@@ -1,4 +1,4 @@
-export type Permission = 'music.read' | 'music.control' | 'finance.read' | 'finance.write' | 'trips.read' | 'trips.write' | 'navigate';
+export type Permission = 'music.read' | 'music.control' | 'finance.read' | 'finance.write' | 'trips.read' | 'trips.write' | 'reminders.read' | 'reminders.write' | 'navigate';
 export type AtlasAction =
   | {kind: 'music.search'; query: string}
   | {kind: 'music.play'; id: string}
@@ -10,6 +10,8 @@ export type AtlasAction =
   | {kind: 'trips.search'; query: string}
   | {kind: 'trips.itinerary' | 'trips.open'; id: string}
   | {kind: 'trips.editTitle'; tripId: string; dayId: string; title: string}
+  | {kind: 'reminder.create'; title: string; dueText?: string}
+  | {kind: 'reminder.list'}
   | {kind: 'navigate'; section: 'home' | 'music' | 'finance' | 'trips'};
 export interface Receipt {id: string; action: AtlasAction; at: string; result: unknown;}
 export interface ActionProposal {token: string; action: AtlasAction; expiresAt: number; description: string;}
@@ -32,6 +34,12 @@ export function parseAction(value: unknown): AtlasAction {
       result = {kind: a.kind, accountId: text(a.accountId), amountPaise: a.amountPaise as number, description: text(a.description,240)}; break;
     case 'finance.categorize': result = {kind: a.kind, id: text(a.id), categoryId: text(a.categoryId)}; break;
     case 'trips.editTitle': result = {kind: a.kind, tripId: text(a.tripId), dayId: text(a.dayId), title: text(a.title,120)}; break;
+    case 'reminder.create':
+      result = a.dueText !== undefined && a.dueText !== ''
+        ? {kind: 'reminder.create', title: text(a.title, 180), dueText: text(a.dueText, 80)}
+        : {kind: 'reminder.create', title: text(a.title, 180)};
+      break;
+    case 'reminder.list': result = {kind: 'reminder.list'}; break;
     case 'navigate':
       if (!['home','music','finance','trips'].includes(String(a.section))) throw new Error('Unknown Atlas section.');
       result = {kind: a.kind, section: a.section as 'home' | 'music' | 'finance' | 'trips'}; break;
@@ -42,6 +50,8 @@ export function parseAction(value: unknown): AtlasAction {
 }
 export function permissionFor(action: AtlasAction): Permission {
   if (action.kind === 'navigate') return 'navigate';
+  if (action.kind === 'reminder.create') return 'reminders.write';
+  if (action.kind === 'reminder.list') return 'reminders.read';
   if (action.kind.startsWith('finance.')) return action.kind === 'finance.summary' ? 'finance.read' : 'finance.write';
   if (action.kind.startsWith('trips.')) return action.kind === 'trips.editTitle' ? 'trips.write' : 'trips.read';
   return ['music.search','music.state'].includes(action.kind) ? 'music.read' : 'music.control';

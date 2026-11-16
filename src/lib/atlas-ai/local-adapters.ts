@@ -9,6 +9,7 @@ export interface LocalPlayback {
 export function createLocalAdapters(player: () => LocalPlayback, navigate: (href: string) => void): LocalAdapter {
   const music = () => import('../music/storage');
   const trips = () => import('../vault/storage');
+  const reminders = () => import('./reminders');
   const finance = async () => { const {IndexedDBUnitOfWork} = await import('../finance/storage/indexeddb/unitOfWork'); return new IndexedDBUnitOfWork(); };
   const ensure = () => { if (isControlRestoreActive()) throw new Error('Wait for restore to finish.'); };
   return {
@@ -53,6 +54,14 @@ export function createLocalAdapters(player: () => LocalPlayback, navigate: (href
         case 'trips.itinerary': {
           if (!await (await trips()).getTrip(action.id)) throw new Error('Trip not found.');
           return (await (await trips()).getItinerariesForTrip(action.id)).map(d => ({id: d.id, day: d.dayIndex, title: d.title, date: d.date, activities: d.activities}));
+        }
+        case 'reminder.create': {
+          const item = (await reminders()).createReminder(action.title, action.dueText);
+          return {reminder: item};
+        }
+        case 'reminder.list': {
+          const items = (await reminders()).listReminders(false);
+          return {reminders: items};
         }
         case 'navigate': navigate({home: '/secret', music: '/secret/music', finance: '/secret/finance', trips: '/secret/vault'}[action.section]); return {opened: action.section};
         default: throw new Error('A confirmed proposal is required.');

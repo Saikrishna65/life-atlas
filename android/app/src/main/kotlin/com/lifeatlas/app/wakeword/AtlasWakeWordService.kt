@@ -37,6 +37,8 @@ import androidx.core.content.ContextCompat
 import com.lifeatlas.app.MainActivity
 import com.lifeatlas.app.R
 import com.lifeatlas.app.wakeword.assistant.AtlasExperimentVoiceInteractionService
+import com.lifeatlas.app.wakeword.voice.AtlasAudioOwnershipCoordinator
+import com.lifeatlas.app.wakeword.voice.AtlasVoiceCoordinator
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.PI
 import kotlin.math.sin
@@ -61,7 +63,9 @@ class AtlasWakeWordService : Service() {
     private val running = AtomicBoolean(false)
     private val paused = AtomicBoolean(false)
     private val pausedForMic = AtomicBoolean(false)
+    private val pausedForVoiceSession = AtomicBoolean(false)
     private val destroyed = AtomicBoolean(false)
+    private var voiceCoordinator: AtlasVoiceCoordinator? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var micMonitorThread: HandlerThread? = null
@@ -146,6 +150,13 @@ class AtlasWakeWordService : Service() {
         @Volatile
         var isMicActuallyCapturing: Boolean = false
             private set
+
+        @Volatile
+        var voiceAssistantEnabled: Boolean = true
+
+        @Volatile
+        var activeVoiceCoordinator: AtlasVoiceCoordinator? = null
+            private set
     }
 
     override fun onCreate() {
@@ -154,6 +165,57 @@ class AtlasWakeWordService : Service() {
         micMonitorThread = HandlerThread("AtlasMicMonitor", Process.THREAD_PRIORITY_URGENT_AUDIO).apply { start() }
         micMonitorHandler = Handler(micMonitorThread!!.looper)
         audioManager = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        voiceCoordinator = AtlasVoiceCoordinator(
+            this,
+            object : AtlasVoiceCoordinator.ServiceActions {
+                override fun isWakeListeningActive(): Boolean = running.get() && !destroyed.get()
+
+                override fun pauseWakeWordForVoiceSession(reason: String) {
+                    if (!running.get() || destroyed.get()) {
+                        AtlasAudioOwnershipCoordinator.release(AtlasAudioOwnershipCoordinator.Owner.WAKE_WORD)
+                        return
+                    }
+                    pausedForVoiceSession.set(true)
+                    isServicePaused = true
+                    abandonAudioFocus()
+                    val rec = audioRecord
+                    audioRecord = null
+                    activeAudioSessionId = -1
+                    runCatching { rec?.stop() }
+                    runCatching { rec?.release() }
+                    val threadAlive = captureThread?.isAlive == true
+                    captureThread?.interrupt()
+                    if (!threadAlive) {
+                        isMicActuallyCapturing = false
+                        AtlasAudioOwnershipCoordinator.release(AtlasAudioOwnershipCoordinator.Owner.WAKE_WORD)
+                    }
+                    WakeWordDiagnostics.updateServiceState(this@AtlasWakeWordService, "paused_for_voice", reason)
+                    AtlasWakeWordPlugin.emitStatusChange(this@AtlasWakeWordService)
+                    refreshListeningNotification()
+                }
+
+                override fun resumeWakeWordFromVoiceSession() {
+                    if (!running.get() || paused.get() || pausedForMic.get() || destroyed.get()) return
+                    pausedForVoiceSession.set(false)
+                    isServicePaused = false
+                    captureThread?.join(300L)
+                    engine?.reset()
+                    val model = engine?.modelInfo ?: WakeWordModelManager.getActiveModel(this@AtlasWakeWordService)
+                    WakeWordDiagnostics.updateServiceState(
+                        this@AtlasWakeWordService,
+                        "listening",
+                        "Resumed offline wake-word listening (${model.targetPhrase})",
+                        model
+                    )
+                    AtlasWakeWordPlugin.emitStatusChange(this@AtlasWakeWordService)
+                    refreshListeningNotification()
+                    requestAudioFocusForListening()
+                    startCaptureLoopIfNeeded()
+                }
+
+                override fun isInPhoneCall(): Boolean = isInCallMode()
+            }
+        ).also { activeVoiceCoordinator = it }
         registerMicCompetitionCallback()
         try {
             registerReceiver(screenReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF))
@@ -302,6 +364,7 @@ class AtlasWakeWordService : Service() {
                 model
             )
             AtlasWakeWordPlugin.emitStatusChange(this)
+            voiceCoordinator?.onWakeServiceStarted()
             startCaptureLoopIfNeeded()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize wake-word engine", e)
@@ -325,6 +388,11 @@ class AtlasWakeWordService : Service() {
     }
 
     private fun runCaptureLoop() {
+        if (!AtlasAudioOwnershipCoordinator.tryAcquire(AtlasAudioOwnershipCoordinator.Owner.WAKE_WORD)) {
+            Log.w(TAG, "Cannot start wake-word capture: audio ownership held by ${AtlasAudioOwnershipCoordinator.currentOwner}")
+            return
+        }
+
         val sampleRate = OpenWakeWordFeatureBuffers.SAMPLE_RATE_HZ
         // Keep >= 1 second internal AudioRecord ring buffer so screen-off CPU scaling or app switches never drop PCM chunks.
         val minBufBytes = AudioRecord.getMinBufferSize(
@@ -335,6 +403,7 @@ class AtlasWakeWordService : Service() {
 
         val record = createAudioRecord(sampleRate, minBufBytes)
         if (record == null) {
+            AtlasAudioOwnershipCoordinator.release(AtlasAudioOwnershipCoordinator.Owner.WAKE_WORD)
             handleAudioStartFailure("AudioRecord unavailable (microphone hardware busy or blocked in background).")
             return
         }
@@ -360,7 +429,7 @@ class AtlasWakeWordService : Service() {
             isMicActuallyCapturing = true
             Log.i(TAG, "AudioRecord started (session=$activeAudioSessionId, bufBytes=$minBufBytes)")
 
-            while (running.get() && !paused.get() && !pausedForMic.get() && !destroyed.get()) {
+            while (running.get() && !paused.get() && !pausedForMic.get() && !pausedForVoiceSession.get() && !destroyed.get()) {
                 if (!hasMicPermission()) {
                     WakeWordDiagnostics.updateServiceState(
                         this,
@@ -392,7 +461,7 @@ class AtlasWakeWordService : Service() {
                 val needed = (stepChunk.size - stepFilled).coerceAtMost(readSlice.size)
                 val read = record.read(readSlice, 0, needed)
                 if (read < 0) {
-                    if (pausedForMic.get() || paused.get() || !running.get() || destroyed.get()) {
+                    if (pausedForMic.get() || pausedForVoiceSession.get() || paused.get() || !running.get() || destroyed.get()) {
                         break
                     }
                     Log.w(TAG, "AudioRecord read error: $read")
@@ -402,7 +471,7 @@ class AtlasWakeWordService : Service() {
                 }
                 if (read == 0) continue
 
-                if (pausedForMic.get() || paused.get() || !running.get() || destroyed.get()) {
+                if (pausedForMic.get() || pausedForVoiceSession.get() || paused.get() || !running.get() || destroyed.get()) {
                     break
                 }
 
@@ -417,7 +486,7 @@ class AtlasWakeWordService : Service() {
                 if (stepFilled < stepChunk.size) continue
                 stepFilled = 0
 
-                if (pausedForMic.get() || paused.get() || !running.get() || destroyed.get()) {
+                if (pausedForMic.get() || pausedForVoiceSession.get() || paused.get() || !running.get() || destroyed.get()) {
                     break
                 }
 
@@ -481,6 +550,7 @@ class AtlasWakeWordService : Service() {
                 audioRecord = null
             }
             activeAudioSessionId = -1
+            AtlasAudioOwnershipCoordinator.release(AtlasAudioOwnershipCoordinator.Owner.WAKE_WORD)
         }
     }
 
@@ -558,16 +628,20 @@ class AtlasWakeWordService : Service() {
         // Minimal local wake response (no cloud LLM, no private vault actions, no forced background startActivity).
         mainHandler.post {
             vibrateBriefly()
-            playShortChime(env)
             postDetectionNotification(modelInfo, score, inferenceLatencyMs, env)
 
             if (useAssistantSessionOnWake) {
+                playShortChime(env)
                 val vis = AtlasExperimentVoiceInteractionService.instance
                 if (vis != null) {
                     // Pause mic briefly so assistant session does not conflict with wake chime/STT.
                     pausePipeline("Paused for experimental VoiceInteractionSession")
                     vis.launchExperimentalSession(modelInfo.targetPhrase, inferenceLatencyMs)
                 }
+            } else if (voiceAssistantEnabled) {
+                voiceCoordinator?.onWakeWordDetected(modelInfo.targetPhrase, score, inferenceLatencyMs)
+            } else {
+                playShortChime(env)
             }
         }
     }
@@ -615,9 +689,11 @@ class AtlasWakeWordService : Service() {
         running.set(false)
         paused.set(false)
         pausedForMic.set(false)
+        pausedForVoiceSession.set(false)
         isServiceRunning = false
         isServicePaused = false
         isMicSilenced = false
+        voiceCoordinator?.onWakeServiceStopped()
         clearMicRecoveryCallbacks()
         abandonAudioFocus()
         runCatching { audioRecord?.stop() }
@@ -690,6 +766,8 @@ class AtlasWakeWordService : Service() {
         if (!running.get() || destroyed.get()) return
         if (pausedForMic.getAndSet(true)) return
         isMicSilenced = true
+        AtlasAudioOwnershipCoordinator.forceExternalPreemption()
+        voiceCoordinator?.onExternalMicOrCallInterruption(reason)
         // Abandon audio focus first so the competing app gets notified we are out of the way,
         // then immediately release the hardware AudioRecord handle (0 ms).
         abandonAudioFocus()
@@ -986,6 +1064,10 @@ class AtlasWakeWordService : Service() {
             releaseWakeLock()
             engine?.close()
             engine = null
+        }
+        voiceCoordinator?.releaseResources()
+        if (activeVoiceCoordinator === voiceCoordinator) {
+            activeVoiceCoordinator = null
         }
         micMonitorThread?.quitSafely()
         micMonitorThread = null

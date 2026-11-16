@@ -33,10 +33,12 @@ import {
   isWakeWordNativeSupported,
   type AssistantRoleStatus,
   type OvernightTestReport,
+  type VoiceSessionStatus,
   type WakeWordDetectionEvent,
   type WakeWordDiagnosticReport,
   type WakeWordListeningStatus,
 } from "@/lib/wakeword/atlasWakeWord";
+import { getVoiceCloudConsent, setVoiceCloudConsent } from "@/lib/atlas-ai/voice-assistant";
 
 const SCENARIO_STATUS_OPTIONS = [
   { value: "passed", label: "Pass" },
@@ -50,6 +52,9 @@ export default function HeyAtlasExperiment() {
   const [status, setStatus] = useState<WakeWordListeningStatus | null>(null);
   const [report, setReport] = useState<WakeWordDiagnosticReport | null>(null);
   const [overnightReport, setOvernightReport] = useState<OvernightTestReport | null>(null);
+  const [voiceSessionStatus, setVoiceSessionStatus] = useState<VoiceSessionStatus | null>(null);
+  const [allowOnlineSpeech, setAllowOnlineSpeech] = useState(false);
+  const [cloudAiConsent, setCloudAiConsent] = useState(() => getVoiceCloudConsent());
   const [assistantRole, setAssistantRole] = useState<AssistantRoleStatus>({
     roleAvailable: false,
     roleHeld: false,
@@ -64,16 +69,18 @@ export default function HeyAtlasExperiment() {
 
   const refreshAll = useCallback(async () => {
     try {
-      const [nextStatus, nextReport, nextRole, nextOvernight] = await Promise.all([
+      const [nextStatus, nextReport, nextRole, nextOvernight, nextVoiceStatus] = await Promise.all([
         atlasWakeWordBridge.getListeningStatus(),
         atlasWakeWordBridge.getDiagnosticReport(),
         atlasWakeWordBridge.getAssistantRoleStatus(),
         atlasWakeWordBridge.getOvernightReport(),
+        atlasWakeWordBridge.getVoiceSessionStatus(),
       ]);
       setStatus(nextStatus);
       setReport(nextReport);
       setAssistantRole(nextRole);
       setOvernightReport(nextOvernight);
+      setVoiceSessionStatus(nextVoiceStatus);
       setScenarioNotes((prev) => {
         const merged = { ...prev };
         for (const [key, val] of Object.entries(nextReport.scenarioResults || {})) {
@@ -641,6 +648,111 @@ export default function HeyAtlasExperiment() {
                 Settings
               </button>
             </div>
+          </div>
+        </section>
+
+        <section className="oc-panel">
+          <div className="oc-panel-title">
+            <div>
+              <p className="oc-eyebrow">PHASE 2 · FULL AI VOICE ASSISTANT</p>
+              <h2>Voice Session Coordinator</h2>
+            </div>
+            <span className="oc-tag">{voiceSessionStatus?.state ?? "IDLE"}</span>
+          </div>
+
+          <p style={{ marginTop: 0, color: "var(--oc-muted)", fontSize: "0.9rem" }}>
+            Hands off microphone ownership deterministically from wake-word capture to SpeechRecognizer, Atlas AI /
+            typed actions, TTS playback, and a ~5-second follow-up window.
+          </p>
+
+          <div className="oc-command-status" style={{ marginBottom: 12 }}>
+            <span>Audio Owner: {voiceSessionStatus?.audioOwner ?? "NONE"}</span>
+            <span>
+              On-Device STT: {voiceSessionStatus?.onDeviceSpeechAvailable ? "Available" : "Unavailable"}
+            </span>
+            <span>{voiceSessionStatus?.speechReason ?? "Checking Android speech capabilities…"}</span>
+          </div>
+
+          <div className="oc-rule">
+            <div>
+              <strong>Launch Full AI Voice Session on Wake</strong>
+              <p>Automatically pause wake-word capture and start listening for your command when &quot;Hey Atlas&quot; fires.</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={voiceSessionStatus?.voiceAssistantEnabled ?? true}
+              onChange={(e) =>
+                void runAction("Updated voice assistant wake mode.", () =>
+                  atlasWakeWordBridge.setVoiceAssistantConfig({ voiceAssistantEnabled: e.target.checked })
+                )
+              }
+              disabled={busy || !nativeSupported}
+              aria-label="Launch Full AI Voice Session on Wake"
+            />
+          </div>
+
+          <div className="oc-rule">
+            <div>
+              <strong>Allow Online Speech Recognizer Fallback</strong>
+              <p>Off by default. Only enable if on-device STT is unavailable and you consent to system recognizer use.</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={allowOnlineSpeech}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setAllowOnlineSpeech(next);
+                void runAction("Updated speech fallback preference.", () =>
+                  atlasWakeWordBridge.setVoiceAssistantConfig({ allowOnlineSpeechFallback: next })
+                );
+              }}
+              disabled={busy || !nativeSupported}
+              aria-label="Allow Online Speech Recognizer Fallback"
+            />
+          </div>
+
+          <div className="oc-rule">
+            <div>
+              <strong>Allow Cloud AI Conversation Fallback</strong>
+              <p>Off by default. Private vault data stays local; enables `/api/atlas/chat` when no local LLM is loaded.</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={cloudAiConsent}
+              onChange={(e) => {
+                const next = e.target.checked;
+                setCloudAiConsent(next);
+                setVoiceCloudConsent(next);
+                setNotice(next ? "Cloud AI consent enabled." : "Cloud AI consent disabled (offline-only).");
+              }}
+              disabled={busy}
+              aria-label="Allow Cloud AI Conversation Fallback"
+            />
+          </div>
+
+          <div className="oc-actions" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="oc-secondary"
+              disabled={busy || !nativeSupported || !status?.running}
+              onClick={() =>
+                void runAction("Started manual Atlas voice session.", () =>
+                  atlasWakeWordBridge.startManualVoiceSession()
+                )
+              }
+            >
+              <Mic size={15} /> Test Voice Session
+            </button>
+            <button
+              type="button"
+              className="oc-secondary"
+              disabled={busy || !nativeSupported}
+              onClick={() =>
+                void runAction("Stopped active voice session.", () => atlasWakeWordBridge.stopVoiceSession())
+              }
+            >
+              <Square size={15} /> Stop Voice Session
+            </button>
           </div>
         </section>
 
