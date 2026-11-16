@@ -24,6 +24,15 @@ try {
    },progress);
    await page.waitForTimeout(1500);
    const state=await section.evaluate(el=>({closed:Number(el.dataset.closure),dark:Number(getComputedStyle(el.querySelector('.beyond-room-shadow')).opacity),light:Number(getComputedStyle(el).getPropertyValue('--beyond-light')),transform:el.querySelector('.door-leaf').style.transform,ink:getComputedStyle(el.querySelector('.kinetic-heading')).color}));
+   const aperture = await section.evaluate(el=>{
+    const door=el.querySelector('.beyond-door'),leaf=el.querySelector('.door-leaf'),beam=door.querySelector('span');
+    const frame=door.getBoundingClientRect(),panel=leaf.getBoundingClientRect(),floor=beam.getBoundingClientRect();
+    const styles=getComputedStyle(el);
+    return {panelRight:panel.right,beamLeft:floor.left+floor.width*parseFloat(styles.getPropertyValue('--beyond-beam-near-left'))/100,openingLeft:frame.left+(frame.width-door.clientWidth*(frame.width/door.offsetWidth))/2+door.clientWidth*(frame.width/door.offsetWidth)*parseFloat(styles.getPropertyValue('--beyond-aperture-edge'))/100,beamLayer:getComputedStyle(beam).zIndex,panelLayer:getComputedStyle(leaf).zIndex};
+   });
+   assert.ok(Math.abs(aperture.beamLeft-aperture.panelRight)<3,JSON.stringify({progress,aperture}));
+   assert.ok(Math.abs(aperture.openingLeft-aperture.panelRight)<3,'Doorway light tracks the projected panel edge');
+   assert.ok(Number(aperture.panelLayer)>Number(aperture.beamLayer),'Door occludes floor light');
    states.push(state);
    assert.ok(Math.abs(state.closed-progress)<.04,JSON.stringify({progress,state}));
    assert.ok(Math.abs(state.dark+state.light-1)<.005);
@@ -42,7 +51,7 @@ try {
   await section.evaluate(el=>window.__lenis.scrollTo(scrollY+el.getBoundingClientRect().top-innerHeight*.5,{immediate:true,force:true}));
   await page.waitForTimeout(1500);assert.ok(await section.evaluate(el=>Number(getComputedStyle(el.querySelector('.beyond-room-shadow')).opacity)<.03),'Scrolling back restores daylight');
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert.deepEqual(errors,[]);
-  console.log(`PASS ${width}: angle-linked light/shadow, 5 scroll samples, reverse scroll, local-only darkness, controls present, overflow, no page errors`);
+  console.log(`PASS ${width}: projected aperture/beam alignment, panel occlusion, angle-linked light/shadow, 5 scroll samples, reverse scroll, local-only darkness, controls present, overflow, no page errors`);
   assert.equal(await section.getByRole('button',{name:'Start another journey'}).count(),1);
   await page.close();
  }

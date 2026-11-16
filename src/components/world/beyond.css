@@ -11,6 +11,10 @@
 /* One continuous light model, local to the closing scene. */
 .living-world .world-beyond.beyond-physical {
   --beyond-light:1;
+  --beyond-aperture-edge:29%;
+  --beyond-beam-near-left:44.17%;
+  --beyond-beam-far-left:49.1%;
+  --beyond-beam-far-right:93.47%;
   --beyond-darkness:0;
   --beyond-ink:color-mix(in srgb,#18221c calc(100% - var(--beyond-darkness)*100%),#f2f4ee);
   --beyond-muted:color-mix(in srgb,#53665a calc(100% - var(--beyond-darkness)*100%),#c4cec7);
@@ -19,23 +23,23 @@
 .beyond-room-shadow { position:absolute; inset:0; z-index:0; pointer-events:none; opacity:var(--beyond-darkness); background:radial-gradient(ellipse at 50% 0%,#142019 0%,#070c09 72%); }
 .living-world .world-beyond.beyond-physical .beyond-door {
   z-index:1; background:#070d09; border-color:#526352;
-  box-shadow:0 0 calc(var(--beyond-light)*70px) rgb(255 229 180 / calc(var(--beyond-light)*.3));
-  filter:drop-shadow(0 0 calc(var(--beyond-light)*35px) rgb(255 235 195 / calc(var(--beyond-light)*.3)));
+  box-shadow:none;
+  filter:none;
 }
 .living-world .world-beyond.beyond-physical .beyond-door::before {
   background:linear-gradient(180deg,#fffaf0,#f4e3bb 65%,#d1b980);
-  clip-path:inset(0 0 0 calc(100% - var(--beyond-light)*100%));
+  clip-path:inset(0 0 0 var(--beyond-aperture-edge));
   box-shadow:none;
 }
 .living-world .world-beyond.beyond-physical .beyond-door > .door-leaf {
-  background:linear-gradient(110deg,#33463a,#14221a); border-color:#62715d;
+  z-index:2; background:linear-gradient(110deg,#33463a,#14221a); border-color:#62715d;
   filter:brightness(calc(.45 + var(--beyond-light)*.55));
   transform:rotateY(-72deg);
 }
 .living-world .world-beyond.beyond-physical .beyond-door > span {
-  background:linear-gradient(180deg,#fff1c5b3,#ffe7b64d 45%,#ffe7b600);
+  z-index:1; background:linear-gradient(180deg,#fff1c5b3,#ffe7b64d 45%,#ffe7b600);
   opacity:var(--beyond-light);
-  clip-path:polygon(calc(64% - var(--beyond-light)*28%) 0,64% 0,100% 100%,calc(100% - var(--beyond-light)*100%) 100%);
+  clip-path:polygon(var(--beyond-beam-near-left) 0,63.888889% 0,var(--beyond-beam-far-right) 100%,var(--beyond-beam-far-left) 100%);
   filter:blur(calc(7px + var(--beyond-light)*8px));
 }
 .living-world .world-beyond.beyond-physical .beyond-words { z-index:2; }

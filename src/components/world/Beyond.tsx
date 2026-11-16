@@ -18,10 +18,20 @@ export default function Beyond() {
       const leaf = section.querySelector<HTMLElement>('.door-leaf')!;
       const frame = section.querySelector<HTMLElement>('.beyond-door')!;
       const state = {closed:0};
+      let doorWidth = frame.clientWidth;
       const draw = () => {
         const angle = 72 * (1-state.closed);
         // Projected doorway aperture: continuous and tied to the leaf's angle.
         const light = (1-Math.cos(angle*Math.PI/180))/(1-Math.cos(72*Math.PI/180));
+        // Match CSS perspective (1000px, centered) and the left-hand hinge.
+        // Use the projected leaf edge for both the doorway and floor beam.
+        const radians = angle*Math.PI/180;
+        const edge = Math.min(1,Math.max(0,.5+(Math.cos(radians)-.5)*1000/(1000-doorWidth*Math.sin(radians))));
+        const aperture = 1-edge;
+        section.style.setProperty('--beyond-aperture-edge',`${edge*100}%`);
+        section.style.setProperty('--beyond-beam-near-left',`${(1.3+edge)/3.6*100}%`);
+        section.style.setProperty('--beyond-beam-far-left',`${(1.3+edge+aperture*.25)/3.6*100}%`);
+        section.style.setProperty('--beyond-beam-far-right',`${(2.3+aperture*1.5)/3.6*100}%`);
         section.style.setProperty('--beyond-light',String(light));
         section.style.setProperty('--beyond-darkness',String(1-light));
         section.dataset.closure = state.closed.toFixed(4);
@@ -31,8 +41,12 @@ export default function Beyond() {
         frame.style.transform = `translateX(-50%) translateY(${(1-state.closed)*35}px) scale(${.92+.08*state.closed})`;
       };
       const animation = gsap.to(state,{closed:1,ease:'none',onUpdate:draw,scrollTrigger:{trigger:section,start:'top 50%',end:'bottom bottom',scrub:.9,invalidateOnRefresh:true}});
+      const resize = new ResizeObserver(() => { doorWidth = frame.clientWidth; draw(); });
+      resize.observe(frame);
       draw();
       return () => {
+        resize.disconnect();
+        for(const property of ['--beyond-aperture-edge','--beyond-beam-near-left','--beyond-beam-far-left','--beyond-beam-far-right']) section.style.removeProperty(property);
         animation.scrollTrigger?.kill(); animation.kill();
         section.style.removeProperty('--beyond-light');section.style.removeProperty('--beyond-darkness');delete section.dataset.closure;delete section.dataset.night;
         leaf.style.removeProperty('transform');frame.style.removeProperty('transform');

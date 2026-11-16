@@ -31,3 +31,13 @@ remain visible above it. Reduced motion uses a single static viewport instead.
 Adaptive door/copy proportions keep controls in view on short mobile screens.
 A recessed jamb, subtle timber surface and floor/contact shadows add depth to
 the existing aperture-driven lighting without assets, audio or a new renderer.
+
+### Door occlusion correction
+
+The illuminated aperture and floor beam now share the projected right edge of the
+hinged panel, including the frame's 1000px perspective. The beam begins only at
+that opening and projects to the right; the foreground panel occludes it. Removed
+the whole-frame glow that also illuminated the opaque leaf. A ResizeObserver
+updates the cached door width on viewport changes, with no layout reads during
+scroll updates. Browser checks compare the rendered panel edge with both light
+origins at five closure positions across four viewport sizes.
