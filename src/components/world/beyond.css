@@ -7,3 +7,51 @@
 .world-beyond.world-scene .beyond-words {
   margin-bottom: 0;
 }
+
+/* One continuous light model, local to the closing scene. */
+.living-world .world-beyond.beyond-physical {
+  --beyond-light:1;
+  --beyond-darkness:0;
+  --beyond-ink:color-mix(in srgb,#18221c calc(100% - var(--beyond-darkness)*100%),#f2f4ee);
+  --beyond-muted:color-mix(in srgb,#53665a calc(100% - var(--beyond-darkness)*100%),#c4cec7);
+  position:relative; isolation:isolate; overflow:clip;
+}
+.beyond-room-shadow { position:absolute; inset:0; z-index:0; pointer-events:none; opacity:var(--beyond-darkness); background:radial-gradient(ellipse at 50% 0%,#142019 0%,#070c09 72%); }
+.living-world .world-beyond.beyond-physical .beyond-door {
+  z-index:1; background:#070d09; border-color:#526352;
+  box-shadow:0 0 calc(var(--beyond-light)*70px) rgb(255 229 180 / calc(var(--beyond-light)*.3));
+  filter:drop-shadow(0 0 calc(var(--beyond-light)*35px) rgb(255 235 195 / calc(var(--beyond-light)*.3)));
+}
+.living-world .world-beyond.beyond-physical .beyond-door::before {
+  background:linear-gradient(180deg,#fffaf0,#f4e3bb 65%,#d1b980);
+  clip-path:inset(0 0 0 calc(100% - var(--beyond-light)*100%));
+  box-shadow:none;
+}
+.living-world .world-beyond.beyond-physical .beyond-door > .door-leaf {
+  background:linear-gradient(110deg,#33463a,#14221a); border-color:#62715d;
+  filter:brightness(calc(.45 + var(--beyond-light)*.55));
+  transform:rotateY(-72deg);
+}
+.living-world .world-beyond.beyond-physical .beyond-door > span {
+  background:linear-gradient(180deg,#fff1c5b3,#ffe7b64d 45%,#ffe7b600);
+  opacity:var(--beyond-light);
+  clip-path:polygon(calc(64% - var(--beyond-light)*28%) 0,64% 0,100% 100%,calc(100% - var(--beyond-light)*100%) 100%);
+  filter:blur(calc(7px + var(--beyond-light)*8px));
+}
+.living-world .world-beyond.beyond-physical .beyond-words { z-index:2; }
+.living-world .world-beyond.beyond-physical .beyond-words .kinetic-heading { color:var(--beyond-ink); text-shadow:0 1px 2px rgb(0 0 0 / calc(var(--beyond-darkness)*.4)); }
+.living-world .world-beyond.beyond-physical .beyond-words .kinetic-heading em { color:var(--beyond-muted); }
+.living-world .world-beyond.beyond-physical .beyond-words > p { color:var(--beyond-muted); }
+.living-world .world-beyond.beyond-physical .beyond-words .world-button { background:#18221c; color:#fff; border:1px solid #87988a; }
+.living-world .world-beyond.beyond-physical .beyond-words > .world-link { color:var(--beyond-ink); }
+@media(prefers-reduced-motion:reduce) {
+ .beyond-physical .beyond-room-shadow { opacity:0; }
+ .living-world .world-beyond.beyond-physical .beyond-door > span { opacity:0; }
+ .living-world .world-beyond.beyond-physical .beyond-door::before { clip-path:inset(0 0 0 100%); }
+}
+.living-world .world-beyond.beyond-physical :focus-visible { outline-color:var(--beyond-ink); }
+@media(prefers-reduced-motion:no-preference) {
+ .living-world:has(.beyond-physical) .world-progress[data-scene="beyond"] { color:#e1e9e1; --w-focus:#e1e9e1; }
+ .living-world:has(.beyond-physical) .world-progress[data-scene="beyond"] button[aria-current]::after { background:#e1e9e1; }
+ .living-world:has(.beyond-physical) .world-progress[data-scene="beyond"] :focus-visible { outline-color:#e1e9e1; }
+}

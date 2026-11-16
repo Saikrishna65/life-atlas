@@ -270,38 +270,6 @@ export default function WorldMotion({ children }: { children: ReactNode }) {
             },
           );
         });
-        select(".beyond-door", (el) => {
-          gsap.fromTo(
-            el,
-            { y: 80, rotationX: 7, scale: 0.75 },
-            {
-              y: 0,
-              rotationX: 0,
-              scale: 1.06,
-              ease: "none",
-              scrollTrigger: {
-                trigger: el.closest(".world-beyond"),
-                start: "top bottom",
-                end: "65% 45%",
-                scrub: 1.25,
-              },
-            },
-          );
-          gsap.fromTo(
-            el.querySelector(".door-leaf"),
-            { rotationY: -72 },
-            {
-              rotationY: 0,
-              ease: "none",
-              scrollTrigger: {
-                trigger: el.closest(".world-beyond"),
-                start: "top 75%",
-                end: "bottom bottom",
-                scrub: 1.4,
-              },
-            },
-          );
-        });
         if (fine)
           select("[data-world-tilt]", (el) => {
             const target =

@@ -24,7 +24,8 @@ try {
    const lum=rgb=>rgb.slice(0,3).map(linear).reduce((sum,c,i)=>sum+c*[.2126,.7152,.0722][i],0);
    const paper=lum([238,239,236]);
    return ['.observatory-heading .kinetic-heading','.scrapbook-title','.people-heading h2','.beyond-words .kinetic-heading','.people-heading p','.scrapbook-heading p'].map(selector=>{
-    const rgb=getComputedStyle(document.querySelector(selector)).color.match(/[\d.]+/g).map(Number);
+    const color=getComputedStyle(document.querySelector(selector)).color;
+    const rgb=color.match(/[\d.]+/g).map(Number).map(value=>color.startsWith('color(srgb')?value*255:value);
     const ink=lum(rgb);return {selector,ratio:(Math.max(paper,ink)+.05)/(Math.min(paper,ink)+.05)};
    });
   });
