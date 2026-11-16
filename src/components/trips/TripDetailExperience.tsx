@@ -26,7 +26,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
   const lenis = useLenis();
   const { catalog, error } = usePublicCatalog();
   const [mapReady, setMapReady] = useState(false);
-  const [stop, setStop] = useState(trip.stops[0]?.id);
+  const [stop, setStop] = useState<string | undefined>(undefined);
   const [day, setDay] = useState(0);
   const [paused, setPaused] = useState(false);
   const [place, setPlace] = useState("All places");
@@ -118,7 +118,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
   return <div ref={root} className="living-world trip-detail-v3">
     <WorldMotion>
       <header className="td-cover" data-hero aria-label="Trip hero">
-        <div className="td-cover-media">{coverFilm ? <DetailFilm src={coverFilm} poster={trip.cover} paused={paused || !!current} label="Trip cover film" /> : trip.cover ? <Image src={trip.cover} alt="" fill sizes="100vw" priority unoptimized={!trip.sample} /> : <div className="td-cover-art"><Compass size={360} strokeWidth={.15} /></div>}</div><div className="td-cover-shade" />
+        <div className="td-cover-media">{coverFilm ? <DetailFilm src={coverFilm} poster={trip.cover} posterPolicy="reduced-motion" paused={paused || !!current} label="Trip cover film" /> : trip.cover ? <Image src={trip.cover} alt="" fill sizes="100vw" priority unoptimized={!trip.sample} /> : <div className="td-cover-art"><Compass size={360} strokeWidth={.15} /></div>}</div><div className="td-cover-shade" />
         <div className="td-cover-top"><Link href="/#memories"><ArrowLeft size={14} /> Back to my journeys</Link><div className="td-cover-tools"><span>{trip.sample ? "ILLUSTRATIVE TRAVEL JOURNAL" : trip.date ? dateLabel(trip.date) : "MY TRAVEL JOURNAL"}</span>{coverFilm && <button className="td-film-toggle" onClick={() => setPaused(value => !value)} aria-pressed={paused} aria-label={paused ? "Resume trip films" : "Pause trip films"}>{paused ? <Play size={14} /> : <Pause size={14} />}{paused ? "Resume films" : "Pause films"}</button>}</div></div>
         <div className="td-cover-copy"><span className="td-eyebrow">{trip.region}</span><h1>{trip.title.split(/\s+/).map((word, index) => <span className="td-title-line" key={index}><span>{word} </span></span>)}</h1></div>
         <div className="td-cover-bottom"><div><span>{trip.duration}</span><i /><span>{trip.stops.length} {trip.sample ? "sample stops" : "published stops"}</span><i /><span>{media.length} frames & films</span></div><button onClick={() => go("route")} className="td-circle-link">Follow the journey <span><ArrowDown size={20} /></span></button></div>

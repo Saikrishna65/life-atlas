@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -23,21 +23,44 @@ function View({
   recorded: boolean;
 }) {
   const map = useMap();
+  const previousActive = useRef(active?.id);
+  const routeView = useRef(true);
   useEffect(() => {
-    if (points.length)
+    const fitBounds = () => {
+      if (!points.length) return;
+      map.invalidateSize({ pan: false });
+      const size = map.getSize();
+      if (!size.x || !size.y) return;
+      const horizontal = Math.min(48, Math.round(size.x * .1));
+      const vertical = Math.min(100, Math.round(size.y * .24));
       map.fitBounds(L.latLngBounds(points), {
-        padding: [40, 40],
+        paddingTopLeft: [horizontal, vertical],
+        paddingBottomRight: [horizontal, vertical],
         maxZoom: recorded ? 17 : 11,
         animate: false,
       });
+    };
+    routeView.current = true;
+    fitBounds();
+    const resize = new ResizeObserver(() => {
+      map.invalidateSize({ pan: false });
+      if (routeView.current) fitBounds();
+    });
+    resize.observe(map.getContainer());
+    return () => resize.disconnect();
   }, [map, points, fit, recorded]);
   useEffect(() => {
-    if (active)
+    // A preselected marker must not override the initial full-route bounds.
+    if (previousActive.current === active?.id) return;
+    previousActive.current = active?.id;
+    if (active) {
+      routeView.current = false;
       map.setView(
         [active.latitude, active.longitude],
         Math.max(map.getZoom(), 11),
         { animate: !matchMedia("(prefers-reduced-motion:reduce)").matches },
       );
+    }
   }, [map, active]);
   return null;
 }
@@ -90,8 +113,10 @@ export default function GeographicRouteMap({
         </button>
       </div>
       <MapContainer
-        center={points[0] ?? [20, 78]}
-        zoom={5}
+        {...(points.length ? {
+          bounds: L.latLngBounds(points),
+          boundsOptions: { paddingTopLeft: L.point(28, 100), paddingBottomRight: L.point(28, 100), maxZoom: paths.length ? 17 : 11 },
+        } : { center: L.latLng(20, 78), zoom: 5 })}
         scrollWheelZoom={false}
         style={{ height: "100%", width: "100%" }}
       >

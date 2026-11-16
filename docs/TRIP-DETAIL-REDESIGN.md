@@ -75,3 +75,22 @@ sample films; it does not constitute physical Android or authenticated R2 testin
 Leaflet controls are isolated within the map stacking context, so they cannot
 overlap the main site navigation. The trip browser suite checks actual pointer
 hit-testing where the map passes beneath the navbar, as well as bar removal.
+
+## Route overview, irregular frames and cover loading
+
+The map starts from route bounds rather than an unrelated center/zoom. A selected
+stop no longer overrides the initial overview. Fit includes space for map controls
+and legends; a ResizeObserver refits route mode when its container changes size.
+A place is focused only after explicit selection. The browser suite verifies both
+route endpoint markers remain inside the map before selection, after fit/reset,
+after resizing, and on a longer-distance journey.
+
+Journal frames now alternate pronounced portrait and panoramic aspect ratios
+(0.63–1.85), while retaining packed columns and varied small gaps. These are only
+preview crops; the viewer continues to show the original image or video.
+
+The film cover uses no substitute poster during normal playback loading. It fades
+in the actual decoded first frame. Reduced motion still receives a static poster.
+A trip-specific dark loading boundary avoids the former full-screen white spinner
+without changing private application loading screens. A delayed-video browser check
+confirms no poster/image flashes before the video becomes ready.

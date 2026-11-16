@@ -4,6 +4,19 @@ import assert from 'node:assert/strict';
 const { chromium } = createRequire(import.meta.url)('playwright');
 const browser = await chromium.launch({ executablePath:'/usr/bin/chromium', args:['--no-sandbox'] });
 await mkdir('work/qa-trip-detail-v3',{recursive:true});
+async function expectFullRoute(page) {
+  await page.waitForFunction(() => {
+    const root=Array.from(document.querySelectorAll('.trip-detail-v3')).find(el=>el.getBoundingClientRect().width>0);
+    const map=root?.querySelector('.td-map-stage');
+    if(!map) return false;
+    const bounds=map.getBoundingClientRect();
+    const markers=Array.from(map.querySelectorAll('path[stroke-width="3"]'));
+    return markers.length===2 && markers.every(marker=>{
+      const rect=marker.getBoundingClientRect();
+      return rect.width>=14 && rect.height>=14 && rect.left>bounds.left+8 && rect.right<bounds.right-8 && rect.top>bounds.top+65 && rect.bottom<bounds.bottom-65;
+    });
+  },null,{timeout:10000});
+}
 try {
   for (const profile of [{width:1440,height:900,reducedMotion:'no-preference'},{width:390,height:844,reducedMotion:'no-preference'},{width:320,height:568,reducedMotion:'reduce'}]) {
     const page = await browser.newPage({ viewport:profile, reducedMotion:profile.reducedMotion });
@@ -22,16 +35,25 @@ try {
     await root.getByRole('button',{name:'Resume trip films',exact:true}).click();
     assert.equal(await root.locator('.td-metrics').count(),0,'No synthetic telemetry');
     if(profile.reducedMotion!=='reduce') await page.waitForFunction(()=>{const v=Array.from(document.querySelectorAll('.td-cover video')).find(video=>video.getBoundingClientRect().height>0);return v && !v.paused && v.currentTime>0;});
+    const poster=await root.locator('.td-cover video').getAttribute('poster');
+    if(profile.reducedMotion!=='reduce') assert.equal(poster,null,'No substitute photo before the cover film');
+    else assert.ok(poster,'Reduced motion keeps a static cover');
     await page.screenshot({path:`work/qa-trip-detail-v3/cover-${profile.width}.png`});
     await root.getByRole('button',{name:'Follow the journey',exact:true}).click();
     await root.locator('.leaflet-container').waitFor();
     await root.locator('.leaflet-overlay-pane path').first().waitFor({state:'attached'});
+    await expectFullRoute(page);
+    if(profile.width===1440) {
+      await page.setViewportSize({width:900,height:700}); await expectFullRoute(page);
+      await page.setViewportSize({width:profile.width,height:profile.height}); await expectFullRoute(page);
+    }
     await root.locator('.td-route-aside').getByRole('button',{name:/Tungnath/}).click();
     assert.equal(await root.locator('.td-route-aside').getByRole('button',{name:/Tungnath/}).getAttribute('aria-pressed'),'true');
     assert.match(await root.locator('.td-place-note h3').innerText(),/Tungnath/i);
     await root.getByRole('button',{name:'Terrain',exact:true}).click();
     assert.equal(await root.getByRole('button',{name:'Terrain',exact:true}).getAttribute('aria-pressed'),'true');
     await root.getByRole('button',{name:'Fit route',exact:true}).click();
+    await expectFullRoute(page);
     await root.locator('.td-map-stage').evaluate(el=>window.__lenis.scrollTo(scrollY+el.getBoundingClientRect().top-30,{immediate:true,force:true}));
     const navAboveMap = await page.locator('.public-header .reference-nav-brand').evaluate(el=>{ const r=el.getBoundingClientRect(); return !!document.elementFromPoint(r.left+r.width/2,r.top+r.height/2)?.closest('.public-header'); });
     assert.ok(navAboveMap, 'Main navigation stays above Leaflet controls');
@@ -51,6 +73,8 @@ try {
     await root.locator('#photo-journal').evaluate(el=>window.__lenis.scrollTo(scrollY+el.getBoundingClientRect().top-110,{immediate:true,force:true}));
     await page.waitForTimeout(1500);
     await page.screenshot({path:`work/qa-trip-detail-v3/journal-${profile.width}.png`});
+    const heights=await root.locator('.td-frame > div').evaluateAll(frames=>frames.slice(0,6).map(frame=>frame.getBoundingClientRect().height));
+    assert.ok(Math.max(...heights)/Math.min(...heights)>2,'Journal frame heights should be strongly varied');
     await root.locator('nav[aria-label="Filter journal by place"]').getByRole('button',{name:'Tungnath',exact:true}).click();
     assert.ok(await root.locator('.td-frame').count()>0);
     assert.ok((await root.locator('.td-frame').evaluateAll(items=>items.map(item=>item.getAttribute('aria-label')))).every(label=>label.includes('Tungnath')));
@@ -82,6 +106,8 @@ try {
     await page.locator('.trip-detail-v3:visible h1').waitFor();
     assert.match(await page.locator('.trip-detail-v3:visible h1').innerText(),/River/i);
     assert.match(await page.locator('.trip-detail-v3:visible .td-day-top').innerText(),/DAY 01/,'Next trip resets itinerary state');
+    await page.locator('.trip-detail-v3:visible').getByRole('button',{name:'Follow the journey',exact:true}).click();
+    await expectFullRoute(page);
     console.log(`PASS ${profile.width}x${profile.height}: new design, cover autoplay, recorded-map controls, stop selection, detailed day switching, place/type filters, image zoom, keyboard/focus, film viewer, next-trip navigation and no page errors`);
     await page.close();
   }
