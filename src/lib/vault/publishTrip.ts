@@ -78,9 +78,7 @@ export async function publishTripToWebsite(
     destination: trip.destination,
     startDate: trip.startDate,
     endDate: trip.endDate || trip.completedAt,
-    description:
-      trip.notes ||
-      `Expedition across ${trip.destination}. Published directly from Life Atlas Trip Vault.`,
+    description: trip.notes?.trim() || undefined,
     coverImage: cover,
     totalDistanceKm: trip.liveExpedition?.totalDistanceKm,
     elevationGainMeters: trip.liveExpedition?.elevationGainMeters,
@@ -96,7 +94,7 @@ export async function publishTripToWebsite(
       imageUrl: m.imageDataUrl,
       images: m.images,
     })),
-    itineraryDays: itineraries.map((d) => ({
+    itineraryDays: itineraries.filter(d => d.title?.trim() || d.description?.trim() || d.activities?.length).map((d) => ({
       dayIndex: d.dayIndex,
       date: d.date,
       title: d.title || `Day ${d.dayIndex + 1}`,

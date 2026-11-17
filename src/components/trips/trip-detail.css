@@ -240,3 +240,8 @@ body:has(.trip-detail-v3[data-light-nav="true"]) .public-header .reference-nav-b
   .td-metrics-secondary > div { flex-basis:115px; }
   .td-metrics-secondary dd { font-size:25px; }
 }
+
+/* Optional journal sections never reserve empty map columns or summary separators. */
+.td-map-layout-wide { grid-template-columns:minmax(0,1fr); }
+.td-summary-item { display:inline-flex; align-items:center; gap:14px; }
+.td-metrics-primary > :only-child { grid-column:1 / -1; }

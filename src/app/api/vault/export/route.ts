@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
@@ -76,10 +77,7 @@ export async function POST(request: Request) {
       durationStr = `${days} Days`;
     }
 
-    let fullDescription = description || `Expedition across ${destination}. Published from Life Atlas Trip Vault.`;
-    if (totalDistanceKm && Number(totalDistanceKm) > 0 && !fullDescription.includes("Distance Traveled")) {
-      fullDescription += `\n\nTotal Expedition Distance Traveled: ${Number(totalDistanceKm).toFixed(1)} km.`;
-    }
+    const fullDescription = typeof description === "string" ? description.trim() || null : null;
 
     let trip;
     if (existingTrip) {
@@ -97,7 +95,7 @@ export async function POST(request: Request) {
           totalDistanceKm: typeof totalDistanceKm === "number" ? totalDistanceKm : (totalDistanceKm ? parseFloat(totalDistanceKm) : null),
           elevationGainMeters: typeof elevationGainMeters === "number" ? elevationGainMeters : (elevationGainMeters ? parseFloat(elevationGainMeters) : null),
           maxElevationMeters: typeof maxElevationMeters === "number" ? maxElevationMeters : (maxElevationMeters ? parseFloat(maxElevationMeters) : null),
-          routeData: routeData || undefined,
+          routeData: routeData || Prisma.DbNull,
         },
       });
       // Clear previous child records to perform a clean refresh
@@ -123,7 +121,7 @@ export async function POST(request: Request) {
           totalDistanceKm: typeof totalDistanceKm === "number" ? totalDistanceKm : (totalDistanceKm ? parseFloat(totalDistanceKm) : null),
           elevationGainMeters: typeof elevationGainMeters === "number" ? elevationGainMeters : (elevationGainMeters ? parseFloat(elevationGainMeters) : null),
           maxElevationMeters: typeof maxElevationMeters === "number" ? maxElevationMeters : (maxElevationMeters ? parseFloat(maxElevationMeters) : null),
-          routeData: routeData || undefined,
+          routeData: routeData || Prisma.DbNull,
           userId: user.id,
         },
       });
@@ -186,6 +184,7 @@ export async function POST(request: Request) {
     // 4. Create TripDays if present
     if (Array.isArray(itineraryDays) && itineraryDays.length > 0) {
       for (const day of itineraryDays) {
+        if (!day.title?.trim() && !day.description?.trim()) continue;
         await prisma.tripDay.create({
           data: {
             tripId: trip.id,

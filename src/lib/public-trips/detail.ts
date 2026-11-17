@@ -72,10 +72,10 @@ export function demoTripDetail(trip: Expedition): TripDetailData {
 
 export interface PublicTripInput {
   id: string; slug: string; title: string; destination: string; description: string | null;
-  coverImage: string | null; duration: string | null; startDate: Date; routeData: unknown;
+  coverImage: string | null; duration: string | null; startDate: Date | null; routeData: unknown;
   totalDistanceKm: number | null; maxElevationMeters: number | null; elevationGainMeters: number | null;
   tripPlaces: { visitDate?: Date | null; place: { id: string; name: string; latitude: number | null; longitude: number | null; description: string | null } }[];
-  tripDays: { id: string; dayIndex: number; date: Date; title: string | null; description: string | null }[];
+  tripDays: { id: string; dayIndex: number; date: Date | null; title: string | null; description: string | null }[];
   photos: { id: string; url: string; caption: string | null; place?: { name: string } | null }[];
 }
 export function publicTripDetail(trip: PublicTripInput, next?: { slug: string; title: string; coverImage: string | null } | null): TripDetailData {
@@ -95,12 +95,12 @@ export function publicTripDetail(trip: PublicTripInput, next?: { slug: string; t
   if (route.moving !== null) metrics.push({ label: "Moving time", value: formatJourneyDuration(route.moving), unit: "" });
   if (route.elapsed !== null) metrics.push({ label: "Elapsed time", value: formatJourneyDuration(route.elapsed), unit: "" });
   return {
-    id: trip.id, slug: trip.slug, title: trip.title, region: trip.destination, overview: trip.description || "The places and moments from this journey.",
-    cover: trip.coverImage || trip.photos.find(photo => photo.url)?.url || "", sample: false, date: trip.startDate.toISOString(),
-    duration: trip.duration || (trip.tripDays.length ? `${trip.tripDays.length} days` : "Travel journal"), paths: route.paths,
+    id: trip.id, slug: trip.slug, title: trip.title, region: trip.destination, overview: trip.description?.trim() || "",
+    cover: trip.coverImage || trip.photos.find(photo => photo.url)?.url || "", sample: false, date: trip.startDate?.toISOString(),
+    duration: trip.duration?.trim() || "", paths: route.paths,
     stops: [...trip.tripPlaces].sort((a,b) => (a.visitDate?.getTime() ?? Infinity) - (b.visitDate?.getTime() ?? Infinity)).flatMap(({ place }) => validPoint(place) ? [{ id: place.id, name: place.name, latitude: place.latitude, longitude: place.longitude, description: place.description }] : []),
     metrics,
-    days: trip.tripDays.map(day => ({ id: day.id, day: day.dayIndex, date: day.date.toISOString(), title: day.title || `Day ${day.dayIndex}`, place: trip.destination, description: day.description || "No further details have been published for this day.", beats: [] })),
+    days: trip.tripDays.filter(day => day.title?.trim() || day.description?.trim()).map(day => ({ id: day.id, day: day.dayIndex, date: day.date?.toISOString(), title: day.title || `Day ${day.dayIndex}`, place: trip.destination, description: day.description?.trim() || "", beats: [] })),
     media: trip.photos.filter(photo => photo.url).map(photo => ({ id: photo.id, url: photo.url, kind: "photo", place: photo.place?.name || "Unassigned", category: "Trip photography", caption: photo.caption || undefined })),
     next: next ? { slug: next.slug, title: next.title, image: next.coverImage || "" } : undefined,
   };

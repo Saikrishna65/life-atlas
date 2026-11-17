@@ -35,7 +35,8 @@ test('a real trip without a GPS recording or media never gains a fictional path,
   assert.deepEqual(detail.media, []);
   assert.equal(detail.cover, '');
   assert.equal(detail.coverFilm, undefined);
-  assert.equal(detail.duration, 'Travel journal');
+  assert.equal(detail.duration, '');
+  assert.equal(publicTripDetail({...trip, description:null}).overview, '');
   assert.equal(detail.next, undefined);
 });
 test('public recordings preserve segment gaps and only publish available metrics', () => {
@@ -68,4 +69,35 @@ test('invalid stored totals fall back to valid published GPS figures without cre
   assert.ok(detail.metrics.some(metric => metric.label === 'Distance travelled' && metric.value === '12'));
   assert.equal(sampleJourneyTelemetry('unknown-trip',5),null);
   assert.equal(formatJourneyDuration(94500),'1d 2h 15m');
+});
+
+
+test('photo-only journals do not acquire missing trip details or empty itinerary days', () => {
+  const detail = publicTripDetail({ ...trip, destination:'', startDate:null, description:'  ', duration:' ',
+    photos:[{id:'photo-only',url:'/images/people/stock-creator.webp',caption:null}],
+    tripDays:[{id:'blank',dayIndex:1,date:null,title:' ',description:null}],
+  });
+  assert.equal(detail.media.length,1);
+  assert.equal(detail.cover,detail.media[0].url);
+  assert.deepEqual(detail.days,[]);
+  assert.deepEqual(detail.paths,[]);
+  assert.deepEqual(detail.stops,[]);
+  assert.deepEqual(detail.metrics,[]);
+  assert.equal(detail.date,undefined);
+  assert.equal(detail.duration,'');
+  assert.equal(detail.overview,'');
+});
+
+test('partial journals keep genuine zero metrics and an authored itinerary without filler copy', () => {
+  const detail = publicTripDetail({...trip,totalDistanceKm:0,maxElevationMeters:0,tripDays:[
+    {id:'title-only',dayIndex:1,date:null,title:'A day by the river',description:null},
+    {id:'notes-only',dayIndex:2,date:null,title:null,description:'Lunch with friends.'},
+  ]});
+  assert.equal(detail.metrics.length,2);
+  assert.ok(detail.metrics.every(metric=>metric.value==='0'));
+  assert.equal(detail.days.length,2);
+  assert.equal(detail.days[0].description,'');
+  assert.equal(detail.days[0].date,undefined);
+  assert.equal(detail.days[1].description,'Lunch with friends.');
+  assert.deepEqual(detail.days[0].beats,[]);
 });
