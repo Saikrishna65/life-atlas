@@ -52,4 +52,12 @@ class AtlasAudioOwnershipCoordinatorTest {
         assertEquals(AtlasAudioOwnershipCoordinator.Owner.EXTERNAL_APP, AtlasAudioOwnershipCoordinator.currentOwner)
         assertTrue(notified)
     }
+
+    @Test
+    fun sanitizeForSpeech_stripsMarkdownAndUrlsCleanly() {
+        val cleaned = AtlasVoiceTtsManager.sanitizeForSpeech(
+            "- **Day 2**: Visit [Sula Vineyards](https://example.com) & relax `later`!"
+        )
+        assertEquals("Day 2: Visit Sula Vineyards & relax later!", cleaned)
+    }
 }

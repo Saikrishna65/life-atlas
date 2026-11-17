@@ -57,10 +57,11 @@
     - **App in foreground**: Emits `voiceCommand` to WebView JS (`processVoiceTurn`).
     - **App backgrounded / locked**: Runs native handler immediately (lock-screen privacy guard, Android system media keys, native pending reminders saved to `atlas_voice_prefs`, `MainActivity` route launches via `SYSTEM_ALERT_WINDOW` or notification fallback, and optional consented Cloud AI over HTTPS).
   - Ends sessions silently on `COMMAND_LISTENING` no-match/timeout so accidental triggers don't interrupt conversations, and closes cleanly (`endSession = true`) on navigation commands.
+  - Maintains bounded `nativeTurns` multi-turn session history for native Cloud AI follow-ups when backgrounded/locked.
 - `android/app/src/main/kotlin/com/lifeatlas/app/wakeword/voice/AtlasVoiceSpeechManager.kt`
   - Prefers Android 12+ `SpeechRecognizer.createOnDeviceSpeechRecognizer` (`en-IN` preference, `EXTRA_PARTIAL_RESULTS = true`, `650 ms` complete silence / `500 ms` possibly complete, `AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE`). Online fallback disabled by default.
 - `android/app/src/main/kotlin/com/lifeatlas/app/wakeword/voice/AtlasVoiceTtsManager.kt`
-  - Selects best offline English voice (`en-IN` / `en-GB` / `en-US`, prioritizing female/high-quality offline voices), `USAGE_ASSISTANT`, `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`, `pitch = 1.04f`, `speechRate = 1.10f`.
+  - Selects best offline English voice (`en-IN` / `en-GB` / `en-US`, prioritizing female/high-quality offline voices), `USAGE_ASSISTANT`, `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`, `pitch = 1.04f`, `speechRate = 1.10f`, and sanitizes Markdown/URLs via `sanitizeForSpeech`.
 
 ### D. Android Bridge, Permissions & Activity Routing
 - `android/app/src/main/AndroidManifest.xml`: Declares `RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW`, `AtlasWakeWordService`, `OvernightSnapshotReceiver`, and `AtlasExperimentVoiceInteractionService`.
@@ -73,8 +74,9 @@
 - `src/lib/atlas-ai/gateway.ts` & `src/lib/atlas-ai/local-adapters.ts`: Typed `AtlasAction`s including `reminder.create` and `reminder.list`.
 - `src/lib/atlas-ai/voice-assistant.ts`: Multi-turn session context (`activeTripId`, `lastTripDay`), lock-screen guard, sensitive-mutation guard, typed action execution, local LLM check, optional consented Cloud AI (`Gemini` / `OpenAI` BYOK or `appServiceUrl('/api/atlas/chat')`), and transparent `"I heard \"...\""` offline fallback.
 - `src/components/secret/AtlasLauncher.tsx` & `atlas-launcher.module.css`: Global `/secret/*` voice command listener, native reminder sync, orb state animations, and compact active-session pill (`Stop`, `Open Atlas`).
+- `src/app/secret/atlas/page.tsx`: Dedicated **Voice Reminders** management panel (synced with native background reminders), hands-free Start/Stop voice session controls, and orb state sync with `atlasWakeWordBridge`.
 - `src/components/control-room/HeyAtlasExperiment.tsx`: Experiment dashboard containing Wake-Word controls, **Voice Session Coordinator** (state, overlay permission button, wake greeting toggle, online STT & Cloud AI consent/key config), **Overnight Endurance Test** + Morning Report + JSON/CSV export, and Tests A–H matrix.
-- `tests/atlas-voice-assistant.test.ts`: Node test suite verifying lock-screen guard, stop commands, sensitive mutation guard, and offline fallback.
+- `tests/atlas-voice-assistant.test.ts`: Node test suite (6/6 passing) verifying lock-screen guard, stop commands, sensitive mutation guard, offline fallback, safe navigation, and offline arithmetic.
 
 ---
 

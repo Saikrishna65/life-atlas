@@ -31,6 +31,17 @@ class AtlasVoiceTtsManager(private val context: Context) {
 
     companion object {
         private const val TAG = "AtlasVoiceTTS"
+
+        internal fun sanitizeForSpeech(raw: String): String {
+            return raw
+                .replace(Regex("```[\\s\\S]*?```"), " ")
+                .replace(Regex("[`*_~#>]"), "")
+                .replace(Regex("(?m)^\\s*[-•+]\\s+"), "")
+                .replace(Regex("\\[(.*?)]\\((.*?)\\)"), "$1")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+                .take(4000)
+        }
     }
 
     interface Listener {
@@ -78,7 +89,7 @@ class AtlasVoiceTtsManager(private val context: Context) {
     }
 
     fun speak(text: String, listener: Listener) {
-        val clean = text.trim().take(4000)
+        val clean = sanitizeForSpeech(text)
         if (clean.isEmpty()) {
             listener.onSpeakCompleted()
             return

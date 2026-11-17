@@ -91,6 +91,7 @@ class AtlasVoiceCoordinator(
     @Volatile
     var greetOnWake: Boolean = true
     private var jsReplyTimeoutRunnable: Runnable? = null
+    private val nativeTurns = mutableListOf<Pair<String, String>>()
 
     fun setAllowOnlineSpeechFallback(allow: Boolean) {
         allowOnlineSpeechFallback = allow
@@ -119,6 +120,7 @@ class AtlasVoiceCoordinator(
             currentSessionId = null
             currentTurnId = null
             pendingEndSession = false
+            nativeTurns.clear()
             transitionTo(State.IDLE, "Wake-word service stopped")
         }
     }
@@ -377,6 +379,7 @@ class AtlasVoiceCoordinator(
         currentSessionId = null
         currentTurnId = null
         pendingEndSession = false
+        nativeTurns.clear()
 
         if (resumeWakeWord && !serviceActions.isInPhoneCall()) {
             transitionTo(State.WAKE_LISTENING, "Resuming offline wake-word detection")
@@ -419,9 +422,18 @@ class AtlasVoiceCoordinator(
         return normalized.startsWith("stop ") || normalized == "that is all"
     }
 
+    private fun recordNativeTurn(role: String, text: String) {
+        nativeTurns.add(role to text)
+        while (nativeTurns.size > 10) {
+            nativeTurns.removeAt(0)
+        }
+    }
+
     private fun resolveNativeTurnAsync(sessionId: String, turnId: String, transcript: String, isLocked: Boolean) {
+        recordNativeTurn("user", transcript)
         val quick = buildNativeFallbackReply(transcript, isLocked)
         if (quick != null) {
+            recordNativeTurn("assistant", quick.first)
             pendingEndSession = quick.second
             speakResponse(quick.first)
             return
@@ -434,11 +446,13 @@ class AtlasVoiceCoordinator(
         val cloudApiKey = prefs.getString("cloudApiKey", "") ?: ""
 
         if (cloudConsent && cloudApiKey.isNotBlank()) {
+            val historySnapshot = nativeTurns.toList()
             Thread({
-                val cloudAnswer = callNativeCloudAi(transcript, cloudProvider, cloudApiKey)
+                val cloudAnswer = callNativeCloudAi(historySnapshot, cloudProvider, cloudApiKey)
                 mainHandler.post {
                     if (currentSessionId != sessionId || currentTurnId != turnId) return@post
                     if (!cloudAnswer.isNullOrBlank()) {
+                        recordNativeTurn("assistant", cloudAnswer)
                         pendingEndSession = false
                         speakResponse(cloudAnswer)
                     } else {
@@ -600,7 +614,7 @@ class AtlasVoiceCoordinator(
         }
     }
 
-    private fun callNativeCloudAi(transcript: String, provider: String, apiKey: String): String? {
+    private fun callNativeCloudAi(turns: List<Pair<String, String>>, provider: String, apiKey: String): String? {
         return try {
             val system = "You are Atlas, a warm, friendly, expressive female voice assistant. Answer in 1 to 3 concise conversational English sentences suitable for spoken audio."
             if (provider == "openai") {
@@ -613,16 +627,15 @@ class AtlasVoiceCoordinator(
                     setRequestProperty("Content-Type", "application/json")
                     setRequestProperty("Authorization", "Bearer $apiKey")
                 }
+                val msgs = JSONArray().put(JSONObject().put("role", "system").put("content", system))
+                for ((role, text) in turns) {
+                    msgs.put(JSONObject().put("role", role).put("content", text))
+                }
                 val body = JSONObject()
                     .put("model", "gpt-4o-mini")
                     .put("temperature", 0.7)
                     .put("max_tokens", 180)
-                    .put(
-                        "messages",
-                        JSONArray()
-                            .put(JSONObject().put("role", "system").put("content", system))
-                            .put(JSONObject().put("role", "user").put("content", transcript))
-                    )
+                    .put("messages", msgs)
                 OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
                 if (conn.responseCode in 200..299) {
                     val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
@@ -638,16 +651,18 @@ class AtlasVoiceCoordinator(
                     doOutput = true
                     setRequestProperty("Content-Type", "application/json")
                 }
+                val contents = JSONArray()
+                for ((role, text) in turns) {
+                    val geminiRole = if (role == "assistant") "model" else "user"
+                    contents.put(
+                        JSONObject()
+                            .put("role", geminiRole)
+                            .put("parts", JSONArray().put(JSONObject().put("text", text)))
+                    )
+                }
                 val body = JSONObject()
                     .put("system_instruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", system))))
-                    .put(
-                        "contents",
-                        JSONArray().put(
-                            JSONObject()
-                                .put("role", "user")
-                                .put("parts", JSONArray().put(JSONObject().put("text", transcript)))
-                        )
-                    )
+                    .put("contents", contents)
                     .put("generationConfig", JSONObject().put("temperature", 0.7).put("maxOutputTokens", 180))
                 OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
                 if (conn.responseCode in 200..299) {
