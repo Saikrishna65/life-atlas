@@ -34,7 +34,8 @@ export interface WakeWordDetectionEvent {
   isCustomHeyAtlasModel: boolean;
   score: number;
   threshold: number;
-  inferenceLatencyMs: number;
+  inferenceLatencyMs?: number;
+  latencyMs?: number;
   environment: DeviceEnvironmentSnapshot;
 }
 

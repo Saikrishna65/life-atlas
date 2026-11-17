@@ -123,8 +123,9 @@ export default function HeyAtlasExperiment() {
     void atlasWakeWordBridge
       .addWakeWordDetectedListener((ev: WakeWordDetectionEvent) => {
         if (disposed) return;
+        const lat = ev.inferenceLatencyMs ?? ev.latencyMs ?? 0;
         setNotice(
-          `Wake detected (${ev.targetPhrase}) score=${ev.score.toFixed(3)} latency=${ev.inferenceLatencyMs.toFixed(1)} ms`
+          `Wake detected (${ev.targetPhrase}) score=${(ev.score ?? 0).toFixed(3)} latency=${lat.toFixed(1)} ms`
         );
         void refreshAll();
       })
@@ -1161,15 +1162,18 @@ export default function HeyAtlasExperiment() {
             {(report?.detections?.length ?? 0) === 0 ? (
               <p style={{ fontSize: 12 }}>No wake-word detections recorded yet.</p>
             ) : (
-              report!.detections.slice(0, 12).map((d, idx) => (
-                <div key={idx} className="oc-info-line">
-                  <span>
-                    {d.targetPhrase} ({d.score.toFixed(2)}) ·{" "}
-                    {d.environment.keyguardLocked ? "locked" : d.environment.interactive ? "screen-on" : "screen-off"}
-                  </span>
-                  <strong>{d.inferenceLatencyMs.toFixed(1)} ms</strong>
-                </div>
-              ))
+              report!.detections.slice(0, 12).map((d, idx) => {
+                const lat = d.inferenceLatencyMs ?? d.latencyMs ?? 0;
+                return (
+                  <div key={idx} className="oc-info-line">
+                    <span>
+                      {d.targetPhrase} ({(d.score ?? 0).toFixed(2)}) ·{" "}
+                      {d.environment?.keyguardLocked ? "locked" : d.environment?.interactive ? "screen-on" : "screen-off"}
+                    </span>
+                    <strong>{lat.toFixed(1)} ms</strong>
+                  </div>
+                );
+              })
             )}
           </div>
 
