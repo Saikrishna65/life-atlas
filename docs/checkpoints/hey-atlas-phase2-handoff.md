@@ -1,7 +1,7 @@
 # Life Atlas — Hey Atlas Wake-Word & Voice Assistant Handoff Context
 
-> **Last Updated:** 2026-11-16
-> **Git Branch:** `experiment/hey-atlas-wakeword` (Head commit prior to this file: `ddc599b`)
+> **Last Updated:** 2026-11-17
+> **Git Branch:** `experiment/hey-atlas-wakeword` (Head commit prior to this update: `94772ac`)
 > **Target Device:** Motorola Edge 50 Fusion · Android 16 (SDK 36)
 > **Purpose:** Self-contained context file so Antigravity (or any developer) on another machine can `git pull`, understand the full architecture, constraints, and empirical device findings, and resume work immediately.
 
@@ -115,13 +115,18 @@ adb logcat -d -s AtlasWakeWordService:V AtlasVoiceCoordinator:V AtlasVoiceSpeech
 
 ---
 
-## 4. Current Status & Suggested Next Tasks
+## 4. Current Status & Overnight Verification Findings
 
 - **Completed & Verified in CI/Local Build + Unit Tests**: All TypeScript checks, JS tests (4/4), Android unit tests (`OvernightTestManagerTest`, `AtlasAudioOwnershipCoordinatorTest`, existing suite), mobile bundle sync, and `assembleDebug` pass as of commit `ddc599b`.
+- **Empirical Overnight Survival Run Observed on Motorola Edge 50 Fusion (`2026-11-16 21:26 IST` → `2026-11-17 07:41 IST`)**:
+  - Note: User enabled **Enable Wake-Word Experiment** (with Sleep Mode on) rather than **Start Overnight Test**, so `overnight_test.json` 15-min battery snapshots were not generated, while `diagnostics.json` + Android `dumpsys` recorded the full overnight run:
+  - **10.5+ Hour Survival**: `AtlasWakeWordService` stayed alive in foreground (`serviceState: "listening"`, `isForeground=true`, `Foreground services: 10h 32m 36s`) continuously through Sleep Mode without OS termination.
+  - **Confirmed Mic & Inference**: `AudioIn` wakelock held `6h 56m 43s`, `456,566` inference frames processed at `6.19 ms` average detection latency (`total cpu time: 5h 45m 28s user + 35m 10s sys`).
+  - **Zero Overnight False Triggers**: `0` false activations all night between `21:26 IST` and `06:21 IST` with the raised `0.90f` threshold; morning detections scored `0.923–1.000` (`6` total detections).
+  - **Mic Coexistence**: `13` audio-focus/recording competition events handled and restored cleanly (`"Microphone released for other app and restored cleanly"`).
 - **On-Device Verification Pending / Recommended Next Steps**:
-  1. Verify on the Motorola Edge 50 Fusion that the raised `0.90f` threshold eliminates false ambient triggers while keeping genuine `"Hey Atlas"` triggers reliable.
+  1. Run **Start Overnight Test** (not just Listen Offline) and a separate **Baseline Test (Listening Off)** to capture exact `batteryStartPct -> batteryEndPct`, `%/hr` drain delta, monitoring gaps, and CSV/JSON Morning Report.
   2. Verify snappy foreground navigation from the Home screen once **Allow Display Over Other Apps** is granted in **Control Room → Hey Atlas Wake-Word**.
-  3. Test an ~8-hour locked **Overnight Endurance Test** and a separate **Baseline Test** and export the Morning Report CSV/JSON.
-  4. Optional future upgrades:
+  3. Optional future upgrades:
      - Bundle an on-device GGUF runtime (or wire a deployed `/api/atlas/chat` backend route) so open-ended offline/cloud chat works without a personal BYOK key.
      - Test lock-screen `SpeechRecognizer` restrictions across longer idle/Doze periods on Android 16.
