@@ -80,6 +80,7 @@ export interface PublicTripInput {
 }
 export function publicTripDetail(trip: PublicTripInput, next?: { slug: string; title: string; coverImage: string | null } | null): TripDetailData {
   const route = publishedRoute(trip.routeData);
+  const publicMedia=publishedTripMedia(trip.routeData);
   const metrics: TripDetailData["metrics"] = [];
   const nonnegative = (value: number | null) => value !== null && Number.isFinite(value) && value >= 0 ? value : null;
   const distance = nonnegative(trip.totalDistanceKm) ?? route.distance;
@@ -96,12 +97,20 @@ export function publicTripDetail(trip: PublicTripInput, next?: { slug: string; t
   if (route.elapsed !== null) metrics.push({ label: "Elapsed time", value: formatJourneyDuration(route.elapsed), unit: "" });
   return {
     id: trip.id, slug: trip.slug, title: trip.title, region: trip.destination, overview: trip.description?.trim() || "",
-    cover: trip.coverImage || trip.photos.find(photo => photo.url)?.url || "", sample: false, date: trip.startDate?.toISOString(),
+    cover: trip.coverImage || trip.photos.find(photo => photo.url)?.url || "", coverFilm:publicMedia.find(item=>item.kind==="video")?.url, sample: false, date: trip.startDate?.toISOString(),
     duration: trip.duration?.trim() || "", paths: route.paths,
     stops: [...trip.tripPlaces].sort((a,b) => (a.visitDate?.getTime() ?? Infinity) - (b.visitDate?.getTime() ?? Infinity)).flatMap(({ place }) => validPoint(place) ? [{ id: place.id, name: place.name, latitude: place.latitude, longitude: place.longitude, description: place.description }] : []),
     metrics,
     days: trip.tripDays.filter(day => day.title?.trim() || day.description?.trim()).map(day => ({ id: day.id, day: day.dayIndex, date: day.date?.toISOString(), title: day.title || `Day ${day.dayIndex}`, place: trip.destination, description: day.description?.trim() || "", beats: [] })),
-    media: trip.photos.filter(photo => photo.url).map(photo => ({ id: photo.id, url: photo.url, kind: "photo", place: photo.place?.name || "Unassigned", category: "Trip photography", caption: photo.caption || undefined })),
+    media: [...trip.photos.filter(photo => photo.url).map(photo => ({ id: photo.id, url: photo.url, kind: "photo" as const, place: photo.place?.name || "Unassigned", category: "Trip photography", caption: photo.caption || undefined })),...publicMedia],
     next: next ? { slug: next.slug, title: next.title, image: next.coverImage || "" } : undefined,
   };
+}
+
+/** The public export stores explicit media metadata independently of the GPS recording. */
+export function publishedTripMedia(value:unknown):DetailMedia[]{
+  const source=value as {publication?:{media?:unknown}}|null;
+  const items=source?.publication?.media;
+  if(!Array.isArray(items))return [];
+  return items.filter((item):item is DetailMedia=>item&&typeof item.id==='string'&&typeof item.url==='string'&&/^https:\/\//.test(item.url)&&(item.kind==='photo'||item.kind==='video')).map(item=>({...item,place:typeof item.place==='string'?item.place:'Unassigned',category:'Trip journal'}));
 }

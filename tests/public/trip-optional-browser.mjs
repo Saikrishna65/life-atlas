@@ -15,7 +15,7 @@ const base={title,destination:'Test destination',startDate:'2026-11-01',memories
 let slug;
 const errors=[];
 async function publish(page,extra={}) {
- const response=await page.request.post(`${origin}/api/vault/export`,{data:{...base,existingSlug:slug,...extra}});
+ const response=await page.request.post(`${origin}/api/vault/export`,{headers:{'X-Atlas-Publish':'1','Origin':origin},data:{...base,existingSlug:slug,...extra}});
  assert.equal(response.status(),200,await response.text());const result=await response.json();slug=result.slug;return result;
 }
 async function ready(page) {
@@ -49,6 +49,10 @@ try {
  assert.equal(await page.locator('.td-route-aside').count(),0);assert.equal(await page.locator('.td-map-layout-wide .leaflet-container').count(),1);
  assert.match(await page.locator('.td-day-intro').innerText(),/afternoon/);
  console.log('PASS partial trip: authored details reappear, route works without stops and missing statistics stay absent');
+ await publish(page,{preserveExistingRoute:true,preserveExistingItinerary:true});
+ const retained=await prisma.trip.findUnique({where:{slug}});assert.equal(retained.totalDistanceKm,12);assert.ok(retained.routeData.legs.length);
+ console.log('PASS media-only update preserves existing website route and totals when explicitly requested');
+
  await publish(page,{totalDistanceKm:0});await ready(page);
  assert.equal((await prisma.trip.findUnique({where:{slug}})).routeData,null);
  assert.equal(await page.locator('.td-map-stage,.td-itinerary,.td-prologue').count(),0);

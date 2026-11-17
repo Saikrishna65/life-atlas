@@ -492,7 +492,7 @@ describe("Trip Vault Phase 13: Completed Trip Archives & Photo Memories Flow", (
     }) as any;
 
     try {
-      const result = await publishTripToWebsite(tripId);
+      const result = await publishTripToWebsite(tripId,{memoryIds:["mem-devprayag-sangam"],includeRoute:true});
 
       assert.strictEqual(result.success, true);
       assert.strictEqual(result.slug, "chopta-tungnath-chandrashila-trek");

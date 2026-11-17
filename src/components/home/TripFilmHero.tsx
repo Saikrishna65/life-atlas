@@ -130,6 +130,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
     >
       <PublicPageReady />
       <TripFilmStage
+        films={trips.map((trip,index)=>trip.video?{src:trip.video,poster:trip.image,fallback:heroFilms[index%3].fallback}:heroFilms[index%3])}
         active={active}
         outgoing={outgoing}
         requested={requested}
@@ -285,11 +286,9 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
               ? "Video unavailable · explore the journey"
               : fallback
                 ? "Local motion study · stock video unavailable"
-                : "Stock films / illustrative footage"}
+                : current?.video ? "Published trip film" : "Stock films / illustrative footage"}
           </span>
-          <a href="/films/hero-credits.txt" target="_blank" rel="noreferrer">
-            Credits ↗
-          </a>
+          {(!current?.video||fallback)&&<a href="/films/hero-credits.txt" target="_blank" rel="noreferrer">Credits ↗</a>}
           <a href="#observatory">Scroll to explore ↓</a>
         </div>
       </footer>

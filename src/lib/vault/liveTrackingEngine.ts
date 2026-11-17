@@ -29,45 +29,32 @@ export function haversineDistanceMeters(
   return R * c;
 }
 
-/**
- * Filters out jitter, multipath noise, and stationary drift:
- * - Rejects points with poor GPS accuracy (> 35 meters)
- * - Rejects points where displacement < 5 meters unless speed > 1 m/s (3.6 km/h)
- * - Rejects unrealistic teleportation speed spikes (> 220 km/h)
- */
-export function shouldRecordPoint(
-  prevPoint: BreadcrumbPoint | undefined,
-  newPoint: BreadcrumbPoint
-): boolean {
-  if (newPoint.accuracy > 40) {
-    return false;
-  }
-  if (!prevPoint) {
-    return true;
-  }
-
-  const distMeters = haversineDistanceMeters(
-    prevPoint.latitude,
-    prevPoint.longitude,
-    newPoint.latitude,
-    newPoint.longitude
-  );
-
-  const timeDeltaSec = Math.max(0.1, (newPoint.timestamp - prevPoint.timestamp) / 1000);
-  const computedSpeedKmh = (distMeters / timeDeltaSec) * 3.6;
-
-  // Filter impossible velocity spikes
-  if (computedSpeedKmh > 220) {
-    return false;
-  }
-
-  // Filter stationary jitter if phone is resting in pocket or table (< 4 meters)
-  const isMoving = (newPoint.speed ?? 0) > 1.2 || computedSpeedKmh > 1.5;
-  if (distMeters < 4 && !isMoving) {
-    return false;
-  }
-
-  return true;
+/** GPS speeds enter this module in km/h. Thresholds reject fixes, never clamp a spike into a valid record. */
+export const MAX_GPS_GAP_MS = 120_000;
+export const speedLimit = (category: ExpeditionLegCategory = "OTHER") => ({ WALK:20, TREK:25, CYCLE:100, DRIVE:250, OTHER:400 })[category];
+export function positionBreadcrumb(position: {timestamp:number;coords:Pick<GeolocationCoordinates,"latitude"|"longitude"|"accuracy"|"speed"|"altitude"|"altitudeAccuracy">}): BreadcrumbPoint {
+  const c=position.coords;
+  return { latitude:c.latitude, longitude:c.longitude, accuracy:c.accuracy,
+    speed:Number.isFinite(c.speed) && c.speed !== null && c.speed >= 0 ? c.speed * 3.6 : null,
+    altitude:c.altitude, altitudeAccuracy:c.altitudeAccuracy, timestamp:position.timestamp, qualityVersion:2 };
+}
+export function shouldRecordPoint(prevPoint: BreadcrumbPoint | undefined,newPoint: BreadcrumbPoint,category: ExpeditionLegCategory = "OTHER"): boolean {
+  if (![newPoint.latitude,newPoint.longitude,newPoint.accuracy,newPoint.timestamp].every(Number.isFinite) ||
+      Math.abs(newPoint.latitude)>90 || Math.abs(newPoint.longitude)>180 || newPoint.accuracy<0 || newPoint.accuracy>40 || newPoint.timestamp<=0) return false;
+  if (!prevPoint) return true;
+  const dt=newPoint.timestamp-prevPoint.timestamp;
+  if(dt<=0)return false;
+  if(dt>MAX_GPS_GAP_MS)return true; // Re-anchor, with a route gap; do not count an unknown journey.
+  const distance=haversineDistanceMeters(prevPoint.latitude,prevPoint.longitude,newPoint.latitude,newPoint.longitude);
+  if(distance/(dt/1000)*3.6>speedLimit(category))return false;
+  return distance>=Math.max(3,Math.min(12,(prevPoint.accuracy+newPoint.accuracy)/4));
+}
+/** Accurate active time from a monotonic sequence of wall-clock observations, including delayed JS timers. */
+export function advanceExpeditionClock(session:LiveExpeditionSession,now:number):LiveExpeditionSession {
+  if(session.status!=="ACTIVE" || !Number.isFinite(now))return session;
+  const seconds=session.lastClockAt ? Math.max(0,(now-session.lastClockAt)/1000) : 0;
+  return {...session,lastClockAt:Math.max(now,session.lastClockAt??now),totalDurationSeconds:session.totalDurationSeconds+seconds,
+    legs:session.legs.map(leg=>leg.id===session.activeLegId?{...leg,durationSeconds:leg.durationSeconds+seconds}:leg)};
 }
 
 /**
@@ -114,6 +101,8 @@ export function startExpedition(
   return {
     tripId,
     status: "ACTIVE",
+    qualityVersion: 2,
+    lastClockAt: Date.parse(now),
     startedAt: now,
     totalDistanceKm: 0,
     totalDurationSeconds: 0,
@@ -133,6 +122,7 @@ export function startNewLeg(
   category: ExpeditionLegCategory = "TREK"
 ): LiveExpeditionSession {
   const now = new Date().toISOString();
+  session = advanceExpeditionClock(session, Date.now());
   const newLegId = "leg_" + Math.random().toString(36).slice(2, 10);
 
   // Mark current active leg as COMPLETED or PAUSED
@@ -162,6 +152,7 @@ export function startNewLeg(
   return {
     ...session,
     status: "ACTIVE",
+    lastClockAt: Date.now(),
     activeLegId: newLegId,
     legs: [...updatedLegs, newLeg],
   };
@@ -171,10 +162,10 @@ export function startNewLeg(
  * Pauses the live tracking session
  */
 export function pauseExpedition(session: LiveExpeditionSession): LiveExpeditionSession {
-  const now = new Date().toISOString();
+  session = advanceExpeditionClock(session, Date.now());
   const updatedLegs = session.legs.map((leg) => {
     if (leg.id === session.activeLegId && leg.status === "ACTIVE") {
-      return { ...leg, status: "PAUSED" as const };
+      return { ...leg, status: "PAUSED" as const, nextPointStartsSegment:true,segmentStartedAt:Date.now() };
     }
     return leg;
   });
@@ -193,7 +184,7 @@ export function pauseExpedition(session: LiveExpeditionSession): LiveExpeditionS
 export function resumeExpedition(session: LiveExpeditionSession): LiveExpeditionSession {
   const updatedLegs = session.legs.map((leg) => {
     if (leg.id === session.activeLegId && leg.status === "PAUSED") {
-      return { ...leg, status: "ACTIVE" as const };
+      return { ...leg, status: "ACTIVE" as const, segmentStartedAt:Date.now() };
     }
     return leg;
   });
@@ -201,6 +192,7 @@ export function resumeExpedition(session: LiveExpeditionSession): LiveExpedition
   return {
     ...session,
     status: "ACTIVE",
+    lastClockAt: Date.now(),
     legs: updatedLegs,
   };
 }
@@ -209,6 +201,7 @@ export function resumeExpedition(session: LiveExpeditionSession): LiveExpedition
  * Ends and finalizes the expedition
  */
 export function endExpedition(session: LiveExpeditionSession): LiveExpeditionSession {
+  session = advanceExpeditionClock(session, Date.now());
   const now = new Date().toISOString();
   const updatedLegs = session.legs.map((leg) => {
     if (leg.status === "ACTIVE" || leg.status === "PAUSED") {
@@ -244,88 +237,52 @@ export function addBreadcrumbToExpedition(
   }
 
   const currentLeg = session.legs[activeLegIndex];
-  const lastPoint = currentLeg.coordinates[currentLeg.coordinates.length - 1];
-
-  let addedDistanceKm = 0;
-  let addedElevationGainMeters = 0;
-
-  if (lastPoint) {
-    const distMeters = haversineDistanceMeters(
-      lastPoint.latitude,
-      lastPoint.longitude,
-      point.latitude,
-      point.longitude
-    );
-    addedDistanceKm = distMeters / 1000;
-
-    if (
-      point.altitude != null &&
-      lastPoint.altitude != null &&
-      point.altitude > lastPoint.altitude
-    ) {
-      const diff = point.altitude - lastPoint.altitude;
-      if (diff > 1.0 && diff < 2000) {
-        addedElevationGainMeters = diff;
-      }
-    }
+  const lastPoint = currentLeg.coordinates.at(-1);
+  if(!shouldRecordPoint(currentLeg.nextPointStartsSegment ? undefined : lastPoint,point,currentLeg.category))return session;
+  const segmentStart=!lastPoint || !!currentLeg.nextPointStartsSegment || point.timestamp-lastPoint.timestamp>MAX_GPS_GAP_MS;
+  // A resumed segment must still be newer than the old recording.
+  if(lastPoint && point.timestamp<=lastPoint.timestamp)return session;
+  const dt=!segmentStart && lastPoint ? (point.timestamp-lastPoint.timestamp)/1000 : 0;
+  const meters=dt && lastPoint ? haversineDistanceMeters(lastPoint.latitude,lastPoint.longitude,point.latitude,point.longitude):0;
+  const computed=dt?meters/dt*3.6:0;
+  const reported=point.speed;
+  const speed=dt && reported!==null && Number.isFinite(reported) && reported>=0 && reported<=speedLimit(currentLeg.category) && Math.abs(reported-computed)<=Math.max(8,computed*.6) ? reported : computed;
+  const goodAltitude=point.altitude!==null && Number.isFinite(point.altitude) && point.altitude>=-500 && point.altitude<=9000 &&
+    point.altitudeAccuracy!=null && Number.isFinite(point.altitudeAccuracy) && point.altitudeAccuracy>=0 && point.altitudeAccuracy<=25;
+  const previousAltitude=!segmentStart ? currentLeg.filteredAltitude??lastPoint?.altitude : null;
+  const plausibleAltitude=goodAltitude && (previousAltitude==null || Math.abs(point.altitude!-previousAltitude)<=Math.max(15,(currentLeg.altitudeTimestamp ? Math.max(0,(point.timestamp-currentLeg.altitudeTimestamp)/1000) : dt||1)*3 + (point.altitudeAccuracy??0)));
+  const altitude=plausibleAltitude ? previousAltitude==null ? point.altitude! : dt>=30?point.altitude!:previousAltitude*.65+point.altitude!*.35 : null;
+  const recorded:BreadcrumbPoint={...point,speed,altitude,segmentStart,qualityVersion:2};
+  let anchor=segmentStart ? altitude??undefined : currentLeg.elevationAnchor??previousAltitude??altitude??undefined;
+  let ascent=0;
+  if(altitude!==null && anchor!==undefined && Math.abs(altitude-anchor)>=Math.max(3,point.altitudeAccuracy??0)) {
+    ascent=Math.max(0,altitude-anchor);anchor=altitude;
   }
-
-  const speedKmh = point.speed != null && point.speed >= 0 ? point.speed * 3.6 : 0;
-  const isMoving = speedKmh > 1.0;
-
-  // Leg stat updates
-  const updatedCoords = [...currentLeg.coordinates, point];
-  const legDistanceKm = currentLeg.distanceKm + addedDistanceKm;
-  const legElevationGain = currentLeg.elevationGainMeters + addedElevationGainMeters;
-  const legMaxSpeed = Math.max(currentLeg.maxSpeedKmh, speedKmh);
-  const legMaxElev =
-    point.altitude != null
-      ? Math.max(currentLeg.maxElevationMeters ?? point.altitude, point.altitude)
-      : currentLeg.maxElevationMeters;
-  const legMinElev =
-    point.altitude != null
-      ? Math.min(currentLeg.minElevationMeters ?? point.altitude, point.altitude)
-      : currentLeg.minElevationMeters;
-
-  const updatedLeg: ExpeditionLeg = {
-    ...currentLeg,
-    distanceKm: Number(legDistanceKm.toFixed(3)),
-    elevationGainMeters: Math.round(legElevationGain),
-    maxSpeedKmh: Math.round(legMaxSpeed),
-    maxElevationMeters: legMaxElev ? Math.round(legMaxElev) : undefined,
-    minElevationMeters: legMinElev ? Math.round(legMinElev) : undefined,
-    startElevationMeters: currentLeg.startElevationMeters ?? (point.altitude ? Math.round(point.altitude) : undefined),
-    movingSeconds: isMoving ? currentLeg.movingSeconds + 3 : currentLeg.movingSeconds,
-    coordinates: updatedCoords,
-  };
-
-  const updatedLegs = [...session.legs];
-  updatedLegs[activeLegIndex] = updatedLeg;
-
-  // Master session stats
-  const totalDistance = Number((session.totalDistanceKm + addedDistanceKm).toFixed(3));
-  const totalElevationGain = Math.round(session.elevationGainMeters + addedElevationGainMeters);
-  const maxSessionElev =
-    point.altitude != null
-      ? Math.max(session.maxElevationMeters ?? point.altitude, point.altitude)
-      : session.maxElevationMeters;
-
-  return {
-    ...session,
-    totalDistanceKm: totalDistance,
-    elevationGainMeters: totalElevationGain,
-    maxElevationMeters: maxSessionElev ? Math.round(maxSessionElev) : undefined,
-    currentSpeedKmh: Math.round(speedKmh),
-    currentElevationMeters: point.altitude ? Math.round(point.altitude) : undefined,
-    currentLocation: point,
-    legs: updatedLegs,
-  };
+  const distanceKm=currentLeg.distanceKm+meters/1000;
+  const moving=dt && computed>1 ? dt : 0;
+  const maxElev=altitude===null?currentLeg.maxElevationMeters:Math.max(currentLeg.maxElevationMeters??altitude,altitude);
+  const updatedLeg:ExpeditionLeg={...currentLeg,nextPointStartsSegment:false,elevationAnchor:anchor,
+    filteredAltitude:altitude??(segmentStart?undefined:currentLeg.filteredAltitude),altitudeTimestamp:altitude!==null?point.timestamp:currentLeg.altitudeTimestamp,
+    distanceKm, movingSeconds:currentLeg.movingSeconds+moving,
+    elevationGainMeters:currentLeg.elevationGainMeters+ascent,
+    maxSpeedKmh:Math.max(currentLeg.maxSpeedKmh,speed),
+    avgSpeedKmh:(currentLeg.movingSeconds+moving)>0?distanceKm/((currentLeg.movingSeconds+moving)/3600):0,
+    maxElevationMeters:maxElev,
+    minElevationMeters:altitude===null?currentLeg.minElevationMeters:Math.min(currentLeg.minElevationMeters??altitude,altitude),
+    startElevationMeters:currentLeg.startElevationMeters??altitude??undefined,
+    coordinates:[...currentLeg.coordinates,recorded]};
+  const legs=[...session.legs];legs[activeLegIndex]=updatedLeg;
+  return {...session,qualityVersion:2,totalDistanceKm:session.totalDistanceKm+meters/1000,
+    movingSeconds:session.movingSeconds+moving,elevationGainMeters:session.elevationGainMeters+ascent,
+    maxElevationMeters:altitude===null?session.maxElevationMeters:Math.max(session.maxElevationMeters??altitude,altitude),
+    currentSpeedKmh:speed,currentElevationMeters:altitude??undefined,currentLocation:recorded,legs};
 }
 
 /**
  * Formats duration in seconds to HH:MM:SS or MM:SS
  */
 export function formatDuration(seconds: number): string {
+  seconds=Math.max(0,Math.floor(seconds));
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
@@ -340,7 +297,10 @@ export function formatDuration(seconds: number): string {
  * Converts live expedition session into standard GeoJSON FeatureCollection
  */
 export function exportExpeditionToGeoJson(session: LiveExpeditionSession): object {
-  const features = session.legs.map((leg) => ({
+  const features = session.legs.flatMap((leg) => {
+    const segments: BreadcrumbPoint[][]=[];
+    for(const point of leg.coordinates){if(point.segmentStart || !segments.length)segments.push([]);segments.at(-1)!.push(point);}
+    return segments.filter(points=>points.length>1).map(points => ({
     type: "Feature",
     properties: {
       legId: leg.id,
@@ -353,13 +313,14 @@ export function exportExpeditionToGeoJson(session: LiveExpeditionSession): objec
     },
     geometry: {
       type: "LineString",
-      coordinates: leg.coordinates.map((pt) => [
+      coordinates: points.map((pt) => [
         pt.longitude,
         pt.latitude,
         pt.altitude ?? 0,
       ]),
     },
   }));
+  });
 
   return {
     type: "FeatureCollection",

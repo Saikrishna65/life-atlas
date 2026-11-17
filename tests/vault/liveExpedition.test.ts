@@ -53,6 +53,7 @@ describe("Trip Vault Phase 16: Live Expedition & Hybrid GPS Route Tracking Flow"
       latitude: 30.4878,
       longitude: 79.1764,
       altitude: 2680,
+      altitudeAccuracy:5,
       speed: 0,
       accuracy: 10,
       timestamp: 1000,
@@ -66,6 +67,7 @@ describe("Trip Vault Phase 16: Live Expedition & Hybrid GPS Route Tracking Flow"
       latitude: 30.4879,
       longitude: 79.1765,
       altitude: 2680,
+      altitudeAccuracy:5,
       speed: 0,
       accuracy: 65,
       timestamp: 4000,
@@ -77,6 +79,7 @@ describe("Trip Vault Phase 16: Live Expedition & Hybrid GPS Route Tracking Flow"
       latitude: 30.487805,
       longitude: 79.176405,
       altitude: 2680,
+      altitudeAccuracy:5,
       speed: 0,
       accuracy: 8,
       timestamp: 5000,
@@ -132,38 +135,15 @@ describe("Trip Vault Phase 16: Live Expedition & Hybrid GPS Route Tracking Flow"
     const tripId = "trip_chopta";
     let session = startExpedition(tripId, "Chopta to Chandrashila", "TREK");
 
-    // Point 1: Chopta base (2,680 m)
-    const p1: BreadcrumbPoint = {
-      latitude: 30.4878,
-      longitude: 79.1764,
-      altitude: 2680,
-      speed: 1.2,
-      accuracy: 5,
-      timestamp: 100000,
-    };
-    session = addBreadcrumbToExpedition(session, p1);
-
-    // Point 2: Halfway point (3,100 m)
-    const p2: BreadcrumbPoint = {
-      latitude: 30.4880,
-      longitude: 79.1960,
-      altitude: 3100,
-      speed: 1.1,
-      accuracy: 5,
-      timestamp: 105000,
-    };
-    session = addBreadcrumbToExpedition(session, p2);
-
-    // Point 3: Chandrashila summit (3,690 m)
-    const p3: BreadcrumbPoint = {
-      latitude: 30.4883,
-      longitude: 79.2173,
-      altitude: 3690,
-      speed: 0.8,
-      accuracy: 5,
-      timestamp: 110000,
-    };
-    session = addBreadcrumbToExpedition(session, p3);
+    // A continuous sampled trek, not a 4 km teleport between sparse fixes.
+    for(let index=0;index<=120;index++){
+      session=addBreadcrumbToExpedition(session,{
+        latitude:30.4878+(30.4883-30.4878)*index/120,
+        longitude:79.1764+(79.2173-79.1764)*index/120,
+        altitude:2680+(3690-2680)*index/120,altitudeAccuracy:3,speed:4,
+        accuracy:5,timestamp:100000+index*30000,
+      });
+    }
 
     assert.ok(session.totalDistanceKm > 3.5, `Expected > 3.5 km, got ${session.totalDistanceKm} km`);
     assert.equal(session.maxElevationMeters, 3690);
@@ -174,7 +154,7 @@ describe("Trip Vault Phase 16: Live Expedition & Hybrid GPS Route Tracking Flow"
     assert.equal(geoJson.type, "FeatureCollection");
     assert.equal(geoJson.features.length, 1);
     assert.equal(geoJson.features[0].geometry.type, "LineString");
-    assert.equal(geoJson.features[0].geometry.coordinates.length, 3);
+    assert.equal(geoJson.features[0].geometry.coordinates.length, 121);
   });
 
   test("5. IndexedDB persistence of Live Expedition with Cascade Deletion", async () => {
@@ -197,6 +177,7 @@ describe("Trip Vault Phase 16: Live Expedition & Hybrid GPS Route Tracking Flow"
       latitude: 30.4878,
       longitude: 79.1764,
       altitude: 2680,
+      altitudeAccuracy:5,
       speed: 1.5,
       accuracy: 5,
       timestamp: Date.now(),

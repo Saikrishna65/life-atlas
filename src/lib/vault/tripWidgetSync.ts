@@ -77,7 +77,7 @@ export async function syncActiveTripToWidget(preferredTripId?: string): Promise<
       const subtitle = activeLeg?.title || targetTrip.destination || "Active Expedition";
 
       let altStr = "--";
-      if (session?.currentElevationMeters != null && session.currentElevationMeters > 0) {
+      if (session?.currentElevationMeters != null && Number.isFinite(session.currentElevationMeters)) {
         altStr = `${Math.round(session.currentElevationMeters).toLocaleString()} m`;
       } else if (session?.legs) {
         for (let i = session.legs.length - 1; i >= 0; i--) {

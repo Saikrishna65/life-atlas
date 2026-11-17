@@ -1,4 +1,5 @@
 import prisma from "../prisma";
+import {publishedTripMedia} from "../public-trips/detail";
 import { expeditions } from "@/data/demo/expeditions";
 import { gallery } from "@/data/demo/memories";
 import type { HeroGalleryPhoto, HeroTrip } from "@/data/demo/hero-films";
@@ -9,7 +10,7 @@ export async function getLatestHeroTrips(): Promise<HeroTrip[]> {
     const trips = await prisma.trip.findMany({
       take: 3,
       orderBy: [{ startDate: "desc" }, { id: "asc" }],
-      select: { id: true, slug: true, title: true, coverImage: true },
+      select: { id: true, slug: true, title: true, coverImage: true,routeData:true },
     });
     if (trips.length)
       return trips.map((trip) => ({
@@ -18,6 +19,7 @@ export async function getLatestHeroTrips(): Promise<HeroTrip[]> {
         title: trip.title,
         image: trip.coverImage || heroImage(trip.slug),
         sample: false,
+        video:publishedTripMedia(trip.routeData).find(item=>item.kind==="video")?.url,
       }));
   } catch {
     /* The public homepage also works without a configured public database. */

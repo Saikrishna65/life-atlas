@@ -1,131 +1,21 @@
-import { getTrip, getItinerariesForTrip, getMemoriesForTrip, saveTrip } from "./storage";
-import { notifyVaultChange } from "./useTripVault";
-import type { ID, TripRecord } from "./types";
-
-export interface PublishTripResult {
-  success: boolean;
-  slug: string;
-  publicUrl: string;
-  placesCount: number;
-  photoCount: number;
-  memoryCount: number;
-  message: string;
-}
-
-/**
- * Publishes or updates a trip from the local Trip Vault directly to the public website.
- * Syncs trip details, days, waypoints/places, multi-image memories, and GPS expedition distance.
- */
-export async function publishTripToWebsite(
-  tripId: ID,
-  selectedMemoryIds?: string[]
-): Promise<PublishTripResult> {
-  const trip = await getTrip(tripId);
-  if (!trip) throw new Error("Trip not found in local vault.");
-  if (!trip.startDate) throw new Error("Set the trip travel dates before publishing.");
-
-  const [itineraries, allMemories] = await Promise.all([
-    getItinerariesForTrip(tripId),
-    getMemoriesForTrip(tripId),
-  ]);
-
-  const memoriesToExport =
-    selectedMemoryIds && selectedMemoryIds.length > 0
-      ? allMemories.filter((m) => selectedMemoryIds.includes(m.id))
-      : allMemories;
-
-  // Extract all unique places from waypoints, destinations, and memories
-  const placesMap = new Map<
-    string,
-    { name: string; latitude?: number; longitude?: number; region?: string }
-  >();
-
-  if (trip.destination) {
-    placesMap.set(trip.destination.toLowerCase(), {
-      name: trip.destination,
-      region: "Uttarakhand",
-    });
-  }
-
-  for (const wp of trip.waypoints || []) {
-    const wpTitle = wp.title?.trim();
-    if (wpTitle) {
-      placesMap.set(wpTitle.toLowerCase(), {
-        name: wpTitle,
-        latitude: typeof wp.latitude === "number" && wp.latitude !== 0 ? wp.latitude : undefined,
-        longitude: typeof wp.longitude === "number" && wp.longitude !== 0 ? wp.longitude : undefined,
-        region: "Uttarakhand",
-      });
-    }
-  }
-
-  for (const mem of memoriesToExport) {
-    const p = (mem.placeName || mem.location)?.trim();
-    if (p && !placesMap.has(p.toLowerCase())) {
-      placesMap.set(p.toLowerCase(), { name: p, region: "Uttarakhand" });
-    }
-  }
-
-  // Cover image fallback
-  const cover =
-    trip.coverImage ||
-    memoriesToExport.find((m) => m.imageDataUrl)?.imageDataUrl ||
-    memoriesToExport.find((m) => m.images?.[0])?.images?.[0];
-
-  const payload = {
-    tripId: trip.id,
-    title: trip.title,
-    destination: trip.destination,
-    startDate: trip.startDate,
-    endDate: trip.endDate || trip.completedAt,
-    description: trip.notes?.trim() || undefined,
-    coverImage: cover,
-    totalDistanceKm: trip.liveExpedition?.totalDistanceKm,
-    elevationGainMeters: trip.liveExpedition?.elevationGainMeters,
-    maxElevationMeters: trip.liveExpedition?.maxElevationMeters,
-    routeData: trip.liveExpedition || undefined,
-    existingSlug: trip.publishedSlug,
-    places: Array.from(placesMap.values()),
-    memories: memoriesToExport.map((m) => ({
-      title: m.title,
-      caption: m.caption,
-      date: m.date,
-      placeName: m.placeName || m.location,
-      imageUrl: m.imageDataUrl,
-      images: m.images,
-    })),
-    itineraryDays: itineraries.filter(d => d.title?.trim() || d.description?.trim() || d.activities?.length).map((d) => ({
-      dayIndex: d.dayIndex,
-      date: d.date,
-      title: d.title || `Day ${d.dayIndex + 1}`,
-      description:
-        d.description ||
-        d.activities?.map((a) => `${a.startTime || ""} ${a.title}`).join(", "),
-    })),
-  };
-
-  const response = await fetch("/api/vault/export", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await response.json().catch(() => ({}));
-
-  if (!response.ok || !data.success) {
-    throw new Error(data.error || `Failed to export trip (HTTP ${response.status})`);
-  }
-
-  // Stamp publishedSlug and publishedAt on the local trip
-  const updatedTrip: TripRecord = {
-    ...trip,
-    publishedSlug: data.slug,
-    publishedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  await saveTrip(updatedTrip);
-  notifyVaultChange();
-
-  return data as PublishTripResult;
+import {getTrip,getItinerariesForTrip,getMemoriesForTrip,patchTripFields} from './storage';
+import {notifyVaultChange} from './useTripVault';
+import {appServiceUrl} from '../appNetwork';
+import {websitePayload,type WebsiteOptions} from './website-payload';
+export interface PublishTripResult {success:boolean;slug:string;publicUrl:string;placesCount:number;photoCount:number;memoryCount:number;message:string;}
+/** Explicit review only. No automatic uploads and no modification of cloud backups. */
+export async function publishTripToWebsite(tripId:string,selection:string[]|WebsiteOptions=[]):Promise<PublishTripResult>{
+  if(typeof navigator!=='undefined'&&navigator.onLine===false)throw Error('You are offline. Your trip and previous website post are unchanged.');
+  const trip=await getTrip(tripId);if(!trip)throw Error('Trip not found in this vault.');
+  const [days,memories]=await Promise.all([getItinerariesForTrip(tripId),getMemoriesForTrip(tripId)]);
+  const options:WebsiteOptions=Array.isArray(selection)?{memoryIds:selection}:selection;
+  const payload=websitePayload(trip,memories,days,options);
+  const body=JSON.stringify(payload);
+  if(new Blob([body]).size>3*1024*1024)throw Error('These local photos exceed the website request limit. Use Add photos / videos to upload their originals directly to R2 instead. The website journal was not updated; approved public R2 copies and local originals remain available.');
+  const response=await fetch('/api/vault/export',{method:'POST',headers:{'Content-Type':'application/json','X-Atlas-Publish':'1','X-Capacitor-Platform':'android'},body});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok||!result.success)throw Error(result.error||`Publishing failed (${response.status}). Your saved trip is unchanged.`);
+  // Fetch again: tracking may have appended points while network/media operations ran.
+  await patchTripFields(tripId,{publishedSlug:result.slug,publishedAt:new Date().toISOString()});
+  notifyVaultChange();const service=appServiceUrl('/api/vault/export');return {...result,publicUrl:service.startsWith('http')?new URL(result.publicUrl,service).href:result.publicUrl};
 }

@@ -46,7 +46,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
       id: `published-${item.id}`, url: item.url, poster: item.thumbnailUrl, kind: mediaKind(item.mimeType),
       caption: item.title || undefined, place: item.tags.find(tag => tag.startsWith("place:"))?.slice(6).trim() || "Unassigned", category: "Published media",
     }));
-    return [...new Map([...published, ...trip.media].map(item => [`${item.kind}:${item.place}:${item.url}`, item])).values()];
+    return [...new Map([...published, ...trip.media].map(item => [`${item.kind}:${item.url}`, item])).values()];
   }, [catalog, trip]);
   const places = [...new Set(media.map(item => item.place).filter(value => value && value !== "Unassigned"))];
   const categories = [...new Set(media.map(item => item.category).filter(Boolean))];

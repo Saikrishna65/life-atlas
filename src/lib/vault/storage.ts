@@ -1002,15 +1002,18 @@ export async function getLiveExpedition(tripId: ID): Promise<LiveExpeditionSessi
   return trip?.liveExpedition || null;
 }
 
-export async function saveLiveExpedition(tripId: ID, session: LiveExpeditionSession): Promise<LiveExpeditionSession> {
-  const trip = await getTrip(tripId);
-  if (!trip) throw new VaultStorageError(`Trip ${tripId} not found`, "NOT_FOUND");
-  await saveTrip({
-    ...trip,
-    liveExpedition: session,
-    updatedAt: new Date().toISOString(),
+/** Read and patch in a single transaction so tracking and publishing cannot overwrite each other. */
+export async function patchTripFields(tripId:ID,fields:Partial<Pick<TripRecord,"liveExpedition"|"publishedSlug"|"publishedAt">>):Promise<TripRecord>{
+  const db=await getVaultDB();
+  return new Promise((resolve,reject)=>{
+    const transaction=db.transaction("trips","readwrite"),store=transaction.objectStore("trips");let result:TripRecord;
+    const request=store.get(tripId);
+    request.onsuccess=()=>{if(!request.result){transaction.abort();return;}result={...request.result,...fields,updatedAt:new Date().toISOString()};store.put(result);};
+    transaction.oncomplete=()=>resolve(result);transaction.onabort=()=>reject(new VaultStorageError("Trip could not be updated; existing data is unchanged.","TRANSACTION_FAILED"));transaction.onerror=()=>reject(transaction.error);
   });
-  return session;
+}
+export async function saveLiveExpedition(tripId: ID, session: LiveExpeditionSession): Promise<LiveExpeditionSession> {
+  await patchTripFields(tripId,{liveExpedition:session});return session;
 }
 
 export async function completeTripAndArchive(tripId: ID): Promise<TripRecord> {

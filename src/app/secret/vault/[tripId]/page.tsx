@@ -15,9 +15,6 @@ import {
   Images,
   Music,
   Cloud,
-  Globe,
-  ExternalLink,
-  CheckCircle2,
 } from "lucide-react";
 import { useTripVault } from "@/lib/vault/useTripVault";
 import { useItinerary } from "@/lib/vault/useItinerary";
@@ -27,7 +24,7 @@ import type { TripStatus } from "@/lib/vault/types";
 import { tripScheduleLabel, tripScheduleInput } from "@/lib/vault/tripSchedule";
 import TripEditor from "@/components/trip-vault/TripEditor";
 import LiveExpeditionTracker from "@/components/trip-vault/LiveExpeditionTracker";
-import { publishTripToWebsite } from "@/lib/vault/publishTrip";
+import TripWebsitePublisher from "@/components/trip-vault/TripWebsitePublisher";
 import {
   TripSheet,
   tripCover,
@@ -49,11 +46,6 @@ export default function TripOverview() {
   const [editing, setEditing] = useState(false);
   const [problem, setProblem] = useState("");
   const [busy, setBusy] = useState(false);
-
-  // Publishing state
-  const [publishing, setPublishing] = useState(false);
-  const [publishSuccess, setPublishSuccess] = useState("");
-  const [publishError, setPublishError] = useState("");
 
   if (isLoading) return <p role="status">Opening your trip…</p>;
   if (!trip)
@@ -77,25 +69,6 @@ export default function TripOverview() {
       (a.departureOrCheckInTime || "").localeCompare(b.departureOrCheckInTime || "")
     )[0];
 
-  async function handlePublishToWebsite() {
-    setPublishing(true);
-    setPublishError("");
-    setPublishSuccess("");
-    try {
-      const res = await publishTripToWebsite(id);
-      setPublishSuccess(
-        `Expedition published! ${res.placesCount} places, ${res.photoCount} photos, and ${itinerary.days.length} itinerary days are now live on your website.`
-      );
-    } catch (err) {
-      setPublishError(
-        err instanceof Error
-          ? err.message
-          : "Could not publish to website. Please check your internet connection."
-      );
-    } finally {
-      setPublishing(false);
-    }
-  }
 
   return (
     <div className="tv-overview">
@@ -170,68 +143,9 @@ export default function TripOverview() {
       </div>
 
       {/* Hybrid Live Expedition GPS Tracker */}
-      <LiveExpeditionTracker tripId={id} tripDestination={trip.destination} />
+      <LiveExpeditionTracker tripId={id} tripDestination={trip.destination} travelStyle={trip.travelStyle} />
 
-      {/* Post Trip Directly to Public Website Card */}
-      <section className="tv-publish-card">
-        <div className="tv-publish-header">
-          <div className="tv-publish-title">
-            <Globe size={18} style={{ color: "var(--tv-cyan, #06b6d4)" }} />
-            <span>
-              {trip.publishedSlug ? "Published to Public Website" : "Post Trip to Website"}
-            </span>
-          </div>
-          {trip.publishedSlug && (
-            <span className="tv-publish-badge">
-              <CheckCircle2 size={12} /> Live on Web
-            </span>
-          )}
-        </div>
-
-        <p className="tv-publish-desc">
-          {trip.publishedSlug
-            ? `Your expedition is live on the public website. You can view the live journal, photo gallery, and visited places or update the post anytime.`
-            : "Post this trip directly to your public Life Atlas website to publish your visited places, itinerary days, photo memories, and expedition stats."}
-        </p>
-
-        {publishError && (
-          <p className="tv-error" role="alert">
-            {publishError}
-          </p>
-        )}
-        {publishSuccess && (
-          <p className="tv-fine" style={{ color: "#10b981", fontWeight: 600 }}>
-            {publishSuccess}
-          </p>
-        )}
-
-        <div className="tv-publish-actions">
-          <button
-            className="tv-publish-btn"
-            disabled={publishing || !trip.startDate}
-            onClick={handlePublishToWebsite}
-          >
-            <Globe size={15} />
-            {publishing
-              ? "Publishing to Website…"
-              : trip.publishedSlug
-              ? "Update Website Post"
-              : "Post Trip to Website"}
-          </button>
-
-          {trip.publishedSlug && (
-            <a
-              className="tv-publish-link"
-              href={`/trips/${trip.publishedSlug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span>View on Website</span>
-              <ExternalLink size={13} />
-            </a>
-          )}
-        </div>
-      </section>
+      <TripWebsitePublisher tripId={id} />
 
       {problem && (
         <p className="tv-error" role="alert">

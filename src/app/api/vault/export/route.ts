@@ -1,10 +1,13 @@
+import {allowAtlasMutation} from "@/lib/mobileRequest";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function POST(request: Request) {
+  if(!allowAtlasMutation(request,"x-atlas-publish"))return NextResponse.json({error:"Publish through your Atlas app."},{status:403});
   try {
+    if(Number(request.headers.get("content-length")||0)>3*1024*1024)return NextResponse.json({error:"Upload large originals to R2 first."},{status:413});
     const body = await request.json();
     const {
       title,
@@ -22,26 +25,32 @@ export async function POST(request: Request) {
       maxElevationMeters,
       routeData,
       existingSlug,
+      preserveExistingRoute=false,
+      publicMedia=[],
+      preserveExistingMedia=false,
+      preserveExistingItinerary=false,
     } = body;
 
-    if (!title || !destination || !startDate) {
+    if (typeof title!=="string" || !title.trim() || title.length>150 || typeof destination!=="string" || !startDate || !Number.isFinite(Date.parse(startDate))) {
       return NextResponse.json(
         { error: "Title, destination, and startDate are required fields." },
         { status: 400 }
       );
     }
 
+    if(!Array.isArray(publicMedia)||publicMedia.length>250||publicMedia.some((item: {url?:unknown;poster?:unknown;kind?:unknown})=>!item||!['photo','video'].includes(String(item.kind))||typeof item.url!=='string'||!/^https:\/\//.test(item.url)||(item.poster&&!/^https:\/\//.test(String(item.poster)))))return NextResponse.json({error:'Choose valid public media URLs.'},{status:400});
+    const saved=await prisma.$transaction(async db=>{
     // 1. Get or create author user
-    let user = await prisma.user.findUnique({
+    let user = await db.user.findUnique({
       where: { email: "author@lifeatlas.com" },
     });
 
     if (!user) {
-      user = await prisma.user.findFirst();
+      user = await db.user.findFirst();
     }
 
     if (!user) {
-      user = await prisma.user.create({
+      user = await db.user.create({
         data: {
           email: "author@lifeatlas.com",
           name: "Life Atlas Voyager",
@@ -59,10 +68,10 @@ export async function POST(request: Request) {
     let existingTrip = null;
 
     if (existingSlug) {
-      existingTrip = await prisma.trip.findUnique({ where: { slug: existingSlug } });
+      existingTrip = await db.trip.findUnique({ where: { slug: existingSlug } });
     }
-    if (!existingTrip) {
-      existingTrip = await prisma.trip.findUnique({ where: { slug: rawSlug } });
+    if (!existingTrip && !existingSlug) {
+      existingTrip = await db.trip.findUnique({ where: { slug: rawSlug } });
       if (existingTrip) {
         slug = rawSlug;
       }
@@ -79,10 +88,18 @@ export async function POST(request: Request) {
 
     const fullDescription = typeof description === "string" ? description.trim() || null : null;
 
+
+    const priorRoute=existingTrip?.routeData && typeof existingTrip.routeData==='object'&&!Array.isArray(existingTrip.routeData)?existingTrip.routeData:{};
+    const nextRoute=routeData&&typeof routeData==='object'&&!Array.isArray(routeData)?routeData:preserveExistingRoute?priorRoute:{};
+    const storedRoute={...nextRoute} as Record<string,unknown>;
+    if(preserveExistingMedia && "publication" in priorRoute)storedRoute.publication=priorRoute.publication;
+    if(!preserveExistingMedia)delete storedRoute.publication;
+    if(publicMedia.length)storedRoute.publication={media:publicMedia};
+    const retainedTotals={distance:existingTrip?.totalDistanceKm??null,ascent:existingTrip?.elevationGainMeters??null,altitude:existingTrip?.maxElevationMeters??null};
     let trip;
     if (existingTrip) {
       // Update existing public trip
-      trip = await prisma.trip.update({
+      trip = await db.trip.update({
         where: { id: existingTrip.id },
         data: {
           title,
@@ -92,23 +109,23 @@ export async function POST(request: Request) {
           duration: durationStr,
           description: fullDescription,
           coverImage: coverImage || existingTrip.coverImage,
-          totalDistanceKm: typeof totalDistanceKm === "number" ? totalDistanceKm : (totalDistanceKm ? parseFloat(totalDistanceKm) : null),
-          elevationGainMeters: typeof elevationGainMeters === "number" ? elevationGainMeters : (elevationGainMeters ? parseFloat(elevationGainMeters) : null),
-          maxElevationMeters: typeof maxElevationMeters === "number" ? maxElevationMeters : (maxElevationMeters ? parseFloat(maxElevationMeters) : null),
-          routeData: routeData || Prisma.DbNull,
+          totalDistanceKm: typeof totalDistanceKm === "number" ? totalDistanceKm : (totalDistanceKm ? parseFloat(totalDistanceKm) : preserveExistingRoute ? retainedTotals.distance : null),
+          elevationGainMeters: typeof elevationGainMeters === "number" ? elevationGainMeters : (elevationGainMeters ? parseFloat(elevationGainMeters) : preserveExistingRoute ? retainedTotals.ascent : null),
+          maxElevationMeters: typeof maxElevationMeters === "number" ? maxElevationMeters : (maxElevationMeters ? parseFloat(maxElevationMeters) : preserveExistingRoute ? retainedTotals.altitude : null),
+          routeData: Object.keys(storedRoute).length ? storedRoute as Prisma.InputJsonValue : Prisma.DbNull,
         },
       });
       // Clear previous child records to perform a clean refresh
-      await prisma.tripDay.deleteMany({ where: { tripId: trip.id } });
-      await prisma.tripPlace.deleteMany({ where: { tripId: trip.id } });
-      await prisma.photo.deleteMany({ where: { tripId: trip.id } });
+      if(!preserveExistingItinerary)await db.tripDay.deleteMany({ where: { tripId: trip.id } });
+      await db.tripPlace.deleteMany({ where: { tripId: trip.id } });
+      if(!preserveExistingMedia)await db.photo.deleteMany({ where: { tripId: trip.id } });
     } else {
       // Generate guaranteed unique slug for new trip
       let suffix = 1;
-      while (await prisma.trip.findUnique({ where: { slug } })) {
+      while (await db.trip.findUnique({ where: { slug } })) {
         slug = `${rawSlug}-${suffix++}`;
       }
-      trip = await prisma.trip.create({
+      trip = await db.trip.create({
         data: {
           title,
           slug,
@@ -118,10 +135,10 @@ export async function POST(request: Request) {
           duration: durationStr,
           description: fullDescription,
           coverImage: coverImage || null,
-          totalDistanceKm: typeof totalDistanceKm === "number" ? totalDistanceKm : (totalDistanceKm ? parseFloat(totalDistanceKm) : null),
-          elevationGainMeters: typeof elevationGainMeters === "number" ? elevationGainMeters : (elevationGainMeters ? parseFloat(elevationGainMeters) : null),
-          maxElevationMeters: typeof maxElevationMeters === "number" ? maxElevationMeters : (maxElevationMeters ? parseFloat(maxElevationMeters) : null),
-          routeData: routeData || Prisma.DbNull,
+          totalDistanceKm: typeof totalDistanceKm === "number" ? totalDistanceKm : (totalDistanceKm ? parseFloat(totalDistanceKm) : preserveExistingRoute ? retainedTotals.distance : null),
+          elevationGainMeters: typeof elevationGainMeters === "number" ? elevationGainMeters : (elevationGainMeters ? parseFloat(elevationGainMeters) : preserveExistingRoute ? retainedTotals.ascent : null),
+          maxElevationMeters: typeof maxElevationMeters === "number" ? maxElevationMeters : (maxElevationMeters ? parseFloat(maxElevationMeters) : preserveExistingRoute ? retainedTotals.altitude : null),
+          routeData: Object.keys(storedRoute).length ? storedRoute as Prisma.InputJsonValue : Prisma.DbNull,
           userId: user.id,
         },
       });
@@ -137,7 +154,7 @@ export async function POST(request: Request) {
         if (!plName) continue;
 
         const plSlug = plName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "") || "place";
-        let place = await prisma.place.findFirst({
+        let place = await db.place.findFirst({
           where: {
             OR: [
               { slug: plSlug },
@@ -147,12 +164,12 @@ export async function POST(request: Request) {
         });
 
         if (!place) {
-          place = await prisma.place.create({
+          place = await db.place.create({
             data: {
               name: plName,
               slug: plSlug,
-              country: "India",
-              region: typeof pl === "object" ? pl.region || "Uttarakhand" : null,
+              country: "Unspecified",
+              region: typeof pl === "object" ? pl.region || null : null,
               latitude: typeof pl === "object" && typeof pl.latitude === "number" ? pl.latitude : null,
               longitude: typeof pl === "object" && typeof pl.longitude === "number" ? pl.longitude : null,
               userId: user.id,
@@ -163,7 +180,7 @@ export async function POST(request: Request) {
         placeMap.set(plName.toLowerCase(), place.id);
 
         // Link TripPlace
-        await prisma.tripPlace.upsert({
+        await db.tripPlace.upsert({
           where: {
             tripId_placeId: {
               tripId: trip.id,
@@ -185,7 +202,7 @@ export async function POST(request: Request) {
     if (Array.isArray(itineraryDays) && itineraryDays.length > 0) {
       for (const day of itineraryDays) {
         if (!day.title?.trim() && !day.description?.trim()) continue;
-        await prisma.tripDay.create({
+        await db.tripDay.create({
           data: {
             tripId: trip.id,
             dayIndex: Number(day.dayIndex) || 0,
@@ -209,7 +226,7 @@ export async function POST(request: Request) {
       const memPlaceId = memPlaceName ? placeMap.get(memPlaceName.toLowerCase()) : undefined;
 
       // Create Prisma Memory
-      const createdMem = await prisma.memory.create({
+      const createdMem = await db.memory.create({
         data: {
           title: mem.title,
           description: mem.caption || null,
@@ -219,7 +236,7 @@ export async function POST(request: Request) {
       });
 
       // Create TimelineEvent
-      await prisma.timelineEvent.create({
+      await db.timelineEvent.create({
         data: {
           title: mem.title,
           description: mem.caption || null,
@@ -243,7 +260,7 @@ export async function POST(request: Request) {
         const photoUrl = photoUrls[pIdx];
         if (!photoUrl) continue;
 
-        await prisma.photo.create({
+        await db.photo.create({
           data: {
             url: photoUrl,
             caption: mem.caption ? `${mem.title} — ${mem.caption}` : mem.title,
@@ -256,6 +273,14 @@ export async function POST(request: Request) {
         photoExportCount++;
       }
     }
+
+    for(const item of publicMedia){
+      if(item.kind==='photo'){await db.photo.create({data:{url:item.url,caption:null,tripId:trip.id,userId:user.id}});photoExportCount++;}
+    }
+
+    return {trip,placesExportCount,memoryExportCount,photoExportCount};
+    },{timeout:30000});
+    const {trip,placesExportCount,memoryExportCount,photoExportCount}=saved;
 
     // 6. Revalidate Next.js cache for public routes
     try {

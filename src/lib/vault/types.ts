@@ -480,9 +480,12 @@ export interface BreadcrumbPoint {
   latitude: number;
   longitude: number;
   altitude: number | null; // Elevation in meters
-  speed: number | null;    // Speed in km/h
+  speed: number | null;    // Speed in km/h (converted once at GPS boundary)
   accuracy: number;        // GPS fix accuracy in meters
   timestamp: number;       // Epoch time in ms
+  altitudeAccuracy?: number | null;
+  segmentStart?: boolean; // Never connect across pauses or a lost GPS signal
+  qualityVersion?: 2;
 }
 
 export type ExpeditionLegCategory = "TREK" | "DRIVE" | "WALK" | "CYCLE" | "OTHER";
@@ -506,6 +509,11 @@ export interface ExpeditionLeg {
   minElevationMeters?: number;
   elevationGainMeters: number;
   coordinates: BreadcrumbPoint[];
+  elevationAnchor?: number;
+  filteredAltitude?: number;
+  altitudeTimestamp?: number;
+  nextPointStartsSegment?: boolean;
+  segmentStartedAt?: number;
 }
 
 export interface LiveExpeditionSession {
@@ -521,6 +529,8 @@ export interface LiveExpeditionSession {
   elevationGainMeters: number;
   maxElevationMeters?: number;
   currentLocation?: BreadcrumbPoint;
+  lastClockAt?: number;
+  qualityVersion?: 2;
   activeLegId?: ID;
   legs: ExpeditionLeg[];
 }

@@ -17,6 +17,9 @@ import android.os.IBinder;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import java.util.Locale;
+import java.util.ArrayDeque;
+import com.getcapacitor.JSArray;
+import com.getcapacitor.JSObject;
 
 public class ExpeditionTrackingService extends Service implements LocationListener {
     public static final String ACTION_START = "com.lifeatlas.app.ACTION_START_EXPEDITION";
@@ -32,8 +35,22 @@ public class ExpeditionTrackingService extends Service implements LocationListen
     private static final int NOTIFICATION_ID = 2048;
 
     private static boolean isServiceRunning = false;
+    private static final ArrayDeque<JSObject> pendingPoints=new ArrayDeque<>();
+    private static String bufferedTrip="";
+    public static synchronized JSArray pending(String tripId,double after){
+        JSArray result=new JSArray();if(!bufferedTrip.equals(tripId))return result;
+        for(JSObject point:pendingPoints)if(point.optDouble("timestamp")>after){result.put(point);if(result.length()>=100)break;}return result;
+    }
+    private static synchronized void buffer(String tripId,Location location){
+        if(!tripId.equals(bufferedTrip)){pendingPoints.clear();bufferedTrip=tripId;}
+        JSObject point=new JSObject();point.put("latitude",location.getLatitude());point.put("longitude",location.getLongitude());point.put("accuracy",location.getAccuracy());point.put("timestamp",location.getTime());
+        point.put("speed",location.hasSpeed()?location.getSpeed():org.json.JSONObject.NULL);
+        point.put("altitude",location.hasAltitude()?location.getAltitude():org.json.JSONObject.NULL);
+        point.put("altitudeAccuracy",Build.VERSION.SDK_INT>=26&&location.hasVerticalAccuracy()?location.getVerticalAccuracyMeters():org.json.JSONObject.NULL);
+        pendingPoints.addLast(point);while(pendingPoints.size()>20000)pendingPoints.removeFirst();
+    }
     private LocationManager locationManager;
-    private Location lastLocation = null;
+    private ExpeditionFixFilter filter = new ExpeditionFixFilter("TREK");
     private double totalDistanceMeters = 0.0;
     private String currentLegTitle = "Expedition";
     private String currentTripId = "";
@@ -51,7 +68,7 @@ public class ExpeditionTrackingService extends Service implements LocationListen
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent == null) return START_STICKY;
+        if (intent == null) { stopSelf(); return START_NOT_STICKY; }
 
         String action = intent.getAction();
         if (ACTION_STOP.equals(action)) {
@@ -74,7 +91,11 @@ public class ExpeditionTrackingService extends Service implements LocationListen
             return START_STICKY;
         }
 
-        // Start tracking
+        // Re-anchor every explicit start/resume/leg change; never join a pause.
+        if (!ACTION_START.equals(action)) return START_NOT_STICKY;
+        filter = new ExpeditionFixFilter(intent.getStringExtra("category"));
+        totalDistanceMeters = Math.max(0, intent.getDoubleExtra(EXTRA_DISTANCE_KM, 0.0)) * 1000;
+        if(locationManager!=null)locationManager.removeUpdates(this);
         if (intent.hasExtra(EXTRA_TRIP_ID)) {
             currentTripId = intent.getStringExtra(EXTRA_TRIP_ID);
         }
@@ -133,35 +154,34 @@ public class ExpeditionTrackingService extends Service implements LocationListen
     public void onLocationChanged(Location location) {
         if (location == null) return;
 
-        if (lastLocation != null) {
-            float dist = lastLocation.distanceTo(location);
-            if (dist >= 4.0f && location.getAccuracy() <= 35.0f) {
-                totalDistanceMeters += dist;
-                lastLocation = location;
-                updateNotification();
-            }
-        } else {
-            lastLocation = location;
-        }
+        Double vertical = Build.VERSION.SDK_INT >= 26 && location.hasVerticalAccuracy() ? (double)location.getVerticalAccuracyMeters() : null;
+        ExpeditionFixFilter.Result result=filter.accept(new ExpeditionFixFilter.Fix(
+            location.getLatitude(),location.getLongitude(),location.hasAccuracy()?location.getAccuracy():Double.POSITIVE_INFINITY,
+            location.getTime(),location.hasSpeed()?(double)location.getSpeed():null,location.hasAltitude()?location.getAltitude():null,vertical));
+        if(result==null)return;
+        buffer(currentTripId,location);
+        totalDistanceMeters+=result.distanceMeters;
+        updateNotification();
 
         // Broadcast to WebView / app
         Intent broadcast = new Intent(ACTION_LOCATION_UPDATE);
         broadcast.putExtra("lat", location.getLatitude());
         broadcast.putExtra("lng", location.getLongitude());
-        broadcast.putExtra("alt", location.hasAltitude() ? location.getAltitude() : 0.0);
-        broadcast.putExtra("speed", location.hasSpeed() ? location.getSpeed() : 0.0f);
+        broadcast.putExtra("alt", result.altitude==null?Double.NaN:result.altitude);
+        broadcast.putExtra("speed", result.speedKmh / 3.6);
         broadcast.putExtra("acc", location.hasAccuracy() ? location.getAccuracy() : 10.0f);
         broadcast.putExtra("time", location.getTime());
         broadcast.putExtra("distKm", totalDistanceMeters / 1000.0);
         broadcast.putExtra(EXTRA_TRIP_ID, currentTripId);
+        broadcast.setPackage(getPackageName());
         sendBroadcast(broadcast);
 
         // Also update Trip Vault Home Screen Widget in real time
         try {
             double km = totalDistanceMeters / 1000.0;
             String distanceStr = String.format(Locale.US, "%.1f km", km);
-            String altStr = location.hasAltitude() ? String.format(Locale.US, "%,d m", Math.round(location.getAltitude())) : "--";
-            String speedStr = location.hasSpeed() ? String.format(Locale.US, "%.1f km/h", location.getSpeed() * 3.6f) : "--";
+            String altStr = result.altitude!=null ? String.format(Locale.US, "%,d m", Math.round(result.altitude)) : "--";
+            String speedStr = String.format(Locale.US, "%.1f km/h", result.speedKmh);
             TripAppWidgetProvider.updateLiveTracking(this, currentTripId, currentLegTitle, distanceStr, altStr, speedStr);
         } catch (Exception ignored) {
         }

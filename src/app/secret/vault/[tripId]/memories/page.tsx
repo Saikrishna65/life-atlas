@@ -6,15 +6,14 @@ import {
   Plus,
   Star,
   ImagePlus,
-  Share2,
   MapPin,
   Trash2,
   Camera,
   ChevronLeft,
   ChevronRight,
   X,
-  Navigation,
 } from "lucide-react";
+import TripWebsitePublisher from "@/components/trip-vault/TripWebsitePublisher";
 import { useMemories } from "@/lib/vault/useMemories";
 import type { TripMemoryRecord } from "@/lib/vault/types";
 import { TripSheet, EmptyTripState } from "@/components/trip-vault/shared";
@@ -35,7 +34,6 @@ export default function Memories() {
     addMemory,
     removeMemory,
     toggleHighlight,
-    exportToPublicJournal,
     tripPlaces,
     addTripPlace,
   } = useMemories(id);
@@ -57,15 +55,9 @@ export default function Memories() {
   const [viewing, setViewing] = useState<TripMemoryRecord | null>(null);
   const [carouselIdx, setCarouselIdx] = useState(0);
 
-  // Publishing state
-  const [publishing, setPublishing] = useState(false);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [consent, setConsent] = useState(false);
-
   // Operation state
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState("");
-  const [result, setResult] = useState("");
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -200,17 +192,7 @@ export default function Memories() {
           })}
         </div>
 
-        <button
-          disabled={!memories.length || !trip.startDate || busy}
-          onClick={() => {
-            setSelected([]);
-            setConsent(false);
-            setResult("");
-            setPublishing(true);
-          }}
-        >
-          <Share2 size={16} /> Share to journal
-        </button>
+
       </div>
 
       {(problem || error) && (
@@ -605,79 +587,8 @@ export default function Memories() {
         </TripSheet>
       )}
 
-      {/* Public Journal Publishing Modal Sheet */}
-      {publishing && (
-        <TripSheet
-          title="Share to your public journal"
-          onClose={() => {
-            if (!busy) setPublishing(false);
-          }}
-        >
-          <p className="tv-fine">
-            Choose the memories to publish. This will publish the trip title,
-            destination, dates, trip notes, and itinerary. Other vault sections
-            remain private.
-          </p>
+      <TripWebsitePublisher tripId={id} />
 
-          {memories.map((memory) => (
-            <label className="tv-publish-choice" key={memory.id}>
-              <input
-                type="checkbox"
-                checked={selected.includes(memory.id)}
-                onChange={(e) =>
-                  setSelected(
-                    e.target.checked
-                      ? [...selected, memory.id]
-                      : selected.filter((mid) => mid !== memory.id)
-                  )
-                }
-              />
-              <span>
-                <strong>{memory.title}</strong>
-                {(memory.placeName || memory.location) && (
-                  <small style={{ display: "block", color: "var(--tv-sub)" }}>
-                    📍 {memory.placeName || memory.location}
-                  </small>
-                )}
-              </span>
-            </label>
-          ))}
-
-          <label className="tv-publish-choice">
-            <input
-              type="checkbox"
-              checked={consent}
-              onChange={(e) => setConsent(e.target.checked)}
-            />
-            I want these selected memories and trip details to be public.
-          </label>
-
-          <button
-            className="tv-primary"
-            disabled={busy || !selected.length || !consent || !!result}
-            onClick={() =>
-              void run(async () => {
-                const saved = await exportToPublicJournal(selected);
-                setResult(saved.publicUrl || "Published to your public journal.");
-              })
-            }
-          >
-            Publish selected memories
-          </button>
-
-          {result && (
-            <p className="tv-fine" role="status">
-              {result}
-            </p>
-          )}
-
-          {problem && (
-            <p className="tv-error" role="alert">
-              {problem}
-            </p>
-          )}
-        </TripSheet>
-      )}
     </section>
   );
 }

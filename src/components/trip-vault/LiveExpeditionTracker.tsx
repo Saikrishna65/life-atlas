@@ -9,9 +9,6 @@ import {
   Plus,
   Compass,
   Navigation,
-  Mountain,
-  Clock,
-  MapPin,
   ChevronRight,
   CheckCircle2,
 } from "lucide-react";
@@ -21,18 +18,20 @@ import { ExpeditionLegCategory } from "@/lib/vault/types";
 export default function LiveExpeditionTracker({
   tripId,
   tripDestination,
+  travelStyle,
 }: {
   tripId: string;
   tripDestination?: string;
+  travelStyle?: string;
 }) {
   const {
     session,
     isLoading,
     isTracking,
     isPaused,
-    isCompleted,
     activeLeg,
     elapsedFormatted,
+    error: trackingError,
     start,
     startLeg,
     pause,
@@ -40,6 +39,9 @@ export default function LiveExpeditionTracker({
     end,
   } = useLiveExpedition(tripId);
 
+  const [initialCategory,setInitialCategory]=useState<ExpeditionLegCategory>(["MOTORCYCLE","ROADTRIP"].includes(travelStyle||"")?"DRIVE":travelStyle==="CYCLING"?"CYCLE":travelStyle==="TREKKING"?"TREK":"WALK");
+  const [actionError,setActionError]=useState("");
+  async function trackingAction(action:()=>Promise<void>){try{setActionError("");await action();}catch(e){setActionError(e instanceof Error?e.message:"Could not update tracking. Your saved route was preserved.");}}
   const [showNewLegModal, setShowNewLegModal] = useState(false);
   const [newLegTitle, setNewLegTitle] = useState("");
   const [newLegCategory, setNewLegCategory] = useState<ExpeditionLegCategory>("TREK");
@@ -51,7 +53,7 @@ export default function LiveExpeditionTracker({
   const handleStartNewLeg = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLegTitle.trim()) return;
-    await startLeg(newLegTitle.trim(), newLegCategory);
+    await trackingAction(()=>startLeg(newLegTitle.trim(), newLegCategory));
     setNewLegTitle("");
     setShowNewLegModal(false);
   };
@@ -70,18 +72,20 @@ export default function LiveExpeditionTracker({
               Ready to record your journey?
             </h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm">
-              Tap Start when you depart. Life Atlas will track distance, speed, altitude, and trace your exact route on the map completely offline.
+              Record GPS distance and your route. Speed and GPS altitude are estimates; poor fixes are excluded.
             </p>
           </div>
           <button
             type="button"
-            onClick={() => start(`Expedition to ${tripDestination || "Destination"}`, "TREK")}
+            onClick={() => void trackingAction(()=>start(`Expedition to ${tripDestination || "Destination"}`, initialCategory))}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-xs font-bold shadow-md shadow-sky-600/25 transition-all flex-shrink-0"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             Start Trip
           </button>
         </div>
+        <label className="tv-fine">Travelling by <select aria-label="Tracking travel mode" value={initialCategory} onChange={event=>setInitialCategory(event.target.value as ExpeditionLegCategory)}><option value="WALK">Walking</option><option value="TREK">Trekking</option><option value="CYCLE">Bicycle</option><option value="DRIVE">Motorbike / car</option><option value="OTHER">Other transport</option></select></label>
+        {actionError&&<p role="alert" className="tv-error">{actionError}</p>}
       </section>
     );
   }
@@ -111,6 +115,7 @@ export default function LiveExpeditionTracker({
           </Link>
         </div>
 
+        {(actionError||trackingError)&&<p role="alert" className="tv-error">{actionError||trackingError}</p>}
         {/* Live Metrics Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
@@ -118,7 +123,7 @@ export default function LiveExpeditionTracker({
               Distance Traveled
             </span>
             <strong className="text-2xl font-bold text-slate-900 tracking-tight block mt-0.5">
-              {session.totalDistanceKm} <small className="text-xs font-normal text-slate-500">km</small>
+              {session.totalDistanceKm.toFixed(3)} <small className="text-xs font-normal text-slate-500">km</small>
             </strong>
           </div>
 
@@ -133,11 +138,11 @@ export default function LiveExpeditionTracker({
 
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
             <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-              Current Altitude
+              GPS altitude (approx.)
             </span>
             <strong className="text-2xl font-bold text-slate-900 tracking-tight block mt-0.5">
-              {session.currentElevationMeters ?? "—"}{" "}
-              {session.currentElevationMeters && <small className="text-xs font-normal text-slate-500">m</small>}
+              {session.currentElevationMeters == null ? "—" : Math.round(session.currentElevationMeters)}{" "}
+              {session.currentElevationMeters != null && <small className="text-xs font-normal text-slate-500">m</small>}
             </strong>
           </div>
 
@@ -146,7 +151,7 @@ export default function LiveExpeditionTracker({
               Current Speed
             </span>
             <strong className="text-2xl font-bold text-slate-900 tracking-tight block mt-0.5">
-              {session.currentSpeedKmh ?? 0} <small className="text-xs font-normal text-slate-500">km/h</small>
+              {(session.currentSpeedKmh ?? 0).toFixed(1)} <small className="text-xs font-normal text-slate-500">km/h</small>
             </strong>
           </div>
         </div>
@@ -167,7 +172,7 @@ export default function LiveExpeditionTracker({
           {isPaused ? (
             <button
               type="button"
-              onClick={resume}
+              onClick={()=>void trackingAction(resume)}
               className="flex-1 min-w-[110px] inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold active:scale-95 transition-all shadow-sm"
             >
               <Play className="w-3.5 h-3.5 fill-current" />
@@ -176,7 +181,7 @@ export default function LiveExpeditionTracker({
           ) : (
             <button
               type="button"
-              onClick={pause}
+              onClick={()=>void trackingAction(pause)}
               className="flex-1 min-w-[110px] inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold active:scale-95 transition-all"
             >
               <Pause className="w-3.5 h-3.5 fill-current" />
@@ -197,7 +202,7 @@ export default function LiveExpeditionTracker({
             type="button"
             onClick={() => {
               if (window.confirm("Finish and end this expedition? Your complete route, distance, and stats will be finalized.")) {
-                void end();
+                void trackingAction(end);
               }
             }}
             className="flex-1 min-w-[110px] inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold active:scale-95 transition-all shadow-sm"
@@ -294,7 +299,7 @@ export default function LiveExpeditionTracker({
         <div className="p-2.5 rounded-xl bg-white/80 border border-slate-100">
           <span className="text-[9px] font-bold text-slate-400 uppercase block">Distance</span>
           <strong className="text-lg font-bold text-slate-900 mt-0.5 block">
-            {session.totalDistanceKm} <small className="text-[10px] font-normal text-slate-500">km</small>
+            {session.totalDistanceKm.toFixed(3)} <small className="text-[10px] font-normal text-slate-500">km</small>
           </strong>
         </div>
 
@@ -302,7 +307,7 @@ export default function LiveExpeditionTracker({
           <span className="text-[9px] font-bold text-slate-400 uppercase block">Peak Altitude</span>
           <strong className="text-lg font-bold text-slate-900 mt-0.5 block">
             {session.maxElevationMeters ?? "—"}{" "}
-            {session.maxElevationMeters && <small className="text-[10px] font-normal text-slate-500">m</small>}
+            {session.maxElevationMeters != null && <small className="text-[10px] font-normal text-slate-500">m</small>}
           </strong>
         </div>
 

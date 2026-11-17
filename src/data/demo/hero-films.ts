@@ -22,6 +22,7 @@ export interface HeroTrip {
   title: string;
   image: string;
   sample: boolean;
+  video?: string;
 }
 export interface HeroGalleryPhoto {
   id: string;

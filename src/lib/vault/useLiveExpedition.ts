@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import {Capacitor,registerPlugin} from "@capacitor/core";
+import { useState, useEffect, useCallback, useRef, useMemo,createElement,createContext,useContext,type ReactNode } from "react";
 import {
-  BreadcrumbPoint,
-  ExpeditionLeg,
   ExpeditionLegCategory,
   LiveExpeditionSession,
   ID,
@@ -19,7 +18,8 @@ import {
   resumeExpedition,
   endExpedition,
   addBreadcrumbToExpedition,
-  shouldRecordPoint,
+  positionBreadcrumb,
+  advanceExpeditionClock,
   exportExpeditionToGeoJson,
   formatDuration,
 } from "./liveTrackingEngine";
@@ -28,20 +28,36 @@ import { syncActiveTripToWidget } from "./tripWidgetSync";
 import { triggerHaptic } from "@/lib/deviceAuth";
 
 // Native Capacitor Plugins Bridge helper
-function getCapacitorPlugins() {
-  if (typeof window !== "undefined" && (window as any).Capacitor?.Plugins) {
-    return (window as any).Capacitor.Plugins;
-  }
-  return null;
+interface TrackingPlugins {
+  ExpeditionTracking?:{startTracking(input:{tripId:string;legTitle?:string;category?:ExpeditionLegCategory;distanceKm?:number}):Promise<unknown>;stopTracking():Promise<unknown>;isTracking():Promise<{tracking:boolean}>;getPendingLocations(input:{tripId:string;after:number}):Promise<{points:{latitude:number;longitude:number;accuracy:number;timestamp:number;speed:number|null;altitude:number|null;altitudeAccuracy:number|null}[]}>};
+  AtlasPermissions?:{requestLocationPermission():Promise<{granted:boolean}>};
+}
+const NativeTracking=registerPlugin<NonNullable<TrackingPlugins["ExpeditionTracking"]>>("ExpeditionTracking");
+const NativePermissions=registerPlugin<NonNullable<TrackingPlugins["AtlasPermissions"]>>("AtlasPermissions");
+function getCapacitorPlugins():TrackingPlugins|null {
+  return Capacitor.getPlatform()==="android"?{ExpeditionTracking:NativeTracking,AtlasPermissions:NativePermissions}:null;
 }
 
-export function useLiveExpedition(tripId: ID) {
+const ExpeditionContext=createContext<{tripId:string;data:ReturnType<typeof useLiveExpeditionController>}|null>(null);
+export function LiveExpeditionProvider({tripId,children}:{tripId:string;children:ReactNode}) {
+  const data=useLiveExpeditionController(tripId);
+  // This module is .ts, so keep the provider free of JSX.
+  return createElement(ExpeditionContext.Provider,{value:{tripId,data}},children);
+}
+export function useLiveExpedition(tripId:ID) {
+  const shared=useContext(ExpeditionContext);
+  const local=useLiveExpeditionController(shared?.tripId===tripId?null:tripId);
+  return shared?.tripId===tripId?shared.data:local;
+}
+function useLiveExpeditionController(tripId: ID|null) {
   const [session, setSession] = useState<LiveExpeditionSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>("");
 
   const sessionRef = useRef<LiveExpeditionSession | null>(null);
-  sessionRef.current = session;
+  const writeQueue = useRef<Promise<void>>(Promise.resolve());
+  const operationVersion=useRef(0);
+  const pendingWrites=useRef(0);
 
   const watchIdRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -49,8 +65,14 @@ export function useLiveExpedition(tripId: ID) {
   // Load session from IndexedDB
   const loadSession = useCallback(async () => {
     try {
-      const data = await getLiveExpedition(tripId);
-      setSession(data);
+      if(!tripId||pendingWrites.current)return;
+      const version=operationVersion.current;
+      let data = await getLiveExpedition(tripId);
+      if(data?.status==="ACTIVE"&&!sessionRef.current&&data.lastClockAt&&Date.now()-data.lastClockAt>120000){
+        const running=Capacitor.getPlatform()==="android"?await NativeTracking.isTracking().catch(()=>({tracking:false})):{tracking:false};
+        if(!running.tracking){data=pauseExpedition({...data,lastClockAt:Date.now()});setError("Recording was interrupted. Your existing route is safe; resume to continue a new segment.");}
+      }
+      if(version===operationVersion.current&&!pendingWrites.current){sessionRef.current=data;setSession(data);}
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load expedition session.");
     } finally {
@@ -59,7 +81,7 @@ export function useLiveExpedition(tripId: ID) {
   }, [tripId]);
 
   useEffect(() => {
-    loadSession();
+    queueMicrotask(()=>void loadSession());
     const handleVaultChange = () => loadSession();
     window.addEventListener("life_atlas_vault_change", handleVaultChange);
     return () => {
@@ -70,20 +92,26 @@ export function useLiveExpedition(tripId: ID) {
   // Persist session update helper
   const persist = useCallback(
     async (updated: LiveExpeditionSession) => {
-      setSession(updated);
+      if(!tripId||updated.tripId!==tripId)return;
+      pendingWrites.current++;
+      operationVersion.current++;
+      sessionRef.current=updated;setSession(updated);
+      const write=writeQueue.current.catch(()=>{}).then(async()=>{
       try {
         await saveLiveExpedition(tripId, updated);
         notifyVaultChange();
 
         // Sync with Native Android Notification Service & Home Screen Widget
-        const plugins = getCapacitorPlugins();
-        if (plugins?.ExpeditionTracking && updated.status === "ACTIVE") {
-          void plugins.ExpeditionTracking.updateStats({ distanceKm: updated.totalDistanceKm });
-        }
+        // The native service measures its own filtered fixes. Never overwrite
+        // a newer native distance with a delayed WebView persistence callback.
         void syncActiveTripToWidget(tripId);
       } catch (err) {
-        console.error("Failed to save expedition:", err);
+        setError("The latest GPS update could not be saved. Existing trip data is unchanged.");
+        throw err;
       }
+      });
+      writeQueue.current=write;
+      try{await write;}finally{pendingWrites.current--;}
     },
     [tripId]
   );
@@ -91,21 +119,13 @@ export function useLiveExpedition(tripId: ID) {
   // Live stopwatch timer when tracking is ACTIVE
   useEffect(() => {
     if (session?.status === "ACTIVE") {
+      let lastSaved=Date.now();
       timerRef.current = setInterval(() => {
-        setSession((prev) => {
-          if (!prev || prev.status !== "ACTIVE") return prev;
-          const updatedLegs = prev.legs.map((leg) => {
-            if (leg.id === prev.activeLegId && leg.status === "ACTIVE") {
-              return { ...leg, durationSeconds: leg.durationSeconds + 1 };
-            }
-            return leg;
-          });
-          return {
-            ...prev,
-            totalDurationSeconds: prev.totalDurationSeconds + 1,
-            legs: updatedLegs,
-          };
-        });
+        const current=sessionRef.current;if(!current||current.tripId!==tripId||current.status!=="ACTIVE")return;
+        const updated=advanceExpeditionClock(current,Date.now());
+        if(updated.currentLocation && Date.now()-updated.currentLocation.timestamp>10000)updated.currentSpeedKmh=0;
+        operationVersion.current++;sessionRef.current=updated;setSession(updated);
+        if(Date.now()-lastSaved>=10000){lastSaved=Date.now();void persist(updated).catch(()=>{});}
       }, 1000);
     } else {
       if (timerRef.current) {
@@ -120,36 +140,34 @@ export function useLiveExpedition(tripId: ID) {
         timerRef.current = null;
       }
     };
-  }, [session?.status, session?.activeLegId]);
+  }, [session?.status, session?.activeLegId, persist,tripId]);
 
   // Geolocation Watcher
   useEffect(() => {
+    if(!tripId)return;
+    if(session?.status==="ACTIVE" && Capacitor.getPlatform()==="android"){
+      let alive=true,polling=false;
+      const poll=async()=>{if(polling)return;polling=true;try{
+        const current=sessionRef.current;if(!current)return;
+        const leg=current.legs.find(leg=>leg.id===current.activeLegId);
+        const after=Math.max(leg?.coordinates.at(-1)?.timestamp??0,leg?.segmentStartedAt??Date.parse(leg?.startedAt||"0"));
+        const batch=await NativeTracking.getPendingLocations({tripId,after});
+        if(!alive)return;
+        let updated=sessionRef.current;
+        if(!updated||updated.status!=="ACTIVE")return;
+        for(const point of batch.points)updated=addBreadcrumbToExpedition(updated,positionBreadcrumb({timestamp:point.timestamp,coords:point}));
+        if(updated!==sessionRef.current)await persist(updated);
+      }catch{if(alive)setError("Native GPS updates are unavailable. Check location permission and resume tracking; saved points remain intact.");}finally{polling=false;}};
+      void poll();const timer=setInterval(()=>void poll(),3000);return()=>{alive=false;clearInterval(timer);};
+    }
     if (session?.status === "ACTIVE" && typeof window !== "undefined" && "geolocation" in navigator) {
       const handlePosition = (pos: GeolocationPosition) => {
         const currentSession = sessionRef.current;
         if (!currentSession || currentSession.status !== "ACTIVE") return;
 
-        const activeLeg = currentSession.legs.find((l) => l.id === currentSession.activeLegId);
-        const prevPoint = activeLeg?.coordinates[activeLeg.coordinates.length - 1];
-
-        const speedKmh =
-          pos.coords.speed != null && pos.coords.speed >= 0
-            ? pos.coords.speed * 3.6
-            : null;
-
-        const newPoint: BreadcrumbPoint = {
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          altitude: pos.coords.altitude != null ? Math.round(pos.coords.altitude) : null,
-          speed: speedKmh != null ? Math.round(speedKmh) : null,
-          accuracy: Math.round(pos.coords.accuracy),
-          timestamp: pos.timestamp || Date.now(),
-        };
-
-        if (shouldRecordPoint(prevPoint, newPoint)) {
-          const updated = addBreadcrumbToExpedition(currentSession, newPoint);
-          void persist(updated);
-        }
+        const newPoint = positionBreadcrumb(pos);
+        const updated = addBreadcrumbToExpedition(currentSession,newPoint);
+        if(updated!==currentSession)void persist(updated).catch(()=>{});
       };
 
       const handleError = (err: GeolocationPositionError) => {
@@ -174,25 +192,24 @@ export function useLiveExpedition(tripId: ID) {
         watchIdRef.current = null;
       }
     };
-  }, [session?.status, session?.activeLegId, persist]);
+  }, [session?.status, session?.activeLegId, persist,tripId]);
 
   // Actions
   const start = useCallback(
     async (title = "Full Expedition", category: ExpeditionLegCategory = "TREK") => {
+      if(!tripId)return;
       triggerHaptic("tap");
+      if(sessionRef.current?.legs.some(leg=>leg.coordinates.length))throw new Error("This trip already has a recording. Resume it or add a leg; the saved route was preserved.");
 
       // Request native Android permission if available
       const plugins = getCapacitorPlugins();
       if (plugins?.AtlasPermissions) {
-        try {
-          await plugins.AtlasPermissions.requestLocationPermission();
-        } catch (ignored) {}
+        const permission=await plugins.AtlasPermissions.requestLocationPermission();
+        if(!permission.granted)throw new Error("Allow precise location permission to record a GPS route.");
       }
 
       if (plugins?.ExpeditionTracking) {
-        try {
-          await plugins.ExpeditionTracking.startTracking({ tripId, legTitle: title });
-        } catch (ignored) {}
+        await plugins.ExpeditionTracking.startTracking({ tripId, legTitle: title, category, distanceKm:sessionRef.current?.totalDistanceKm??0 });
       }
 
       const newSession = startExpedition(tripId, title, category);
@@ -204,26 +221,34 @@ export function useLiveExpedition(tripId: ID) {
   const startLeg = useCallback(
     async (title: string, category: ExpeditionLegCategory = "TREK") => {
       triggerHaptic("tap");
-      if (!session) return;
-      const updated = startNewLeg(session, title, category);
+      if (!session||!tripId) return;
+      const updated = startNewLeg(sessionRef.current || session, title, category);
+      const plugins=getCapacitorPlugins();
+      if(plugins?.ExpeditionTracking)await plugins.ExpeditionTracking.startTracking({tripId,legTitle:title,category,distanceKm:updated.totalDistanceKm});
       await persist(updated);
     },
-    [session, persist]
+    [session, persist,tripId]
   );
 
   const pause = useCallback(async () => {
     triggerHaptic("tap");
-    if (!session) return;
-    const updated = pauseExpedition(session);
+    if (!sessionRef.current||!tripId) return;
+    const plugins=getCapacitorPlugins();
+    if(plugins?.ExpeditionTracking)await plugins.ExpeditionTracking.stopTracking();
+    const updated = pauseExpedition(sessionRef.current);
     await persist(updated);
   }, [session, persist]);
 
   const resume = useCallback(async () => {
     triggerHaptic("tap");
-    if (!session) return;
-    const updated = resumeExpedition(session);
+    if (!sessionRef.current||!tripId) return;
+    const current=sessionRef.current;
+    const leg=current.legs.find(leg=>leg.id===current.activeLegId);
+    const plugins=getCapacitorPlugins();
+    if(plugins?.ExpeditionTracking)await plugins.ExpeditionTracking.startTracking({tripId,legTitle:leg?.title,category:leg?.category,distanceKm:current.totalDistanceKm});
+    const updated = resumeExpedition(current);
     await persist(updated);
-  }, [session, persist]);
+  }, [session, persist,tripId]);
 
   const end = useCallback(async () => {
     triggerHaptic("success");
@@ -233,10 +258,10 @@ export function useLiveExpedition(tripId: ID) {
     if (plugins?.ExpeditionTracking) {
       try {
         await plugins.ExpeditionTracking.stopTracking();
-      } catch (ignored) {}
+      } catch {}
     }
 
-    const updated = endExpedition(session);
+    const updated = endExpedition(sessionRef.current || session);
     await persist(updated);
   }, [session, persist]);
 

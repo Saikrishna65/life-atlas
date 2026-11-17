@@ -1,6 +1,8 @@
 package com.lifeatlas.app;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import androidx.core.content.ContextCompat;
 import android.os.Build;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -13,6 +15,7 @@ public class ExpeditionTrackingPlugin extends Plugin {
 
     @PluginMethod
     public void startTracking(PluginCall call) {
+        if(ContextCompat.checkSelfPermission(getContext(),android.Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){call.reject("Precise location permission is required to record a route.");return;}
         String tripId = call.getString("tripId", "");
         String legTitle = call.getString("legTitle", "Expedition");
 
@@ -21,6 +24,8 @@ public class ExpeditionTrackingPlugin extends Plugin {
             serviceIntent.setAction(ExpeditionTrackingService.ACTION_START);
             serviceIntent.putExtra(ExpeditionTrackingService.EXTRA_TRIP_ID, tripId);
             serviceIntent.putExtra(ExpeditionTrackingService.EXTRA_LEG_TITLE, legTitle);
+            serviceIntent.putExtra("category", call.getString("category", "TREK"));
+            serviceIntent.putExtra(ExpeditionTrackingService.EXTRA_DISTANCE_KM, call.getDouble("distanceKm", 0.0));
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 getContext().startForegroundService(serviceIntent);
@@ -59,6 +64,11 @@ public class ExpeditionTrackingPlugin extends Plugin {
         } catch (Exception e) {
             call.reject("Could not update expedition stats: " + e.getMessage(), e);
         }
+    }
+
+    @PluginMethod
+    public void getPendingLocations(PluginCall call) {
+        call.resolve(new JSObject().put("points",ExpeditionTrackingService.pending(call.getString("tripId",""),call.getDouble("after",0.0))));
     }
 
     @PluginMethod

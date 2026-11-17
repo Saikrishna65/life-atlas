@@ -35,7 +35,10 @@ export function publishedRoute(value: unknown) {
   for (const leg of legs) {
     let run: RoutePoint[] = [];
     for (const point of Array.isArray(leg.coordinates) ? leg.coordinates : []) {
-      if (validPoint(point)) run.push(point);
+      if (validPoint(point)) {
+        if (obj(point).segmentStart && run.length) { if(run.length>1) paths.push(run); run=[]; }
+        run.push(point);
+      }
       else {
         if (run.length > 1) paths.push(run);
         run = [];

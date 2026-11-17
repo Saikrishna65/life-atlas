@@ -6,6 +6,7 @@ import { heroHandoffAt, HERO_PRELOAD_AT_SECONDS } from "./hero-playback";
 
 /** The outgoing decoder stays alive until the incoming video has painted a frame. */
 export default function TripFilmStage({
+  films=heroFilms,
   active,
   outgoing,
   requested,
@@ -17,6 +18,7 @@ export default function TripFilmStage({
   onEnd,
   onStatus,
 }: {
+  films?:ReadonlyArray<{src:string;poster:string;fallback:string}>;
   active: number;
   outgoing: number | null;
   requested: number;
@@ -170,7 +172,7 @@ export default function TripFilmStage({
       aria-hidden="true"
       data-transitioning={requested !== active}
     >
-      {heroFilms.slice(0, count).map((film, index) => {
+      {films.slice(0, count).map((film, index) => {
         const mounted =
           publicLoading || prepared.includes(index) || index === active ||
           index === requested ||
