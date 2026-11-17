@@ -38,7 +38,7 @@ function AutoFilm({ frame, paused }: { frame: ScrapbookFrame; paused: boolean })
   return <video ref={ref} className="scrapbook-auto-film" poster={frame.preview || undefined} autoPlay muted loop playsInline preload="none" aria-label={frame.title} />;
 }
 
-export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame[] }) {
+export default function TravelScrapbook({ media = [],curated=false }: { media?: ScrapbookFrame[];curated?:boolean }) {
   const root = useRef<HTMLElement>(null);
   const { catalog } = usePublicCatalog();
   const [selected, setSelected] = useState<number | null>(null);
@@ -52,10 +52,10 @@ export default function TravelScrapbook({ media = [] }: { media?: ScrapbookFrame
     queueMicrotask(() => { if (alive) setSeed(crypto.getRandomValues(new Uint32Array(1))[0]); });
     return () => { alive = false; };
   }, []);
-  const moments = useMemo(() => selectScrapbookFrames([
+  const moments = useMemo(() => curated ? media : selectScrapbookFrames([
     ...catalogScrapbookFrames(catalog?.items ?? [], media),
     ...(media.length ? media : scrapbookSamples),
-  ], seed), [catalog, media, seed]);
+  ], seed), [catalog, media, seed,curated]);
   const current = selected === null ? null : moments[selected];
   const next = (direction: number) => setSelected(index => index === null ? null : (index + direction + moments.length) % moments.length);
 

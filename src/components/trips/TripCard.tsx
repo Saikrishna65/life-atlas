@@ -8,7 +8,7 @@ type TripWithRelations = Trip & {
 };
 
 export default function TripCard({ trip }: { trip: TripWithRelations }) {
-  const year = new Date(trip.startDate).getFullYear();
+  const year = trip.startDate ? new Date(trip.startDate).getFullYear() : "";
   const placesStr = trip.tripPlaces?.map(tp => tp.place.name).join(", ");
   const locationText = placesStr || trip.destination;
 

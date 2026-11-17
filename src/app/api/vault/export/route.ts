@@ -1,3 +1,4 @@
+import {ensureWebsiteSchema} from "@/lib/studio/server";
 import {allowAtlasMutation} from "@/lib/mobileRequest";
 import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -11,7 +12,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       title,
-      destination,
+      destination="",
       startDate,
       endDate,
       description,
@@ -31,14 +32,15 @@ export async function POST(request: Request) {
       preserveExistingItinerary=false,
     } = body;
 
-    if (typeof title!=="string" || !title.trim() || title.length>150 || typeof destination!=="string" || !startDate || !Number.isFinite(Date.parse(startDate))) {
+    if (typeof title!=="string" || !title.trim() || title.length>150 || typeof destination!=="string" || (startDate && !Number.isFinite(Date.parse(startDate)))) {
       return NextResponse.json(
-        { error: "Title, destination, and startDate are required fields." },
+        { error: "Add a trip title and valid dates when provided." },
         { status: 400 }
       );
     }
 
     if(!Array.isArray(publicMedia)||publicMedia.length>250||publicMedia.some((item: {url?:unknown;poster?:unknown;kind?:unknown})=>!item||!['photo','video'].includes(String(item.kind))||typeof item.url!=='string'||!/^https:\/\//.test(item.url)||(item.poster&&!/^https:\/\//.test(String(item.poster)))))return NextResponse.json({error:'Choose valid public media URLs.'},{status:400});
+    await ensureWebsiteSchema();
     const saved=await prisma.$transaction(async db=>{
     // 1. Get or create author user
     let user = await db.user.findUnique({
@@ -79,9 +81,9 @@ export async function POST(request: Request) {
 
     // Compute duration string
     let durationStr: string | null = duration || null;
-    const startObj = new Date(startDate);
+    const startObj = startDate ? new Date(startDate) : null;
     const endObj = endDate ? new Date(endDate) : null;
-    if (!durationStr && endObj) {
+    if (!durationStr && endObj && startObj) {
       const days = Math.max(1, Math.round((endObj.getTime() - startObj.getTime()) / (1000 * 60 * 60 * 24)) + 1);
       durationStr = `${days} Days`;
     }
@@ -236,7 +238,7 @@ export async function POST(request: Request) {
       });
 
       // Create TimelineEvent
-      await db.timelineEvent.create({
+      if(memDate)await db.timelineEvent.create({
         data: {
           title: mem.title,
           description: mem.caption || null,

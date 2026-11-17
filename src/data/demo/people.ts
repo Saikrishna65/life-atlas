@@ -4,6 +4,7 @@
 export interface PeoplePhoto {
   id: string;
   src: string;
+  original?:string;
   alt: string;
   title?: string;
   context?: string;

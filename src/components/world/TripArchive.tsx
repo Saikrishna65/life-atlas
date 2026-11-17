@@ -10,7 +10,7 @@ import type { TripArchiveEntry } from "@/lib/public-trips/archive";
 import { Empty, Modal, SearchField } from "./primitives";
 import "./trip-archive.css";
 
-export default function TripArchive({ trips }: { trips: TripArchiveEntry[] }) {
+export default function TripArchive({ trips,curated=false }: { trips: TripArchiveEntry[];curated?:boolean }) {
   const root = useRef<HTMLElement>(null);
   const navigate = useRef<((index: number) => void) | null>(null);
   const activeRef = useRef(0);
@@ -19,7 +19,7 @@ export default function TripArchive({ trips }: { trips: TripArchiveEntry[] }) {
   const [finder, setFinder] = useState(false);
   const [query, setQuery] = useState("");
   const [country, setCountry] = useState("All places");
-  const [sort, setSort] = useState(trips.some(trip => trip.date) ? "Latest first" : "Original order");
+  const [sort, setSort] = useState(!curated&&trips.some(trip => trip.date) ? "Latest first" : "Original order");
   const [limit, setLimit] = useState(9);
   const countries = [...new Set(trips.map(trip => trip.country))].sort();
   const items = useMemo(() => {
@@ -33,7 +33,7 @@ export default function TripArchive({ trips }: { trips: TripArchiveEntry[] }) {
   const entries = items.slice(0,limit);
   const signature = entries.map(trip => trip.id).join('|');
   const current = entries[Math.min(active, entries.length-1)];
-  const reset = () => { setQuery(''); setCountry('All places'); setSort(trips.some(trip=>trip.date)?'Latest first':'Original order'); setLimit(9); };
+  const reset = () => { setQuery(''); setCountry('All places'); setSort(!curated&&trips.some(trip=>trip.date)?'Latest first':'Original order'); setLimit(9); };
   useEffect(() => {
     if(!root.current) return;
     gsap.registerPlugin(ScrollTrigger);

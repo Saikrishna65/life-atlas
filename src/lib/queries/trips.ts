@@ -39,10 +39,10 @@ export async function getTripBySlug(slug: string) {
   });
 }
 
-export async function getNextTrip(currentDate: Date, currentId: string) {
+export async function getNextTrip(currentDate: Date | null, currentId: string) {
   const nextTrip = await prisma.trip.findFirst({
     where: {
-      startDate: { gte: currentDate },
+      ...(currentDate ? {startDate:{gte:currentDate}}:{}),
       id: { not: currentId }
     },
     orderBy: { startDate: 'asc' },

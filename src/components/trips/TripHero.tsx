@@ -1,7 +1,7 @@
 import { Trip } from "@prisma/client";
 
 export default function TripHero({ trip }: { trip: Trip }) {
-  const year = new Date(trip.startDate).getFullYear();
+  const year = trip.startDate ? new Date(trip.startDate).getFullYear() : "";
 
   return (
     <section

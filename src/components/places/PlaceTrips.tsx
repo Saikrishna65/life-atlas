@@ -13,7 +13,7 @@ export default function PlaceTrips({ tripPlaces }: { tripPlaces: PlaceTrip[] }) 
         {tripPlaces.map((tp) => (
           <Link href={`/trips/${tp.trip.slug}`} key={tp.id} className="group flex flex-col gap-4 border border-muted p-6">
             <span className="font-sans text-xs uppercase tracking-widest text-muted-foreground">
-              {tp.visitDate ? new Date(tp.visitDate).toLocaleDateString() : new Date(tp.trip.startDate).getFullYear()}
+              {tp.visitDate ? new Date(tp.visitDate).toLocaleDateString() : tp.trip.startDate ? new Date(tp.trip.startDate).getFullYear() : ""}
             </span>
             <h3 className="font-display text-2xl text-foreground group-hover:text-accent transition-colors">
               {tp.trip.title}

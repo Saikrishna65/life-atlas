@@ -3,6 +3,7 @@ import PublicPageReady from "@/components/layout/PublicPageReady";
 import {onPublicPreload} from "@/lib/public-loading/readiness";
 import dynamic from "next/dynamic";
 import { Suspense, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import type {PeoplePhoto} from "@/data/demo/people";
 import type { TripArchiveEntry } from "@/lib/public-trips/archive";
 import type { ScrapbookFrame } from "@/lib/public-trips/scrapbook";
 import { useLenis } from "lenis/react";
@@ -93,7 +94,7 @@ function Deferred({
     </div>
   );
 }
-export default function LivingWorld({ scrapbookMedia = [], trips }: { scrapbookMedia?: ScrapbookFrame[]; trips: TripArchiveEntry[] }) {
+export default function LivingWorld({ scrapbookMedia = [], trips, peoplePhotos, curatedRibbon=false,curatedArchive=false }: { scrapbookMedia?: ScrapbookFrame[]; trips: TripArchiveEntry[]; peoplePhotos?:PeoplePhoto[];curatedRibbon?:boolean;curatedArchive?:boolean }) {
   const lenis = useLenis();
   useEffect(() => {
     const alignHash = () => {
@@ -142,19 +143,19 @@ export default function LivingWorld({ scrapbookMedia = [], trips }: { scrapbookM
       }}
     >
       <PublicPageReady />
-      <WorldNavigation />
+      <WorldNavigation showPeople={peoplePhotos===undefined||peoplePhotos.length>0} showRibbon={!curatedRibbon||scrapbookMedia.length>0} />
       <WorldMotion>
         <Deferred
           id="observatory"
           title="The Observatory"
           component={Observatory}
         />
-        <Deferred
+        {(!curatedRibbon||scrapbookMedia.length>0)&&<Deferred
           id="collected-moments"
           title="Life, collected"
-        ><TravelScrapbook media={scrapbookMedia} /></Deferred>
-        <Deferred id="people" title="The people along the way" component={PeopleMoments} />
-        <Deferred id="memories" title="The Trip Archive"><TripArchive trips={trips} /></Deferred>
+        ><TravelScrapbook media={scrapbookMedia} curated={curatedRibbon} /></Deferred>}
+        {(peoplePhotos===undefined||peoplePhotos.length>0)&&<Deferred id="people" title="The people along the way"><PeopleMoments photos={peoplePhotos} /></Deferred>}
+        <Deferred id="memories" title="The Trip Archive"><TripArchive trips={trips} curated={curatedArchive} /></Deferred>
         <Suspense fallback={null}><PublishedMedia /></Suspense>
         <Deferred id="beyond" title="The Beyond" component={Beyond} />
       </WorldMotion>

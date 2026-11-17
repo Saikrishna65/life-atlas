@@ -13,7 +13,7 @@ export default function PlaceCard({ place }: { place: PlaceWithRelations }) {
   // Try to find the most recent visit date
   const visitDates = place.tripPlaces
     ?.map(tp => tp.visitDate || tp.trip.startDate)
-    .filter(Boolean)
+    .filter((date):date is Date=>date!==null)
     .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
     
   const lastVisited = visitDates && visitDates.length > 0 ? visitDates[0] : null;

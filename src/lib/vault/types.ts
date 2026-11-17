@@ -138,6 +138,7 @@ export interface TripRecord {
   contingencies?: ContingencyPlan[];
   memories?: TripMemoryRecord[];
   completedAt?: ISODateString;
+  studioOrigin?: "past-trip";
   publishedSlug?: string;
   publishedAt?: ISODateString;
   createdAt: ISODateString;

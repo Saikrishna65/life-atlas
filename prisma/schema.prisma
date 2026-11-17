@@ -27,7 +27,7 @@ model Trip {
   slug        String   @unique
   title       String
   destination String
-  startDate   DateTime
+  startDate   DateTime?
   endDate     DateTime?
   duration    String?
   description String?
@@ -88,7 +88,7 @@ model TripDay {
   id          String   @id @default(cuid())
   tripId      String
   dayIndex    Int
-  date        DateTime
+  date        DateTime?
   title       String?
   description String?
   
@@ -253,4 +253,11 @@ model MusicPlaylist {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model WebsiteSection {
+  key String @id
+  revision Int @default(0)
+  data Json
+  updatedAt DateTime @default(now()) @updatedAt
 }

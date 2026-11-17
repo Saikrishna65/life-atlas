@@ -14,7 +14,7 @@ export function websitePayload(trip:TripRecord,memories:TripMemoryRecord[],days:
   const title=(options.title??trip.title).trim();
   if(!title)throw Error('Give this journey a title.');
   const date=trip.startDate || selected.map(m=>m.date).filter(Boolean).sort()[0];
-  if(!date)throw Error('Add the travel date to this trip or to one selected memory before publishing.');
+
   const places=new Map<string,{name:string;latitude?:number;longitude?:number}>();
   if(trip.destination.trim())places.set(trip.destination.toLowerCase(),{name:trip.destination.trim()});
   for(const memory of selected){const name=(memory.placeName||memory.location)?.trim();if(name)places.set(name.toLowerCase(),{name});}
@@ -24,7 +24,7 @@ export function websitePayload(trip:TripRecord,memories:TripMemoryRecord[],days:
   const media=publicMedia.map(item=>({id:item.id,url:item.url,poster:item.thumbnailUrl,kind:item.mimeType.startsWith('video/')?'video' as const:'photo' as const,
     place:item.tags.find(tag=>tag.startsWith('place:'))?.slice(6).trim()||'Unassigned',category:'Trip journal'}));
   const photoCover=selected.flatMap(memory=>memory.images?.length?memory.images:memory.imageDataUrl?[memory.imageDataUrl]:[])[0] || media.find(item=>item.kind==='photo')?.url;
-  return {tripId:trip.id,title,destination:trip.destination.trim(),startDate:date,endDate:trip.endDate||undefined,
+  return {tripId:trip.id,title,destination:trip.destination.trim(),startDate:date||undefined,endDate:trip.endDate||undefined,
     description:options.description?.trim()||undefined,coverImage:photoCover,existingSlug:websiteSlug(trip),
     preserveExistingRoute:true,
     preserveExistingMedia:selected.length===0&&media.length===0,

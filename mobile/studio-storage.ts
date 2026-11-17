@@ -19,7 +19,7 @@ export async function saveEntry(section: string, form: FormData) {
 }
 export async function getEntries(): Promise<StudioEntry[]> {
  const db=await open();
- try {return await new Promise((resolve,reject)=>{const r=db.transaction('entries').objectStore('entries').getAll();r.onsuccess=()=>resolve(r.result.sort((a:StudioEntry,b:StudioEntry)=>b.createdAt.localeCompare(a.createdAt)));r.onerror=()=>reject(r.error);});}
+ try {return await new Promise((resolve,reject)=>{const r=db.transaction('entries').objectStore('entries').getAll();r.onsuccess=()=>resolve(r.result.filter((entry:StudioEntry&{kind?:string})=>entry.kind!=='website-section').sort((a:StudioEntry,b:StudioEntry)=>b.createdAt.localeCompare(a.createdAt)));r.onerror=()=>reject(r.error);});}
  finally {db.close();}
 }
 let flushing: Promise<void>|undefined;

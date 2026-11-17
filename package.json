@@ -39,6 +39,7 @@
     "react-dom": "19.2.8",
     "react-globe.gl": "^2.38.0",
     "react-leaflet": "^5.0.0",
+    "sharp": "0.35.4",
     "three": "^0.186.1",
     "youtubei.js": "^18.3.0"
   },

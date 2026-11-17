@@ -41,7 +41,7 @@ export default function FeaturedTrips({ trips }: { trips: Trip[] }) {
                   </h3>
                   <div className="font-sans text-sm tracking-wide text-white/80 space-y-1 mb-4">
                     <p>{trip.destination}</p>
-                    <p>{trip.duration} &middot; {new Date(trip.startDate).getFullYear()}</p>
+                    <p>{trip.duration} &middot; {trip.startDate ? new Date(trip.startDate).getFullYear() : ""}</p>
                   </div>
                   {trip.description && (
                     <p className="font-body text-base text-white/90 max-w-md hidden md:block">

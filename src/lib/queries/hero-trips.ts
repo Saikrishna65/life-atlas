@@ -5,15 +5,16 @@ import { gallery } from "@/data/demo/memories";
 import type { HeroGalleryPhoto, HeroTrip } from "@/data/demo/hero-films";
 
 /** Public travel records only. Native/local vault databases are never read here. */
-export async function getLatestHeroTrips(): Promise<HeroTrip[]> {
+export async function getLatestHeroTrips(slugs?:string[]): Promise<HeroTrip[]> {
   try {
     const trips = await prisma.trip.findMany({
       take: 3,
+      ...(slugs?{where:{slug:{in:slugs}}}:{}),
       orderBy: [{ startDate: "desc" }, { id: "asc" }],
       select: { id: true, slug: true, title: true, coverImage: true,routeData:true },
     });
     if (trips.length)
-      return trips.map((trip) => ({
+      return [...trips].sort((a,b)=>slugs?slugs.indexOf(a.slug)-slugs.indexOf(b.slug):0).map((trip) => ({
         id: trip.id,
         slug: trip.slug,
         title: trip.title,

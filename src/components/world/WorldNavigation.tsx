@@ -3,7 +3,7 @@ import {usePublicLoading} from "@/components/layout/PublicPageReady";
 import HeroLogo from "@/components/home/HeroLogo";
 import Link from "next/link";
 import { navigationTypography as typography } from "@/lib/public-fonts";
-import { useEffect, useState } from "react";
+import { useEffect, useState,useMemo } from "react";
 import { ArrowUpRight, Search, Menu } from "lucide-react";
 import { useLenis } from "lenis/react";
 import { Modal } from "./primitives";
@@ -15,7 +15,8 @@ export const chapters = [
   ["memories", "The Trip Archive"],
   ["beyond", "The Beyond"],
 ];
-export default function WorldNavigation() {
+export default function WorldNavigation({showPeople=true,showRibbon=true}:{showPeople?:boolean;showRibbon?:boolean}={}) {
+  const chapterList=useMemo(()=>chapters.filter(([id])=>(id!=="people"||showPeople)&&(id!=="collected-moments"||showRibbon)),[showPeople,showRibbon]);
   const publicLoading=usePublicLoading();
   const [active, setActive] = useState("observatory");
   const [visible, setVisible] = useState(false);
@@ -51,7 +52,7 @@ export default function WorldNavigation() {
       observeChapters();
     };
     const observeChapters = () =>
-      chapters.forEach(([id]) => {
+      chapterList.forEach(([id]) => {
         const e = document.getElementById(id);
         if (e) observer.observe(e);
       });
@@ -65,7 +66,7 @@ export default function WorldNavigation() {
       observer.disconnect();
       mutation.disconnect();
     };
-  }, []);
+  }, [chapterList]);
   const navigate = (id: string) => {
     setOpen(false);
     if (id !== "top") {
@@ -120,7 +121,7 @@ export default function WorldNavigation() {
           onClose={() => setOpen(false)}
         >
           <div className="world-chapter-menu" id="world-chapter-menu">
-            {chapters.map(([id, label], i) => (
+            {chapterList.map(([id, label], i) => (
               <button key={id} onClick={() => navigate(id)}>
                 <small>0{i + 2}</small>
                 <span>{label}</span>
@@ -137,13 +138,13 @@ export default function WorldNavigation() {
         data-scene={active}
       >
         <span>
-          {String(chapters.findIndex(([id]) => id === active) + 2).padStart(
+          {String(chapterList.findIndex(([id]) => id === active) + 2).padStart(
             2,
             "0",
           )}
         </span>
         <div>
-          {chapters.map(([id, label]) => (
+          {chapterList.map(([id, label]) => (
             <button
               key={id}
               aria-label={`Go to ${label}`}
