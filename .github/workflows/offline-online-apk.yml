@@ -3,6 +3,11 @@ on:
   push:
     branches: ['build/atlas-offline-online-*']
   workflow_dispatch:
+    inputs:
+      install_update:
+        description: Build a compatible APK without live cloud tests
+        type: boolean
+        default: true
 permissions:
   contents: write
   actions: read
@@ -11,7 +16,70 @@ concurrency:
   group: atlas-offline-online-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  install-update:
+    if: ${{ inputs.install_update || startsWith(github.ref_name, 'build/atlas-offline-online-install-update-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Validate and bundle app without accessing personal cloud data
+        run: |
+          npm ci
+          npx prisma generate
+          npx tsc --noEmit
+          node --test tests/mobile/apkUpdate.test.mjs
+          node --import tsx --test tests/cloud-vault/signingAuthorization.test.ts
+          npm run build:mobile
+          npx cap sync android
+      - name: Load existing signing key only (never replace or rotate)
+        run: node scripts/prepare-signing.mjs --require-existing
+      - name: Build update APKs and test native plugins
+        run: |
+          sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+          bash android/gradlew -p android --no-daemon --max-workers=2 :app:testDebugUnitTest :app:testPreviewUnitTest :app:assembleDebug :app:assemblePreview
+      - name: Refuse incompatible APKs and prepare downloads
+        run: |
+          mkdir -p apk-download
+          cp android/app/build/outputs/apk/debug/app-debug.apk apk-download/atlas-offline-online.apk
+          cp android/app/build/outputs/apk/preview/app-preview.apk apk-download/atlas-next.apk
+          node scripts/verify-apk-update.mjs apk-download
+          cp mobile/INSTALL-UPDATE.md apk-download/INSTALL.txt
+          cd apk-download
+          sha256sum atlas-offline-online.apk atlas-next.apk > SHA256SUMS.txt
+          zip -9 ../atlas-install-update.zip atlas-offline-online.apk atlas-next.apk INSTALL.txt SHA256SUMS.txt signing-compatibility.json
+      - name: Publish verified downloads
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const tag = `atlas-install-update-${context.runId}`;
+            const release = await github.rest.repos.createRelease({...context.repo, tag_name: tag, target_commitish: context.sha, name: 'Atlas 1.4.4 — verified installation update', prerelease: true, body: 'Download the APK matching your installed app: atlas-offline-online.apk for Atlas Vault or atlas-next.apk for Atlas Next. Both certificates are verified against the published 1.4.1 build. Older or locally signed builds may use a different key. Do not uninstall an app containing unsaved local data. Read INSTALL.txt in the ZIP. No personal cloud data was uploaded or restored by this build.'});
+            for (const [name, file, type] of [['atlas-offline-online.apk', 'apk-download/atlas-offline-online.apk', 'application/vnd.android.package-archive'], ['atlas-next.apk', 'apk-download/atlas-next.apk', 'application/vnd.android.package-archive'], ['atlas-install-update.zip', 'atlas-install-update.zip', 'application/zip']]) {
+              await github.rest.repos.uploadReleaseAsset({...context.repo, release_id: release.data.id, name, data: fs.readFileSync(file), headers: {'content-type': type}});
+            }
+            await core.summary.addHeading('Verified Android update').addLink('Downloads and install instructions', release.data.html_url).write();
+      - name: Remove signing material from runner
+        if: always()
+        run: rm -f "$HOME/.android/debug.keystore"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: install-update-test-reports
+          path: android/app/build/reports/tests/
   apk:
+    if: ${{ !inputs.install_update && !startsWith(github.ref_name, 'build/atlas-offline-online-install-update-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

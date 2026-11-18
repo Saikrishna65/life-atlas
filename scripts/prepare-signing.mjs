@@ -10,6 +10,7 @@ async function request(action,extra={}){return fetch(origin+'/api/admin/android-
 const directory=path.join(os.homedir(),'.android'),destination=path.join(directory,'debug.keystore'),temporary=path.join(os.tmpdir(),'atlas-new-signing.keystore');await fs.mkdir(directory,{recursive:true});
 let response=await request('load');
 if(response.status===404&&(await response.clone().json().catch(()=>null))?.error==='SIGNING_KEY_NOT_INITIALIZED'){
+ if(process.argv.includes('--require-existing'))throw Error('The existing signing identity is unavailable. No replacement key was created; existing apps must remain installed.');
  await fs.rm(temporary,{force:true});const generated=spawnSync('keytool',['-genkeypair','-keystore',temporary,'-storepass','android','-alias','androiddebugkey','-keypass','android','-storetype','JKS','-keyalg','RSA','-keysize','3072','-validity','10000','-dname','CN=Atlas Stable Builds, O=Atlas, C=IN'],{encoding:'utf8'});if(generated.status!==0)throw Error('Could not create the signing identity.');
  const initialized=await request('initialize',{keystore:(await fs.readFile(temporary)).toString('base64')});if(!initialized.ok)throw Error('Could not preserve the signing identity.');response=await request('load');await fs.rm(temporary,{force:true});
 }
