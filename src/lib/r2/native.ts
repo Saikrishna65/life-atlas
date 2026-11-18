@@ -53,7 +53,7 @@ interface R2Plugin {
     key: string;
     name: string;
   }): Promise<Transfer | { cancelled: true }>;
-  getTransferProgress(input?:{publicationSession:string;transferId:string}): Promise<{ transfers: Transfer[] }>;
+  getTransferProgress(): Promise<{ transfers: Transfer[] }>;
   cancelTransfer(input: { id: string }): Promise<void>;
   pauseTransfer(input: { id: string }): Promise<void>;
   resumeTransfer(input: { id: string; publicationSession?: string }): Promise<void>;
@@ -73,7 +73,7 @@ interface R2Plugin {
     websiteUrl: string;
     catalog: PublicMediaCatalog;
   }>;
-  beginTripPublication(input:{collection:string;selectionIds:string[];transferIds:string[]}):Promise<{publicationSession:string}>;
+  beginTripPublication(input:{collection:string;selectionIds:string[];transferIds:string[];transfersBySelection:Record<string,string>}):Promise<{publicationSession:string;transferIds:Record<string,string>}>;
   endTripPublication(input:{publicationSession:string}):Promise<void>;
   publishTripMedia(input:PublishInput & {publicationSession?:string}):Promise<{item:import("./types").PublishedMedia;manifestUrl:string}>;
   unpublishMedia(input: {

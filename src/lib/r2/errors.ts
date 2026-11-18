@@ -6,7 +6,8 @@ const messages: Record<string, string> = {
     "Open the installed, offline Life Atlas Android app to configure storage.",
   AUTHENTICATION_CANCELLED:
     "Device verification was cancelled. Nothing was changed.",
-  PUBLICATION_SESSION_EXPIRED: "Publishing approval expired or the app went into the background. Tap Resume publishing and verify once to continue. Your saved files are unchanged.",
+  PUBLICATION_SESSION_REQUIRED: "The app’s publishing session was replaced or restarted. Approved native uploads stay queued. Reopen this trip to finish the website update without re-uploading completed files.",
+  PUBLICATION_SESSION_EXPIRED: "The app’s publishing session was replaced or restarted. Approved native uploads stay queued. Reopen this trip to finish the website update without re-uploading completed files.",
   PUBLICATION_SCOPE_MISMATCH: "This file is outside the approved trip batch. Reopen the trip and approve publishing again; your saved files are unchanged.",
   AUTHENTICATION_BUSY: "Finish the current device verification first.",
   DEVICE_LOCK_REQUIRED:

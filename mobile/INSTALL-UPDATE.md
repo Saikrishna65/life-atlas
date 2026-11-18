@@ -1,4 +1,4 @@
-Atlas 1.4.10 — verified stable signing
+Atlas 1.4.11 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
@@ -53,24 +53,29 @@ Open the existing Creator Studio trip and tap Publish again. Named-place selecti
 and transfer IDs survive this update; verified completed uploads are reused. The
 build does not access your bucket or upload any personal photos.
 
-Trip publishing: verify your device once for the reviewed batch, instead of once
-for each upload and publication. This grant covers only the chosen public files,
-their saved transfers and this trip collection. It ends on finishing, pausing,
-screen-off/device lock, leaving the app for a minute or longer, 30 minutes idle
-or two hours total. Brief unlocked app interruptions suspend new operations
-and can retain the same grant when you return within a minute. Credential changes, deletion,
-private operations and unrelated uploads still require separate verification.
+Trip publishing: verify once to approve this selected public batch. There is no
+upload approval timer, foreground requirement, screen-lock expiry or background
+expiry. Every selected file is bound to a durable native transfer ID before any
+upload depends on WebView polling. A single serial WorkManager graph persists the
+whole batch, with network constraints, foreground transfer notifications and the
+existing multipart recovery and original-byte verification.
 
-Finish uploads later saves your place selections and completed publications.
-An upload already running may continue in native Cloud Storage. Resume publishing
-reuses verified files and retries the same paused/interrupted transfer IDs where
-supported. A file at 100% can still be undergoing checksum verification. Place
-counts refresh as records finish; the website changes only at the final publish
-step. No personal cloud access or physical-device tests are part of this build.
+Continue in background leaves all approved native uploads queued. You can use
+other app screens or lock your phone. Android may delay work, enforce background
+quotas or stop the process; uninterrupted execution cannot be guaranteed. WorkManager
+retains committed jobs, and retry recovers the same saved IDs instead of uploading
+completed originals again. Explicitly paused/cancelled files are not silently
+made public by an unrelated operation. Resuming a reviewed batch retries paused
+or failed jobs; cancelled jobs require review in Cloud Storage.
 
-Approval recovery: foreground progress checks for the exact approved public
-transfer now refresh the idle timer, so a long actively monitored video is not
-mistaken for inactivity. The two-hour absolute limit remains. Polling unrelated
-transfers cannot extend approval. If approval genuinely expires, the publisher
-shows a saved-progress notice and a Resume publishing button, clears stale status,
-and reuses the same transfer and verified publications after you verify again.
+The website update can finish while the WebView remains active. If Android suspends
+or destroys it, return to this trip to finish the website metadata update using
+already verified native uploads. A restarted/replaced publishing session may need
+one fresh verification; this does not stop committed native uploads. Configuration
+changes, deletion, private storage and unrelated files still require authentication.
+The in-memory public grant ends only when this workflow finishes/stops, is replaced,
+the process ends or credentials change; it cannot authorize arbitrary bucket access.
+
+Install over the existing Atlas Next without uninstalling or clearing storage.
+Your existing named-place selections, transfers, original media and route data are
+preserved. No personal cloud uploads or physical-device tests run in the build.

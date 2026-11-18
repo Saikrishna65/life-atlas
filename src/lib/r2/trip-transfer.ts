@@ -4,16 +4,15 @@ import type {Transfer} from './types';
 export class PublicationPaused extends Error {
  constructor(){super('Publishing saved for later.');this.name='PublicationPaused';}
 }
-export function publicationApprovalExpired(error:unknown){
+export function publicationSessionUnavailable(error:unknown){
  const object=error&&typeof error==='object'?error:null;
  const code=object&&'code' in object?object.code:object&&'message' in object?object.message:error;
- return code==='PUBLICATION_SESSION_EXPIRED';
+ return code==='PUBLICATION_SESSION_REQUIRED'||code==='PUBLICATION_SESSION_EXPIRED';
 }
 export interface TripTransferControls {
  transfers:()=>Promise<Transfer[]>;
  resume:(id:string)=>Promise<void>;
  paused:()=>boolean;
- foreground?:()=>boolean;
  offline:()=>boolean;
  progress:(message:string,job:Transfer)=>void;
  delay?:()=>Promise<void>;
@@ -22,14 +21,7 @@ export async function waitForTripTransfer(id:string, controls:TripTransferContro
  let resumed=false;
  for(;;){
   if(controls.paused())throw new PublicationPaused();
-  if(controls.foreground?.()===false){await (controls.delay?.()??new Promise(resolve=>setTimeout(resolve,1000)));continue;}
-  let transfers:Transfer[];
-  try{transfers=await controls.transfers();}
-  catch(error){
-   // A foreground poll can race Android's stop callback. Wait until return before deciding to reapprove.
-   if(publicationApprovalExpired(error)&&controls.foreground?.()===false){await (controls.delay?.()??new Promise(resolve=>setTimeout(resolve,1000)));continue;}
-   throw error;
-  }
+  const transfers=await controls.transfers();
   const current=transfers.find(job=>job.id===id);
   if(!current)throw Error('This saved upload is unavailable. Check Cloud Storage; your selected originals are still saved.');
   const verifying=current.status==='verifying';

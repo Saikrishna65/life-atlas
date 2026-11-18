@@ -21,19 +21,31 @@ public final class R2TransferWorker extends Worker {
     super(context, params);
   }
 
+  private static OneTimeWorkRequest request(String id) {
+    return new OneTimeWorkRequest.Builder(R2TransferWorker.class)
+        .setInputData(new Data.Builder().putString("id", id).build())
+        .setConstraints(
+            new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, java.util.concurrent.TimeUnit.SECONDS)
+        .addTag("atlas-r2")
+        .addTag("atlas-r2-" + id)
+        .build();
+  }
+
   public static void enqueue(Context context, String id) {
-    OneTimeWorkRequest work =
-        new OneTimeWorkRequest.Builder(R2TransferWorker.class)
-            .setInputData(new Data.Builder().putString("id", id).build())
-            .setConstraints(
-                new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .setBackoffCriteria(
-                BackoffPolicy.EXPONENTIAL, 30, java.util.concurrent.TimeUnit.SECONDS)
-            .addTag("atlas-r2")
-            .addTag("atlas-r2-" + id)
-            .build();
     WorkManager.getInstance(context)
-        .enqueueUniqueWork("atlas-r2-queue", ExistingWorkPolicy.APPEND_OR_REPLACE, work);
+        .enqueueUniqueWork("atlas-r2-queue", ExistingWorkPolicy.APPEND_OR_REPLACE, request(id));
+  }
+
+  /** A single WorkManager transaction persists the complete serial batch before returning. */
+  static void enqueueBatch(Context context, JSONArray ids) throws Exception {
+    if (ids.length() == 0) return;
+    WorkContinuation chain =
+        WorkManager.getInstance(context)
+            .beginUniqueWork(
+                "atlas-r2-queue", ExistingWorkPolicy.APPEND_OR_REPLACE, request(ids.getString(0)));
+    for (int i = 1; i < ids.length(); i++) chain = chain.then(request(ids.getString(i)));
+    chain.enqueue().getResult().get();
   }
 
   private ForegroundInfo notification(String id, String text, int progress) {

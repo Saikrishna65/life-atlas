@@ -29,36 +29,7 @@ public class R2StoragePlugin extends Plugin {
   }
 
   private boolean authenticating = false;
-  private final R2PublicationSession publicationSession =
-      new R2PublicationSession(android.os.SystemClock::elapsedRealtime);
-  private volatile boolean publicationForeground = true;
-  private boolean lockReceiverRegistered;
-  private final BroadcastReceiver screenLockReceiver =
-      new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-          if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) publicationSession.clear();
-        }
-      };
-
-  @Override
-  public void load() {
-    super.load();
-    ContextCompat.registerReceiver(
-        getContext(),
-        screenLockReceiver,
-        new IntentFilter(Intent.ACTION_SCREEN_OFF),
-        ContextCompat.RECEIVER_NOT_EXPORTED);
-    lockReceiverRegistered = true;
-  }
-
-  private boolean deviceLocked() {
-    KeyguardManager manager =
-        (KeyguardManager) getContext().getSystemService(Context.KEYGUARD_SERVICE);
-    return manager == null
-        || (Build.VERSION.SDK_INT >= 23 ? manager.isDeviceLocked() : manager.isKeyguardLocked());
-  }
-
+  private final R2PublicationSession publicationSession = new R2PublicationSession();
   private Task pendingAuth;
   private char[] recoveryPassword;
   private String recoveryMode;
@@ -179,7 +150,6 @@ public class R2StoragePlugin extends Plugin {
     work(
         call,
         () -> {
-          if (deviceLocked()) publicationSession.clear();
           check.run();
           task.run();
         });
@@ -195,7 +165,7 @@ public class R2StoragePlugin extends Plugin {
           JSONArray files = call.getArray("selectionIds"), jobs = call.getArray("transferIds");
           if (files == null || jobs == null || files.length() + jobs.length() > 500)
             throw new R2Exception("INVALID_SELECTION");
-          Set<String> selected = new HashSet<>(), transfers = new HashSet<>();
+          Set<String> selected = new LinkedHashSet<>(), transfers = new LinkedHashSet<>();
           JSONObject picks = repository.store.snapshot().optJSONObject("selections");
           for (int i = 0; i < files.length(); i++) {
             String id = files.getString(i);
@@ -211,12 +181,24 @@ public class R2StoragePlugin extends Plugin {
             repository.checkCredentialRevision(job);
             transfers.add(id);
           }
-          if (!publicationForeground || deviceLocked())
-            throw new R2Exception("PUBLICATION_SESSION_EXPIRED");
+          JSONObject queue =
+              R2TripQueue.prepare(
+                  repository,
+                  credentials,
+                  call.getString("collection"),
+                  selected,
+                  transfers,
+                  call.getObject("transfersBySelection", new JSObject()));
+          JSONObject bindings = queue.getJSONObject("transferIds");
+          Iterator<String> keys = bindings.keys();
+          while (keys.hasNext()) transfers.add(bindings.getString(keys.next()));
           String token =
               publicationSession.begin(
                   credentials, call.getString("collection"), selected, transfers);
-          call.resolve(new JSObject().put("publicationSession", token));
+          JSONArray queued = queue.getJSONArray("enqueue");
+          R2TransferWorker.enqueueBatch(getContext(), queued);
+          call.resolve(
+              new JSObject().put("publicationSession", token).put("transferIds", bindings));
         });
   }
 
@@ -635,14 +617,6 @@ public class R2StoragePlugin extends Plugin {
         call,
         () -> {
           R2Repository repository = repository();
-          if (call.getString("publicationSession") != null) {
-            if (deviceLocked()) publicationSession.clear();
-            publicationSession.transfer(
-                call.getString("publicationSession"),
-                repository.store.credentials("public"),
-                repository.job(call.getString("transferId")),
-                null);
-          }
           JSONArray stored = repository.jobs(), safe = new JSONArray();
           for (int i = 0; i < stored.length(); i++)
             safe.put(repository.safeJob(stored.getJSONObject(i)));
@@ -1217,28 +1191,10 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @Override
-  protected void handleOnStart() {
-    publicationForeground = true;
-    publicationSession.foreground(deviceLocked());
-    super.handleOnStart();
-  }
-
-  @Override
-  protected void handleOnStop() {
-    publicationForeground = false;
-    publicationSession.background(deviceLocked());
-    super.handleOnStop();
-  }
-
-  @Override
   protected void handleOnDestroy() {
     if (recoveryPassword != null) Arrays.fill(recoveryPassword, '\0');
     if (pendingKit != null) Arrays.fill(pendingKit, (byte) 0);
     selections.clear();
-    if (lockReceiverRegistered) {
-      getContext().unregisterReceiver(screenLockReceiver);
-      lockReceiverRegistered = false;
-    }
     publicationSession.clear();
     super.handleOnDestroy();
   }

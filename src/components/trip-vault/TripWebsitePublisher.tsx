@@ -8,7 +8,7 @@ import {publishTripToWebsite} from '@/lib/vault/publishTrip';
 import {rememberPlaceTransfer,rememberPlacePublication} from '@/lib/studio/trip-places';
 import {websiteSlug} from '@/lib/vault/website-payload';
 import {R2,nativeR2Available,systemAction,storageError,bytes} from '@/lib/r2/native';
-import {PublicationPaused,waitForTripTransfer,publicationApprovalExpired} from '@/lib/r2/trip-transfer';
+import {PublicationPaused,waitForTripTransfer,publicationSessionUnavailable} from '@/lib/r2/trip-transfer';
 import type {PublishedMedia,SelectedMedia,Transfer} from '@/lib/r2/types';
 
 export default function TripWebsitePublisher({tripId,organized=false}:{tripId:string;organized?:boolean}) {
@@ -23,24 +23,18 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
  async function choose(){setProblem('');try{const result=await systemAction(()=>R2.pickMedia({picker:'documents'}));setFiles(previous=>[...new Map([...previous,...result.files.filter(file=>/^(image|video)\//.test(file.mimeType))].map(file=>[file.id,file])).values()]);for(const file of result.files){void R2.getSelectionPreview({id:file.id}).then(result=>setPreviews(previous=>({...previous,[file.id]:result.thumbnail}))).catch(()=>{});}}catch(error){setProblem(storageError(error));}}
  async function waitForTransfer(job:Transfer,publicationSession?:string){
   return waitForTripTransfer(job.id,{
-   transfers:async()=>(await R2.getTransferProgress(publicationSession?{publicationSession,transferId:job.id}:undefined)).transfers,
-   foreground:()=>document.visibilityState!=='hidden',
+   transfers:async()=>(await R2.getTransferProgress()).transfers,
    resume:id=>R2.resumeTransfer({id,publicationSession}),
    paused:()=>cancelled.current,
    offline:()=>navigator.onLine===false,
    progress:(phase,current)=>{setJobs(previous=>({...previous,[job.id]:current}));setProgress(`${phase} ${current.name} · ${bytes(current.uploadedBytes)} / ${bytes(current.totalBytes)}`);},
   });
  }
- async function checkPaused(){
-  while(document.visibilityState==='hidden'){
-   if(cancelled.current)throw new PublicationPaused();
-   await new Promise(resolve=>setTimeout(resolve,1000));
-  }
-  if(cancelled.current)throw new PublicationPaused();
- }
+ function checkPaused(){if(cancelled.current)throw new PublicationPaused();}
  async function publish(){
   if(!trip||!consent||busy)return;cancelled.current=false;setBusy(true);setProblem('');setNotice('');setUrl('');
   let publicationSession:string|undefined;
+  let queuedTransfers:Record<string,string>={};
   try{
    const selected=cloud.filter(item=>cloudIds.includes(item.id));
    const latest=await getTrip(tripId);if(!latest)throw Error('This trip is no longer available.');
@@ -48,7 +42,14 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
    if(pending.length||files.length){
     const transferIds=[...new Set([...(latest.websitePlaces||[]).flatMap(group=>group.files.map(file=>group.transferIds[file.id]).filter(Boolean)),...files.map(file=>jobs[file.id]?.id).filter((id):id is string=>!!id)])];
     setProgress('Verify once to publish this trip’s selected files…');
-    publicationSession=(await systemAction(()=>R2.beginTripPublication({collection:websiteSlug(latest),selectionIds:[...new Set([...pending,...files].map(file=>file.id))],transferIds}))).publicationSession;
+    const transfersBySelection=Object.fromEntries([...(latest.websitePlaces||[]).flatMap(group=>group.files.filter(file=>group.transferIds[file.id]).map(file=>[file.id,group.transferIds[file.id]])),...files.filter(file=>jobs[file.id]).map(file=>[file.id,jobs[file.id].id])]);
+    const batch=await systemAction(()=>R2.beginTripPublication({collection:websiteSlug(latest),selectionIds:[...new Set([...pending,...files].map(file=>file.id))],transferIds,transfersBySelection}));
+    publicationSession=batch.publicationSession;queuedTransfers=batch.transferIds;setProgress('All approved files are queued on Android. Saving trip links…');
+    for(const group of latest.websitePlaces||[])for(const file of group.files){
+     const id=queuedTransfers[file.id];if(!id)throw Error('The native queue did not confirm this file. Your selections remain saved.');
+     await rememberPlaceTransfer(tripId,group.id,file.id,id);group.transferIds[file.id]=id;
+    }
+    setTrip((await getTrip(tripId))||latest);
    }
    await checkPaused();
    for(const group of latest.websitePlaces||[]){
@@ -59,7 +60,7 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
      const savedId=group.transferIds[file.id];
      if(savedId)job=(await R2.getTransferProgress()).transfers.find(item=>item.id===savedId);
      if(savedId&&!job)throw Error('A saved upload is unavailable. Check Cloud Storage before selecting this file again.');
-     if(!job){job=await R2.uploadObject({slot:'public',selectionId:file.id,publicationSession});await rememberPlaceTransfer(tripId,group.id,file.id,job.id);}
+     if(!job)throw Error('This approved upload is unavailable in Cloud Storage. Your selected original remains saved.');
      job=await waitForTransfer(job,publicationSession);await checkPaused();setProgress(`Publishing ${group.name} · ${file.name}`);
      const result=await R2.publishTripMedia({publicationSession,transferId:job.id,title:title.trim(),description:'',tags:[`place:${group.name}`,`place-id:${group.id}`],category:'expedition',collection:websiteSlug(latest),acknowledgeMetadata:true});
      const item=result.item;if(!item)throw Error('The publication record did not confirm this media. Its original remains unchanged.');
@@ -67,12 +68,12 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
     }
    }
 
-   for(const file of files){await checkPaused();let job=jobs[file.id];if(!job){job=await R2.uploadObject({slot:'public',selectionId:file.id,publicationSession});setJobs(previous=>({...previous,[file.id]:job!}));}job=await waitForTransfer(job,publicationSession);await checkPaused();setProgress(`Linking ${file.name} to this journey…`);const result=await R2.publishTripMedia({publicationSession,transferId:job.id,title:title.trim(),description:'',tags:place.trim()?[`place:${place.trim().slice(0,54)}`]:[],category:'expedition',collection:websiteSlug(trip),acknowledgeMetadata:true});const item=result.item;if(item)selected.push(item);else throw Error('The publication record did not confirm this file. Retry without deleting its original.');}
+   for(const file of files){await checkPaused();const id=queuedTransfers[file.id]||jobs[file.id]?.id;let job=(await R2.getTransferProgress()).transfers.find(item=>item.id===id);if(!job)throw Error('This approved upload is unavailable in Cloud Storage. Your selected original remains saved.');setJobs(previous=>({...previous,[file.id]:job!}));job=await waitForTransfer(job,publicationSession);await checkPaused();setProgress(`Linking ${file.name} to this journey…`);const result=await R2.publishTripMedia({publicationSession,transferId:job.id,title:title.trim(),description:'',tags:place.trim()?[`place:${place.trim().slice(0,54)}`]:[],category:'expedition',collection:websiteSlug(trip),acknowledgeMetadata:true});const item=result.item;if(item)selected.push(item);else throw Error('The publication record did not confirm this file. Retry without deleting its original.');}
    await checkPaused();
    setProgress('Updating your website journal…');const result=await publishTripToWebsite(tripId,{title,description,memoryIds:ids,includeItinerary:includeDays,includeRoute,publicMedia:[...new Map(selected.map(item=>[item.id,item])).values()],appendExistingMedia:organized||!!latest.websitePlaces?.length});setUrl(result.publicUrl);setProgress('Published. Your local originals and cloud backups are unchanged.');
   }catch(error){
-   if(publicationApprovalExpired(error)){setProgress('');setNotice('Publishing approval needs renewal. Your uploaded files and remaining selections are saved. Tap Resume publishing and verify once to continue from this file.');}
-   else if(error instanceof PublicationPaused){setProgress('');setNotice('Publishing progress saved. A transfer already running may finish in Cloud Storage. Tap Resume publishing when ready; completed uploads will be reused.');}
+   if(publicationSessionUnavailable(error)){setProgress('');setNotice('The app’s publishing session was replaced or restarted. Your native upload queue and completed files are saved. Tap Resume publishing to finish the website update.');}
+   else if(error instanceof PublicationPaused){setProgress('');setNotice('All approved files are queued in native Cloud Storage and continue uploading when Android permits. Return here to finish the website update; completed uploads will be reused.');}
    else setProblem(error&&typeof error==='object'&&'code' in error?storageError(error):error instanceof Error?error.message:storageError(error));
   }finally{
    if(publicationSession)await R2.endTripPublication({publicationSession}).catch(()=>{});
@@ -93,8 +94,8 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
  {!!trip?.liveExpedition?.legs.some(leg=>leg.coordinates.length)&&<><label className="tv-inline-checkbox"><input type="checkbox" disabled={busy} checked={includeRoute} onChange={event=>setIncludeRoute(event.target.checked)}/> Include recorded route & travel statistics</label><p className="tv-fine">Route locations become public. Older statistics may contain GPS errors; review them before sharing. Existing website route and distance stay unchanged when this is off.</p></>}
  <p className="tv-fine">Only this title, public description, selected media, place names, trip map pin, saved travel dates and chosen optional details are shared. Private notes, spending, tickets and contacts stay in your vault. Public originals can contain EXIF/location metadata; sanitize sensitive files before selecting them.</p>
  <label className="tv-inline-checkbox"><input type="checkbox" disabled={busy} checked={consent} onChange={event=>setConsent(event.target.checked)}/> I approve making these selected files and details public.</label>
- {busy&&<p className="tv-fine">Finish uploads later saves this queue. A file already uploading may continue in Cloud Storage.</p>}
- {busy&&<button type="button" className="tv-secondary" disabled={progress.startsWith('Updating your website')} onClick={()=>{cancelled.current=true;}}>Finish uploads later</button>}
+ {busy&&<p className="tv-fine">All approved files are queued on Android. Uploads continue in the background; you can return later to finish the website update.</p>}
+ {busy&&<button type="button" className="tv-secondary" disabled={progress.startsWith('Updating your website')} onClick={()=>{cancelled.current=true;}}>Continue in background</button>}
  <button className="tv-primary" disabled={busy||!trip||!title.trim()||!consent} onClick={()=>void publish()}>{busy?'Publishing…':notice?'Resume publishing':'Publish to website'}</button>{progress&&<p role="status" className="tv-fine">{progress}</p>}{notice&&<p role="status" className="tv-notice">{notice}</p>}{problem&&<p role="alert" className="tv-error">{problem}</p>}{url&&<a href={url} target="_blank" rel="noreferrer" className="tv-secondary">View my trip <ExternalLink size={16}/></a>}
  </div></TripSheet>}</section>;
 }

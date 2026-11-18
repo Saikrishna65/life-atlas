@@ -3,7 +3,6 @@ package com.lifeatlas.app.r2;
 import static org.junit.Assert.*;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,7 +33,7 @@ public class R2PublicationSessionTest {
   @Test
   public void oneConsentCoversOnlyReviewedFilesAndTheirNewOrSavedTransfers() throws Exception {
     R2Credentials c = R2CatalogTest.credentials();
-    R2PublicationSession session = new R2PublicationSession(() -> 0L);
+    R2PublicationSession session = new R2PublicationSession();
     String token = session.begin(c, "my-trip", Set.of("photo-a", "video-b"), Set.of("saved"));
     session.selection(token, c, "public", "photo-a");
     session.addTransfer(token, c, "photo-a", "uploaded-a");
@@ -61,42 +60,10 @@ public class R2PublicationSessionTest {
   }
 
   @Test
-  public void expiredBackgroundedEndedAndReplacedSessionsCannotAuthorizeAnotherFile()
-      throws Exception {
-    R2Credentials c = R2CatalogTest.credentials();
-    AtomicLong now = new AtomicLong();
-    R2PublicationSession session = new R2PublicationSession(now::get);
-    String token = session.begin(c, "trip", Set.of("photo"), Set.of());
-    now.set(30 * 60 * 1000L);
-    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, c, "public", "photo"));
-    String fresh = session.begin(c, "trip", Set.of("photo"), Set.of());
-    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, c, "public", "photo"));
-    session.clear();
-    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(fresh, c, "public", "photo"));
-    String ended = session.begin(c, "trip", Set.of("photo"), Set.of());
-    session.end(ended);
-    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(ended, c, "public", "photo"));
-  }
-
-  @Test
-  public void activeBatchStillHasAnAbsoluteExpiry() throws Exception {
-    R2Credentials c = R2CatalogTest.credentials();
-    AtomicLong now = new AtomicLong();
-    R2PublicationSession session = new R2PublicationSession(now::get);
-    String token = session.begin(c, "trip", Set.of("photo"), Set.of());
-    for (int minute = 10; minute < 120; minute += 10) {
-      now.set(minute * 60 * 1000L);
-      session.selection(token, c, "public", "photo");
-    }
-    now.set(120 * 60 * 1000L);
-    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, c, "public", "photo"));
-  }
-
-  @Test
   public void rotatingCredentialsInvalidatesBatchWithoutAuthorizingAnotherBucket()
       throws Exception {
     R2Credentials c = R2CatalogTest.credentials();
-    R2PublicationSession session = new R2PublicationSession(() -> 0L);
+    R2PublicationSession session = new R2PublicationSession();
     String token = session.begin(c, "trip", Set.of("photo"), Set.of());
     JSONObject input =
         new JSONObject()
@@ -109,75 +76,28 @@ public class R2PublicationSessionTest {
             .put("revision", "rotated");
     R2Credentials rotated = new R2Credentials(input);
     rejects(
-        "PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, rotated, "public", "photo"));
+        "PUBLICATION_SESSION_REQUIRED", () -> session.selection(token, rotated, "public", "photo"));
     R2Credentials other =
         new R2Credentials(input.put("revision", c.revision).put("bucket", "another-bucket"));
     rejects(
-        "PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, other, "public", "photo"));
+        "PUBLICATION_SESSION_REQUIRED", () -> session.selection(token, other, "public", "photo"));
   }
 
   @Test
-  public void activeTransferChecksKeepLongForegroundUploadsApprovedWithoutRemovingTheAbsoluteLimit()
+  public void onlyExplicitEndReplacementOrCredentialChangeRevokesTheReviewedBatch()
       throws Exception {
     R2Credentials c = R2CatalogTest.credentials();
-    AtomicLong now = new AtomicLong();
-    R2PublicationSession session = new R2PublicationSession(now::get);
-    String token = session.begin(c, "trip", Set.of("next-photo"), Set.of("large-video"));
-    for (int minute = 10; minute < 120; minute += 10) {
-      now.set(minute * 60 * 1000L);
-      session.transfer(token, c, job("large-video"), null);
-    }
-    session.selection(token, c, "public", "next-photo");
-    now.set(120 * 60 * 1000L);
-    rejects(
-        "PUBLICATION_SESSION_EXPIRED", () -> session.transfer(token, c, job("large-video"), null));
-  }
-
-  @Test
-  public void briefUnlockedInterruptionsSuspendOperationsAndCanResumeTheSameGrant()
-      throws Exception {
-    R2Credentials c = R2CatalogTest.credentials();
-    AtomicLong now = new AtomicLong();
-    R2PublicationSession session = new R2PublicationSession(now::get);
-    String token = session.begin(c, "trip", Set.of("photo"), Set.of());
-    session.background(false);
-    now.set(20_000L);
-    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, c, "public", "photo"));
-    now.set(59_999L);
-    session.foreground(false);
+    R2PublicationSession session = new R2PublicationSession();
+    String token = session.begin(c, "trip", Set.of("photo"), Set.of("video"));
+    // No clock, activity, screen-lock or background condition participates in this approval.
+    session.transfer(token, c, job("video"), "trip");
     session.selection(token, c, "public", "photo");
-    session.background(false);
-    now.addAndGet(60_000L);
-    session.foreground(false);
-    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, c, "public", "photo"));
-  }
-
-  @Test
-  public void deviceLockAndScreenOffRevokeEvenDuringTheBriefInterruptionWindow() throws Exception {
-    R2Credentials c = R2CatalogTest.credentials();
-    AtomicLong now = new AtomicLong();
-    R2PublicationSession session = new R2PublicationSession(now::get);
-    String token = session.begin(c, "trip", Set.of("photo"), Set.of());
-    session.background(true);
-    now.set(1000L);
-    session.foreground(false);
-    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, c, "public", "photo"));
-    String fresh = session.begin(c, "trip", Set.of("photo"), Set.of());
-    session.background(false);
-    session.foreground(true);
-    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(fresh, c, "public", "photo"));
-  }
-
-  @Test
-  public void unrelatedTransferPollingCannotRefreshIdleApproval() throws Exception {
-    R2Credentials c = R2CatalogTest.credentials();
-    AtomicLong now = new AtomicLong();
-    R2PublicationSession session = new R2PublicationSession(now::get);
-    String token = session.begin(c, "trip", Set.of(), Set.of("reviewed"));
-    now.set(20 * 60 * 1000L);
+    String replacement = session.begin(c, "another-trip", Set.of("other-photo"), Set.of());
+    rejects("PUBLICATION_SESSION_REQUIRED", () -> session.selection(token, c, "public", "photo"));
+    session.selection(replacement, c, "public", "other-photo");
+    session.end(replacement);
     rejects(
-        "PUBLICATION_SCOPE_MISMATCH", () -> session.transfer(token, c, job("unreviewed"), null));
-    now.set(30 * 60 * 1000L);
-    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.transfer(token, c, job("reviewed"), null));
+        "PUBLICATION_SESSION_REQUIRED",
+        () -> session.selection(replacement, c, "public", "other-photo"));
   }
 }
