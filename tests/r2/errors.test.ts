@@ -17,3 +17,7 @@ test("unrecognized bridge messages and object prototype names never leak or rend
     assert.equal(storageError(error), fallback);
   }
 });
+
+test('catalog conflicts explain saved-selection recovery without recommending a reset',()=>{
+ const message=storageError({code:'CATALOG_CONFLICT'});assert.match(message,/selected photos and completed uploads are saved/);assert.match(message,/do not reselect or delete/);assert.doesNotMatch(message,/Refresh and publish/);
+});

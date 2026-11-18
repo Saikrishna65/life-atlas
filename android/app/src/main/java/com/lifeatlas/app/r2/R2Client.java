@@ -17,7 +17,7 @@ import software.amazon.awssdk.regions.Region;
  * R2 REST transport with the official AWS SigV4 implementation. No presigned secrets enter the
  * WebView.
  */
-public final class R2Client {
+public final class R2Client implements R2Transport {
   public interface Progress {
     void bytes(long sent) throws Exception;
   }
@@ -181,6 +181,8 @@ public final class R2Client {
     try {
       connection = (HttpURLConnection) signed.getUri().toURL().openConnection();
       connection.setInstanceFollowRedirects(false);
+      // Signed S3 responses must never reuse an Android HTTP cache entry.
+      connection.setUseCaches(false);
       connection.setRequestMethod(method);
       connection.setConnectTimeout(20000);
       connection.setReadTimeout(60000);
@@ -234,12 +236,17 @@ public final class R2Client {
   static String responseCode(int status, String remoteCode, boolean bucket) {
     if (remoteCode.equals("RequestTimeTooSkewed") || remoteCode.equals("RequestExpired"))
       return "CLOCK_SKEW";
-    if (status == 401 || remoteCode.equals("SignatureDoesNotMatch") || remoteCode.equals("InvalidAccessKeyId"))
-      return "AUTHENTICATION_FAILED";
-    if (status == 301 || status == 307 || remoteCode.equals("PermanentRedirect")) return "INVALID_ENDPOINT";
+    if (status == 401
+        || remoteCode.equals("SignatureDoesNotMatch")
+        || remoteCode.equals("InvalidAccessKeyId")) return "AUTHENTICATION_FAILED";
+    if (status == 301 || status == 307 || remoteCode.equals("PermanentRedirect"))
+      return "INVALID_ENDPOINT";
     if (status == 403) return "PERMISSION_DENIED";
     if (status == 404) return bucket ? "BUCKET_NOT_FOUND" : "OBJECT_NOT_FOUND";
-    if (status == 412) return "CATALOG_CONFLICT";
+    if (status == 412
+        || status == 409
+            && (remoteCode.equals("ConditionalRequestConflict")
+                || remoteCode.equals("OperationAborted"))) return "CATALOG_CONFLICT";
     if (status == 429 || status >= 500) return "REMOTE_TEMPORARY_FAILURE";
     return "R2_REQUEST_REJECTED";
   }

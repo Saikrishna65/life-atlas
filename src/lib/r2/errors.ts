@@ -82,7 +82,9 @@ const messages: Record<string, string> = {
   DECRYPTION_FAILED:
     "The file could not authenticate with this encryption key. Keep the original and check the recovery kit.",
   CATALOG_CONFLICT:
-    "The public catalog changed elsewhere. Refresh and publish again; the existing catalog was preserved.",
+    "The catalog changed while publishing. Your selected photos and completed uploads are saved. Tap Publish again to resume; do not reselect or delete them.",
+  MISSING_CATALOG_ETAG: "R2 did not return the catalog version needed for a safe update. The existing catalog was preserved. Reconnect and retry publishing.",
+  INVALID_PUBLIC_CATALOG: "The public catalog could not be verified. Its existing contents were preserved; do not delete or reset it.",
   CATALOG_DELETE_BLOCKED:
     "Catalog objects are managed through Publish to Website.",
   PUBLISHED_OBJECT: "Unpublish this item before deleting its public object.",

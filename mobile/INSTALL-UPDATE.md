@@ -1,9 +1,9 @@
-Atlas 1.4.6 — verified stable signing
+Atlas 1.4.7 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 13.
+3. Open the matching APK and choose Update. This build uses version code 14.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -40,3 +40,9 @@ you approve publishing. Pending transfers and completed public media are saved
 per place. Website updates append media and preserve existing routes/statistics.
 The public loader now waits only for the initial viewport, with a four-second
 asset budget after hydration. Other scenes and media remain lazy-loaded.
+
+Catalog conflict recovery: native reads bypass HTTP caches. Conditional publication
+retries re-read and merge the latest catalog, retain unrelated media and stop after
+four attempts. Already-published upload IDs are idempotent. Saved place selections
+and transfer IDs survive this update. Retry Publish on your existing trip; do not
+reselect files or delete/reset the catalog to resolve a conflict.
