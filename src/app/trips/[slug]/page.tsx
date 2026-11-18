@@ -1,16 +1,14 @@
 import {cache} from "react";
-import { expeditions } from "@/data/demo/expeditions";
 import TripDetailExperience from "@/components/trips/TripDetailExperience";
-import { demoTripDetail, publicTripDetail } from "@/lib/public-trips/detail";
+import { publicTripDetail } from "@/lib/public-trips/detail";
 import { notFound } from "next/navigation";
-import { getTripBySlug, getNextTrip } from "@/lib/queries/trips";
+import { getTripBySlug, getNextTrip, getAllTripSlugs } from "@/lib/queries/trips";
 import { Metadata } from "next";
 
 const readTrip=cache((slug:string)=>getTripBySlug(slug).catch(()=>null));
 
 export async function generateStaticParams() {
-  // Existing database journeys still resolve dynamically; demo builds need no database.
-  return expeditions.map((e) => ({ slug: e.slug }));
+  return getAllTripSlugs();
 }
 
 export async function generateMetadata({
@@ -20,8 +18,6 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const trip = await readTrip(slug);
-  const demo = expeditions.find((e) => e.slug === slug);
-  if (!trip && demo) return { title: demo.name, description: demo.overview };
 
   if (!trip) {
     return { title: "Trip Not Found | Life Atlas" };
@@ -45,8 +41,6 @@ export default async function TripDetailPage({
 }) {
   const { slug } = await params;
   const trip = await readTrip(slug);
-  const demo = expeditions.find((e) => e.slug === slug);
-  if (!trip && demo) return <TripDetailExperience key={demo.id} trip={demoTripDetail(demo)} />;
   if (!trip) notFound();
   const next = await getNextTrip(trip.startDate, trip.id).catch(() => null);
   return <TripDetailExperience key={trip.id} trip={publicTripDetail(trip, next)} />;

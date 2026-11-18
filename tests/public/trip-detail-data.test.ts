@@ -1,6 +1,7 @@
+import {demoTripDetail} from "../../src/data/demo/trip-detail";
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { demoTripDetail, publicTripDetail, formatJourneyDuration, type PublicTripInput } from '../../src/lib/public-trips/detail';
+import { publicTripDetail, formatJourneyDuration, type PublicTripInput } from '../../src/lib/public-trips/detail';
 import { sampleJourneyTelemetry } from '../../src/data/demo/journey-telemetry';
 import { expeditions } from '../../src/data/demo/expeditions';
 const trip: PublicTripInput = {

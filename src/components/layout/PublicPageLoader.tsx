@@ -25,7 +25,7 @@ function RouteReadiness({path}:{path:string}){
     setPublicLoading(true);
     const lock=()=>{
       lenis?.stop();
-      document.querySelectorAll<HTMLElement>('main,.world-nav,.public-footer').forEach(el=>{
+      document.querySelectorAll<HTMLElement>('main').forEach(el=>{
         if(!inert.has(el)){inert.set(el,el.inert);el.inert=true;el.setAttribute('aria-busy','true');}
       });
     };

@@ -1,4 +1,4 @@
-import type { HeroGalleryPhoto, HeroTrip } from "../../data/demo/hero-films";
+import type { HeroGalleryPhoto, HeroTrip } from "./types";
 import type { PublishedMedia } from "../r2/types";
 
 const normalize = (value: string) => value.trim().normalize("NFC").toLocaleLowerCase("en");
@@ -28,7 +28,7 @@ export function selectHeroGalleryPhotos(
     });
   candidates.push(...fallback.filter(photo => !photo.sample));
   // Illustrations never fill an empty slot beside a real published photograph.
-  if (!candidates.length) candidates.push(...fallback);
+
   const selected: HeroGalleryPhoto[] = [];
   for (const photo of candidates) {
     if (!selected.some(current => current.tripId === photo.tripId || current.src === photo.src)) selected.push(photo);

@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import { observatoryTypography as typography } from "@/lib/public-fonts";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, ArrowLeft, ArrowRight, MoveUpRight, Rotate3D } from "lucide-react";
-import { destinations, expeditions } from "@/data/demo/expeditions";
+import type {PublicPlace} from "@/lib/queries/public-content";
 import "./observatory.css";
 
 const Globe = dynamic(() => import("@/components/home/InteractiveGlobe"), {
@@ -16,29 +16,27 @@ const Globe = dynamic(() => import("@/components/home/InteractiveGlobe"), {
 });
 
 
-export default function Observatory() {
-  const [selected, setSelected] = useState(destinations[0].id);
-  const [focused, setFocused] = useState<string | undefined>(destinations[0].id);
+export default function Observatory({places=[]}:{places?:PublicPlace[]}) {
+  const destinations=useMemo(()=>places.filter(place=>place.latitude!==null&&place.longitude!==null&&Number.isFinite(place.latitude)&&Number.isFinite(place.longitude)),[places]);
+  const [selected, setSelected] = useState(destinations[0]?.id);
+  const [focused, setFocused] = useState<string | undefined>(destinations[0]?.id);
   const [ready, setReady] = useState(false);
   const root = useRef<HTMLElement>(null);
   const current = destinations.find(place => place.id === selected)!;
-  const journey = expeditions.find(trip => trip.id === current.expeditionIds[0]);
+  const journey = current?.tripPlaces[0]?.trip;
   const selectPlace = (id: string) => {
     setSelected(id);
     setFocused(id);
   };
   const stepPlace = (step: number) => {
+    if(!destinations.length)return;
     const index = destinations.findIndex(place => place.id === selected);
     selectPlace(destinations[(index + step + destinations.length) % destinations.length].id);
   };
   const points = useMemo(() => destinations.map(place => ({
     id: place.id, name: place.name, slug: place.slug, country: place.country,
-    latitude: place.latitude, longitude: place.longitude,
-    tripPlaces: place.expeditionIds.map(id => {
-      const trip = expeditions.find(trip => trip.id === id)!;
-      return { trip: { title: trip.name, slug: trip.slug } };
-    }),
-  })), []);
+    tripPlaces: place.tripPlaces, latitude:place.latitude!,longitude:place.longitude!,
+  })), [destinations]);
 
   useEffect(() => {
     const element = root.current;
@@ -84,27 +82,26 @@ export default function Observatory() {
         </div>
         <div className="observatory-gesture" aria-hidden="true">
           <Rotate3D size={17} strokeWidth={1.2} />
-          <span className="observatory-desktop-hint">Drag to wander. Choose a point.</span>
-          <span className="observatory-touch-hint">Use the arrows or choose a point to turn the world.</span>
+          <span className="observatory-desktop-hint">Drag to explore my published places.</span>
+          <span className="observatory-touch-hint">Drag to turn the world.</span>
         </div>
 
-        <aside id="place-browser" className="observatory-focus" aria-label="Selected destination">
+        {current && <aside id="place-browser" className="observatory-focus" aria-label="Selected destination">
           <div className="observatory-focus-top">
             <span>Somewhere in / {current.country}</span>
             <span>{String(destinations.indexOf(current) + 1).padStart(2, "0")}</span>
           </div>
-          <div className="observatory-focus-photo" key={current.id}>
-            <Image src={current.image.replace(".webp", "-small.webp")} alt={`Illustrative ${current.category.toLowerCase()} landscape for ${current.name}`}
+          {current.image && <div className="observatory-focus-photo" key={current.id}>
+            <Image src={current.image} alt={current.name} unoptimized
               fill sizes="(max-width: 700px) 120px, 260px" loading="lazy"
               onLoad={event => { event.currentTarget.dataset.loaded = "true"; }} />
-            <span>Illustrative photograph</span>
           </div>
-          <div className="observatory-focus-copy" key={`copy-${current.id}`}>
+          }<div className="observatory-focus-copy" key={`copy-${current.id}`}>
             <span className="observatory-focus-region">{current.region}</span>
             <h3 aria-live="polite">{current.name}</h3>
             <p>{current.description}</p>
             <div className="observatory-focus-meta">
-              <span>{current.duration} days, unhurried</span><span>{current.category}</span>
+              <span>{current.country}</span>
             </div>
             {journey && <Link className="observatory-journey-link" href={`/trips/${journey.slug}`}>
               Open the journey <ArrowUpRight size={17} />
@@ -115,7 +112,7 @@ export default function Observatory() {
             <button type="button" aria-label="Previous place" onClick={() => stepPlace(-1)} disabled={destinations.length < 2}><ArrowLeft size={16} /></button>
             <button type="button" aria-label="Next place" onClick={() => stepPlace(1)} disabled={destinations.length < 2}><ArrowRight size={16} /></button>
           </div>
-        </aside>
+        </aside>}
       </div>
 
 

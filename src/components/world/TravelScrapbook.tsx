@@ -11,7 +11,7 @@ import { usePublicCatalog } from "./usePublicCatalog";
 import "./travel-scrapbook.css";
 import { projectRibbonFrame } from "@/lib/public-trips/ribbon-projection";
 
-import { catalogScrapbookFrames, scrapbookSamples, selectScrapbookFrames, type ScrapbookFrame } from "@/lib/public-trips/scrapbook";
+import { catalogScrapbookFrames, selectScrapbookFrames, type ScrapbookFrame } from "@/lib/public-trips/scrapbook";
 
 /** Decode only visible films; originals stay outside React/JS memory. */
 function AutoFilm({ frame, paused }: { frame: ScrapbookFrame; paused: boolean }) {
@@ -54,7 +54,7 @@ export default function TravelScrapbook({ media = [],curated=false }: { media?: 
   }, []);
   const moments = useMemo(() => curated ? media : selectScrapbookFrames([
     ...catalogScrapbookFrames(catalog?.items ?? [], media),
-    ...(media.length ? media : scrapbookSamples),
+    ...media,
   ], seed), [catalog, media, seed,curated]);
   const current = selected === null ? null : moments[selected];
   const next = (direction: number) => setSelected(index => index === null ? null : (index + direction + moments.length) % moments.length);

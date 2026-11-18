@@ -15,7 +15,7 @@ import {
   Play,
 } from "lucide-react";
 import gsap from "gsap";
-import { heroFilms, type HeroTrip, type HeroGalleryPhoto } from "@/data/demo/hero-films";
+import type { HeroTrip, HeroGalleryPhoto } from "@/lib/public-trips/types";
 import "./trip-film-hero.css";
 
 
@@ -32,7 +32,6 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(true);
   const [visible, setVisible] = useState(true);
-  const [fallback, setFallback] = useState(false);
   const [failed, setFailed] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -57,6 +56,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
     !menu &&
     !blocked;
   const choose = (index: number) => {
+    if (!trips[active]?.video || !trips[index]?.video) { setActive(index); setRequested(index); setOutgoing(null); return; }
     if (outgoing !== null) {
       queuedRequest.current = index;
       setQueued(index);
@@ -73,7 +73,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
       ([entry]) => setVisible(entry.isIntersecting),
       { threshold: 0.15 },
     );
-    observer.observe(root.current!);
+    if(root.current)observer.observe(root.current);
     const visibility = () => setTabVisible(!document.hidden);
     document.addEventListener("visibilitychange", visibility);
     return () => {
@@ -109,7 +109,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
     }, root);
     return () => context.revert();
   }, [active, reduced, publicLoading]);
-  if (!current) return null;
+  if (!current) return <section ref={root} className={`${heroTypography.variable} trip-film-hero`} data-hero aria-label="Life Atlas"><PublicPageReady /><div className="trip-film-main"><p className="trip-film-eyebrow">Life Atlas</p><h1>My world.<br />In the making.</h1><p>My journeys will appear here when I publish them.</p><Link className="trip-film-cta" href="/trips"><span>Explore my journal</span><ArrowRight size={17}/></Link></div></section>;
   return (
     <section
       ref={root}
@@ -129,8 +129,8 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
       }}
     >
       <PublicPageReady />
-      <TripFilmStage
-        films={trips.map((trip,index)=>trip.video?{src:trip.video,poster:trip.image,fallback:heroFilms[index%3].fallback}:heroFilms[index%3])}
+      {current.video ? <TripFilmStage
+        films={trips.map(trip=>({src:trip.video||"",poster:trip.image,fallback:""}))}
         active={active}
         outgoing={outgoing}
         requested={requested}
@@ -148,10 +148,9 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
             progress.current.style.transform = `scaleX(${value})`;
         }}
         onEnd={() => {
-          if (trips.length > 1) setRequested((active + 1) % trips.length);
+          if (trips.length > 1) choose((active + 1) % trips.length);
         }}
         onStatus={(status) => {
-          setFallback(status === "fallback");
           setFailed(status === "failed");
           setBlocked(status === "blocked");
           if (status === "failed") {
@@ -159,10 +158,10 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
             setPaused(true);
           }
         }}
-      />
+      /> : <div className="trip-film-stage">{current.image && <Image src={current.image} alt="" fill sizes="100vw" priority unoptimized style={{objectFit:"cover"}}/>}</div>}
       <div className="trip-film-main" ref={heading} key={current.id}>
         <p className="trip-film-eyebrow">
-          {current.sample ? "A sample journey" : "From the latest journeys"} / 0
+          From my latest journeys / 0
           {active + 1}
         </p>
         <h1>
@@ -207,11 +206,11 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
         </Link>
         <Link prefetch={publicLoading?false:null} className="trip-film-world-link" href={`/trips/${trips[0].slug}`}>
           <span className="trip-film-latest-image">
-            <Image src={trips[0].image} alt="" fill sizes="120px" unoptimized />
+            {trips[0].image && <Image src={trips[0].image} alt="" fill sizes="120px" unoptimized />}
           </span>
           <span className="trip-film-world-copy">
             <small className="trip-film-card-eyebrow">
-              Latest trip{trips[0].sample ? " / sample" : ""}
+              Latest trip
             </small>
             <strong>{trips[0].title}</strong>
             <small>Follow the route. Open the journal.</small>
@@ -236,16 +235,16 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
                 choose(i);
               }}
             >
-              <span className="trip-film-thumbnail">
+              {trip.image && <span className="trip-film-thumbnail">
                 <Image
-                  src={heroFilms[i % 3].poster}
+                  src={trip.image}
                   alt=""
                   fill
                   sizes="105px"
                   unoptimized
                 />
               </span>
-              <span className="trip-film-selector-copy">
+              }<span className="trip-film-selector-copy">
                 <small>0{i + 1}</small>
                 <span>{trip.title}</span>
               </span>
@@ -258,7 +257,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
           ))}
         </div>
         <div className="trip-film-footer-note">
-        <button
+        {current.video && <button
           className="trip-film-round"
           aria-label={
             paused || (reduced && !manualPlay) || blocked
@@ -279,16 +278,11 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
           ) : (
             <Pause size={15} />
           )}
-        </button>
+        </button>}
 
           <span role="status">
-            {failed
-              ? "Video unavailable · explore the journey"
-              : fallback
-                ? "Local motion study · stock video unavailable"
-                : current?.video ? "Published trip film" : "Stock films / illustrative footage"}
+            {failed ? "Film unavailable · explore the journey" : current.video ? "Published trip film" : "From my travel journal"}
           </span>
-          {(!current?.video||fallback)&&<a href="/films/hero-credits.txt" target="_blank" rel="noreferrer">Credits ↗</a>}
           <a href="#observatory">Scroll to explore ↓</a>
         </div>
       </footer>

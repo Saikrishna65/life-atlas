@@ -18,7 +18,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://lifeatlas.example.com'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://life-atlas-eight-five.vercel.app'),
   title: {
     template: "%s | Life Atlas",
     default: "Life Atlas",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Life Atlas",
     description: "A place for the moments I want to remember.",
-    url: "https://lifeatlas.example.com",
+    url: "https://life-atlas-eight-five.vercel.app",
     siteName: "Life Atlas",
     images: [
       {

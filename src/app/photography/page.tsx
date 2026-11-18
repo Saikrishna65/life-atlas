@@ -1,19 +1,20 @@
+export const revalidate=300;
 import type { Metadata } from "next";
 import PublicPage from "@/components/world/PublicPage";
-import PublishedMedia from "@/components/world/PublishedMedia";
-import MemoryArchive from "@/components/world/MemoryArchive";
+import PublishedGallery from "@/components/world/PublishedGallery";
+import {getScrapbookMedia} from "@/lib/queries/scrapbook";
 export const metadata: Metadata = {
   title: "Frames & films",
   description: "Photographs, films and the moments in between. The Life Atlas visual journal.",
 };
-export default function Page() {
+export default async function Page() {
+  const frames=await getScrapbookMedia();
   return (
     <PublicPage
       title={"Frames & films."}
       kicker={"Still photographs. Moving memories. A life, in the making."}
     >
-      <MemoryArchive />
-      <PublishedMedia />
+      <PublishedGallery frames={frames}/>
     </PublicPage>
   );
 }

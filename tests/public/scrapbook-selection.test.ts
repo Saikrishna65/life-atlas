@@ -1,6 +1,7 @@
+import {scrapbookSamples} from "../../src/data/demo/scrapbook";
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { catalogScrapbookFrames, scrapbookSamples, selectScrapbookFrames, type ScrapbookFrame } from '../../src/lib/public-trips/scrapbook';
+import { catalogScrapbookFrames, selectScrapbookFrames, type ScrapbookFrame } from '../../src/lib/public-trips/scrapbook';
 import type { PublishedMedia } from '../../src/lib/r2/types';
 const fixture = (trip: string, kind: 'photo' | 'film', index = 0): ScrapbookFrame => ({ id: `${trip}-${kind}-${index}`, tripId: trip, tripTitle: trip, src: `https://media.example.com/${trip}/${kind}-${index}`, preview: '', title: 'A moment', kind, sample: false });
 test('takes one photo and film from every trip before extras, and mixes their order', () => {
@@ -19,7 +20,7 @@ test('the strip retains all trips beyond the eight collage slots', () => {
 test('does not pad real media with fictional samples or invent missing films', () => {
   const photo = fixture('one-real-trip', 'photo');
   assert.deepEqual(selectScrapbookFrames([...scrapbookSamples, photo], 42), [photo]);
-  assert.equal(selectScrapbookFrames(scrapbookSamples, 42).length, 8);
+  assert.equal(selectScrapbookFrames(scrapbookSamples, 42).length, 0);
 });
 test('accepts published trip films without thumbnails and matches trip title to slug', () => {
   const base: PublishedMedia = { id: 'film', key: 'travel/a.mp4', url: 'https://media.example.com/a.mp4', title: 'A film', description: '', tags: [], category: 'expedition', collection: ' A Real Journey ', mimeType: 'video/mp4', size: 1000, publishedAt: '2026-01-01', metadataPolicy: 'removed' };

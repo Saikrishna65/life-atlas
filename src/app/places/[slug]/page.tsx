@@ -1,8 +1,6 @@
-import { destinations } from "@/data/demo/expeditions";
 import PublicPage from "@/components/world/PublicPage";
-import PlaceDetail from "@/components/world/PlaceDetail";
 import { notFound } from "next/navigation";
-import { getPlaceBySlug } from "@/lib/queries/places";
+import { getPlaceBySlug, getAllPlaceSlugs } from "@/lib/queries/places";
 import PlaceOverview from "@/components/places/PlaceOverview";
 import PlaceTrips from "@/components/places/PlaceTrips";
 import TripExperiences from "@/components/trips/TripExperiences";
@@ -11,7 +9,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 
 export async function generateStaticParams() {
-  return destinations.map((d) => ({ slug: d.slug }));
+  return getAllPlaceSlugs();
 }
 
 export async function generateMetadata({
@@ -20,9 +18,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const demo = destinations.find((d) => d.slug === slug);
-  if (demo) return { title: demo.name, description: demo.description };
-  const place = await getPlaceBySlug(slug);
+  const place = await getPlaceBySlug(slug).catch(()=>null);
 
   if (!place) {
     return { title: "Place Not Found | Life Atlas" };
@@ -47,17 +43,7 @@ export default async function PlaceDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const demo = destinations.find((d) => d.slug === slug);
-  if (demo)
-    return (
-      <PublicPage
-        title={demo.name}
-        kicker={`${demo.region} / ${demo.country} — A destination study.`}
-      >
-        <PlaceDetail place={demo} />
-      </PublicPage>
-    );
-  const place = await getPlaceBySlug(slug);
+  const place = await getPlaceBySlug(slug).catch(()=>null);
 
   if (!place) {
     notFound();

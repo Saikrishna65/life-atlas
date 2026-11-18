@@ -4,11 +4,11 @@ import Image from "next/image";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { peoplePhotos, type PeoplePhoto } from "@/data/demo/people";
+import type { PeoplePhoto } from "@/lib/public-trips/types";
 import { Modal } from "./primitives";
 import "./people-moments.css";
 
-export default function PeopleMoments({ photos = peoplePhotos }: { photos?: readonly PeoplePhoto[] }) {
+export default function PeopleMoments({ photos = [] }: { photos?: readonly PeoplePhoto[] }) {
   const root = useRef<HTMLElement>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const index = photos.findIndex(photo => photo.id === selected);

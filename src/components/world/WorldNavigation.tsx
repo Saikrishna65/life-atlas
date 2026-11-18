@@ -88,7 +88,7 @@ export default function WorldNavigation({showPeople=true,showRibbon=true}:{showP
         Skip to the journeys
       </a>
       <nav
-        aria-label="World chapters"
+        aria-label="World chapters" inert={publicLoading} aria-busy={publicLoading}
         data-scene={visible ? active : "hero"}
         className={`${typography.variable} world-nav reference-world-nav is-visible`}
       >

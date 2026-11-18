@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useState } from "react";
-import type { HeroGalleryPhoto, HeroTrip } from "@/data/demo/hero-films";
+import type { HeroGalleryPhoto, HeroTrip } from "@/lib/public-trips/types";
 import { selectHeroGalleryPhotos } from "@/lib/public-trips/hero-gallery";
 import { usePublicCatalog } from "@/components/world/usePublicCatalog";
 
@@ -34,7 +34,6 @@ export default function HeroGalleryPreview({ photos, trips }: {
       </span>
       <span className="hero-gallery-caption">
         Photo Gallery
-        {selected.length > 0 && selected.every(photo => photo.sample) && <small>Sample trip galleries</small>}
       </span>
     </>
   );

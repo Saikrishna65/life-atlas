@@ -275,3 +275,16 @@
     transition: none;
   }
 }
+
+/* The personal gallery uses only approved media, with each original's proportions. */
+.published-media { padding: clamp(24px,5vw,80px); }
+.published-media .world-toolbar { display:flex;align-items:center;flex-wrap:wrap;gap:24px;margin-bottom:32px; }
+.published-media .world-toolbar > label { display:flex;align-items:center;gap:12px; }
+.published-media select { background:transparent;color:inherit;border:1px solid currentColor;border-radius:24px;padding:10px 18px; }
+.published-media-grid { columns:3 270px;column-gap:24px; }
+.published-media-grid > button { display:block;width:100%;break-inside:avoid;margin:0 0 24px;padding:0;border:0;overflow:hidden;background:transparent;cursor:pointer; }
+.published-media-grid img,.published-media-grid video { display:block;width:100%;height:auto;transition:transform .6s cubic-bezier(.2,.7,.2,1); }
+.published-media-grid > button:hover img { transform:scale(1.015); }
+.published-media-grid > button:focus-visible { outline:2px solid currentColor;outline-offset:5px; }
+@media(max-width:700px){.published-media-grid{columns:1;}.published-media .world-toolbar{align-items:stretch;}.published-media{padding:24px 18px;}}
+@media(prefers-reduced-motion:reduce){.published-media-grid img,.published-media-grid video{transition:none;}}

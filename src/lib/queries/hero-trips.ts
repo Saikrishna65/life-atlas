@@ -1,56 +1,39 @@
 import prisma from "../prisma";
 import {publishedTripMedia} from "../public-trips/detail";
-import { expeditions } from "@/data/demo/expeditions";
-import { gallery } from "@/data/demo/memories";
-import type { HeroGalleryPhoto, HeroTrip } from "@/data/demo/hero-films";
+import type { HeroGalleryPhoto, HeroTrip } from "@/lib/public-trips/types";
 
 /** Public travel records only. Native/local vault databases are never read here. */
-export async function getLatestHeroTrips(slugs?:string[]): Promise<HeroTrip[]> {
+export async function getLatestHeroTrips(slugs?:string[],source=prisma): Promise<HeroTrip[]> {
   try {
-    const trips = await prisma.trip.findMany({
+    const trips = await source.trip.findMany({
       take: 3,
       ...(slugs?{where:{slug:{in:slugs}}}:{}),
       orderBy: [{ startDate: "desc" }, { id: "asc" }],
-      select: { id: true, slug: true, title: true, coverImage: true,routeData:true },
+      select: { id: true, slug: true, title: true, coverImage: true,routeData:true,photos:{take:1,select:{url:true}} },
     });
     if (trips.length)
       return [...trips].sort((a,b)=>slugs?slugs.indexOf(a.slug)-slugs.indexOf(b.slug):0).map((trip) => ({
         id: trip.id,
         slug: trip.slug,
         title: trip.title,
-        image: trip.coverImage || heroImage(trip.slug),
+        image: trip.coverImage || trip.photos[0]?.url || publishedTripMedia(trip.routeData).find(item=>item.kind==="photo")?.url || "",
         sample: false,
         video:publishedTripMedia(trip.routeData).find(item=>item.kind==="video")?.url,
       }));
   } catch {
     /* The public homepage also works without a configured public database. */
   }
-  return expeditions
-    .slice(0, 3)
-    .map((e) => ({
-      id: e.id,
-      slug: e.slug,
-      title: e.name,
-      image: e.image,
-      sample: true,
-    }));
-}
-function heroImage(slug: string) {
-  return (
-    expeditions.find((e) => e.slug === slug)?.image ||
-    "/images/world/mountains.webp"
-  );
+  return [];
 }
 
 /** One existing public photograph per trip, from two different trip journals. */
-export async function getHeroGalleryPhotos(): Promise<HeroGalleryPhoto[]> {
+export async function getHeroGalleryPhotos(source=prisma): Promise<HeroGalleryPhoto[]> {
   try {
-    const trips = await prisma.trip.findMany({
-      where: { photos: { some: { url: { not: "" } } } },
-      take: 2,
+    const trips = await source.trip.findMany({
+      take: 30,
       orderBy: [{ startDate: "desc" }, { id: "asc" }],
       select: {
-        id: true, slug: true, title: true,
+        id: true, slug: true, title: true,routeData:true,
         photos: {
           where: { url: { not: "" } },
           take: 1,
@@ -59,25 +42,13 @@ export async function getHeroGalleryPhotos(): Promise<HeroGalleryPhoto[]> {
         },
       },
     });
-    const photos = trips.flatMap(trip => trip.photos.map(photo => ({
-      id: photo.id, src: photo.url, tripId: trip.id, tripSlug: trip.slug,
-      tripTitle: trip.title, sample: false,
-    })));
+    const photos = trips.flatMap(trip => {
+      const photo=trip.photos[0] || publishedTripMedia(trip.routeData).find(item=>item.kind==='photo');
+      return photo?[{id:photo.id,src:photo.url,tripId:trip.id,tripSlug:trip.slug,tripTitle:trip.title,sample:false}]:[];
+    }).slice(0,2);
     if (photos.length) return photos;
   } catch {
     /* Never read a native vault when the public database is unavailable. */
   }
-  const selected: HeroGalleryPhoto[] = [];
-  for (const trip of expeditions) {
-    const photo = gallery.find(photo => trip.galleryIds.includes(photo.id)
-      && !selected.some(current => current.src === photo.thumbnail)
-      && (!["Mountains", "Nature"].includes(trip.category) || !["ocean", "space"].includes(photo.sourceId)));
-    if (!photo) continue;
-    selected.push({
-      id: photo.id, src: photo.thumbnail, tripId: trip.id,
-      tripSlug: trip.slug, tripTitle: trip.name, sample: true,
-    });
-    if (selected.length === 2) break;
-  }
-  return selected;
+  return [];
 }

@@ -30,7 +30,7 @@ test("gallery takes photos from two trips, resolving title/slug aliases and pref
 test("videos, non-trip media and unassigned collections never enter the photo card", () => {
   const items = [photo("film", "river-days", { mimeType: "video/mp4" }),
     photo("gallery", "river-days", { category: "gallery" }), photo("none", " ")];
-  assert.deepEqual(selectHeroGalleryPhotos(items, fallback, trips), fallback);
+  assert.deepEqual(selectHeroGalleryPhotos(items, fallback, trips), []);
 });
 test("a single real trip photo is not duplicated or mixed with fictional galleries", () => {
   assert.equal(selectHeroGalleryPhotos([photo("real", "mountain-road")], fallback, trips).length, 1);

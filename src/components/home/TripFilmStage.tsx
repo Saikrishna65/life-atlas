@@ -1,12 +1,11 @@
 "use client";
 import {usePublicLoading} from "@/components/layout/PublicPageReady";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { heroFilms } from "@/data/demo/hero-films";
 import { heroHandoffAt, HERO_PRELOAD_AT_SECONDS } from "./hero-playback";
 
 /** The outgoing decoder stays alive until the incoming video has painted a frame. */
 export default function TripFilmStage({
-  films=heroFilms,
+  films=[],
   active,
   outgoing,
   requested,
@@ -194,6 +193,7 @@ export default function TripFilmStage({
                   : film.src
                 : undefined
             }
+            poster={film.poster || undefined}
             muted
             playsInline
             preload={publicLoading?"metadata":mounted?(index===active||index===requested||index===outgoing||(index===prewarmed&&playing&&!reduced)?"auto":"metadata"):"none"}
@@ -202,7 +202,7 @@ export default function TripFilmStage({
             tabIndex={-1}
             onError={() => {
               generations.current[index]++;
-              if (!fallbacks[index])
+              if (!fallbacks[index] && film.fallback)
                 setFallbacks((old) =>
                   old.map((value, i) => (i === index ? true : value)),
                 );
