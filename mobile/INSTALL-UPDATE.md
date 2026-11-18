@@ -1,4 +1,4 @@
-Atlas 1.4.9 — verified stable signing
+Atlas 1.4.10 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
@@ -56,7 +56,9 @@ build does not access your bucket or upload any personal photos.
 Trip publishing: verify your device once for the reviewed batch, instead of once
 for each upload and publication. This grant covers only the chosen public files,
 their saved transfers and this trip collection. It ends on finishing, pausing,
-leaving the app, 30 minutes idle or two hours total. Credential changes, deletion,
+screen-off/device lock, leaving the app for a minute or longer, 30 minutes idle
+or two hours total. Brief unlocked app interruptions suspend new operations
+and can retain the same grant when you return within a minute. Credential changes, deletion,
 private operations and unrelated uploads still require separate verification.
 
 Finish uploads later saves your place selections and completed publications.
@@ -65,3 +67,10 @@ reuses verified files and retries the same paused/interrupted transfer IDs where
 supported. A file at 100% can still be undergoing checksum verification. Place
 counts refresh as records finish; the website changes only at the final publish
 step. No personal cloud access or physical-device tests are part of this build.
+
+Approval recovery: foreground progress checks for the exact approved public
+transfer now refresh the idle timer, so a long actively monitored video is not
+mistaken for inactivity. The two-hour absolute limit remains. Polling unrelated
+transfers cannot extend approval. If approval genuinely expires, the publisher
+shows a saved-progress notice and a Resume publishing button, clears stale status,
+and reuses the same transfer and verified publications after you verify again.

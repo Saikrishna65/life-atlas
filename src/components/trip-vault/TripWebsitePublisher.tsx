@@ -8,7 +8,7 @@ import {publishTripToWebsite} from '@/lib/vault/publishTrip';
 import {rememberPlaceTransfer,rememberPlacePublication} from '@/lib/studio/trip-places';
 import {websiteSlug} from '@/lib/vault/website-payload';
 import {R2,nativeR2Available,systemAction,storageError,bytes} from '@/lib/r2/native';
-import {PublicationPaused,waitForTripTransfer} from '@/lib/r2/trip-transfer';
+import {PublicationPaused,waitForTripTransfer,publicationApprovalExpired} from '@/lib/r2/trip-transfer';
 import type {PublishedMedia,SelectedMedia,Transfer} from '@/lib/r2/types';
 
 export default function TripWebsitePublisher({tripId,organized=false}:{tripId:string;organized?:boolean}) {
@@ -23,14 +23,21 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
  async function choose(){setProblem('');try{const result=await systemAction(()=>R2.pickMedia({picker:'documents'}));setFiles(previous=>[...new Map([...previous,...result.files.filter(file=>/^(image|video)\//.test(file.mimeType))].map(file=>[file.id,file])).values()]);for(const file of result.files){void R2.getSelectionPreview({id:file.id}).then(result=>setPreviews(previous=>({...previous,[file.id]:result.thumbnail}))).catch(()=>{});}}catch(error){setProblem(storageError(error));}}
  async function waitForTransfer(job:Transfer,publicationSession?:string){
   return waitForTripTransfer(job.id,{
-   transfers:async()=>(await R2.getTransferProgress()).transfers,
+   transfers:async()=>(await R2.getTransferProgress(publicationSession?{publicationSession,transferId:job.id}:undefined)).transfers,
+   foreground:()=>document.visibilityState!=='hidden',
    resume:id=>R2.resumeTransfer({id,publicationSession}),
    paused:()=>cancelled.current,
    offline:()=>navigator.onLine===false,
    progress:(phase,current)=>{setJobs(previous=>({...previous,[job.id]:current}));setProgress(`${phase} ${current.name} · ${bytes(current.uploadedBytes)} / ${bytes(current.totalBytes)}`);},
   });
  }
- function checkPaused(){if(cancelled.current)throw new PublicationPaused();}
+ async function checkPaused(){
+  while(document.visibilityState==='hidden'){
+   if(cancelled.current)throw new PublicationPaused();
+   await new Promise(resolve=>setTimeout(resolve,1000));
+  }
+  if(cancelled.current)throw new PublicationPaused();
+ }
  async function publish(){
   if(!trip||!consent||busy)return;cancelled.current=false;setBusy(true);setProblem('');setNotice('');setUrl('');
   let publicationSession:string|undefined;
@@ -43,28 +50,29 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
     setProgress('Verify once to publish this trip’s selected files…');
     publicationSession=(await systemAction(()=>R2.beginTripPublication({collection:websiteSlug(latest),selectionIds:[...new Set([...pending,...files].map(file=>file.id))],transferIds}))).publicationSession;
    }
-   checkPaused();
+   await checkPaused();
    for(const group of latest.websitePlaces||[]){
     selected.push(...group.publishedMedia.map(item=>({...item,tags:[...item.tags.filter(tag=>!tag.startsWith('place:')&&!tag.startsWith('place-id:')),`place:${group.name}`,`place-id:${group.id}`]})));
     for(const file of group.files){
-     checkPaused();
+     await checkPaused();
      let job:Transfer|undefined;
      const savedId=group.transferIds[file.id];
      if(savedId)job=(await R2.getTransferProgress()).transfers.find(item=>item.id===savedId);
      if(savedId&&!job)throw Error('A saved upload is unavailable. Check Cloud Storage before selecting this file again.');
      if(!job){job=await R2.uploadObject({slot:'public',selectionId:file.id,publicationSession});await rememberPlaceTransfer(tripId,group.id,file.id,job.id);}
-     job=await waitForTransfer(job,publicationSession);checkPaused();setProgress(`Publishing ${group.name} · ${file.name}`);
+     job=await waitForTransfer(job,publicationSession);await checkPaused();setProgress(`Publishing ${group.name} · ${file.name}`);
      const result=await R2.publishTripMedia({publicationSession,transferId:job.id,title:title.trim(),description:'',tags:[`place:${group.name}`,`place-id:${group.id}`],category:'expedition',collection:websiteSlug(latest),acknowledgeMetadata:true});
      const item=result.item;if(!item)throw Error('The publication record did not confirm this media. Its original remains unchanged.');
      setTrip(await rememberPlacePublication(tripId,group.id,file.id,item));selected.push(item);
     }
    }
 
-   for(const file of files){checkPaused();let job=jobs[file.id];if(!job){job=await R2.uploadObject({slot:'public',selectionId:file.id,publicationSession});setJobs(previous=>({...previous,[file.id]:job!}));}job=await waitForTransfer(job,publicationSession);checkPaused();setProgress(`Linking ${file.name} to this journey…`);const result=await R2.publishTripMedia({publicationSession,transferId:job.id,title:title.trim(),description:'',tags:place.trim()?[`place:${place.trim().slice(0,54)}`]:[],category:'expedition',collection:websiteSlug(trip),acknowledgeMetadata:true});const item=result.item;if(item)selected.push(item);else throw Error('The publication record did not confirm this file. Retry without deleting its original.');}
-   checkPaused();
+   for(const file of files){await checkPaused();let job=jobs[file.id];if(!job){job=await R2.uploadObject({slot:'public',selectionId:file.id,publicationSession});setJobs(previous=>({...previous,[file.id]:job!}));}job=await waitForTransfer(job,publicationSession);await checkPaused();setProgress(`Linking ${file.name} to this journey…`);const result=await R2.publishTripMedia({publicationSession,transferId:job.id,title:title.trim(),description:'',tags:place.trim()?[`place:${place.trim().slice(0,54)}`]:[],category:'expedition',collection:websiteSlug(trip),acknowledgeMetadata:true});const item=result.item;if(item)selected.push(item);else throw Error('The publication record did not confirm this file. Retry without deleting its original.');}
+   await checkPaused();
    setProgress('Updating your website journal…');const result=await publishTripToWebsite(tripId,{title,description,memoryIds:ids,includeItinerary:includeDays,includeRoute,publicMedia:[...new Map(selected.map(item=>[item.id,item])).values()],appendExistingMedia:organized||!!latest.websitePlaces?.length});setUrl(result.publicUrl);setProgress('Published. Your local originals and cloud backups are unchanged.');
   }catch(error){
-   if(error instanceof PublicationPaused){setProgress('');setNotice('Publishing progress saved. A transfer already running may finish in Cloud Storage. Tap Resume publishing when ready; completed uploads will be reused.');}
+   if(publicationApprovalExpired(error)){setProgress('');setNotice('Publishing approval needs renewal. Your uploaded files and remaining selections are saved. Tap Resume publishing and verify once to continue from this file.');}
+   else if(error instanceof PublicationPaused){setProgress('');setNotice('Publishing progress saved. A transfer already running may finish in Cloud Storage. Tap Resume publishing when ready; completed uploads will be reused.');}
    else setProblem(error&&typeof error==='object'&&'code' in error?storageError(error):error instanceof Error?error.message:storageError(error));
   }finally{
    if(publicationSession)await R2.endTripPublication({publicationSession}).catch(()=>{});

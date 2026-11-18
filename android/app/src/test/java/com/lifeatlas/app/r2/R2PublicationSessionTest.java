@@ -115,4 +115,69 @@ public class R2PublicationSessionTest {
     rejects(
         "PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, other, "public", "photo"));
   }
+
+  @Test
+  public void activeTransferChecksKeepLongForegroundUploadsApprovedWithoutRemovingTheAbsoluteLimit()
+      throws Exception {
+    R2Credentials c = R2CatalogTest.credentials();
+    AtomicLong now = new AtomicLong();
+    R2PublicationSession session = new R2PublicationSession(now::get);
+    String token = session.begin(c, "trip", Set.of("next-photo"), Set.of("large-video"));
+    for (int minute = 10; minute < 120; minute += 10) {
+      now.set(minute * 60 * 1000L);
+      session.transfer(token, c, job("large-video"), null);
+    }
+    session.selection(token, c, "public", "next-photo");
+    now.set(120 * 60 * 1000L);
+    rejects(
+        "PUBLICATION_SESSION_EXPIRED", () -> session.transfer(token, c, job("large-video"), null));
+  }
+
+  @Test
+  public void briefUnlockedInterruptionsSuspendOperationsAndCanResumeTheSameGrant()
+      throws Exception {
+    R2Credentials c = R2CatalogTest.credentials();
+    AtomicLong now = new AtomicLong();
+    R2PublicationSession session = new R2PublicationSession(now::get);
+    String token = session.begin(c, "trip", Set.of("photo"), Set.of());
+    session.background(false);
+    now.set(20_000L);
+    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, c, "public", "photo"));
+    now.set(59_999L);
+    session.foreground(false);
+    session.selection(token, c, "public", "photo");
+    session.background(false);
+    now.addAndGet(60_000L);
+    session.foreground(false);
+    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, c, "public", "photo"));
+  }
+
+  @Test
+  public void deviceLockAndScreenOffRevokeEvenDuringTheBriefInterruptionWindow() throws Exception {
+    R2Credentials c = R2CatalogTest.credentials();
+    AtomicLong now = new AtomicLong();
+    R2PublicationSession session = new R2PublicationSession(now::get);
+    String token = session.begin(c, "trip", Set.of("photo"), Set.of());
+    session.background(true);
+    now.set(1000L);
+    session.foreground(false);
+    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(token, c, "public", "photo"));
+    String fresh = session.begin(c, "trip", Set.of("photo"), Set.of());
+    session.background(false);
+    session.foreground(true);
+    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.selection(fresh, c, "public", "photo"));
+  }
+
+  @Test
+  public void unrelatedTransferPollingCannotRefreshIdleApproval() throws Exception {
+    R2Credentials c = R2CatalogTest.credentials();
+    AtomicLong now = new AtomicLong();
+    R2PublicationSession session = new R2PublicationSession(now::get);
+    String token = session.begin(c, "trip", Set.of(), Set.of("reviewed"));
+    now.set(20 * 60 * 1000L);
+    rejects(
+        "PUBLICATION_SCOPE_MISMATCH", () -> session.transfer(token, c, job("unreviewed"), null));
+    now.set(30 * 60 * 1000L);
+    rejects("PUBLICATION_SESSION_EXPIRED", () -> session.transfer(token, c, job("reviewed"), null));
+  }
 }

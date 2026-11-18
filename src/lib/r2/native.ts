@@ -53,7 +53,7 @@ interface R2Plugin {
     key: string;
     name: string;
   }): Promise<Transfer | { cancelled: true }>;
-  getTransferProgress(): Promise<{ transfers: Transfer[] }>;
+  getTransferProgress(input?:{publicationSession:string;transferId:string}): Promise<{ transfers: Transfer[] }>;
   cancelTransfer(input: { id: string }): Promise<void>;
   pauseTransfer(input: { id: string }): Promise<void>;
   resumeTransfer(input: { id: string; publicationSession?: string }): Promise<void>;

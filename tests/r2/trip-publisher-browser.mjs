@@ -24,14 +24,14 @@ export const R2={
  beginTripPublication:async input=>{fixture.auth++;fixture.session='batch-'+fixture.auth;fixture.batches.push(input);return {publicationSession:fixture.session}},
  endTripPublication:async()=>{fixture.session=null},
  uploadObject:async input=>{if(input.publicationSession!==fixture.session)throw Error('Missing batch grant');fixture.uploads++;const id='job-'+input.selectionId;fixture.jobs[id]={id,slot:'public',direction:'upload',name:input.selectionId+'.jpg',mimeType:'image/jpeg',key:'galleries/'+id,createdAt:0,uploadedBytes:100,totalBytes:100,status:input.selectionId==='first'?'complete':'verifying',verified:input.selectionId==='first'};return fixture.jobs[id]},
- getTransferProgress:async()=>({transfers:Object.values(fixture.jobs).map(job=>job.id==='job-second'&&fixture.release?{...job,status:'complete',verified:true}:job)}),
+ getTransferProgress:async input=>{if(input){if(input.publicationSession!==fixture.session||!fixture.jobs[input.transferId])throw Error('Invalid heartbeat scope');fixture.heartbeats++;}return {transfers:Object.values(fixture.jobs).map(job=>job.id==='job-second'&&fixture.release?{...job,status:'complete',verified:true}:job)}},
  resumeTransfer:async()=>{throw Error('Already running or complete; do not restart')},
- publishTripMedia:async input=>{if(input.publicationSession!==fixture.session)throw Error('Missing batch grant');fixture.records++;return {item:{id:input.transferId,key:'galleries/'+input.transferId,url:'https://media.example/'+input.transferId+'.jpg',mimeType:'image/jpeg',tags:input.tags,collection:input.collection}}},
+ publishTripMedia:async input=>{if(fixture.expireNextPublication){fixture.expireNextPublication=false;throw {code:'PUBLICATION_SESSION_EXPIRED'}}if(input.publicationSession!==fixture.session)throw Error('Missing batch grant');fixture.records++;return {item:{id:input.transferId,key:'galleries/'+input.transferId,url:'https://media.example/'+input.transferId+'.jpg',mimeType:'image/jpeg',tags:input.tags,collection:input.collection}}},
 };`;
 const aliases=new Set(['@/lib/vault/storage','@/lib/vault/publishTrip','@/lib/studio/trip-places','@/lib/vault/website-payload','@/lib/r2/native']);
 const result=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import Publisher from './src/components/trip-vault/TripWebsitePublisher';createRoot(document.getElementById('root')).render(<Publisher tripId="fixture" organized/>);`,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'synthetic-native',setup(b){b.onResolve({filter:/^@\//},args=>aliases.has(args.path)?{path:'fixture',namespace:'fixture'}:undefined);b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:mock,loader:'js'}));}}]});
 const css=await readFile('src/components/trip-vault/trip-vault.css','utf8');
-const fixture={trip:{id:'fixture',title:'Synthetic trip',destination:'Test place',websitePlaces:[{id:'lake',name:'Lake',files:[{id:'first',name:'first.jpg'},{id:'second',name:'second.jpg'}],publishedMedia:[],transferIds:{}}]},auth:0,batches:[],uploads:0,records:0,posts:0,jobs:{},release:false};
+const fixture={trip:{id:'fixture',title:'Synthetic trip',destination:'Test place',websitePlaces:[{id:'lake',name:'Lake',files:[{id:'first',name:'first.jpg'},{id:'second',name:'second.jpg'}],publishedMedia:[],transferIds:{}}]},heartbeats:0,expireNextPublication:false,auth:0,batches:[],uploads:0,records:0,posts:0,jobs:{},release:false};
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(`<html><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:Arial;margin:0}*{box-sizing:border-box}${css}</style><div id="root"></div><script>window.fixture=${JSON.stringify(fixture)}</script><script>${result.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></html>`)});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 let browser;
@@ -50,13 +50,18 @@ try{
  await page.getByRole('button',{name:'Resume publishing',exact:true}).waitFor();
  assert.equal(await page.locator('.tv-error').count(),0);assert.match(await page.locator('.tv-notice').innerText(),/progress saved/);
  assert.match(await page.locator('.tv-website-publisher summary').first().innerText(),/1 selected · 1 uploaded & ready/);
- await mkdir('work/qa-publishing-149',{recursive:true});await page.screenshot({path:'work/qa-publishing-149/saved-mobile.png',fullPage:true});
+ await mkdir('work/qa-publishing-1410',{recursive:true});await page.screenshot({path:'work/qa-publishing-1410/saved-mobile.png',fullPage:true});
  await page.getByRole('button',{name:'Resume publishing',exact:true}).click();
- await page.waitForFunction(()=>fixture.auth===2);await page.evaluate(()=>{fixture.release=true});
+ await page.waitForFunction(()=>fixture.auth===2);await page.evaluate(()=>{fixture.release=true;fixture.expireNextPublication=true});
+ await page.getByRole('button',{name:'Resume publishing',exact:true}).waitFor();
+ assert.equal(await page.locator('.tv-error').count(),0);
+ assert.match(await page.locator('.tv-notice').innerText(),/approval needs renewal/);
+ assert.equal(await page.evaluate(()=>fixture.uploads),2);
+ await page.getByRole('button',{name:'Resume publishing',exact:true}).click();
  await page.getByRole('link',{name:'View my trip'}).waitFor();
- assert.deepEqual(await page.evaluate(()=>({auth:fixture.auth,uploads:fixture.uploads,records:fixture.records,posts:fixture.posts})),{auth:2,uploads:2,records:2,posts:1});
- assert.deepEqual(await page.evaluate(()=>fixture.batches[1].transferIds),['job-second']);
+ assert.deepEqual(await page.evaluate(()=>({auth:fixture.auth,uploads:fixture.uploads,records:fixture.records,posts:fixture.posts})),{auth:3,uploads:2,records:2,posts:1});
+ assert.deepEqual(await page.evaluate(()=>fixture.batches[1].transferIds),['job-second']);assert.ok(await page.evaluate(()=>fixture.heartbeats)>0);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
- await page.screenshot({path:'work/qa-publishing-149/published-mobile.png',fullPage:true});
- console.log('PASS visible primary text outside Trip Vault; one native batch grant per attempt; 100% verification; saved notice; live place counts; resume reuses transfer; final website update once; mobile overflow; no browser exceptions (mocked native bridge).');
+ await page.screenshot({path:'work/qa-publishing-1410/published-mobile.png',fullPage:true});
+ console.log('PASS visible primary text outside Trip Vault; one native batch grant per attempt; 100% verification; saved notice; live place counts; resume reuses transfer; approval expiry shows Resume and reauthenticates without uploading again; scoped foreground heartbeat; final website update once; mobile overflow; no browser exceptions (mocked native bridge).');
 }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}

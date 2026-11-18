@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {waitForTripTransfer,PublicationPaused,type TripTransferControls} from '../../src/lib/r2/trip-transfer';
+import {waitForTripTransfer,PublicationPaused,publicationApprovalExpired,type TripTransferControls} from '../../src/lib/r2/trip-transfer';
 import type {Transfer} from '../../src/lib/r2/types';
 const job=(status:Transfer['status'],verified=false):Transfer=>({id:'saved-video',slot:'public',key:'galleries/video.mp4',name:'original.mp4',mimeType:'video/mp4',status,verified,totalBytes:110,uploadedBytes:110,direction:'upload',createdAt:0});
 const controls=(overrides:Partial<TripTransferControls>={}):TripTransferControls=>({transfers:async()=>[job('complete',true)],resume:async()=>{throw Error('must not restart completed uploads');},paused:()=>false,offline:()=>false,progress:()=>{},delay:async()=>{},...overrides});
@@ -24,4 +24,20 @@ test('verified completed files can be reused offline; incomplete offline uploads
  assert.equal((await waitForTripTransfer('saved-video',controls({offline:()=>true}))).id,'saved-video');
  await assert.rejects(waitForTripTransfer('saved-video',controls({offline:()=>true,transfers:async()=>[job('uploading')]})),PublicationPaused);
  await assert.rejects(waitForTripTransfer('saved-video',controls({transfers:async()=>[job('complete',false)]})),/integrity/);
+});
+
+test('a hidden app waits without starting native authorization or another transfer',async()=>{
+ let hidden=true,reads=0;
+ await waitForTripTransfer('saved-video',controls({foreground:()=>!hidden,delay:async()=>{assert.equal(reads,0);hidden=false;},transfers:async()=>{reads++;return [job('complete',true)];}}));
+ assert.equal(reads,1);
+});
+test('only the native approval-expired code produces a resumable approval pause',()=>{
+ for(const error of [{code:'PUBLICATION_SESSION_EXPIRED'},new Error('PUBLICATION_SESSION_EXPIRED'),'PUBLICATION_SESSION_EXPIRED'])assert.equal(publicationApprovalExpired(error),true);
+ for(const error of [null,{code:'PERMISSION_DENIED'},new Error('SDK failure: PUBLICATION_SESSION_EXPIRED'),{code:'PUBLICATION_SCOPE_MISMATCH',message:'PUBLICATION_SESSION_EXPIRED'}])assert.equal(publicationApprovalExpired(error),false);
+});
+
+test('a progress poll racing an app switch waits for foreground before attempting its existing transfer again',async()=>{
+ let hidden=false,reads=0;
+ const complete=await waitForTripTransfer('saved-video',controls({foreground:()=>!hidden,delay:async()=>{hidden=false;},transfers:async()=>{reads++;if(reads===1){hidden=true;throw {code:'PUBLICATION_SESSION_EXPIRED'};}return [job('complete',true)];}}));
+ assert.equal(reads,2);assert.equal(complete.verified,true);
 });
