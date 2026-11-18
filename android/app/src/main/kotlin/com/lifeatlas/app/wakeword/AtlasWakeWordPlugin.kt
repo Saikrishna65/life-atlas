@@ -25,7 +25,9 @@ import com.getcapacitor.annotation.PermissionCallback
 import com.lifeatlas.app.wakeword.assistant.AtlasExperimentVoiceInteractionService
 import com.lifeatlas.app.wakeword.voice.AtlasAudioOwnershipCoordinator
 import com.lifeatlas.app.wakeword.voice.AtlasVoiceCoordinator
+import com.lifeatlas.app.wakeword.voice.AtlasVoiceSecureStore
 import com.lifeatlas.app.wakeword.voice.AtlasVoiceSpeechManager
+import org.json.JSONArray
 import org.json.JSONObject
 import java.lang.ref.WeakReference
 
@@ -76,6 +78,7 @@ class AtlasWakeWordPlugin : Plugin() {
         fun emitVoiceSessionState(json: JSONObject) = emitEvent("voiceSessionState", json)
         fun emitVoiceTranscript(json: JSONObject) = emitEvent("voiceTranscript", json)
         fun emitVoiceCommand(json: JSONObject) = emitEvent("voiceCommand", json)
+        fun emitVoiceLatencyMetrics(json: JSONObject) = emitEvent("voiceLatencyMetrics", json)
 
         fun emitWakeWordDetected(eventJson: JSONObject) {
             val plugin = activePluginRef?.get() ?: return
@@ -477,7 +480,6 @@ class AtlasWakeWordPlugin : Plugin() {
 
     @PluginMethod
     fun setVoiceAssistantConfig(call: PluginCall) {
-        val prefs = context.getSharedPreferences("atlas_voice_prefs", Context.MODE_PRIVATE).edit()
         call.getBoolean("voiceAssistantEnabled")?.let { enabled ->
             AtlasWakeWordService.voiceAssistantEnabled = enabled
         }
@@ -487,17 +489,145 @@ class AtlasWakeWordPlugin : Plugin() {
         call.getBoolean("greetOnWake")?.let { greet ->
             AtlasWakeWordService.activeVoiceCoordinator?.greetOnWake = greet
         }
-        call.getBoolean("cloudConsent")?.let { consent ->
-            prefs.putBoolean("cloudConsent", consent)
+        val hasConsent = call.data.has("cloudConsent")
+        val hasProvider = call.data.has("cloudProvider")
+        val hasKey = call.data.has("cloudApiKey")
+        if (hasConsent || hasProvider || hasKey) {
+            val secureStore = AtlasVoiceSecureStore(context)
+            val current = secureStore.getPublicStatus()
+            val consent = if (hasConsent) call.getBoolean("cloudConsent", false) == true else current.optBoolean("cloudConsent", false)
+            val provider = call.getString("cloudProvider") ?: current.optString("cloudProvider", "gemini")
+            val apiKey = if (hasKey) call.getString("cloudApiKey") else null
+            secureStore.saveCloudConfig(consent, provider, apiKey)
+            context.getSharedPreferences("atlas_voice_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .remove("cloudApiKey")
+                .remove("cloudConsent")
+                .remove("cloudProvider")
+                .apply()
         }
-        call.getString("cloudProvider")?.let { provider ->
-            prefs.putString("cloudProvider", provider)
-        }
-        call.getString("cloudApiKey")?.let { apiKey ->
-            prefs.putString("cloudApiKey", apiKey)
-        }
-        prefs.apply()
         call.resolve(JSObject.fromJSONObject(buildVoiceSessionStatusJson()))
+    }
+
+    @PluginMethod
+    fun interruptVoiceSpeaking(call: PluginCall) {
+        AtlasWakeWordService.activeVoiceCoordinator?.interruptSpeaking()
+        call.resolve(JSObject.fromJSONObject(buildVoiceSessionStatusJson()))
+    }
+
+    @PluginMethod
+    fun saveVoiceCloudConfig(call: PluginCall) {
+        val secureStore = AtlasVoiceSecureStore(context)
+        val current = secureStore.getPublicStatus()
+        val consent = if (call.data.has("cloudConsent")) {
+            call.getBoolean("cloudConsent", false) == true
+        } else {
+            current.optBoolean("cloudConsent", false)
+        }
+        val provider = call.getString("cloudProvider") ?: current.optString("cloudProvider", "gemini")
+        val apiKey = if (call.data.has("cloudApiKey")) call.getString("cloudApiKey") else null
+        secureStore.saveCloudConfig(consent, provider, apiKey)
+        context.getSharedPreferences("atlas_voice_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .remove("cloudApiKey")
+            .remove("cloudConsent")
+            .remove("cloudProvider")
+            .apply()
+        call.resolve(JSObject.fromJSONObject(secureStore.getPublicStatus()))
+    }
+
+    @PluginMethod
+    fun getVoiceCloudStatus(call: PluginCall) {
+        val status = AtlasVoiceSecureStore(context).getPublicStatus()
+        call.resolve(JSObject.fromJSONObject(status))
+    }
+
+    @PluginMethod
+    fun clearVoiceCloudKey(call: PluginCall) {
+        val secureStore = AtlasVoiceSecureStore(context)
+        secureStore.clearCloudApiKey()
+        call.resolve(JSObject.fromJSONObject(secureStore.getPublicStatus()))
+    }
+
+    @PluginMethod
+    fun getEncryptedMemories(call: PluginCall) {
+        val memories = AtlasVoiceSecureStore(context).getEncryptedMemories()
+        call.resolve(JSObject.fromJSONObject(JSONObject().put("memories", memories)))
+    }
+
+    @PluginMethod
+    fun saveEncryptedMemories(call: PluginCall) {
+        val arr = call.getArray("memories") ?: org.json.JSONArray()
+        val jsonArr = JSONArray(arr.toString())
+        AtlasVoiceSecureStore(context).saveEncryptedMemories(jsonArr)
+        call.resolve(JSObject().put("saved", true))
+    }
+
+    @PluginMethod
+    fun getVoicePersonality(call: PluginCall) {
+        val personality = AtlasVoiceSecureStore(context).getPersonality() ?: JSONObject()
+        call.resolve(JSObject.fromJSONObject(JSONObject().put("personality", personality)))
+    }
+
+    @PluginMethod
+    fun saveVoicePersonality(call: PluginCall) {
+        val obj = call.getObject("personality")
+        if (obj == null) {
+            call.reject("personality object is required.")
+            return
+        }
+        AtlasVoiceSecureStore(context).savePersonality(JSONObject(obj.toString()))
+        call.resolve(JSObject().put("saved", true))
+    }
+
+    @PluginMethod
+    fun callSecureCloudAi(call: PluginCall) {
+        val userText = call.getString("userText")?.trim().orEmpty()
+        if (userText.isEmpty()) {
+            call.reject("userText is required.")
+            return
+        }
+        val providerOverride = call.getString("provider")
+        val systemPromptOverride = call.getString("systemPrompt")
+        val historyArr = call.getArray("history")
+        val turns = mutableListOf<Pair<String, String>>()
+        if (historyArr != null) {
+            for (i in 0 until historyArr.length()) {
+                val item = historyArr.optJSONObject(i) ?: continue
+                val role = item.optString("role", "user")
+                val text = item.optString("text", "").trim()
+                if (text.isNotEmpty()) turns.add(role to text)
+            }
+        }
+        turns.add("user" to userText)
+
+        Thread({
+            val (usedProvider, reply) = AtlasVoiceCoordinator.callSecureCloudAiSync(
+                context = context,
+                providerOverride = providerOverride,
+                systemPromptOverride = systemPromptOverride,
+                turns = turns
+            )
+            val result = JSObject()
+                .put("ok", !reply.isNullOrBlank())
+                .put("provider", usedProvider)
+                .put("replyText", reply ?: "")
+            call.resolve(result)
+        }, "AtlasSecureCloudPlugin").start()
+    }
+
+    @PluginMethod
+    fun getVoiceLatencyMetrics(call: PluginCall) {
+        val json = AtlasWakeWordService.activeVoiceCoordinator?.getLatencyMetricsJson()
+            ?: JSONObject()
+                .put("wakeToGreetingMs", -1L)
+                .put("greetingToListenMs", -1L)
+                .put("speechEndToTranscriptMs", -1L)
+                .put("transcriptToAiResponseMs", -1L)
+                .put("aiResponseToFirstAudioMs", -1L)
+                .put("sessionEndToWakeMs", -1L)
+                .put("updatedAt", 0L)
+        call.resolve(JSObject.fromJSONObject(json))
     }
 
     @PluginMethod

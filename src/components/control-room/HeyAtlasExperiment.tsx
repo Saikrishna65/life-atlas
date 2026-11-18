@@ -30,7 +30,9 @@ import {
   atlasWakeWordBridge,
   classifyActiveWakeModel,
   EXPERIMENT_SCENARIOS,
+  getVoiceCloudStatusNative,
   isWakeWordNativeSupported,
+  saveVoiceCloudConfigNative,
   type AssistantRoleStatus,
   type OvernightTestReport,
   type VoiceSessionStatus,
@@ -39,12 +41,14 @@ import {
   type WakeWordListeningStatus,
 } from "@/lib/wakeword/atlasWakeWord";
 import {
+  clearVoiceCloudConfigKey,
   getVoiceCloudConfig,
   getVoiceCloudConsent,
   setVoiceCloudConfig,
   setVoiceCloudConsent,
   type CloudAiProvider,
 } from "@/lib/atlas-ai/voice-assistant";
+import { clearAtlasDemoData, seedAtlasDemoData } from "@/lib/atlas-ai/demo-seed";
 
 const SCENARIO_STATUS_OPTIONS = [
   { value: "passed", label: "Pass" },
@@ -62,7 +66,8 @@ export default function HeyAtlasExperiment() {
   const [allowOnlineSpeech, setAllowOnlineSpeech] = useState(false);
   const [cloudAiConsent, setCloudAiConsent] = useState(() => getVoiceCloudConsent());
   const [cloudProvider, setCloudProvider] = useState<CloudAiProvider>(() => getVoiceCloudConfig().provider);
-  const [cloudApiKey, setCloudApiKey] = useState(() => getVoiceCloudConfig().apiKey);
+  const [cloudApiKeyDraft, setCloudApiKeyDraft] = useState("");
+  const [hasSavedCloudKey, setHasSavedCloudKey] = useState(false);
   const [assistantRole, setAssistantRole] = useState<AssistantRoleStatus>({
     roleAvailable: false,
     roleHeld: false,
@@ -77,18 +82,20 @@ export default function HeyAtlasExperiment() {
 
   const refreshAll = useCallback(async () => {
     try {
-      const [nextStatus, nextReport, nextRole, nextOvernight, nextVoiceStatus] = await Promise.all([
+      const [nextStatus, nextReport, nextRole, nextOvernight, nextVoiceStatus, nextCloudStatus] = await Promise.all([
         atlasWakeWordBridge.getListeningStatus(),
         atlasWakeWordBridge.getDiagnosticReport(),
         atlasWakeWordBridge.getAssistantRoleStatus(),
         atlasWakeWordBridge.getOvernightReport(),
         atlasWakeWordBridge.getVoiceSessionStatus(),
+        getVoiceCloudStatusNative(),
       ]);
       setStatus(nextStatus);
       setReport(nextReport);
       setAssistantRole(nextRole);
       setOvernightReport(nextOvernight);
       setVoiceSessionStatus(nextVoiceStatus);
+      setHasSavedCloudKey(nextCloudStatus.hasCloudApiKey);
       setScenarioNotes((prev) => {
         const merged = { ...prev };
         for (const [key, val] of Object.entries(nextReport.scenarioResults || {})) {
@@ -750,10 +757,9 @@ export default function HeyAtlasExperiment() {
                 const next = e.target.checked;
                 setCloudAiConsent(next);
                 setVoiceCloudConsent(next);
-                void atlasWakeWordBridge.setVoiceAssistantConfig({
+                void saveVoiceCloudConfigNative({
                   cloudConsent: next,
                   cloudProvider,
-                  cloudApiKey,
                 });
                 setNotice(next ? "Cloud AI consent enabled." : "Cloud AI consent disabled (offline-only).");
               }}
@@ -772,12 +778,7 @@ export default function HeyAtlasExperiment() {
                     onChange={(e) => {
                       const p = e.target.value as CloudAiProvider;
                       setCloudProvider(p);
-                      setVoiceCloudConfig(p, cloudApiKey);
-                      void atlasWakeWordBridge.setVoiceAssistantConfig({
-                        cloudConsent: cloudAiConsent,
-                        cloudProvider: p,
-                        cloudApiKey,
-                      });
+                      void setVoiceCloudConfig(p, cloudApiKeyDraft);
                     }}
                     style={{ marginLeft: 6 }}
                   >
@@ -787,28 +788,80 @@ export default function HeyAtlasExperiment() {
                 </label>
                 <input
                   type="password"
-                  placeholder="Optional personal API key (stored locally on device)"
-                  value={cloudApiKey}
-                  onChange={(e) => {
-                    const key = e.target.value;
-                    setCloudApiKey(key);
-                    setVoiceCloudConfig(cloudProvider, key);
-                    void atlasWakeWordBridge.setVoiceAssistantConfig({
-                      cloudConsent: cloudAiConsent,
-                      cloudProvider,
-                      cloudApiKey: key,
-                    });
-                  }}
+                  placeholder={hasSavedCloudKey ? "Key encrypted in Keystore — paste new key to replace" : "Paste personal Gemini or OpenAI API key"}
+                  value={cloudApiKeyDraft}
+                  onChange={(e) => setCloudApiKeyDraft(e.target.value)}
                   style={{ flex: 1, minWidth: 220 }}
                 />
+                <button
+                  type="button"
+                  className="oc-secondary"
+                  disabled={busy || !cloudApiKeyDraft.trim()}
+                  onClick={() =>
+                    void (async () => {
+                      await setVoiceCloudConfig(cloudProvider, cloudApiKeyDraft);
+                      setCloudApiKeyDraft("");
+                      const st = await getVoiceCloudStatusNative();
+                      setHasSavedCloudKey(st.hasCloudApiKey);
+                      setNotice("Cloud AI key encrypted inside Android Keystore.");
+                    })()
+                  }
+                >
+                  Save Key
+                </button>
+                {hasSavedCloudKey && (
+                  <button
+                    type="button"
+                    className="oc-secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      void (async () => {
+                        await clearVoiceCloudConfigKey();
+                        setCloudApiKeyDraft("");
+                        setHasSavedCloudKey(false);
+                        setNotice("Cleared saved Cloud AI key from Keystore.");
+                      })()
+                    }
+                  >
+                    Clear Key
+                  </button>
+                )}
               </div>
               <small style={{ color: "var(--oc-muted)" }}>
-                Stored only on this device. Leave blank to try the configured Life Atlas server `/api/atlas/chat` endpoint.
+                {hasSavedCloudKey
+                  ? "API key is encrypted in Android Keystore AES-256-GCM (never saved in localStorage)."
+                  : "Never stored in plaintext localStorage. Enter a personal key only if you want consented Cloud AI fallback."}
               </small>
             </div>
           )}
 
           <div className="oc-actions" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="oc-secondary"
+              disabled={busy}
+              onClick={() =>
+                void runAction(
+                  "Loaded sample Trips, Music, Finance, and Reminders data for Phase 3 testing.",
+                  () => seedAtlasDemoData()
+                )
+              }
+            >
+              Load Sample Test Data
+            </button>
+            <button
+              type="button"
+              className="oc-secondary"
+              disabled={busy}
+              onClick={() =>
+                void runAction(
+                  "Cleared sample test data.",
+                  () => clearAtlasDemoData()
+                )
+              }
+            >
+              Clear Sample Data
+            </button>
             <button
               type="button"
               className="oc-secondary"

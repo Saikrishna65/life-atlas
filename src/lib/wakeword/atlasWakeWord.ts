@@ -237,6 +237,22 @@ export interface VoiceSessionStatus {
   speechReason: string;
 }
 
+export interface VoiceLatencyMetrics {
+  wakeToGreetingMs: number;
+  greetingToListenMs: number;
+  speechEndToTranscriptMs: number;
+  transcriptToAiResponseMs: number;
+  aiResponseToFirstAudioMs: number;
+  sessionEndToWakeMs: number;
+  updatedAt: number;
+}
+
+export interface VoiceCloudPublicStatus {
+  cloudConsent: boolean;
+  cloudProvider: string;
+  hasCloudApiKey: boolean;
+}
+
 export interface AtlasWakeWordNativePlugin {
   startListening(options?: { useAssistantSession?: boolean }): Promise<WakeWordListeningStatus>;
   stopListening(): Promise<WakeWordListeningStatus>;
@@ -284,6 +300,25 @@ export interface AtlasWakeWordNativePlugin {
     cloudApiKey?: string;
   }): Promise<VoiceSessionStatus>;
   consumePendingNativeReminders(): Promise<{ reminders: Array<{ title: string; createdAt: string }> }>;
+  interruptVoiceSpeaking(): Promise<VoiceSessionStatus>;
+  saveVoiceCloudConfig(options: {
+    cloudConsent?: boolean;
+    cloudProvider?: string;
+    cloudApiKey?: string;
+  }): Promise<VoiceCloudPublicStatus>;
+  getVoiceCloudStatus(): Promise<VoiceCloudPublicStatus>;
+  clearVoiceCloudKey(): Promise<VoiceCloudPublicStatus>;
+  getEncryptedMemories(): Promise<{ memories: Array<Record<string, unknown>> }>;
+  saveEncryptedMemories(options: { memories: Array<Record<string, unknown>> }): Promise<{ saved: boolean }>;
+  getVoicePersonality(): Promise<{ personality: Record<string, unknown> }>;
+  saveVoicePersonality(options: { personality: Record<string, unknown> }): Promise<{ saved: boolean }>;
+  callSecureCloudAi(options: {
+    provider?: string;
+    systemPrompt?: string;
+    history?: Array<{ role: "user" | "assistant"; text: string }>;
+    userText: string;
+  }): Promise<{ ok: boolean; provider: string; replyText: string }>;
+  getVoiceLatencyMetrics(): Promise<VoiceLatencyMetrics>;
   addListener(
     eventName: "wakeWordDetected",
     listenerFunc: (event: WakeWordDetectionEvent) => void
@@ -303,6 +338,10 @@ export interface AtlasWakeWordNativePlugin {
   addListener(
     eventName: "voiceCommand",
     listenerFunc: (event: VoiceCommandEvent) => void
+  ): Promise<PluginListenerHandle>;
+  addListener(
+    eventName: "voiceLatencyMetrics",
+    listenerFunc: (event: VoiceLatencyMetrics) => void
   ): Promise<PluginListenerHandle>;
 }
 
@@ -760,4 +799,106 @@ export const atlasWakeWordBridge = {
     if (!isWakeWordNativeSupported()) return null;
     return NativePlugin.addListener("statusChanged", listener);
   },
+
+  async addVoiceLatencyMetricsListener(
+    listener: (metrics: VoiceLatencyMetrics) => void
+  ): Promise<PluginListenerHandle | null> {
+    if (!isWakeWordNativeSupported()) return null;
+    return NativePlugin.addListener("voiceLatencyMetrics", listener);
+  },
 };
+
+export async function interruptVoiceSpeakingNative(): Promise<VoiceSessionStatus | null> {
+  if (!isWakeWordNativeSupported()) return null;
+  return NativePlugin.interruptVoiceSpeaking();
+}
+
+export async function saveVoiceCloudConfigNative(options: {
+  cloudConsent?: boolean;
+  cloudProvider?: string;
+  cloudApiKey?: string;
+}): Promise<VoiceCloudPublicStatus> {
+  if (!isWakeWordNativeSupported()) {
+    return { cloudConsent: Boolean(options.cloudConsent), cloudProvider: options.cloudProvider ?? "gemini", hasCloudApiKey: false };
+  }
+  return NativePlugin.saveVoiceCloudConfig(options);
+}
+
+export async function getVoiceCloudStatusNative(): Promise<VoiceCloudPublicStatus> {
+  if (!isWakeWordNativeSupported()) {
+    return { cloudConsent: false, cloudProvider: "gemini", hasCloudApiKey: false };
+  }
+  return NativePlugin.getVoiceCloudStatus();
+}
+
+export async function clearVoiceCloudKeyNative(): Promise<VoiceCloudPublicStatus> {
+  if (!isWakeWordNativeSupported()) {
+    return { cloudConsent: false, cloudProvider: "gemini", hasCloudApiKey: false };
+  }
+  return NativePlugin.clearVoiceCloudKey();
+}
+
+export async function getEncryptedMemoriesNative(): Promise<{ memories: Array<{
+  id: string;
+  text: string;
+  category: "preference" | "context" | "general";
+  approvedByUser: boolean;
+  createdAt: string;
+  updatedAt: string;
+}> }> {
+  if (!isWakeWordNativeSupported()) return { memories: [] };
+  const res = await NativePlugin.getEncryptedMemories();
+  return res as { memories: Array<{
+    id: string;
+    text: string;
+    category: "preference" | "context" | "general";
+    approvedByUser: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }> };
+}
+
+export async function saveEncryptedMemoriesNative(options: {
+  memories: Array<{
+    id: string;
+    text: string;
+    category: "preference" | "context" | "general";
+    approvedByUser: boolean;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+}): Promise<{ saved: boolean }> {
+  if (!isWakeWordNativeSupported()) return { saved: false };
+  return NativePlugin.saveEncryptedMemories({
+    memories: options.memories as unknown as Array<Record<string, unknown>>,
+  });
+}
+
+export async function callSecureCloudAi(options: {
+  provider?: string;
+  systemPrompt?: string;
+  history?: Array<{ role: "user" | "assistant"; text: string }>;
+  userText: string;
+}): Promise<{ ok: boolean; provider: string; replyText: string }> {
+  if (!isWakeWordNativeSupported()) {
+    return { ok: false, provider: options.provider ?? "gemini", replyText: "" };
+  }
+  return NativePlugin.callSecureCloudAi(options);
+}
+
+export async function getVoiceLatencyMetricsNative(): Promise<VoiceLatencyMetrics | null> {
+  if (!isWakeWordNativeSupported()) return null;
+  return NativePlugin.getVoiceLatencyMetrics();
+}
+
+export async function getVoicePersonalityNative(): Promise<Record<string, unknown>> {
+  if (!isWakeWordNativeSupported()) return {};
+  const res = await NativePlugin.getVoicePersonality();
+  return res.personality ?? {};
+}
+
+export async function saveVoicePersonalityNative(personality: Record<string, unknown>): Promise<boolean> {
+  if (!isWakeWordNativeSupported()) return false;
+  const res = await NativePlugin.saveVoicePersonality({ personality });
+  return Boolean(res.saved);
+}

@@ -50,6 +50,144 @@ class AtlasVoiceCoordinator(
     companion object {
         private const val TAG = "AtlasVoiceCoordinator"
         private const val JS_REPLY_TIMEOUT_MS = 8500L
+
+        fun buildPersonalityPrompt(
+            humor: Int,
+            playfulness: Int,
+            sweetness: Int,
+            directness: Int,
+            teasing: Int,
+            responseLength: String
+        ): String {
+            val lengthGuide = when (responseLength) {
+                "brief" -> "Keep replies ultra concise (1-2 short spoken sentences)."
+                "detailed" -> "Give warm, helpful detail (2-4 spoken sentences)."
+                else -> "Keep replies natural and concise (1-3 spoken sentences)."
+            }
+            return "You are Atlas, a warm, soft-spoken female personal companion inside Life Atlas. Casual friendly English; humor=$humor/10, playfulness=$playfulness/10, warmth=$sweetness/10, directness=$directness/10, playful teasing=$teasing/10. $lengthGuide Admit uncertainty honestly, never invent user data, and never joke during serious/safety situations."
+        }
+
+        fun buildPersonalityPrompt(personalityJson: JSONObject?): String {
+            if (personalityJson == null) {
+                return "You are Atlas, a warm, friendly, playful female voice companion inside Life Atlas. Speak naturally in 1 to 3 concise conversational English sentences."
+            }
+            return buildPersonalityPrompt(
+                humor = personalityJson.optInt("humor", 6),
+                playfulness = personalityJson.optInt("playfulness", 7),
+                sweetness = personalityJson.optInt("sweetness", 8),
+                directness = personalityJson.optInt("directness", 7),
+                teasing = personalityJson.optInt("teasing", 4),
+                responseLength = personalityJson.optString("responseLength", "balanced")
+            )
+        }
+
+        fun callSecureCloudAiSync(
+            context: Context,
+            providerOverride: String? = null,
+            systemPromptOverride: String? = null,
+            turns: List<Pair<String, String>>
+        ): Pair<String, String?> {
+            val secureStore = AtlasVoiceSecureStore(context)
+            migrateLegacyPrefsKeyIfPresent(context, secureStore)
+            val (consent, storedProvider, apiKey) = secureStore.getCloudCredentialsInternal()
+            val provider = if (!providerOverride.isNullOrBlank()) providerOverride else storedProvider
+            if (!consent || apiKey.isBlank()) {
+                return provider to null
+            }
+            val system = systemPromptOverride?.takeIf { it.isNotBlank() }
+                ?: buildPersonalityPrompt(secureStore.getPersonality())
+            val answer = executeCloudHttp(turns, provider, apiKey, system)
+            return provider to answer
+        }
+
+        private fun migrateLegacyPrefsKeyIfPresent(context: Context, secureStore: AtlasVoiceSecureStore) {
+            val prefs = context.getSharedPreferences("atlas_voice_prefs", Context.MODE_PRIVATE)
+            if (prefs.contains("cloudApiKey") || prefs.contains("cloudConsent")) {
+                val legacyConsent = prefs.getBoolean("cloudConsent", false)
+                val legacyProvider = prefs.getString("cloudProvider", "gemini") ?: "gemini"
+                val legacyKey = prefs.getString("cloudApiKey", null)
+                val (_, existingProv, existingKey) = secureStore.getCloudCredentialsInternal()
+                if (existingKey.isBlank() && !legacyKey.isNullOrBlank()) {
+                    secureStore.saveCloudConfig(legacyConsent, legacyProvider, legacyKey)
+                } else if (existingProv.isBlank()) {
+                    secureStore.saveCloudConfig(legacyConsent, legacyProvider, null)
+                }
+                prefs.edit().remove("cloudApiKey").remove("cloudConsent").remove("cloudProvider").apply()
+            }
+        }
+
+        private fun executeCloudHttp(
+            turns: List<Pair<String, String>>,
+            provider: String,
+            apiKey: String,
+            system: String
+        ): String? {
+            return try {
+                if (provider == "openai") {
+                    val url = URL("https://api.openai.com/v1/chat/completions")
+                    val conn = (url.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "POST"
+                        connectTimeout = 8000
+                        readTimeout = 10000
+                        doOutput = true
+                        setRequestProperty("Content-Type", "application/json")
+                        setRequestProperty("Authorization", "Bearer $apiKey")
+                    }
+                    val msgs = JSONArray().put(JSONObject().put("role", "system").put("content", system))
+                    for ((role, text) in turns) {
+                        msgs.put(JSONObject().put("role", role).put("content", text))
+                    }
+                    val body = JSONObject()
+                        .put("model", "gpt-4o-mini")
+                        .put("temperature", 0.7)
+                        .put("max_tokens", 180)
+                        .put("messages", msgs)
+                    OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
+                    if (conn.responseCode in 200..299) {
+                        val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                        JSONObject(text).optJSONArray("choices")?.optJSONObject(0)
+                            ?.optJSONObject("message")?.optString("content")?.trim()
+                    } else null
+                } else {
+                    val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+                    val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                        requestMethod = "POST"
+                        connectTimeout = 8000
+                        readTimeout = 10000
+                        doOutput = true
+                        setRequestProperty("Content-Type", "application/json")
+                        setRequestProperty("x-goog-api-key", apiKey)
+                    }
+                    val contents = JSONArray()
+                    for ((role, text) in turns) {
+                        val geminiRole = if (role == "assistant") "model" else "user"
+                        contents.put(
+                            JSONObject()
+                                .put("role", geminiRole)
+                                .put("parts", JSONArray().put(JSONObject().put("text", text)))
+                        )
+                    }
+                    val body = JSONObject()
+                        .put("system_instruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", system))))
+                        .put("contents", contents)
+                        .put("generationConfig", JSONObject().put("temperature", 0.7).put("maxOutputTokens", 180))
+                    OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
+                    if (conn.responseCode in 200..299) {
+                        val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                        JSONObject(text).optJSONArray("candidates")
+                            ?.optJSONObject(0)
+                            ?.optJSONObject("content")
+                            ?.optJSONArray("parts")
+                            ?.optJSONObject(0)
+                            ?.optString("text")
+                            ?.trim()
+                    } else null
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Native Cloud AI call failed: ${e.message}")
+                null
+            }
+        }
     }
 
     enum class State {
@@ -76,6 +214,7 @@ class AtlasVoiceCoordinator(
     private val mainHandler = Handler(Looper.getMainLooper())
     private val speechManager = AtlasVoiceSpeechManager(context)
     private val ttsManager = AtlasVoiceTtsManager(context)
+    private val secureStore = AtlasVoiceSecureStore(context)
 
     @Volatile
     var state: State = State.IDLE
@@ -92,6 +231,34 @@ class AtlasVoiceCoordinator(
     var greetOnWake: Boolean = true
     private var jsReplyTimeoutRunnable: Runnable? = null
     private val nativeTurns = mutableListOf<Pair<String, String>>()
+
+    // Monotonic pipeline latency markers (elapsedRealtime ms)
+    private var wakeDetectedAtMs = 0L
+    private var greetingCompletedAtMs = 0L
+    private var speechEndedAtMs = 0L
+    private var transcriptFinalAtMs = 0L
+    private var aiResponseReadyAtMs = 0L
+    private var sessionEndingAtMs = 0L
+
+    private var wakeToGreetingMs = -1L
+    private var greetingToListenMs = -1L
+    private var speechEndToTranscriptMs = -1L
+    private var transcriptToAiResponseMs = -1L
+    private var aiResponseToFirstAudioMs = -1L
+    private var sessionEndToWakeMs = -1L
+
+    fun getLatencyMetricsJson(): JSONObject = JSONObject()
+        .put("wakeToGreetingMs", wakeToGreetingMs)
+        .put("greetingToListenMs", greetingToListenMs)
+        .put("speechEndToTranscriptMs", speechEndToTranscriptMs)
+        .put("transcriptToAiResponseMs", transcriptToAiResponseMs)
+        .put("aiResponseToFirstAudioMs", aiResponseToFirstAudioMs)
+        .put("sessionEndToWakeMs", sessionEndToWakeMs)
+        .put("updatedAt", System.currentTimeMillis())
+
+    private fun emitLatencyMetrics() {
+        AtlasWakeWordPlugin.emitVoiceLatencyMetrics(getLatencyMetricsJson())
+    }
 
     fun setAllowOnlineSpeechFallback(allow: Boolean) {
         allowOnlineSpeechFallback = allow
@@ -163,6 +330,12 @@ class AtlasVoiceCoordinator(
             currentSessionId = sessionId
             currentTurnId = null
             pendingEndSession = false
+            wakeDetectedAtMs = SystemClock.elapsedRealtime()
+            greetingCompletedAtMs = 0L
+            speechEndedAtMs = 0L
+            transcriptFinalAtMs = 0L
+            aiResponseReadyAtMs = 0L
+            sessionEndingAtMs = 0L
 
             transitionTo(State.WAKE_DETECTED, "Wake word \"$phrase\" detected (score=${"%.2f".format(score)})")
             transitionTo(State.SESSION_STARTING, "Handing off microphone from wake-word loop")
@@ -189,24 +362,54 @@ class AtlasVoiceCoordinator(
         }
     }
 
+    private fun pickNativeGreeting(): String {
+        val personality = secureStore.getPersonality()
+        val playfulness = personality?.optInt("playfulness", 75) ?: 75
+        val greetings = if (playfulness >= 65) {
+            listOf("Hey! What's up?", "Yes? I'm listening!", "Hey there, what are we thinking?")
+        } else {
+            listOf("Hello, how can I help?", "Listening.")
+        }
+        return greetings[(SystemClock.elapsedRealtime() % greetings.size).toInt()]
+    }
+
     private fun speakGreetingThenListen(sessionId: String) {
-        val greeting = "Hey! What's up?"
+        val greeting = pickNativeGreeting()
         transitionTo(State.SPEAKING, greeting)
         ttsManager.speak(greeting, object : AtlasVoiceTtsManager.Listener {
-            override fun onSpeakStarted() {}
+            override fun onSpeakStarted() {
+                if (wakeDetectedAtMs > 0L) {
+                    wakeToGreetingMs = SystemClock.elapsedRealtime() - wakeDetectedAtMs
+                    emitLatencyMetrics()
+                }
+            }
 
             override fun onSpeakCompleted() {
                 if (currentSessionId == sessionId) {
+                    greetingCompletedAtMs = SystemClock.elapsedRealtime()
                     beginListeningTurn(isFollowUp = false)
                 }
             }
 
             override fun onSpeakError(message: String) {
                 if (currentSessionId == sessionId) {
+                    greetingCompletedAtMs = SystemClock.elapsedRealtime()
                     beginListeningTurn(isFollowUp = false)
                 }
             }
         })
+    }
+
+    /** Tap-to-interrupt while Atlas is speaking TTS, transitioning directly into listening. */
+    fun interruptSpeaking() {
+        mainHandler.post {
+            if (!isSessionActive()) return@post
+            if (state == State.SPEAKING) {
+                ttsManager.stop()
+                pendingEndSession = false
+                beginListeningTurn(isFollowUp = true)
+            }
+        }
     }
 
     fun stopSession(reason: String = "Stopped by user") {
@@ -241,6 +444,11 @@ class AtlasVoiceCoordinator(
 
     private fun beginListeningTurn(isFollowUp: Boolean) {
         val sessionId = currentSessionId ?: return
+        if (!isFollowUp && greetingCompletedAtMs > 0L) {
+            greetingToListenMs = SystemClock.elapsedRealtime() - greetingCompletedAtMs
+            emitLatencyMetrics()
+        }
+        speechEndedAtMs = 0L
         val targetState = if (isFollowUp) State.FOLLOW_UP_LISTENING else State.COMMAND_LISTENING
         transitionTo(
             targetState,
@@ -261,6 +469,11 @@ class AtlasVoiceCoordinator(
                     transitionTo(State.TRANSCRIBING, "Speech detected")
                 }
 
+                override fun onEndOfSpeech() {
+                    if (currentSessionId != sessionId) return
+                    speechEndedAtMs = SystemClock.elapsedRealtime()
+                }
+
                 override fun onPartialResult(text: String) {
                     if (currentSessionId != sessionId) return
                     if (state == State.COMMAND_LISTENING || state == State.FOLLOW_UP_LISTENING) {
@@ -271,6 +484,11 @@ class AtlasVoiceCoordinator(
 
                 override fun onFinalResult(text: String) {
                     if (currentSessionId != sessionId) return
+                    transcriptFinalAtMs = SystemClock.elapsedRealtime()
+                    if (speechEndedAtMs > 0L) {
+                        speechEndToTranscriptMs = transcriptFinalAtMs - speechEndedAtMs
+                        emitLatencyMetrics()
+                    }
                     Log.i(TAG, "Final transcript (followUp=$isFollowUp): \"$text\"")
                     emitTranscriptEvent(text, isFinal = true)
                     handleRecognizedTranscript(sessionId, text, isFollowUp)
@@ -337,6 +555,11 @@ class AtlasVoiceCoordinator(
     private fun speakResponse(text: String) {
         val sessionId = currentSessionId ?: return
         val clean = text.trim()
+        aiResponseReadyAtMs = SystemClock.elapsedRealtime()
+        if (transcriptFinalAtMs > 0L) {
+            transcriptToAiResponseMs = aiResponseReadyAtMs - transcriptFinalAtMs
+            emitLatencyMetrics()
+        }
         if (clean.isEmpty()) {
             if (pendingEndSession) {
                 endSessionInternal(resumeWakeWord = true, reason = "Completed")
@@ -348,7 +571,12 @@ class AtlasVoiceCoordinator(
 
         transitionTo(State.SPEAKING, clean)
         ttsManager.speak(clean, object : AtlasVoiceTtsManager.Listener {
-            override fun onSpeakStarted() {}
+            override fun onSpeakStarted() {
+                if (aiResponseReadyAtMs > 0L) {
+                    aiResponseToFirstAudioMs = SystemClock.elapsedRealtime() - aiResponseReadyAtMs
+                    emitLatencyMetrics()
+                }
+            }
 
             override fun onSpeakCompleted() {
                 if (currentSessionId != sessionId) return
@@ -372,6 +600,7 @@ class AtlasVoiceCoordinator(
     }
 
     private fun endSessionInternal(resumeWakeWord: Boolean, reason: String) {
+        sessionEndingAtMs = SystemClock.elapsedRealtime()
         transitionTo(State.SESSION_ENDING, reason)
         cancelTimers()
         speechManager.stop()
@@ -384,8 +613,13 @@ class AtlasVoiceCoordinator(
         if (resumeWakeWord && !serviceActions.isInPhoneCall()) {
             transitionTo(State.WAKE_LISTENING, "Resuming offline wake-word detection")
             serviceActions.resumeWakeWordFromVoiceSession()
+            if (sessionEndingAtMs > 0L) {
+                sessionEndToWakeMs = SystemClock.elapsedRealtime() - sessionEndingAtMs
+                emitLatencyMetrics()
+            }
         } else {
             transitionTo(State.IDLE, reason)
+            emitLatencyMetrics()
         }
     }
 
@@ -439,16 +673,17 @@ class AtlasVoiceCoordinator(
             return
         }
 
-        // Check if user consented to Cloud AI and stored an API key on device
-        val prefs = context.getSharedPreferences("atlas_voice_prefs", Context.MODE_PRIVATE)
-        val cloudConsent = prefs.getBoolean("cloudConsent", false)
-        val cloudProvider = prefs.getString("cloudProvider", "gemini") ?: "gemini"
-        val cloudApiKey = prefs.getString("cloudApiKey", "") ?: ""
+        // Check if user consented to Cloud AI and stored a Keystore-protected API key
+        migrateLegacyPrefsKeyIfPresent(context, secureStore)
+        val (cloudConsent, _, cloudApiKey) = secureStore.getCloudCredentialsInternal()
 
         if (cloudConsent && cloudApiKey.isNotBlank()) {
             val historySnapshot = nativeTurns.toList()
             Thread({
-                val cloudAnswer = callNativeCloudAi(historySnapshot, cloudProvider, cloudApiKey)
+                val (_, cloudAnswer) = callSecureCloudAiSync(
+                    context = context,
+                    turns = historySnapshot
+                )
                 mainHandler.post {
                     if (currentSessionId != sessionId || currentTurnId != turnId) return@post
                     if (!cloudAnswer.isNullOrBlank()) {
@@ -611,75 +846,6 @@ class AtlasVoiceCoordinator(
         } catch (e: Exception) {
             Log.w(TAG, "Background launch blocked by Android BAL for $route: ${e.message}")
             false
-        }
-    }
-
-    private fun callNativeCloudAi(turns: List<Pair<String, String>>, provider: String, apiKey: String): String? {
-        return try {
-            val system = "You are Atlas, a warm, friendly, expressive female voice assistant. Answer in 1 to 3 concise conversational English sentences suitable for spoken audio."
-            if (provider == "openai") {
-                val url = URL("https://api.openai.com/v1/chat/completions")
-                val conn = (url.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 8000
-                    readTimeout = 10000
-                    doOutput = true
-                    setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Authorization", "Bearer $apiKey")
-                }
-                val msgs = JSONArray().put(JSONObject().put("role", "system").put("content", system))
-                for ((role, text) in turns) {
-                    msgs.put(JSONObject().put("role", role).put("content", text))
-                }
-                val body = JSONObject()
-                    .put("model", "gpt-4o-mini")
-                    .put("temperature", 0.7)
-                    .put("max_tokens", 180)
-                    .put("messages", msgs)
-                OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
-                if (conn.responseCode in 200..299) {
-                    val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
-                    val json = JSONObject(text)
-                    json.optJSONArray("choices")?.optJSONObject(0)?.optJSONObject("message")?.optString("content")?.trim()
-                } else null
-            } else {
-                val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${URLEncoder.encode(apiKey, "UTF-8")}"
-                val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    connectTimeout = 8000
-                    readTimeout = 10000
-                    doOutput = true
-                    setRequestProperty("Content-Type", "application/json")
-                }
-                val contents = JSONArray()
-                for ((role, text) in turns) {
-                    val geminiRole = if (role == "assistant") "model" else "user"
-                    contents.put(
-                        JSONObject()
-                            .put("role", geminiRole)
-                            .put("parts", JSONArray().put(JSONObject().put("text", text)))
-                    )
-                }
-                val body = JSONObject()
-                    .put("system_instruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", system))))
-                    .put("contents", contents)
-                    .put("generationConfig", JSONObject().put("temperature", 0.7).put("maxOutputTokens", 180))
-                OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
-                if (conn.responseCode in 200..299) {
-                    val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
-                    val json = JSONObject(text)
-                    json.optJSONArray("candidates")
-                        ?.optJSONObject(0)
-                        ?.optJSONObject("content")
-                        ?.optJSONArray("parts")
-                        ?.optJSONObject(0)
-                        ?.optString("text")
-                        ?.trim()
-                } else null
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Native Cloud AI call failed: ${e.message}")
-            null
         }
     }
 

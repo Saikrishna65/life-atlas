@@ -1,18 +1,38 @@
-export type Permission = 'music.read' | 'music.control' | 'finance.read' | 'finance.write' | 'trips.read' | 'trips.write' | 'reminders.read' | 'reminders.write' | 'navigate';
+export type Permission =
+  | 'music.read'
+  | 'music.control'
+  | 'finance.read'
+  | 'finance.write'
+  | 'trips.read'
+  | 'trips.write'
+  | 'reminders.read'
+  | 'reminders.write'
+  | 'control.read'
+  | 'navigate';
+export type AtlasSection = 'home' | 'music' | 'finance' | 'trips' | 'control' | 'atlas';
 export type AtlasAction =
   | {kind: 'music.search'; query: string}
   | {kind: 'music.play'; id: string}
-  | {kind: 'music.pause' | 'music.resume' | 'music.next' | 'music.state'}
+  | {kind: 'music.pause' | 'music.resume' | 'music.next' | 'music.previous' | 'music.state' | 'music.toggleShuffle' | 'music.cycleRepeat'}
+  | {kind: 'music.setPlaybackRate'; rate: number}
   | {kind: 'music.playlist'; id: string}
-  | {kind: 'finance.summary'}
+  | {kind: 'finance.summary' | 'finance.explainCategories' | 'finance.budgetHelp'}
+  | {kind: 'finance.searchExpenses'; query: string}
   | {kind: 'finance.expense'; accountId: string; amountPaise: number; description: string}
   | {kind: 'finance.categorize'; id: string; categoryId: string}
+  | {kind: 'trips.list'}
   | {kind: 'trips.search'; query: string}
-  | {kind: 'trips.itinerary' | 'trips.open'; id: string}
+  | {kind: 'trips.itinerary' | 'trips.open' | 'trips.getDetails'; id: string}
   | {kind: 'trips.editTitle'; tripId: string; dayId: string; title: string}
-  | {kind: 'reminder.create'; title: string; dueText?: string}
+  | {kind: 'trips.addNote'; id: string; note: string}
+  | {kind: 'trips.createReminder'; tripId: string; title: string; dueText?: string; triggerAtIso?: string}
+  | {kind: 'reminder.create'; title: string; dueText?: string; tripId?: string; triggerAtIso?: string}
   | {kind: 'reminder.list'}
-  | {kind: 'navigate'; section: 'home' | 'music' | 'finance' | 'trips'};
+  | {kind: 'reminder.update'; id: string; title?: string; dueText?: string}
+  | {kind: 'reminder.complete'; id: string}
+  | {kind: 'reminder.delete'; id: string}
+  | {kind: 'control.status'}
+  | {kind: 'navigate'; section: AtlasSection};
 export interface Receipt {id: string; action: AtlasAction; at: string; result: unknown;}
 export interface ActionProposal {token: string; action: AtlasAction; expiresAt: number; description: string;}
 export interface LocalAdapter {
@@ -26,23 +46,54 @@ export function parseAction(value: unknown): AtlasAction {
   const a = value as Record<string, unknown>;
   let result: AtlasAction;
   switch (a.kind) {
-    case 'music.search': case 'trips.search': result = {kind: a.kind, query: text(a.query,120)}; break;
-    case 'music.play': case 'music.playlist': case 'trips.itinerary': case 'trips.open': result = {kind: a.kind, id: text(a.id)}; break;
-    case 'music.pause': case 'music.resume': case 'music.next': case 'music.state': case 'finance.summary': result = {kind: a.kind}; break;
+    case 'music.search': case 'trips.search': case 'finance.searchExpenses': result = {kind: a.kind, query: text(a.query,120)}; break;
+    case 'music.play': case 'music.playlist': case 'trips.itinerary': case 'trips.open': case 'trips.getDetails': case 'reminder.complete': case 'reminder.delete': result = {kind: a.kind, id: text(a.id)}; break;
+    case 'music.pause': case 'music.resume': case 'music.next': case 'music.previous': case 'music.state': case 'music.toggleShuffle': case 'music.cycleRepeat': case 'finance.summary': case 'finance.explainCategories': case 'finance.budgetHelp': case 'trips.list': case 'control.status': result = {kind: a.kind}; break;
+    case 'music.setPlaybackRate': {
+      const rate = Number(a.rate);
+      if (!Number.isFinite(rate) || rate < 0.5 || rate > 2.0) throw new Error('Playback speed must be between 0.5x and 2.0x.');
+      result = {kind: 'music.setPlaybackRate', rate: Math.round(rate * 100) / 100};
+      break;
+    }
     case 'finance.expense':
       if (!Number.isSafeInteger(a.amountPaise) || (a.amountPaise as number) <= 0 || (a.amountPaise as number) > 100000000) throw new Error('Expense must be between 0.01 and 1,000,000 in the account currency.');
       result = {kind: a.kind, accountId: text(a.accountId), amountPaise: a.amountPaise as number, description: text(a.description,240)}; break;
     case 'finance.categorize': result = {kind: a.kind, id: text(a.id), categoryId: text(a.categoryId)}; break;
     case 'trips.editTitle': result = {kind: a.kind, tripId: text(a.tripId), dayId: text(a.dayId), title: text(a.title,120)}; break;
-    case 'reminder.create':
-      result = a.dueText !== undefined && a.dueText !== ''
-        ? {kind: 'reminder.create', title: text(a.title, 180), dueText: text(a.dueText, 80)}
-        : {kind: 'reminder.create', title: text(a.title, 180)};
+    case 'trips.addNote': result = {kind: 'trips.addNote', id: text(a.id), note: text(a.note, 500)}; break;
+    case 'trips.createReminder': {
+      const out: Extract<AtlasAction, {kind: 'trips.createReminder'}> = {
+        kind: 'trips.createReminder',
+        tripId: text(a.tripId),
+        title: text(a.title, 180),
+      };
+      if (a.dueText !== undefined && a.dueText !== '') out.dueText = text(a.dueText, 80);
+      if (a.triggerAtIso !== undefined && a.triggerAtIso !== '') out.triggerAtIso = text(a.triggerAtIso, 80);
+      result = out;
       break;
+    }
+    case 'reminder.create': {
+      const out: Extract<AtlasAction, {kind: 'reminder.create'}> = {
+        kind: 'reminder.create',
+        title: text(a.title, 180),
+      };
+      if (a.dueText !== undefined && a.dueText !== '') out.dueText = text(a.dueText, 80);
+      if (a.tripId !== undefined && a.tripId !== '') out.tripId = text(a.tripId, 80);
+      if (a.triggerAtIso !== undefined && a.triggerAtIso !== '') out.triggerAtIso = text(a.triggerAtIso, 80);
+      result = out;
+      break;
+    }
+    case 'reminder.update': {
+      const out: Extract<AtlasAction, {kind: 'reminder.update'}> = {kind: 'reminder.update', id: text(a.id)};
+      if (a.title !== undefined && a.title !== '') out.title = text(a.title, 180);
+      if (a.dueText !== undefined && a.dueText !== '') out.dueText = text(a.dueText, 80);
+      result = out;
+      break;
+    }
     case 'reminder.list': result = {kind: 'reminder.list'}; break;
     case 'navigate':
-      if (!['home','music','finance','trips'].includes(String(a.section))) throw new Error('Unknown Atlas section.');
-      result = {kind: a.kind, section: a.section as 'home' | 'music' | 'finance' | 'trips'}; break;
+      if (!['home','music','finance','trips','control','atlas'].includes(String(a.section))) throw new Error('Unknown Atlas section.');
+      result = {kind: a.kind, section: a.section as AtlasSection}; break;
     default: throw new Error('Unsupported Atlas action.');
   }
   if (Object.keys(a).some(key => !(key in result))) throw new Error('Unexpected action fields.');
@@ -50,10 +101,15 @@ export function parseAction(value: unknown): AtlasAction {
 }
 export function permissionFor(action: AtlasAction): Permission {
   if (action.kind === 'navigate') return 'navigate';
-  if (action.kind === 'reminder.create') return 'reminders.write';
+  if (action.kind === 'control.status') return 'control.read';
+  if (['reminder.create', 'reminder.update', 'reminder.complete', 'reminder.delete'].includes(action.kind)) return 'reminders.write';
   if (action.kind === 'reminder.list') return 'reminders.read';
-  if (action.kind.startsWith('finance.')) return action.kind === 'finance.summary' ? 'finance.read' : 'finance.write';
-  if (action.kind.startsWith('trips.')) return action.kind === 'trips.editTitle' ? 'trips.write' : 'trips.read';
+  if (action.kind.startsWith('finance.')) return ['finance.summary', 'finance.searchExpenses', 'finance.explainCategories', 'finance.budgetHelp'].includes(action.kind) ? 'finance.read' : 'finance.write';
+  if (action.kind.startsWith('trips.')) {
+    if (action.kind === 'trips.editTitle' || action.kind === 'trips.addNote') return 'trips.write';
+    if (action.kind === 'trips.createReminder') return 'reminders.write';
+    return 'trips.read';
+  }
   return ['music.search','music.state'].includes(action.kind) ? 'music.read' : 'music.control';
 }
 export class ActionGateway {

@@ -9,7 +9,9 @@ import {createReminder} from '@/lib/atlas-ai/reminders';
 import {getVoiceCloudConfig, getVoiceCloudConsent, processVoiceTurn} from '@/lib/atlas-ai/voice-assistant';
 import {
   atlasWakeWordBridge,
+  interruptVoiceSpeakingNative,
   isWakeWordNativeSupported,
+  saveVoiceCloudConfigNative,
   type VoiceSessionStateName,
 } from '@/lib/wakeword/atlasWakeWord';
 import styles from './atlas-launcher.module.css';
@@ -52,6 +54,8 @@ export default function AtlasLauncher() {
   const [blocked, setBlocked] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceSessionStateName>('IDLE');
   const [voiceText, setVoiceText] = useState('');
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     const update = () => {
@@ -89,10 +93,9 @@ export default function AtlasLauncher() {
     const syncNativePrefsAndReminders = () => {
       const consent = getVoiceCloudConsent();
       const cfg = getVoiceCloudConfig();
-      void atlasWakeWordBridge.setVoiceAssistantConfig({
+      void saveVoiceCloudConfigNative({
         cloudConsent: consent,
         cloudProvider: cfg.provider,
-        cloudApiKey: cfg.apiKey,
       });
       void atlasWakeWordBridge.consumePendingNativeReminders().then(({ reminders }) => {
         for (const r of reminders) {
@@ -120,10 +123,13 @@ export default function AtlasLauncher() {
       .addVoiceSessionStateListener((ev) => {
         if (disposed) return;
         setVoiceState(ev.state);
+        if (ev.sessionId) setActiveSessionId(ev.sessionId);
         if (ev.state === 'SPEAKING' && ev.detail) {
           setVoiceText(ev.detail);
         } else if (ev.state === 'IDLE' || ev.state === 'WAKE_LISTENING') {
           setVoiceText('');
+          setActiveSessionId(null);
+          setPendingConfirm(null);
         }
       })
       .then((h) => {
@@ -144,6 +150,7 @@ export default function AtlasLauncher() {
     void atlasWakeWordBridge
       .addVoiceCommandListener((ev) => {
         if (disposed) return;
+        setActiveSessionId(ev.sessionId);
         setVoiceText(ev.transcript);
         void processVoiceTurn({
           sessionId: ev.sessionId,
@@ -152,14 +159,19 @@ export default function AtlasLauncher() {
           player: () => playerRef.current,
           navigate: (href) => router.push(href),
         })
-          .then((reply) =>
-            atlasWakeWordBridge.submitVoiceReply({
+          .then((reply) => {
+            if (reply.requiresConfirmation) {
+              setPendingConfirm(reply.confirmationDescription ?? 'Confirm requested action');
+            } else {
+              setPendingConfirm(null);
+            }
+            return atlasWakeWordBridge.submitVoiceReply({
               sessionId: ev.sessionId,
               turnId: ev.turnId,
               replyText: reply.replyText,
               endSession: reply.endSession,
-            })
-          )
+            });
+          })
           .catch(() =>
             atlasWakeWordBridge.submitVoiceReply({
               sessionId: ev.sessionId,
@@ -201,6 +213,53 @@ export default function AtlasLauncher() {
           </div>
           {voiceText && <p className={styles.voicePillText}>{voiceText}</p>}
           <div className={styles.voicePillActions}>
+            {pendingConfirm && activeSessionId && (
+              <>
+                <button
+                  type="button"
+                  className={styles.voicePillConfirmBtn}
+                  onClick={() => {
+                    const sid = activeSessionId;
+                    setPendingConfirm(null);
+                    void processVoiceTurn({
+                      sessionId: sid,
+                      transcript: 'yes',
+                      isLocked: false,
+                      player: () => playerRef.current,
+                      navigate: (href) => router.push(href),
+                    }).then((r) => setVoiceText(r.replyText));
+                  }}
+                >
+                  Confirm
+                </button>
+                <button
+                  type="button"
+                  className={styles.voicePillBtn}
+                  onClick={() => {
+                    const sid = activeSessionId;
+                    setPendingConfirm(null);
+                    void processVoiceTurn({
+                      sessionId: sid,
+                      transcript: 'cancel',
+                      isLocked: false,
+                      player: () => playerRef.current,
+                      navigate: (href) => router.push(href),
+                    }).then((r) => setVoiceText(r.replyText));
+                  }}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+            {voiceState === 'SPEAKING' && (
+              <button
+                type="button"
+                className={styles.voicePillBtn}
+                onClick={() => void interruptVoiceSpeakingNative()}
+              >
+                Interrupt
+              </button>
+            )}
             <button
               type="button"
               className={styles.voicePillBtn}

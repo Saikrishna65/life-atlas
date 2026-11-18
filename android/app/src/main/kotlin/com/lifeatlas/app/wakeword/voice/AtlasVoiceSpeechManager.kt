@@ -33,6 +33,7 @@ class AtlasVoiceSpeechManager(private val context: Context) {
     interface Listener {
         fun onReadyForSpeech()
         fun onBeginningOfSpeech()
+        fun onEndOfSpeech() {}
         fun onPartialResult(text: String)
         fun onFinalResult(text: String)
         fun onRecognitionError(errorCode: Int, message: String, isTimeoutOrNoMatch: Boolean)
@@ -124,6 +125,7 @@ class AtlasVoiceSpeechManager(private val context: Context) {
                     override fun onEndOfSpeech() {
                         if (epoch != activeEpoch) return
                         cancelWatchdog()
+                        listener.onEndOfSpeech()
                     }
 
                     override fun onError(error: Int) {
