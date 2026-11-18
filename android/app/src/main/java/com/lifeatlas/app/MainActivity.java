@@ -33,12 +33,15 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(AtlasModelsPlugin.class);
+        registerPlugin(AtlasLocalAIPlugin.class);
         registerPlugin(MediaPlaybackPlugin.class);
         registerPlugin(AtlasFileExportPlugin.class);
         registerPlugin(com.lifeatlas.app.r2.R2StoragePlugin.class);
         registerPlugin(AtlasPermissionsPlugin.class);
         registerPlugin(KotakNotificationTrackerPlugin.class);
         registerPlugin(ExpeditionTrackingPlugin.class);
+        registerPlugin(com.lifeatlas.app.wakeword.AtlasWakeWordPlugin.class);
         super.onCreate(savedInstanceState);
         handleSendIntent(getIntent());
 
@@ -155,6 +158,15 @@ public class MainActivity extends BridgeActivity {
             pendingTargetRoute = (route != null && !route.isEmpty()) ? route : "/secret/vault";
             dispatchPendingRoute();
             return;
+        }
+
+        if (intent.hasExtra("target_route")) {
+            String route = intent.getStringExtra("target_route");
+            if ("/secret/atlas".equals(route) || "/secret".equals(route)) {
+                pendingTargetRoute = route;
+                dispatchPendingRoute();
+                return;
+            }
         }
 
         if (Intent.ACTION_SEND.equals(action) && type != null && "text/plain".equals(type)) {

@@ -3,7 +3,7 @@ import {vaultIdentity,newRecoveryCode,encodeCloud,decodeCloud,sha256,encryptChun
 import {vaultDB,readStores,notifyControlChanges} from '../control-room/local';
 import {getControlDB} from '../control-room/store';
 import {setControlRestoreActive,isControlRestoreActive} from '../control-room/maintenance';
-import {validateBackup} from '../control-room/backup';
+import {validateBackup,normalizeRestoreSnapshots} from '../control-room/backup';
 import type {StoreSnapshot} from '../control-room/types';
 export {newRecoveryCode};
 export const DEFAULT_VAULT_CODE='ATLAS-01ae92e5-fcefe509-4972b00b-e4f70daa-8c3be522-0b138301-87899df5-6282fb6b';
@@ -12,7 +12,9 @@ export interface LocalCopy {section:CloudSection;version:number;stores:StoreSnap
 export interface CloudLink {code:string;automatic:boolean;ready:boolean;copies:Partial<Record<CloudSection,{sourceHash:string;revision:string;rows:Record<string,string>}>>;}
 export interface SectionComparison {section:CloudSection;records:number;bytes:number;pending:number;sourceHash:string;rows:Record<string,string>;cloud?:SectionCopy;}
 const LINK_KEY='atlas_cloud_connection_v1';
-export function getCloudLink():CloudLink|null{try{const raw=localStorage.getItem(LINK_KEY);if(!raw)return null;const link=JSON.parse(raw) as CloudLink;if(link&&LEGACY_VAULT_CODES.includes(link.code)){link.code=DEFAULT_VAULT_CODE;localStorage.setItem(LINK_KEY,JSON.stringify(link));}return link;}catch{return null;}}
+export function getCloudLink():CloudLink|null{try{const raw=localStorage.getItem(LINK_KEY);if(!raw)return null;return JSON.parse(raw) as CloudLink;}catch{return null;}}
+function requirePrivateCode(code:string){if(code===DEFAULT_VAULT_CODE||LEGACY_VAULT_CODES.includes(code))throw new Error('This shared legacy vault requires an owner-reviewed recovery plan. Local records are preserved.');}
+
 function saveLink(link:CloudLink,connectionChanged=false){localStorage.setItem(LINK_KEY,JSON.stringify(link));window.dispatchEvent(new Event(connectionChanged?'atlas-cloud-link':'atlas-cloud-state'));}
 export function setAutomaticUploads(value:boolean){const link=getCloudLink();if(link){link.automatic=value;saveLink(link,true);}}
 export function disconnectCloud(){localStorage.removeItem(LINK_KEY);window.dispatchEvent(new Event('atlas-cloud-link'));}
@@ -20,11 +22,15 @@ export const cloudProgress={busy:false,message:'',error:'',lastSaved:''};
 function progress(message:string,error=''){cloudProgress.message=message;cloudProgress.error=error;window.dispatchEvent(new Event('atlas-cloud-progress'));}
 let serial:Promise<unknown>=Promise.resolve();
 function exclusive<T>(fn:()=>Promise<T>):Promise<T>{const next=serial.catch(()=>{}).then(async()=>{cloudProgress.busy=true;progress('Connecting to your cloud vault…');try{return await fn();}catch(error){progress('',error instanceof Error?error.message:'Cloud connection failed.');throw error;}finally{cloudProgress.busy=false;window.dispatchEvent(new Event('atlas-cloud-progress'));}});serial=next;return next;}
-async function api(code:string,body:Record<string,unknown>){if(typeof navigator!=='undefined'&&navigator.onLine===false)throw new Error('You are offline. Your changes remain on this device.');const identity=await vaultIdentity(code);const response=await fetch('/api/cloud-vault',{method:'POST',headers:{'Content-Type':'application/json','X-Atlas-Cloud':'1','X-Atlas-Vault-Token':identity.token},body:JSON.stringify({...body,vaultId:identity.id})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Cloud operation failed.');return data as {account:CloudAccount;signed?:any;exists?:boolean;url?:string};}
+async function api(code:string,body:Record<string,unknown>){if(typeof navigator!=='undefined'&&navigator.onLine===false)throw new Error('You are offline. Your changes remain on this device.');requirePrivateCode(code);const identity=await vaultIdentity(code);const response=await fetch('/api/cloud-vault',{method:'POST',headers:{'Content-Type':'application/json','X-Atlas-Cloud':'1','X-Atlas-Vault-Token':identity.token},body:JSON.stringify({...body,vaultId:identity.id})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Cloud operation failed.');return data as {account:CloudAccount;signed?:any;exists?:boolean;url?:string};}
 export async function createCloudLink(code:string){await api(code,{action:'create'});saveLink({code,automatic:true,ready:true,copies:{}},true);return code;}
 export async function connectCloudLink(code:string){const {account}=await api(code,{action:'status'});saveLink({code,automatic:true,ready:false,copies:{}},true);return account;}
-export async function ensureCloudLink(explicitCode?:string):Promise<CloudLink>{const existing=getCloudLink();if(existing&&!explicitCode&&!LEGACY_VAULT_CODES.includes(existing.code))return existing;const targetCode=explicitCode||DEFAULT_VAULT_CODE;try{await api(targetCode,{action:'status'});const link:CloudLink={code:targetCode,automatic:true,ready:true,copies:existing?.copies||{}};saveLink(link,true);return link;}catch{try{await api(targetCode,{action:'create'});}catch{/* offline */}const link:CloudLink={code:targetCode,automatic:true,ready:true,copies:existing?.copies||{}};saveLink(link,true);return link;}}
-export async function cloudStatus(){const link=getCloudLink();const targetCode=link?.code||DEFAULT_VAULT_CODE;try{return (await api(targetCode,{action:'status'})).account;}catch{return null;}}
+export async function ensureCloudLink(explicitCode?:string):Promise<CloudLink>{
+ const existing=getCloudLink();if(!explicitCode){if(!existing)throw new Error('Connect an enrolled private cloud vault first.');requirePrivateCode(existing.code);return existing;}
+ requirePrivateCode(explicitCode);await connectCloudLink(explicitCode);return getCloudLink()!;
+}
+export async function cloudStatus(){const link=getCloudLink();if(!link)return null;try{return (await api(link.code,{action:'status'})).account;}catch{return null;}}
+
 async function studioDB(){return new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open('life_atlas_studio_db',1);r.onupgradeneeded=()=>r.result.createObjectStore('entries',{keyPath:'id'});r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
 export async function sectionDB(section:CloudSection){if(section==='studio')return studioDB();if(section==='preferences')return getControlDB();return vaultDB(section);}
 export async function captureSection(section:CloudSection):Promise<LocalCopy>{const db=await sectionDB(section);try{let stores=await readStores(db);if(section==='preferences')stores=stores.filter(s=>['settings','musicQueue'].includes(s.name)).map(s=>s.name==='settings'?{...s,rows:s.rows.filter(r=>(r.value as any)?.id==='preferences')}:s);const preferences:Record<string,string>={};if(section==='preferences')for(const name of ['atlas_music_theme','atlas-finance-theme']){const value=localStorage.getItem(name);if(value)preferences[name]=value;}return {section,version:db.version,stores,...(section==='preferences'?{preferences}:{})};}finally{if(section==='studio')db.close();}}
@@ -52,10 +58,10 @@ async function validateSnapshots(snapshots:LocalCopy[]){for(const snapshot of sn
 export async function restoreSections(sections:CloudSection[]=Array.from(CLOUD_SECTIONS)){return exclusive(async()=>{
  let link=getCloudLink();
  if(!link){link=await ensureCloudLink();}
- const {key}=await vaultIdentity(link.code);const {account}=await api(link.code,{action:'status'});const incoming:LocalCopy[]=[];const startingHashes=new Map<CloudSection,string>();
+ const {key}=await vaultIdentity(link.code);const {account}=await api(link.code,{action:'status'});let incoming:LocalCopy[]=[];const startingHashes=new Map<CloudSection,string>();
  for(const section of sections)startingHashes.set(section,(await describe(await captureSection(section))).sourceHash);
  for(const section of sections){const copy=account.sections[section];if(!copy)continue;validateCopy(copy);progress(`Downloading ${section} from the cloud…`);const read=async(ref:ChunkRef)=>{const signed=await api(link.code,{action:'download',section,fileId:ref.id});const response=await fetch(signed.url!);if(!response.ok)throw new Error('A cloud file could not download. Your device data is unchanged.');const blob=await response.blob();if(blob.size!==ref.bytes)throw new Error('A cloud file is incomplete.');return decryptChunk(blob,key,ref.id);};const parts:Uint8Array[]=[];for(const ref of copy.manifest)parts.push(await read(ref));const text=await new Blob(parts as BlobPart[]).text();if(await sha256(text)!==copy.sourceHash)throw new Error('The cloud records failed verification.');const parsed=JSON.parse(text);if(parsed.section!==section)throw new Error('The cloud section does not match.');incoming.push(await decodeCloud(parsed,read));}
- if(!incoming.length)throw new Error('This cloud vault does not have any saved data yet.');await validateSnapshots(incoming);
+ if(!incoming.length)throw new Error('This cloud vault does not have any saved data yet.');await validateSnapshots(incoming);incoming=normalizeRestoreSnapshots(incoming);
  setControlRestoreActive(true);const previous:LocalCopy[]=[];try{for(const snapshot of incoming){const current=await captureSection(snapshot.section);if((await describe(current)).sourceHash!==startingHashes.get(snapshot.section))throw new Error('Device data changed while the cloud copy was downloading. Review your data and retry restore.');previous.push(current);}try{for(const snapshot of incoming){progress(`Restoring ${snapshot.section} on this device…`);await writeSection(snapshot);}}catch(error){for(const old of previous)await writeSection(old);throw error;}
  for(const snapshot of incoming){const d=await describe(await captureSection(snapshot.section));link.copies[snapshot.section]={sourceHash:d.sourceHash,revision:account.sections[snapshot.section]!.revision,rows:d.rows};}link.ready=true;saveLink(link);cloudProgress.lastSaved=new Date().toISOString();progress('Your cloud data and files are restored on this device.');
  }finally{setControlRestoreActive(false);notifyControlChanges();window.dispatchEvent(new Event('atlas-studio-change'));window.dispatchEvent(new Event('atlas-cloud-restored'));window.dispatchEvent(new Event('atlas_music_theme_changed'));}

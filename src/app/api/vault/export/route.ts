@@ -1,3 +1,4 @@
+import {sensitiveApiDenial} from '@/lib/security/api-authorization';
 import {ensureWebsiteSchema} from "@/lib/studio/server";
 import {allowAtlasMutation} from "@/lib/mobileRequest";
 import { Prisma } from "@prisma/client";
@@ -6,6 +7,7 @@ import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 export async function POST(request: Request) {
+  const denial=await sensitiveApiDenial(request);if(denial)return denial;
   if(!allowAtlasMutation(request,"x-atlas-publish"))return NextResponse.json({error:"Publish through your Atlas app."},{status:403});
   try {
     if(Number(request.headers.get("content-length")||0)>3*1024*1024)return NextResponse.json({error:"Upload large originals to R2 first."},{status:413});

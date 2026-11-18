@@ -1,7 +1,10 @@
+import {sensitiveApiDenial} from '@/lib/security/api-authorization';
 import { NextResponse } from "next/server";
 import { parseBookingText } from "@/lib/vault/pnrParser";
 
 export async function POST(request: Request) {
+ const denial=await sensitiveApiDenial(request);if(denial)return denial;
+
   try {
     const body = await request.json();
     const { rawText } = body;

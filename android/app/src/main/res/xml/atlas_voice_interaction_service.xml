@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.lifeatlas.app.wakeword.assistant.AtlasExperimentVoiceInteractionSessionService"
+    android:recognitionService="com.lifeatlas.app.wakeword.assistant.AtlasExperimentRecognitionService"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="true" />

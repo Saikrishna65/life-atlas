@@ -29,7 +29,9 @@ export default function MobileAppBridge() {
     // Android hardware & gesture back button listener
     const backButtonListener = CapApp.addListener("backButton", () => {
       const path = window.location.pathname;
-      if (path === "/" || path === "/secret") {
+      if (path === "/secret/atlas" && window.history.length <= 1) {
+        window.location.replace("/secret");
+      } else if (path === "/" || path === "/secret") {
         try {
           // Explicitly lock vault before exiting process
           const win = window as unknown as { __revokeLifeAtlasSecretAccess?: () => void; __lockVault?: () => void };

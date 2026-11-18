@@ -1,0 +1,24 @@
+openWakeWord Model Attributions & Licenses (Experimental Hey Atlas PoC)
+=======================================================================
+
+Source release: https://github.com/dscripka/openWakeWord/releases/tag/v0.5.1
+
+1. melspectrogram.onnx
+   - SHA-256: ba2b0e0f8b7b875369a2c89cb13360ff53bac436f2895cced9f479fa65eb176f
+   - License: Apache License, Version 2.0 (David Scripka / openWakeWord)
+
+2. embedding_model.onnx
+   - SHA-256: 70d164290c1d095d1d4ee149bc5e00543250a7316b59f31d056cff7bd3075c1f
+   - License: Apache License, Version 2.0 (Google Speech Embedding ONNX conversion by openWakeWord)
+
+3. hey_atlas.onnx (DEFAULT BUNDLED "Hey Atlas" CLASSIFIER)
+   - SHA-256: dbd003875e7489c6d23e13f235848db689e86628a4be0a292e3a3e027f55b503
+   - Target phrase: "Hey Atlas"
+   - Architecture: Lightweight DNN head (`[batch, 16, 96] -> [batch, 1]`) trained locally against openWakeWord `melspectrogram.onnx` + `embedding_model.onnx` feature extractors using diverse synthetic neural voices & hard phonetic negatives (`en-IN`, `en-US`, `en-GB`, `en-AU`, `en-CA`).
+   - Purpose: Primary bundled offline wake-word model for "Hey Atlas".
+
+4. hey_jarvis_v0.1.onnx (LEGACY FALLBACK TEST MODEL ONLY — NOT "Hey Atlas")
+   - SHA-256: 94a13cfe60075b132f6a472e7e462e8123ee70861bc3fb58434a73712ee0d2cb
+   - Target phrase: "Hey Jarvis"
+   - License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)
+   - Purpose: Pipeline verification fallback only if `hey_atlas.onnx` is removed.

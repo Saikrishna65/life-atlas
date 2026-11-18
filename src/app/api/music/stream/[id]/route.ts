@@ -1,3 +1,4 @@
+import {sensitiveApiDenial} from '@/lib/security/api-authorization';
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getMusicFiles } from '@/lib/music/cloudFiles';
@@ -7,6 +8,8 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+ const denial=await sensitiveApiDenial(_request);if(denial)return denial;
+
   try {
     const { id } = await params;
     if (!id) {

@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
   appendUserAgent: 'LifeAtlasApp/1.0',
   android: {
     webContentsDebuggingEnabled: false,
-    allowMixedContent: true,
+    allowMixedContent: false,
   },
   plugins: {
     CapacitorHttp: { enabled: true },
