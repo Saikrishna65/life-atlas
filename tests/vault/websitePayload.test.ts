@@ -13,3 +13,10 @@ test('only chosen media and an explicitly authored public description are includ
 test('stable local ids prevent same-title journals from overwriting each other and retain published slugs',()=>{
  assert.notEqual(websiteSlug(trip),websiteSlug({...trip,id:'other-456'}));assert.equal(websiteSlug({...trip,publishedSlug:'existing-journal'}),'existing-journal');
 });
+
+test('approved immutable publication URLs reach the website without local transfer state',()=>{
+ const body=websitePayload(trip,[],[],{memoryIds:[],publicMedia:[{id:'public-photo',key:'galleries/photo.jpg',url:'https://media.example/photo.jpg',manifestUrl:'https://media.example/atlas/catalog/publications/photo/revision.json',title:'Public photo',description:'',category:'expedition',collection:'journey',mimeType:'image/jpeg',size:100,tags:['place:Deoria Tal'],publishedAt:'2026-11-18',metadataPolicy:'retained'}]});
+ assert.equal(body.publicMedia[0].manifestUrl,'https://media.example/atlas/catalog/publications/photo/revision.json');
+ assert.equal(body.publicMedia[0].place,'Deoria Tal');
+ assert.ok(!JSON.stringify(body).includes('transferIds'));
+});

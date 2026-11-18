@@ -94,6 +94,7 @@ export type MediaPlacement =
   | "music-artwork"
   | "atlas-visual";
 export interface PublishedMedia {
+  manifestUrl?:string;
   id: string;
   key: string;
   url: string;

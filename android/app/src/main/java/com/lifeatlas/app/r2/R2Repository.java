@@ -9,7 +9,11 @@ public final class R2Repository {
   final R2SecureStore store;
 
   public R2Repository(Context context) {
-    store = new R2SecureStore(context);
+    this(new R2SecureStore(context));
+  }
+
+  R2Repository(R2SecureStore secureStore) {
+    store = secureStore;
   }
 
   public JSONObject job(String id) throws Exception {

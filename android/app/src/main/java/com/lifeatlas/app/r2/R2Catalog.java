@@ -88,7 +88,7 @@ public final class R2Catalog {
     return catalog;
   }
 
-  public JSONObject publish(JSONObject job, JSONObject input) throws Exception {
+  JSONObject prepareItem(JSONObject job, JSONObject input) throws Exception {
     if (!job.getString("slot").equals("public")
         || !job.getString("status").equals("complete")
         || !job.optBoolean("verified")
@@ -152,6 +152,11 @@ public final class R2Catalog {
     if (!job.optString("thumbnailKey").isEmpty())
       item.put(
           "thumbnailUrl", credentials.base + "/" + R2Policy.path(job.getString("thumbnailKey")));
+    return item;
+  }
+
+  public JSONObject publish(JSONObject job, JSONObject input) throws Exception {
+    JSONObject item = prepareItem(job, input);
     synchronized (mutationLock) {
       for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         // Every attempt starts with the latest document and its own strong ETag.
@@ -184,7 +189,7 @@ public final class R2Catalog {
     throw new R2Exception("CATALOG_CONFLICT");
   }
 
-  private static boolean samePublication(JSONObject existing, JSONObject item) {
+  static boolean samePublication(JSONObject existing, JSONObject item) {
     // A lost response followed by Retry must not add a duplicate or a new revision.
     for (String field :
         new String[] {
@@ -206,11 +211,17 @@ public final class R2Catalog {
 
   public JSONObject unpublish(String id) throws Exception {
     synchronized (mutationLock) {
-      return unpublishLocked(id);
+      return unpublishLocked(id, true);
     }
   }
 
-  private JSONObject unpublishLocked(String id) throws Exception {
+  JSONObject unpublishMetadata(String id) throws Exception {
+    synchronized (mutationLock) {
+      return unpublishLocked(id, false);
+    }
+  }
+
+  private JSONObject unpublishLocked(String id, boolean deleteCopy) throws Exception {
     JSONObject catalog = read(), removed = null;
     JSONArray previous = catalog.getJSONArray("items"), items = new JSONArray();
     for (int i = 0; i < previous.length(); i++) {
@@ -221,6 +232,7 @@ public final class R2Catalog {
     if (removed == null) throw new R2Exception("PUBLICATION_NOT_FOUND");
     catalog.put("items", items);
     write(catalog);
+    if (!deleteCopy) return catalog;
     String key = removed.getString("key");
     boolean referenced = false;
     for (int i = 0; i < items.length(); i++)

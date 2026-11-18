@@ -7,9 +7,9 @@ import path from 'node:path';
 import {publishedCertificate, verifyUpdate} from '../../scripts/verify-apk-update.mjs';
 
 const certificate = `Signer #1 certificate SHA-256 digest: ${publishedCertificate}`;
-const metadata = (id = 'com.lifeatlas.app', version = 14) => `package: name='${id}' versionCode='${version}' versionName='1.4.7'`;
+const metadata = (id = 'com.lifeatlas.app', version = 15) => `package: name='${id}' versionCode='${version}' versionName='1.4.8'`;
 test('published signer can update matching Vault and Next package identities', () => {
-  for (const id of ['com.lifeatlas.app', 'com.lifeatlas.app.next']) assert.equal(verifyUpdate(certificate, metadata(id), id).versionCode, 14);
+  for (const id of ['com.lifeatlas.app', 'com.lifeatlas.app.next']) assert.equal(verifyUpdate(certificate, metadata(id), id).versionCode, 15);
 });
 test('local debug signer and additional signers fail closed', () => {
   assert.throws(() => verifyUpdate(certificate.replace(publishedCertificate, 'a'.repeat(64)), metadata(), 'com.lifeatlas.app'), /certificate/);
@@ -17,7 +17,7 @@ test('local debug signer and additional signers fail closed', () => {
 });
 test('package mismatch and downgrades cannot be distributed as compatible updates', () => {
   assert.throws(() => verifyUpdate(certificate, metadata('com.lifeatlas.app.next'), 'com.lifeatlas.app'), /package/);
-  for (const version of [8, 10, 11, 12, 13]) assert.throws(() => verifyUpdate(certificate, metadata('com.lifeatlas.app', version), 'com.lifeatlas.app'), /version/);
+  for (const version of [8, 10, 11, 12, 13, 14]) assert.throws(() => verifyUpdate(certificate, metadata('com.lifeatlas.app', version), 'com.lifeatlas.app'), /version/);
 });
 test('fresh install checks the preserved key without claiming compatibility with old releases', () => {
   const preserved = 'b'.repeat(64);

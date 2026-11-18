@@ -1,4 +1,4 @@
-Atlas 1.4.7 — verified stable signing
+Atlas 1.4.8 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
@@ -41,8 +41,14 @@ per place. Website updates append media and preserve existing routes/statistics.
 The public loader now waits only for the initial viewport, with a four-second
 asset budget after hydration. Other scenes and media remain lazy-loaded.
 
-Catalog conflict recovery: native reads bypass HTTP caches. Conditional publication
-retries re-read and merge the latest catalog, retain unrelated media and stop after
-four attempts. Already-published upload IDs are idempotent. Saved place selections
-and transfer IDs survive this update. Retry Publish on your existing trip; do not
-reselect files or delete/reset the catalog to resolve a conflict.
+Trip publication recovery: trip photos now create independent immutable publication
+records rather than modifying the shared current.json catalog. Existing catalog
+entries are retained. The website receives approved trip media through its existing
+publishing API. The native library combines existing catalog entries with this
+device's securely saved publication index. Standalone legacy catalog publishing
+still uses conditional updates and can report a catalog conflict.
+
+Install over the existing Atlas Next app without uninstalling or clearing storage.
+Open the existing Creator Studio trip and tap Publish again. Named-place selections
+and transfer IDs survive this update; verified completed uploads are reused. The
+build does not access your bucket or upload any personal photos.

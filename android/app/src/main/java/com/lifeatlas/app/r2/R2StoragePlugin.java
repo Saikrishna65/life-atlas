@@ -331,7 +331,9 @@ public class R2StoragePlugin extends Plugin {
           if (slot.equals("public") && key.startsWith("atlas/catalog/"))
             throw new R2Exception("CATALOG_DELETE_BLOCKED");
           if (slot.equals("public")
-              && new R2Catalog(repository().store.credentials(slot)).references(key))
+              && (new R2Catalog(repository().store.credentials(slot)).references(key)
+                  || R2Publication.references(
+                      repository(), repository().store.credentials(slot), key)))
             throw new R2Exception("PUBLISHED_OBJECT");
           new R2Client(repository().store.credentials(slot)).delete(key);
           call.resolve();
@@ -375,7 +377,8 @@ public class R2StoragePlugin extends Plugin {
           }
           List<Uri> uris = new ArrayList<>();
           if (data.getClipData() != null) {
-            if(data.getClipData().getItemCount()>20)throw new R2Exception("SELECTION_LIMIT_EXCEEDED");
+            if (data.getClipData().getItemCount() > 20)
+              throw new R2Exception("SELECTION_LIMIT_EXCEEDED");
             for (int i = 0; i < data.getClipData().getItemCount(); i++)
               uris.add(data.getClipData().getItemAt(i).getUri());
           } else if (data.getData() != null) uris.add(data.getData());
@@ -762,7 +765,12 @@ public class R2StoragePlugin extends Plugin {
         call,
         () -> {
           R2Catalog catalog = new R2Catalog(repository().store.credentials("public"));
-          call.resolve(js(catalog.result(catalog.read())));
+          R2Repository repository = repository();
+          call.resolve(
+              js(
+                  catalog.result(
+                      R2Publication.merge(
+                          repository, repository.store.credentials("public"), catalog.read()))));
         });
   }
 
@@ -779,12 +787,39 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void publishTripMedia(PluginCall call) {
+    authenticated(
+        call,
+        () -> {
+          R2Repository repository = repository();
+          R2Credentials credentials = repository.store.credentials("public");
+          JSONObject prepared =
+              new R2Publication(credentials)
+                  .publish(repository.job(call.getString("transferId")), call.getData());
+          R2Publication.remember(repository, credentials, prepared);
+          call.resolve(
+              js(
+                  new JSONObject()
+                      .put("item", prepared.getJSONObject("item"))
+                      .put(
+                          "manifestUrl", prepared.getJSONObject("item").getString("manifestUrl"))));
+        });
+  }
+
+  @PluginMethod
   public void unpublishMedia(PluginCall call) {
     authenticated(
         call,
         () -> {
           R2Catalog catalog = new R2Catalog(repository().store.credentials("public"));
-          call.resolve(js(catalog.result(catalog.unpublish(call.getString("id")))));
+          R2Repository repository = repository();
+          call.resolve(
+              js(
+                  catalog.result(
+                      R2Publication.unpublish(
+                          repository,
+                          repository.store.credentials("public"),
+                          call.getString("id")))));
         });
   }
 
@@ -802,14 +837,19 @@ public class R2StoragePlugin extends Plugin {
           R2Catalog catalog = slot.equals("public") ? new R2Catalog(credentials) : null;
           Set<String> published = new HashSet<>();
           if (catalog != null) {
-            JSONArray items = catalog.read().getJSONArray("items");
+            JSONArray items =
+                R2Publication.merge(repository(), credentials, catalog.read())
+                    .getJSONArray("items");
             for (int i = 0; i < items.length(); i++)
               published.add(items.getJSONObject(i).getString("key"));
           }
           for (int i = 0; i < keys.length(); i++) {
             String key = R2Policy.key(keys.getString(i));
             if (key.startsWith("atlas/catalog/")) throw new R2Exception("CATALOG_DELETE_BLOCKED");
-            if (published.contains(key)) throw new R2Exception("PUBLISHED_OBJECT");
+            if (published.contains(key)
+                || (slot.equals("public")
+                    && R2Publication.references(repository(), credentials, key)))
+              throw new R2Exception("PUBLISHED_OBJECT");
           }
           JSONArray deleted = new JSONArray();
           for (int i = 0; i < keys.length(); i++) {

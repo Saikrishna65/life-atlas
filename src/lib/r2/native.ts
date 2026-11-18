@@ -72,6 +72,7 @@ interface R2Plugin {
     websiteUrl: string;
     catalog: PublicMediaCatalog;
   }>;
+  publishTripMedia(input:PublishInput):Promise<{item:import("./types").PublishedMedia;manifestUrl:string}>;
   unpublishMedia(input: {
     id: string;
   }): Promise<{ catalog: PublicMediaCatalog }>;

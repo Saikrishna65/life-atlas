@@ -36,13 +36,13 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
      if(savedId&&!job)throw Error('A saved upload is unavailable. Check Cloud Storage before selecting this file again.');
      if(!job){job=await R2.uploadObject({slot:'public',selectionId:file.id});await rememberPlaceTransfer(tripId,group.id,file.id,job.id);}
      job=await waitForTransfer(job);setProgress(`Publishing ${group.name} · ${file.name}`);
-     const result=await R2.publishMedia({transferId:job.id,title:title.trim(),description:'',tags:[`place:${group.name}`,`place-id:${group.id}`],category:'expedition',collection:websiteSlug(latest),acknowledgeMetadata:true});
-     const item=result.catalog.items.find(item=>item.id===job!.id);if(!item)throw Error('The public catalog did not confirm this media. Its original remains unchanged.');
+     const result=await R2.publishTripMedia({transferId:job.id,title:title.trim(),description:'',tags:[`place:${group.name}`,`place-id:${group.id}`],category:'expedition',collection:websiteSlug(latest),acknowledgeMetadata:true});
+     const item=result.item;if(!item)throw Error('The publication record did not confirm this media. Its original remains unchanged.');
      await rememberPlacePublication(tripId,group.id,file.id,item);selected.push(item);
     }
    }
 
-   for(const file of files){let job=jobs[file.id];if(!job){job=await R2.uploadObject({slot:'public',selectionId:file.id});setJobs(previous=>({...previous,[file.id]:job!}));}job=await waitForTransfer(job);setProgress(`Linking ${file.name} to this journey…`);const result=await R2.publishMedia({transferId:job.id,title:title.trim(),description:'',tags:place.trim()?[`place:${place.trim().slice(0,54)}`]:[],category:'expedition',collection:websiteSlug(trip),acknowledgeMetadata:true});const item=result.catalog.items.find(item=>item.id===job.id);if(item)selected.push(item);else throw Error('The public catalog did not confirm this file. Retry without deleting its original.');}
+   for(const file of files){let job=jobs[file.id];if(!job){job=await R2.uploadObject({slot:'public',selectionId:file.id});setJobs(previous=>({...previous,[file.id]:job!}));}job=await waitForTransfer(job);setProgress(`Linking ${file.name} to this journey…`);const result=await R2.publishTripMedia({transferId:job.id,title:title.trim(),description:'',tags:place.trim()?[`place:${place.trim().slice(0,54)}`]:[],category:'expedition',collection:websiteSlug(trip),acknowledgeMetadata:true});const item=result.item;if(item)selected.push(item);else throw Error('The publication record did not confirm this file. Retry without deleting its original.');}
    if(cancelled.current)throw Error('Website update paused. Approved public copies remain in Cloud Storage; retry when ready.');
    setProgress('Updating your website journal…');const result=await publishTripToWebsite(tripId,{title,description,memoryIds:ids,includeItinerary:includeDays,includeRoute,publicMedia:[...new Map(selected.map(item=>[item.id,item])).values()],appendExistingMedia:organized||!!latest.websitePlaces?.length});setUrl(result.publicUrl);setProgress('Published. Your local originals and cloud backups are unchanged.');
   }catch(error){setProblem(error&&typeof error==='object'&&'code' in error?storageError(error):error instanceof Error?error.message:storageError(error));}finally{setBusy(false);}

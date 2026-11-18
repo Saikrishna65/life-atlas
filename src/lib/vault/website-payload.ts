@@ -23,7 +23,7 @@ export function websitePayload(trip:TripRecord,memories:TripMemoryRecord[],days:
   }
   for(const group of trip.websitePlaces||[])places.set(group.name.trim().toLowerCase(),{id:group.id,name:group.name.trim()});
   if(trip.websiteLocation)places.set((trip.destination.trim()||title).toLowerCase(),{id:'trip-location',name:trip.destination.trim()||title,...trip.websiteLocation});
-  const media=publicMedia.map(item=>({id:item.id,url:item.url,poster:item.thumbnailUrl,kind:item.mimeType.startsWith('video/')?'video' as const:'photo' as const,
+  const media=publicMedia.map(item=>({id:item.id,url:item.url,poster:item.thumbnailUrl,manifestUrl:item.manifestUrl,kind:item.mimeType.startsWith('video/')?'video' as const:'photo' as const,
     place:item.tags.find(tag=>tag.startsWith('place:'))?.slice(6).trim()||'Unassigned',category:'Trip journal'}));
   const photoCover=selected.flatMap(memory=>memory.images?.length?memory.images:memory.imageDataUrl?[memory.imageDataUrl]:[])[0] || media.find(item=>item.kind==='photo')?.url;
   return {tripId:trip.id,title,destination:trip.destination.trim(),startDate:date||undefined,endDate:trip.endDate||undefined,
