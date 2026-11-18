@@ -19,6 +19,16 @@ test('package mismatch and downgrades cannot be distributed as compatible update
   assert.throws(() => verifyUpdate(certificate, metadata('com.lifeatlas.app.next'), 'com.lifeatlas.app'), /package/);
   for (const version of [8, 10]) assert.throws(() => verifyUpdate(certificate, metadata('com.lifeatlas.app', version), 'com.lifeatlas.app'), /version/);
 });
+test('fresh install checks the preserved key without claiming compatibility with old releases', () => {
+  const preserved = 'b'.repeat(64);
+  const certs = certificate.replace(publishedCertificate, preserved);
+  const result = verifyUpdate(certs, metadata(), 'com.lifeatlas.app', preserved);
+  assert.equal(result.installMode, 'fresh-install');
+  assert.equal(result.compatibleWithPublishedVersion, null);
+  assert.throws(() => verifyUpdate(certs, metadata(), 'com.lifeatlas.app'), /certificate/);
+  assert.throws(() => verifyUpdate(certs, metadata(), 'com.lifeatlas.app', 'a'.repeat(64)), /certificate/);
+  assert.throws(() => verifyUpdate(certs, metadata(), 'com.lifeatlas.app', 'invalid'), /Invalid/);
+});
 test('missing preserved key stops an update without initializing a new identity', () => {
   const home = mkdtempSync(path.join(tmpdir(), 'atlas-signing-test-'));
   const mock = `globalThis.fetch = async (url, options) => {

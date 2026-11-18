@@ -17,5 +17,9 @@ if(response.status===404&&(await response.clone().json().catch(()=>null))?.error
 if(!response.ok)throw Error('Could not load the signing identity. Build stopped to avoid an incompatible APK.');
 const bytes=Buffer.from(await response.arrayBuffer());if(bytes.length<1000||bytes.length>16000)throw Error('Invalid signing identity response.');await fs.writeFile(destination,bytes,{mode:0o600});await fs.chmod(destination,0o600);
 const checked=spawnSync('keytool',['-list','-keystore',destination,'-storepass','android','-alias','androiddebugkey'],{encoding:'utf8'});if(checked.status!==0)throw Error('The preserved signing identity could not be verified.');
+const certificate=spawnSync('keytool',['-J-Duser.language=en','-list','-v','-keystore',destination,'-storepass','android','-alias','androiddebugkey'],{encoding:'utf8'});
+const fingerprint=certificate.stdout?.match(/SHA256:\s*([A-Fa-f0-9:]+)/)?.[1]?.replaceAll(':','').toLowerCase();
+if(certificate.status!==0||!fingerprint||!/^[a-f0-9]{64}$/.test(fingerprint))throw Error('Could not verify the stored signing certificate.');
+if(process.env.GITHUB_ENV)await fs.appendFile(process.env.GITHUB_ENV,`ATLAS_SIGNING_STORE=${destination}\nATLAS_SIGNING_CERT_SHA256=${fingerprint}\n`);
 const again=await request('load');if(!again.ok||!bytes.equals(Buffer.from(await again.arrayBuffer())))throw Error('Signing identity changed during preparation.');
 console.log('Stable Android signing identity ready. Key material stays private and is excluded from APK artifacts.');

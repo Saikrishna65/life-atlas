@@ -6,16 +6,17 @@ import {pathToFileURL} from 'node:url';
 // Public certificate of the published 1.4.1 Vault and Next builds. Never a key.
 export const publishedCertificate = '347c516b8eccc5e7fff2126f08f57a1e929671094f875ff9cd56e86f3f333fd3';
 
-export function verifyUpdate(certs, badging, expectedPackage) {
+export function verifyUpdate(certs, badging, expectedPackage, freshInstallCertificate) {
+  if(freshInstallCertificate && !/^[a-f0-9]{64}$/.test(freshInstallCertificate))throw new Error('Invalid preserved certificate.');
   const signers = [...certs.matchAll(/^Signer #\d+ certificate SHA-256 digest: ([a-f0-9]{64})$/gm)];
-  if (signers.length !== 1 || signers[0][1] !== publishedCertificate) {
+  if (signers.length !== 1 || signers[0][1] !== (freshInstallCertificate || publishedCertificate)) {
     throw new Error('Signing certificate does not match the published app. APK must not be offered as an update.');
   }
   const identity = badging.match(/^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'/m);
   if (!identity || identity[1] !== expectedPackage || Number(identity[2]) <= 10) {
     throw new Error('Wrong package or non-increasing version code.');
   }
-  return {packageId: identity[1], versionCode: Number(identity[2]), versionName: identity[3], certificateSha256: signers[0][1], compatibleWithPublishedVersion: '1.4.1'};
+  return {packageId: identity[1], versionCode: Number(identity[2]), versionName: identity[3], certificateSha256: signers[0][1], compatibleWithPublishedVersion: signers[0][1] === publishedCertificate ? '1.4.1' : null, installMode: freshInstallCertificate ? 'fresh-install' : 'update'};
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
@@ -25,7 +26,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
     const apk = path.join(directory, file);
     const certs = execFileSync(path.join(tools, 'apksigner'), ['verify', '--print-certs', apk], {encoding: 'utf8'});
     const badging = execFileSync(path.join(tools, 'aapt'), ['dump', 'badging', apk], {encoding: 'utf8'});
-    return {file, ...verifyUpdate(certs, badging, packageId)};
+    const fresh = process.argv.includes('--fresh-install');
+    if(fresh && !process.env.ATLAS_SIGNING_CERT_SHA256)throw new Error('Fresh installs must use the preserved signing identity.');
+    return {file, ...verifyUpdate(certs, badging, packageId, fresh ? process.env.ATLAS_SIGNING_CERT_SHA256 : undefined)};
   });
   writeFileSync(path.join(directory, 'signing-compatibility.json'), JSON.stringify({buildSha: process.env.GITHUB_SHA || null, reports, warning: 'Earlier builds or locally signed APKs may have another certificate. Never uninstall an app containing unsaved data to bypass an install conflict.'}, null, 2));
   console.log('Both APKs verified against the published signing certificate and package identities.');
