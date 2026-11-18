@@ -15,7 +15,7 @@ import org.robolectric.annotation.Config;
 @Config(sdk = 28)
 @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.LEGACY)
 public class R2TripQueueTest {
-  private R2Repository repository() throws Exception {
+  static R2Repository repository() throws Exception {
     File root = java.nio.file.Files.createTempDirectory("trip-queue-test").toFile();
     android.content.Context context =
         new android.content.ContextWrapper(org.robolectric.RuntimeEnvironment.getApplication()) {

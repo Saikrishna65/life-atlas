@@ -8,6 +8,7 @@ import {publishTripToWebsite} from '@/lib/vault/publishTrip';
 import {rememberPlaceTransfer,rememberPlacePublication} from '@/lib/studio/trip-places';
 import {websiteSlug} from '@/lib/vault/website-payload';
 import {R2,nativeR2Available,systemAction,storageError,bytes} from '@/lib/r2/native';
+import {transferScheduleText} from '@/lib/r2/transfer-status';
 import {PublicationPaused,waitForTripTransfer,publicationSessionUnavailable} from '@/lib/r2/trip-transfer';
 import type {PublishedMedia,SelectedMedia,Transfer} from '@/lib/r2/types';
 
@@ -24,10 +25,11 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
  async function waitForTransfer(job:Transfer,publicationSession?:string){
   return waitForTripTransfer(job.id,{
    transfers:async()=>(await R2.getTransferProgress()).transfers,
+   recover:()=>R2.recoverTripUploads(),
    resume:id=>R2.resumeTransfer({id,publicationSession}),
    paused:()=>cancelled.current,
    offline:()=>navigator.onLine===false,
-   progress:(phase,current)=>{setJobs(previous=>({...previous,[job.id]:current}));setProgress(`${phase} ${current.name} · ${bytes(current.uploadedBytes)} / ${bytes(current.totalBytes)}`);},
+   progress:(phase,current)=>{setJobs(previous=>({...previous,[job.id]:current}));setProgress(`${transferScheduleText(current)||phase} ${current.name} · ${bytes(current.status==='verifying'?current.verifiedBytes:current.uploadedBytes)} / ${bytes(current.totalBytes)}`);},
   });
  }
  function checkPaused(){if(cancelled.current)throw new PublicationPaused();}

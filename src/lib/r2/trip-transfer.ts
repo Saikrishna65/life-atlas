@@ -12,13 +12,14 @@ export function publicationSessionUnavailable(error:unknown){
 export interface TripTransferControls {
  transfers:()=>Promise<Transfer[]>;
  resume:(id:string)=>Promise<void>;
+ recover?:()=>Promise<unknown>;
  paused:()=>boolean;
  offline:()=>boolean;
  progress:(message:string,job:Transfer)=>void;
  delay?:()=>Promise<void>;
 }
 export async function waitForTripTransfer(id:string, controls:TripTransferControls):Promise<Transfer>{
- let resumed=false;
+ let resumed=false,recovered=false;
  for(;;){
   if(controls.paused())throw new PublicationPaused();
   const transfers=await controls.transfers();
@@ -31,6 +32,13 @@ export async function waitForTripTransfer(id:string, controls:TripTransferContro
    return current;
   }
   if(controls.offline())throw new PublicationPaused();
+  if(current.retryScheduled||current.workerState==='BLOCKED'||current.workerState==='ENQUEUED'||current.workerState==='RUNNING'){
+   await (controls.delay?.()??new Promise(resolve=>setTimeout(resolve,1000)));continue;
+  }
+  if(current.canRecover){
+   if(!recovered&&controls.recover){await controls.recover();recovered=true;await (controls.delay?.()??new Promise(resolve=>setTimeout(resolve,1000)));continue;}
+   throw Error('Android has no active job for this upload. Open Cloud Storage → Transfers → Resume approved uploads. Your selections and completed files are saved.');
+  }
   if(['paused','interrupted','failed'].includes(current.status)){
    if(resumed)throw Error('This upload could not resume. Check its details in Cloud Storage; completed uploads and selected originals are saved.');
    await controls.resume(id);resumed=true;

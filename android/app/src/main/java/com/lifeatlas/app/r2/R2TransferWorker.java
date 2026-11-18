@@ -32,13 +32,13 @@ public final class R2TransferWorker extends Worker {
         .build();
   }
 
-  public static void enqueue(Context context, String id) {
+  public static synchronized void enqueue(Context context, String id) {
     WorkManager.getInstance(context)
         .enqueueUniqueWork("atlas-r2-queue", ExistingWorkPolicy.APPEND_OR_REPLACE, request(id));
   }
 
   /** A single WorkManager transaction persists the complete serial batch before returning. */
-  static void enqueueBatch(Context context, JSONArray ids) throws Exception {
+  static synchronized void enqueueBatch(Context context, JSONArray ids) throws Exception {
     if (ids.length() == 0) return;
     WorkContinuation chain =
         WorkManager.getInstance(context)
@@ -96,6 +96,7 @@ public final class R2TransferWorker extends Worker {
         return Result.success();
       setForegroundAsync(notification(id, "Preparing original media", -1)).get();
       repository.checkCredentialRevision(job);
+      repository.update(id, j -> j.put("speed", 0).remove("error"));
       check(repository, id);
       if (job.optString("direction").equals("download")) {
         download(repository, job);
@@ -195,6 +196,8 @@ public final class R2TransferWorker extends Worker {
       setForegroundAsync(notification(id, "Verifying uploaded bytes", -1));
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
       long received = 0;
+      long lastVerification = 0;
+      repository.update(id, j -> j.put("verifiedBytes", 0).put("verificationTotalBytes", total));
       try (R2Client.Response response =
           client.request("GET", key, Collections.emptyMap(), Collections.emptyMap(), null, null)) {
         byte[] buffer = new byte[65536];
@@ -203,6 +206,17 @@ public final class R2TransferWorker extends Worker {
           check(repository, id);
           digest.update(buffer, 0, n);
           received += n;
+          long now = System.currentTimeMillis();
+          if (now - lastVerification >= 1000 || received == total) {
+            lastVerification = now;
+            final long verified = received;
+            repository.update(id, j -> j.put("verifiedBytes", verified));
+            setForegroundAsync(
+                notification(
+                    id,
+                    "Verifying original · " + (verified * 100 / Math.max(1, total)) + "%",
+                    (int) (verified * 100 / Math.max(1, total))));
+          }
         }
       }
       if (received != total || !R2Policy.hex(digest.digest()).equals(job.getString("sha256")))
@@ -277,6 +291,11 @@ public final class R2TransferWorker extends Worker {
       return Result.success();
     } catch (Exception error) {
       String code = R2Policy.safeError(error);
+      boolean retry =
+          (code.equals("NETWORK_UNAVAILABLE")
+                  || code.equals("REMOTE_TEMPORARY_FAILURE")
+                  || code.equals("R2_REQUEST_FAILED"))
+              && getRunAttemptCount() < 5;
       try {
         String state = repository.job(id).optString("status");
         if (Set.of("cancelled", "cancelling").contains(state)) {
@@ -290,14 +309,35 @@ public final class R2TransferWorker extends Worker {
         }
         if (!Set.of("cancelled", "cancelling", "paused").contains(state))
           repository.update(
-              id, j -> j.put("status", isStopped() ? "interrupted" : "failed").put("error", code));
+              id,
+              j ->
+                  j.put("status", isStopped() ? "interrupted" : retry ? "queued" : "failed")
+                      .put("error", code)
+                      .put("speed", 0));
       } catch (Exception ignored) {
       }
-      if (!isStopped()) notifyFinished(id, false);
-      return (code.equals("NETWORK_UNAVAILABLE") || code.equals("REMOTE_TEMPORARY_FAILURE"))
-              && getRunAttemptCount() < 5
-          ? Result.retry()
-          : Result.success();
+      if (!isStopped() && !retry) notifyFinished(id, false);
+      return retry ? Result.retry() : Result.success();
+    }
+  }
+
+  @Override
+  public void onStopped() {
+    super.onStopped();
+    String id = getInputData().getString("id");
+    if (id == null) return;
+    try {
+      new R2Repository(getApplicationContext())
+          .update(
+              id,
+              job -> {
+                if (Set.of("queued", "preparing", "uploading", "downloading", "verifying")
+                    .contains(job.optString("status")))
+                  job.put("status", "interrupted")
+                      .put("error", "ANDROID_TRANSFER_STOPPED")
+                      .put("speed", 0);
+              });
+    } catch (Exception ignored) {
     }
   }
 

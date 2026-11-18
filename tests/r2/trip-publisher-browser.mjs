@@ -48,7 +48,7 @@ try{
  const button=page.getByRole('button',{name:'Publish to website',exact:true});
  const colors=await button.evaluate(node=>{const s=getComputedStyle(node);return {background:s.backgroundColor,color:s.color}});
  assert.equal(colors.background,'rgb(40, 85, 71)');assert.equal(colors.color,'rgb(255, 255, 255)');
- await button.click();await page.getByText(/Verifying original file… second.jpg/).waitFor();
+ await button.click();await page.getByText(/Checking uploaded bytes against the original… second.jpg/).waitFor();
  assert.equal(await page.evaluate(()=>fixture.auth),1);assert.equal(await page.evaluate(()=>fixture.records),1);
  await page.getByRole('button',{name:'Continue in background'}).click();
  await page.getByRole('button',{name:'Resume publishing',exact:true}).waitFor();

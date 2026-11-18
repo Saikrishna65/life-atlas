@@ -1,4 +1,8 @@
 const messages: Record<string, string> = {
+  ANDROID_TRANSFER_STOPPED: "Android stopped this transfer. Its saved parts and original remain available; resume approved uploads to continue.",
+  BACKGROUND_UPLOAD_RESTRICTED: "Android prevented the upload service from starting. Reopen Atlas Next, allow background battery usage for it, and resume approved uploads.",
+  STORAGE_PERMISSION_DENIED: "Android denied access to the source file or upload service. Open Atlas Next and check its permissions; your original and saved selections remain unchanged.",
+  SOURCE_UNAVAILABLE: "Android could not open this original. Make sure its storage provider and original file are still available. Do not delete your saved trip.",
   SELECTION_LIMIT_EXCEEDED: "Select up to 20 photos or videos at a time. Add another batch for the same place.",
   ANDROID_VERSION_UNSUPPORTED:
     "Cloud storage needs Android 8 or later. Your local vaults remain available.",

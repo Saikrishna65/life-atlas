@@ -1,4 +1,4 @@
-Atlas 1.4.11 — verified stable signing
+Atlas 1.4.12 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
@@ -79,3 +79,20 @@ the process ends or credentials change; it cannot authorize arbitrary bucket acc
 Install over the existing Atlas Next without uninstalling or clearing storage.
 Your existing named-place selections, transfers, original media and route data are
 preserved. No personal cloud uploads or physical-device tests run in the build.
+
+Stopped uploads: Cloud Storage → Transfers now shows Android WorkManager status,
+queued dependencies, retry scheduling, quota/background stop reasons where Android
+provides them, and separate verification bytes. Running files sort before later
+queued files. Native transient failures remain queued while Android retries them;
+the publisher no longer appends duplicate jobs during that backoff.
+
+Use Resume approved uploads to restore missing/finished scheduler work for existing,
+previously approved public trip uploads. It reuses the same object keys, file URIs
+and multipart state. It skips running/scheduled work, completed files, manual pauses,
+cancelled jobs, private/unapproved uploads, changed credentials and non-transient
+permission/authentication failures. The publisher attempts this recovery once if
+its current approved upload has no active Android job. No expiry was reintroduced.
+
+The exact cause of the reported phone stoppage was not available during implementation.
+This build adds actionable status and narrow recovery rather than claiming a specific
+on-device cause. Physical-phone and live-bucket testing are still required.

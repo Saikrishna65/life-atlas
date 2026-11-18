@@ -36,3 +36,13 @@ test('background transfers are polled and verified without waiting for a foregro
  const complete=await waitForTripTransfer('saved-video',controls({transfers:async()=>[reads++===0?job('uploading'):job('complete',true)]}));
  assert.equal(reads,2);assert.equal(complete.verified,true);
 });
+test('an Android-managed retry waits instead of appending duplicate transfers',async()=>{
+ let reads=0;
+ await waitForTripTransfer('saved-video',controls({transfers:async()=>[reads++===0?{...job('failed'),workerState:'ENQUEUED',retryScheduled:true}:job('complete',true)]}));
+ assert.equal(reads,2);
+});
+test('an orphaned approved upload is repaired once and reuses its existing ID',async()=>{
+ let reads=0,repairs=0;
+ const done=await waitForTripTransfer('saved-video',controls({transfers:async()=>[reads++===0?{...job('uploading'),workerState:'MISSING',canRecover:true}:job('complete',true)],recover:async()=>{repairs++;}}));
+ assert.equal(repairs,1);assert.equal(done.id,'saved-video');
+});

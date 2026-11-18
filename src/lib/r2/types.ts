@@ -69,6 +69,15 @@ export interface Transfer {
   error?: string;
   createdAt: number;
   updatedAt?: number;
+  workerState?: 'RUNNING'|'ENQUEUED'|'BLOCKED'|'SUCCEEDED'|'FAILED'|'CANCELLED'|'MISSING';
+  retryScheduled?: boolean;
+  nextAttemptAt?: number;
+  attempts?: number;
+  stopReason?: number;
+  androidWait?: 'QUOTA'|'BACKGROUND'|'NETWORK'|'TIME_LIMIT';
+  canRecover?: boolean;
+  verifiedBytes?: number;
+  verificationTotalBytes?: number;
   speed?: number;
   eta?: number;
   publicUrl?: string;

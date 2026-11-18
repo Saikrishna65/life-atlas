@@ -617,10 +617,42 @@ public class R2StoragePlugin extends Plugin {
         call,
         () -> {
           R2Repository repository = repository();
+          Map<String, List<androidx.work.WorkInfo>> scheduled =
+              R2QueueState.index(
+                  WorkManager.getInstance(getContext()).getWorkInfosByTag("atlas-r2").get());
           JSONArray stored = repository.jobs(), safe = new JSONArray();
-          for (int i = 0; i < stored.length(); i++)
-            safe.put(repository.safeJob(stored.getJSONObject(i)));
+          for (int i = 0; i < stored.length(); i++) {
+            JSONObject job = stored.getJSONObject(i), value = repository.safeJob(job);
+            JSONObject state =
+                R2QueueState.describe(
+                    job,
+                    scheduled.getOrDefault(job.getString("id"), Collections.emptyList()),
+                    System.currentTimeMillis());
+            Iterator<String> fields = state.keys();
+            while (fields.hasNext()) {
+              String key = fields.next();
+              value.put(key, state.get(key));
+            }
+            safe.put(value);
+          }
           call.resolve(new JSObject().put("transfers", safe));
+        });
+  }
+
+  @PluginMethod
+  public void recoverTripUploads(PluginCall call) {
+    work(
+        call,
+        () -> {
+          synchronized (R2TransferWorker.class) {
+            R2Repository repository = repository();
+            Map<String, List<androidx.work.WorkInfo>> scheduled =
+                R2QueueState.index(
+                    WorkManager.getInstance(getContext()).getWorkInfosByTag("atlas-r2").get());
+            JSONArray ids = R2QueueState.repair(repository, scheduled);
+            R2TransferWorker.enqueueBatch(getContext(), ids);
+            call.resolve(new JSObject().put("recovered", ids.length()));
+          }
         });
   }
 

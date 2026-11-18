@@ -152,6 +152,8 @@ public final class R2Repository {
           "size",
           "totalBytes",
           "uploadedBytes",
+          "verifiedBytes",
+          "verificationTotalBytes",
           "status",
           "error",
           "createdAt",

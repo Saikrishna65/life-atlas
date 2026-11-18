@@ -38,6 +38,7 @@ import {
   storageError,
   systemAction,
 } from "@/lib/r2/native";
+import {transferScheduleText,sortTransfers} from "@/lib/r2/transfer-status";
 import type {
   BucketSlot,
   CloudObject,
@@ -331,6 +332,7 @@ export default function CloudStorage() {
     [websiteUrl, setWebsiteUrl] = useState(""),
     [catalogUrl, setCatalogUrl] = useState(""),
     [publishing, setPublishing] = useState<Transfer | null>(null);
+  const [recoveredCount,setRecoveredCount]=useState<number|null>(null);
   const [price, setPrice] = useState("0.015");
   const mounted = useRef(true),
     actionLock = useRef(false);
@@ -342,7 +344,7 @@ export default function CloudStorage() {
     ]);
     if (!mounted.current) return;
     setSummary(config);
-    setTransfers(progress.transfers.sort((a, b) => b.createdAt - a.createdAt));
+    setTransfers(sortTransfers(progress.transfers));
   }, [native]);
   useEffect(() => {
     mounted.current = true;
@@ -355,7 +357,7 @@ export default function CloudStorage() {
           .then((result) => {
             if (mounted.current)
               setTransfers(
-                result.transfers.sort((a, b) => b.createdAt - a.createdAt),
+                sortTransfers(result.transfers),
               );
           })
           .catch(() => {});
@@ -1027,7 +1029,9 @@ export default function CloudStorage() {
         {section === "Transfers" && (
           <>
             <div className="r2-section-heading">
-              <h3>A queue that respects originals.</h3>
+              <h3>Your upload queue.</h3>
+              <button className="r2-primary" disabled={!!busy} onClick={()=>void run('Resume approved uploads',async()=>{const result=await R2.recoverTripUploads();setRecoveredCount(result.recovered);})}>Resume approved uploads</button>
+              {recoveredCount!==null&&<p role="status">{recoveredCount?`${recoveredCount} stopped uploads restored using their saved files.`:"No missing upload jobs needed recovery. Check the status shown below for Android scheduling or file errors."}</p>}
               <p>
                 One foreground transfer at a time. Large uploads use persisted
                 multipart parts. Android may stop background work; resume
@@ -1050,7 +1054,7 @@ export default function CloudStorage() {
             <div className="r2-transfers">
               {transfers.map((transfer) => {
                 const total = transfer.totalBytes || transfer.size || 0,
-                  sent = transfer.uploadedBytes || 0;
+                  sent = (transfer.status==='verifying'?transfer.verifiedBytes:transfer.uploadedBytes)||0;
                 return (
                   <article key={transfer.id}>
                     <div className="r2-transfer-icon">
@@ -1079,6 +1083,9 @@ export default function CloudStorage() {
                         max={total || 1}
                         aria-label={`${transfer.name} progress`}
                       />
+                      {transferScheduleText(transfer)&&<p role="status">{transferScheduleText(transfer)}</p>}
+                      {transfer.nextAttemptAt&&transfer.retryScheduled&&<small>Next retry no earlier than {new Date(transfer.nextAttemptAt).toLocaleTimeString()} · attempt {transfer.attempts||0}</small>}
+                      {transfer.status==='verifying'&&<small>Upload sent. Verifying {bytes(transfer.verifiedBytes)} / {bytes(transfer.verificationTotalBytes||total)}</small>}
                       {transfer.error && (
                         <p className="r2-transfer-error">
                           {storageError({ code: transfer.error })}

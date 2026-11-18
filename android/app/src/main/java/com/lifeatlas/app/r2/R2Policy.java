@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 /** Shared validation; credentials are never routed through a general-purpose proxy. */
@@ -132,6 +133,19 @@ public final class R2Policy {
   }
 
   public static String safeError(Exception error) {
+    Throwable cause = error;
+    for (int i = 0; i < 6 && cause != null; i++, cause = cause.getCause()) {
+      String type = cause.getClass().getSimpleName();
+      if (Set.of(
+              "ForegroundServiceStartNotAllowedException",
+              "ForegroundServiceDidNotStartInTimeException",
+              "ForegroundServiceTypeNotAllowedException",
+              "MissingForegroundServiceTypeException",
+              "InvalidForegroundServiceTypeException")
+          .contains(type)) return "BACKGROUND_UPLOAD_RESTRICTED";
+      if (cause instanceof SecurityException) return "STORAGE_PERMISSION_DENIED";
+      if (cause instanceof java.io.FileNotFoundException) return "SOURCE_UNAVAILABLE";
+    }
     String code =
         error instanceof R2Exception
             ? ((R2Exception) error).code
