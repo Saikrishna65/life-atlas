@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Compass, Pause, Play, Plus, Minus } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUpRight, Compass, Pause, Play } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useLenis } from "lenis/react";
@@ -13,7 +13,7 @@ import { mixJournalMedia } from "@/lib/public-trips/journal-order";
 import type { DetailMedia, TripDetailData } from "@/lib/public-trips/detail";
 import { mediaForTrip, mediaKind } from "@/lib/r2/public-media";
 import { usePublicCatalog } from "@/components/world/usePublicCatalog";
-import { Modal } from "@/components/world/primitives";
+import TripMediaViewer from "@/components/media/TripMediaViewer";
 import WorldMotion from "@/components/world/WorldMotion";
 import { KineticHeading } from "@/components/world/EditorialElements";
 import DetailFilm from "./DetailFilm";
@@ -37,10 +37,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
   const [place, setPlace] = useState("All places");
   const [kind, setKind] = useState("All media");
   const [category, setCategory] = useState("All categories");
-  const [limit, setLimit] = useState(18);
   const [selected, setSelected] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(false);
-  const [failed, setFailed] = useState<string | null>(null);
   const media = useMemo<DetailMedia[]>(() => {
     const published = mediaForTrip(catalog?.items ?? [], trip.slug, trip.title).map(item => ({
       id: `published-${item.id}`, url: item.url, poster: item.thumbnailUrl, kind: mediaKind(item.mimeType),
@@ -87,7 +84,6 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
       else window.scrollTo({ top, behavior: reduce ? "instant" : "smooth" });
     }));
   };
-  const navigateMedia = (delta: number) => { setSelected(visible[(currentIndex + delta + visible.length) % visible.length]?.id ?? null); setZoom(false); setFailed(null); };
   useEffect(() => {
     if (!hasMap) return;
     const releasePreload=onPublicPreload(()=>setMapReady(true));
@@ -107,19 +103,6 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
     window.addEventListener("resize", connect);
     return () => { contrast.disconnect(); window.removeEventListener("resize", connect); };
   }, []);
-  useEffect(() => {
-    if (!selected) return;
-    const key = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement).closest("video, input, select, textarea")) return;
-      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-        event.preventDefault();
-        setSelected(visible[(currentIndex + (event.key === "ArrowRight" ? 1 : -1) + visible.length) % visible.length]?.id ?? null);
-        setZoom(false); setFailed(null);
-      }
-    };
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
-  }, [selected, visible, currentIndex]);
   useEffect(() => {
     if(publicLoading)return;
     gsap.registerPlugin(ScrollTrigger);
@@ -159,14 +142,14 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
         </div>
       </section>}
       {!!media.length && <section className="td-journal td-section" id="photo-journal"><header className="td-section-heading" data-world-reveal><div><span className="td-eyebrow">{chapter("photo-journal")} / FRAMES & FILMS</span><KineticHeading lines={["The things", <em key="frames">I brought home.</em>]} /></div><span className="td-section-note">{visible.length} MOMENTS / {trip.sample ? "ILLUSTRATIVE COLLECTION" : "THE PUBLIC JOURNAL"}</span></header>
-        {(places.length > 0 || mixedMedia || categories.length > 1) && <div className="td-journal-toolbar">{places.length > 0 && <nav aria-label="Filter journal by place">{["All places", ...places].map(value => <button key={value} aria-pressed={place === value} onClick={() => { setPlace(value); setLimit(18); setSelected(null); }}>{value}</button>)}</nav>}{(mixedMedia || categories.length > 1) && <div className="td-media-filters">{mixedMedia && <div aria-label="Journal media type">{["All media", "Photos", "Films"].map(value => <button key={value} aria-pressed={kind === value} onClick={() => { setKind(value); setLimit(18); setSelected(null); }}>{value}</button>)}</div>}{categories.length > 1 && <label><span className="sr-only">Filter journal category</span><select aria-label="Filter journal category" value={category} onChange={event => { setCategory(event.target.value); setLimit(18); setSelected(null); }}>{["All categories", ...categories].map(value => <option key={value}>{value}</option>)}</select></label>}</div>}</div>}
+        {(places.length > 0 || mixedMedia || categories.length > 1) && <div className="td-journal-toolbar">{places.length > 0 && <nav aria-label="Filter journal by place">{["All places", ...places].map(value => <button key={value} aria-pressed={place === value} onClick={() => { setPlace(value); setSelected(null); }}>{value}</button>)}</nav>}{(mixedMedia || categories.length > 1) && <div className="td-media-filters">{mixedMedia && <div aria-label="Journal media type">{["All media", "Photos", "Films"].map(value => <button key={value} aria-pressed={kind === value} onClick={() => { setKind(value); setSelected(null); }}>{value}</button>)}</div>}{categories.length > 1 && <label><span className="sr-only">Filter journal category</span><select aria-label="Filter journal category" value={category} onChange={event => { setCategory(event.target.value); setSelected(null); }}>{["All categories", ...categories].map(value => <option key={value}>{value}</option>)}</select></label>}</div>}</div>}
         {error && <p role="status" className="td-muted">Published media is temporarily unavailable. The existing trip journal remains accessible.</p>}
-        <TripJournalGallery items={visible.slice(0,limit)} paused={paused || !!current} onOpen={id => { setSelected(id); setZoom(false); setFailed(null); }} />
+        <TripJournalGallery items={visible} paused={paused || !!current} onOpen={id => { setSelected(id); }} />
         {!visible.length && <div className="td-empty"><p>No media matches this selection.</p>{!!media.length && <button onClick={() => { setPlace("All places"); setKind("All media"); setCategory("All categories"); }}>Reset journal filters <ArrowRight size={16} /></button>}</div>}
-        <div className="td-journal-foot"><span aria-live="polite">{Math.min(limit, visible.length)} / {visible.length} MOMENTS</span>{limit < visible.length && <button onClick={() => setLimit(value => value + 18)}>Unfold more <Plus size={16} /></button>}</div>
+        <div className="td-journal-foot"><span aria-live="polite">{visible.length} MOMENTS</span></div>
       </section>}
       <section className="td-ending" id="journal-ending"><span className="td-eyebrow">THE LAST FRAME. ANOTHER BEGINNING.</span><h2>The road<br /><em>goes on.</em></h2>{trip.next ? <Link prefetch={publicLoading?false:null} className="td-next" href={`/trips/${trip.next.slug}`}>{trip.next.image && <div className="td-next-image"><Image src={trip.next.image} alt="" fill sizes="(max-width: 700px) 85vw, 50vw" loading="lazy" unoptimized /></div>}<span>NEXT JOURNAL</span><h3>{trip.next.title}</h3><span className="td-next-arrow"><ArrowUpRight size={28} /></span></Link> : <Link prefetch={publicLoading?false:null} href="/#memories" className="td-all-journeys">Back to my journeys <ArrowUpRight size={20} /></Link>}<div className="td-ending-links"><Link prefetch={publicLoading?false:null} href="/#memories">All journeys <ArrowUpRight size={15} /></Link><button onClick={() => { if (lenis) lenis.scrollTo(0, { immediate: matchMedia("(prefers-reduced-motion: reduce)").matches }); else window.scrollTo({ top: 0, behavior: "smooth" }); }}>Back to the beginning <ArrowUpRight size={15} /></button></div></section>
     </WorldMotion>
-    {current && <Modal title={current.place === "Unassigned" ? "From the trip journal" : current.place} className="td-viewer" onClose={() => { setSelected(null); setZoom(false); }}><div className={`td-viewer-media ${zoom ? "is-zoomed" : ""}`}>{current.kind === "video" ? <video key={current.id} src={current.url} poster={current.poster} autoPlay muted playsInline controls onError={() => setFailed(current.id)} /> : <Image key={current.id} src={current.url} alt={current.caption || `Trip photograph from ${current.place}`} width={1600} height={1100} unoptimized />}</div>{failed === current.id && <p role="status">This film could not be loaded. <a href={current.url} target="_blank" rel="noreferrer">Open the original ↗</a></p>}<div className="td-viewer-details"><div><span>{current.category}</span>{current.place !== "Unassigned" && <h3>{current.place}</h3>}{current.caption && <p>{current.caption}</p>}{trip.sample && <p>Illustrative sample media, not a personal travel record.</p>}</div><div className="td-viewer-tools">{current.kind === "photo" && <button aria-label={zoom ? "Zoom out" : "Zoom in"} aria-pressed={zoom} onClick={() => setZoom(value => !value)}>{zoom ? <Minus size={18} /> : <Plus size={18} />}</button>}<button onClick={() => navigateMedia(-1)} aria-label="Previous journal moment"><ArrowLeft size={19} /></button><span>{currentIndex + 1} / {visible.length}</span><button onClick={() => navigateMedia(1)} aria-label="Next journal moment"><ArrowRight size={19} /></button></div></div></Modal>}
+    {current && <TripMediaViewer items={visible} selected={current.id} onSelect={setSelected} onClose={() => setSelected(null)} sample={trip.sample} />}
   </div>;
 }

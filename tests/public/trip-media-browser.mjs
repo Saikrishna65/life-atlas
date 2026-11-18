@@ -1,0 +1,59 @@
+import {build} from 'esbuild';import {createRequire} from 'node:module';import {createServer} from 'node:http';import {readFile,mkdir} from 'node:fs/promises';import assert from 'node:assert/strict';
+const {chromium}=createRequire(import.meta.url)('playwright');
+const image=await readFile('public/images/world/mountains.webp'),thumb=await readFile('public/images/world/mountains-small.webp'),film=await readFile('public/films/hero/highlands.mp4');
+const media=Array.from({length:42},(_,i)=>({id:'frame-'+i,url:i%7===6?(i===41?'/broken.mp4':'/video/'+i+'.mp4'):'/full/'+i+'.webp',poster:'/tiny/'+i+'.webp',kind:i%7===6?'video':'photo',place:i%2?'Temple':'Lake',category:'Trip journal'}));
+const trip={id:'synthetic',slug:'media-regression',title:'Media regression',region:'',overview:'',cover:'/full/cover.webp',sample:false,duration:'',paths:[],stops:[],metrics:[],days:[],media};
+const mocks={
+ 'next/image':`import React from 'react';export default function Image({fill,priority,unoptimized,quality,...props}){return <img {...props} style={fill?{position:'absolute',inset:0,width:'100%',height:'100%'}:props.style}/>}`,
+ 'next/link':`import React from 'react';export default function Link({prefetch,...props}){return <a {...props}/>}`,
+ 'next/dynamic':`export default function dynamic(){return ()=>null}`,
+ '@/components/layout/PublicPageReady':`export const usePublicLoading=()=>false;export default function Ready(){return null}`,
+ '@/components/world/usePublicCatalog':`export const usePublicCatalog=()=>({catalog:null,error:null})`,
+ '@/components/world/WorldMotion':`import React from 'react';export default function Motion({children}){return <div>{children}</div>}`,
+};
+const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import Trip from './src/components/trips/TripDetailExperience';import Film from './src/components/trips/DetailFilm';createRoot(document.getElementById('root')).render(location.pathname==='/autoplay'?<div><Film src="/video/auto.mp4" poster="/tiny/a.webp" paused={false} label="near film"/><div style={{height:2600}}/><Film src="/video/far.mp4" poster="/tiny/b.webp" paused={false} label="far film"/></div>:<Trip trip={window.fixture}/>);`,resolveDir:process.cwd(),loader:'tsx'},write:false,bundle:true,format:'iife',jsx:'automatic',loader:{'.css':'empty'},define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'local-public-fixture',setup(b){b.onResolve({filter:/^(next\/|@\/)/},args=>mocks[args.path]?{path:args.path,namespace:'fixture'}:undefined);b.onLoad({filter:/.*/,namespace:'fixture'},args=>({contents:mocks[args.path],loader:'tsx',resolveDir:process.cwd()}));}}]});
+const css=(await Promise.all(['src/components/world/world.css','src/components/world/cinema.css','src/components/trips/trip-detail.css','src/components/media/journal-viewer.css'].map(path=>readFile(path,'utf8')))).join('\n');
+let allowBroken=false;
+const server=createServer((req,res)=>{
+ const path=new URL(req.url,'http://local').pathname;
+ if(path==='/allow-film'){allowBroken=true;res.end('ok');return;}
+ if(path.startsWith('/video/')||path==='/broken.mp4'){
+  if(path==='/broken.mp4'&&!allowBroken){res.writeHead(415,{'content-type':'video/mp4'});res.end('unsupported synthetic bytes');return;}
+  res.setHeader('Content-Type','video/mp4');res.setHeader('Accept-Ranges','bytes');
+  if(req.headers.range){const [,a,b]=req.headers.range.match(/bytes=(\d+)-(\d*)/)||[];const start=Number(a||0),end=Math.min(Number(b||film.length-1),film.length-1);res.writeHead(206,{'Content-Range':`bytes ${start}-${end}/${film.length}`,'Content-Length':end-start+1});res.end(film.subarray(start,end+1));}
+  else {res.setHeader('Content-Length',film.length);res.end(film);}return;
+ }
+ if(path.startsWith('/full/')||path.startsWith('/tiny/')){res.setHeader('Content-Type','image/webp');res.end(path.startsWith('/tiny/')?thumb:image);return;}
+ res.setHeader('Content-Type','text/html');res.end(`<html><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;font-family:Arial}*{box-sizing:border-box}${css}</style><div id="root"></div><script>window.fixture=${JSON.stringify(trip)};if(location.pathname==='/autoplay')document.documentElement.dataset.publicLoading='true';</script><script>${bundle.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></html>`);
+});
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const origin=`http://127.0.0.1:${server.address().port}`;let browser;
+async function swipe(page,stage,direction){const box=await stage.boundingBox();const start=box.x+box.width*(direction<0?.8:.2),end=box.x+box.width*(direction<0?.2:.8),y=box.y+Math.min(box.height/2,120);const session=await page.context().newCDPSession(page);await session.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start,y}]});await session.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:end,y}]});await session.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await session.detach();}
+try{
+ browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});await mkdir('work/qa-trip-media',{recursive:true});
+ const page=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true,reducedMotion:'reduce'});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(origin);await page.locator('.td-frame').nth(41).waitFor({state:'attached'});assert.equal(await page.locator('.td-frame').count(),42);assert.equal(await page.getByRole('button',{name:/Unfold more/i}).count(),0);
+ assert.ok((await page.locator('.td-frame img').evaluateAll(images=>images.map(img=>img.getAttribute('src')))).every(src=>src.startsWith('/full/')),'Photo tiles use originals, not tiny native previews');
+ await page.locator('.td-frame').first().click();const dialog=page.getByRole('dialog');await dialog.locator('img').waitFor();const counter=dialog.locator('.td-viewer-tools > span');assert.equal(await counter.innerText(),'1 / 42');
+ await swipe(page,dialog.locator('.journal-viewer-stage'),-1);await page.waitForFunction(()=>document.querySelector('.td-viewer-tools > span')?.textContent==='2 / 42');
+ await swipe(page,dialog.locator('.journal-viewer-stage'),1);await page.waitForFunction(()=>document.querySelector('.td-viewer-tools > span')?.textContent==='1 / 42');
+ await dialog.getByRole('button',{name:'Zoom in',exact:true}).click();await swipe(page,dialog.locator('.journal-viewer-stage'),-1);assert.equal(await counter.innerText(),'1 / 42');await dialog.getByRole('button',{name:'Zoom out',exact:true}).click();
+ await page.keyboard.press('ArrowRight');assert.equal(await counter.innerText(),'2 / 42');await page.keyboard.press('Escape');
+ await page.getByRole('button',{name:'Films',exact:true}).click();assert.equal(await page.locator('.td-frame').count(),6);await page.locator('.td-frame').first().click();
+ await page.waitForFunction(()=>{const v=document.querySelector('.journal-player video');return v&&v.readyState>=2&&!v.paused&&v.currentTime>0});
+ const video=dialog.locator('video');assert.equal(await video.evaluate(v=>v.controls),false);assert.equal(await video.evaluate(v=>v.muted),true);
+ const dimensions=await video.evaluate(v=>({actual:v.clientWidth/v.clientHeight,natural:v.videoWidth/v.videoHeight}));assert.ok(Math.abs(dimensions.actual-dimensions.natural)<.04,'Video element fits its actual aspect ratio');
+ await dialog.getByRole('button',{name:'Pause video',exact:true}).click();assert.equal(await video.evaluate(v=>v.paused),true);
+ await dialog.locator('.journal-player-controls').getByRole('button',{name:'Play video',exact:true}).click();await page.waitForFunction(()=>!document.querySelector('.journal-player video').paused);
+ await dialog.getByRole('button',{name:'Unmute video',exact:true}).click();assert.equal(await video.evaluate(v=>v.muted),false);await dialog.getByRole('button',{name:'Mute video',exact:true}).click();
+ await dialog.getByRole('button',{name:'Full screen video',exact:true}).click();await page.waitForFunction(()=>document.fullscreenElement?.classList.contains('journal-player'));await page.evaluate(()=>document.exitFullscreen());await page.waitForFunction(()=>!document.fullscreenElement);
+ const seek=dialog.getByRole('slider',{name:'Seek video'});await seek.focus();await page.keyboard.press('Home');await page.keyboard.press('ArrowRight');assert.ok(await video.evaluate(v=>v.currentTime)>.05);assert.equal(await counter.innerText(),'1 / 6','Seeking does not navigate the gallery');
+ await page.waitForFunction(()=>{const v=document.querySelector('.journal-player video');return v&&v.readyState>=3&&!v.paused&&!document.querySelector('.journal-player-loading')});await seek.blur();await page.screenshot({path:'work/qa-trip-media/player-mobile.png'});await page.evaluate(()=>{window.previousVideo=document.querySelector('.journal-player video')});await dialog.getByRole('button',{name:'Next journal moment'}).click();assert.equal(await page.evaluate(()=>window.previousVideo.paused),true);await page.keyboard.press('Escape');
+ await page.locator('.td-frame').last().click();await dialog.getByRole('button',{name:'Retry film',exact:true}).waitFor();assert.match(await dialog.innerText(),/format may not be supported/);await page.request.get(origin+'/allow-film');await dialog.getByRole('button',{name:'Retry film',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.journal-player video')?.readyState>=2);await page.keyboard.press('Escape');
+ await page.getByRole('button',{name:'All media',exact:true}).click();assert.equal(await page.locator('.td-frame').count(),42);await page.getByRole('button',{name:'Temple',exact:true}).click();assert.equal(await page.locator('.td-frame').count(),21);
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
+ const desktop=await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});await desktop.goto(origin);await desktop.locator('.td-frame').nth(41).waitFor({state:'attached'});assert.equal(await desktop.locator('.td-frame').count(),42);assert.equal(await desktop.locator('.td-photo-wall').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length),3);await desktop.close();
+ const auto=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'no-preference'});await auto.goto(origin+'/autoplay');await auto.waitForFunction(()=>document.querySelector('video[aria-label="near film"]')?.getAttribute('src'));assert.equal(await auto.locator('video[aria-label="far film"]').getAttribute('src'),null);
+ await auto.evaluate(()=>{window.dispatchEvent(new Event('atlas-public-preload'));delete document.documentElement.dataset.publicLoading;window.dispatchEvent(new Event('atlas-public-loading'))});await auto.waitForFunction(()=>{const v=document.querySelector('video[aria-label="near film"]');return v&&!v.paused&&v.currentTime>0});assert.equal(await auto.locator('video[aria-label="far film"]').getAttribute('src'),null);
+ await auto.locator('video[aria-label="far film"]').scrollIntoViewIfNeeded();await auto.waitForFunction(()=>{const v=document.querySelector('video[aria-label="far film"]');return v&&!v.paused&&v.currentTime>0});assert.equal(await auto.locator('video[aria-label="near film"]').getAttribute('src'),null);await auto.close();
+ console.log('PASS: full 42-item gallery, original photo sources, real mobile touch swipes and zoom guard, keyboard/filter navigation, fitted video, custom play/mute/seek, cleanup, failed-video retry, desktop layout, lazy video sources and default visible autoplay. Local synthetic trip with existing licensed assets; no live user data.');
+}finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}

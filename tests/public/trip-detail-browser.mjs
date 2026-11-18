@@ -130,7 +130,7 @@ try {
     await root.getByRole('button',{name:'Films',exact:true}).click();
     await root.locator('.td-frame').first().click();
     await page.getByRole('dialog').waitFor();
-    assert.equal(await page.getByRole('dialog').locator('video[controls][autoplay]').count(),1);
+    assert.equal(await page.getByRole('dialog').locator('video[autoplay]').count(),1);
     await page.keyboard.press('Escape');
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     assert.deepEqual(errors,[]);

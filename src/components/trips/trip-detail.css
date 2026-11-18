@@ -245,3 +245,4 @@ body:has(.trip-detail-v3[data-light-nav="true"]) .public-header .reference-nav-b
 .td-map-layout-wide { grid-template-columns:minmax(0,1fr); }
 .td-summary-item { display:inline-flex; align-items:center; gap:14px; }
 .td-metrics-primary > :only-child { grid-column:1 / -1; }
+.td-film-open-hint { position:absolute; bottom:12px; right:12px; color:white; background:#15241cdd; border:1px solid #ffffff45; border-radius:20px; padding:8px 12px; font-size:11px; pointer-events:none; }

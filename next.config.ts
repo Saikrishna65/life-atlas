@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     unoptimized: isExport,
     qualities: [75, 90],
     remotePatterns: [
+      { protocol: "https", hostname: "**.r2.dev" },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',

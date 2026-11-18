@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { Film } from "lucide-react";
 import { usePublicCatalog } from "@/components/world/usePublicCatalog";
 import { mediaForTrip, mediaKind } from "@/lib/r2/public-media";
-import { Modal } from "@/components/world/primitives";
+import TripMediaViewer from "@/components/media/TripMediaViewer";
 export interface TripPhoto {
   id: string;
   url: string;
@@ -25,7 +25,6 @@ export default function TripPhotoCollection({
 }) {
   const { catalog, error } = usePublicCatalog();
   const [kind, setKind] = useState("All media");
-  const [failed, setFailed] = useState<string | null>(null);
   const photos: TripPhoto[] = useMemo(() => {
     const published = collection
       ? mediaForTrip(
@@ -63,8 +62,7 @@ export default function TripPhotoCollection({
   }, [sourcePhotos, catalog, collection, illustrative]);
   const [category, setCategory] = useState("All categories");
   const [place, setPlace] = useState("All places"),
-    [selected, setSelected] = useState<string | null>(null),
-    [limit, setLimit] = useState(24);
+    [selected, setSelected] = useState<string | null>(null);
   const locations = [
     ...new Set(photos.map((p) => p.location?.trim() || "Unassigned")),
   ];
@@ -81,25 +79,7 @@ export default function TripPhotoCollection({
       ),
     [photos, place, category, kind],
   );
-  const index = visible.findIndex((p) => p.id === selected),
-    focus = visible[index];
-  useEffect(() => {
-    if (!selected) return;
-    const key = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement)?.closest("video,input,textarea,select"))
-        return;
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-      event.preventDefault();
-      setSelected(
-        visible[
-          (index + (event.key === "ArrowRight" ? 1 : -1) + visible.length) %
-            visible.length
-        ]?.id ?? null,
-      );
-    };
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
-  }, [selected, visible, index]);
+  const focus = visible.find(p=>p.id===selected);
   return (
     <section id="photo-journal" className="trip-photo-section photo-journal-v2">
       <header>
@@ -131,7 +111,6 @@ export default function TripPhotoCollection({
             aria-pressed={place === name}
             onClick={() => {
               setPlace(name);
-              setLimit(24);
               setSelected(null);
             }}
           >
@@ -147,7 +126,6 @@ export default function TripPhotoCollection({
             onClick={() => {
               setKind(value);
               setSelected(null);
-              setLimit(24);
             }}
           >
             {value}
@@ -168,7 +146,6 @@ export default function TripPhotoCollection({
             value={category}
             onChange={(e) => {
               setCategory(e.target.value);
-              setLimit(24);
               setSelected(null);
             }}
           >
@@ -185,7 +162,7 @@ export default function TripPhotoCollection({
         <p>No media has been published for this place yet.</p>
       )}
       <div className="trip-photo-wall">
-        {visible.slice(0, limit).map((photo, i) => (
+        {visible.map((photo, i) => (
           <button
             key={photo.id}
             onClick={() => setSelected(photo.id)}
@@ -218,79 +195,7 @@ export default function TripPhotoCollection({
           </button>
         ))}
       </div>
-      {limit < visible.length && (
-        <button
-          className="world-link photo-more"
-          onClick={() => setLimit((n) => n + 24)}
-        >
-          Unfold more moments ↗
-        </button>
-      )}
-      {focus && (
-        <Modal
-          title={focus.caption || "Trip photograph"}
-          className="photo-journal-modal"
-          onClose={() => setSelected(null)}
-        >
-          <div className="trip-photo-lightbox">
-            {focus.kind === "video" ? (
-              <video
-                key={focus.id}
-                src={focus.url}
-                poster={focus.poster}
-                controls
-                playsInline
-                preload="metadata"
-                onError={() => setFailed(focus.id)}
-              />
-            ) : (
-              <Image
-                src={focus.url}
-                alt={focus.caption || "Trip photograph"}
-                width={1600}
-                height={1200}
-                unoptimized
-              />
-            )}
-            {failed === focus.id && (
-              <p role="status">
-                This film could not be loaded.{" "}
-                <a href={focus.url} target="_blank" rel="noreferrer">
-                  Open the original
-                </a>
-              </p>
-            )}
-            <div className="photo-open-details">
-              {focus.category && <span>{focus.category} / </span>}
-              {focus.location && <span>{focus.location}</span>}
-              {focus.caption && <p>{focus.caption}</p>}
-            </div>
-            <div>
-              <button
-                className="world-link"
-                onClick={() =>
-                  setSelected(
-                    visible[(index - 1 + visible.length) % visible.length].id,
-                  )
-                }
-              >
-                ← Previous moment
-              </button>
-              <span>
-                {index + 1} / {visible.length}
-              </span>
-              <button
-                className="world-link"
-                onClick={() =>
-                  setSelected(visible[(index + 1) % visible.length].id)
-                }
-              >
-                Next moment →
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {focus && <TripMediaViewer items={visible.map(photo=>({id:photo.id,url:photo.url,poster:photo.poster,kind:photo.kind||'photo',place:photo.location||'Unassigned',category:photo.category||'Trip journal',caption:photo.caption||undefined}))} selected={focus.id} onSelect={setSelected} onClose={()=>setSelected(null)} sample={illustrative}/>}
     </section>
   );
 }
