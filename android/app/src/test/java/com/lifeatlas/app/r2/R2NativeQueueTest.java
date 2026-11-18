@@ -17,6 +17,7 @@ import org.robolectric.annotation.Config;
 /** Exercises the real native WorkManager graph with synthetic workers, never live R2 requests. */
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 28)
+@org.robolectric.annotation.SQLiteMode(org.robolectric.annotation.SQLiteMode.Mode.LEGACY)
 @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.LEGACY)
 public class R2NativeQueueTest {
   @Test
