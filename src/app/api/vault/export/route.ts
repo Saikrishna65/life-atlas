@@ -300,6 +300,7 @@ export async function POST(request: Request) {
       revalidatePath("/explore");
       revalidatePath("/map");
       revalidatePath("/places");
+      revalidatePath("/places/[slug]","page");
     } catch (e) {
       console.warn("Revalidation notice:", e);
     }

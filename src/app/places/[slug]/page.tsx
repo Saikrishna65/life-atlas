@@ -4,7 +4,8 @@ import { getPlaceBySlug, getAllPlaceSlugs } from "@/lib/queries/places";
 import PlaceOverview from "@/components/places/PlaceOverview";
 import PlaceTrips from "@/components/places/PlaceTrips";
 import TripExperiences from "@/components/trips/TripExperiences";
-import TripGallery from "@/components/trips/TripGallery";
+import PublishedGallery from "@/components/world/PublishedGallery";
+import {placeGalleryFrames} from "@/lib/public-trips/place-gallery";
 import { Metadata } from "next";
 import Link from "next/link";
 
@@ -75,7 +76,7 @@ export default async function PlaceDetailPage({
 
       <TripExperiences experiences={place.experiences} />
 
-      <TripGallery photos={place.photos} />
+      <PublishedGallery includeCatalog={false} frames={placeGalleryFrames(place.name,place.photos,place.tripPlaces)} />
     </PublicPage>
   );
 }
