@@ -29,6 +29,8 @@ public class R2StoragePlugin extends Plugin {
   }
 
   private boolean authenticating = false;
+  private final R2PublicationSession publicationSession =
+      new R2PublicationSession(android.os.SystemClock::elapsedRealtime);
   private Task pendingAuth;
   private char[] recoveryPassword;
   private String recoveryMode;
@@ -131,10 +133,70 @@ public class R2StoragePlugin extends Plugin {
               prompt.authenticate(
                   new BiometricPrompt.PromptInfo.Builder()
                       .setTitle("Life Atlas cloud storage")
-                      .setSubtitle("Confirm this storage operation")
+                      .setSubtitle(
+                          "beginTripPublication".equals(call.getMethodName())
+                              ? "Approve this trip’s selected photos and videos"
+                              : "Confirm this storage operation")
                       .setAllowedAuthenticators(allowed)
                       .build());
             });
+  }
+
+  /** Only explicitly enumerated public trip operations may reuse this batch authentication. */
+  private void tripAuthorized(PluginCall call, Task check, Task task) {
+    if (call.getString("publicationSession") == null) {
+      authenticated(call, task);
+      return;
+    }
+    work(
+        call,
+        () -> {
+          check.run();
+          task.run();
+        });
+  }
+
+  @PluginMethod
+  public void beginTripPublication(PluginCall call) {
+    authenticated(
+        call,
+        () -> {
+          R2Repository repository = repository();
+          R2Credentials credentials = repository.store.credentials("public");
+          JSONArray files = call.getArray("selectionIds"), jobs = call.getArray("transferIds");
+          if (files == null || jobs == null || files.length() + jobs.length() > 500)
+            throw new R2Exception("INVALID_SELECTION");
+          Set<String> selected = new HashSet<>(), transfers = new HashSet<>();
+          JSONObject picks = repository.store.snapshot().optJSONObject("selections");
+          for (int i = 0; i < files.length(); i++) {
+            String id = files.getString(i);
+            if (picks == null || !picks.has(id)) throw new R2Exception("SELECTION_NOT_FOUND");
+            selected.add(id);
+          }
+          for (int i = 0; i < jobs.length(); i++) {
+            String id = jobs.getString(i);
+            JSONObject job = repository.job(id);
+            if (!job.optString("slot").equals("public")
+                || !job.optString("direction").equals("upload"))
+              throw new R2Exception("PUBLICATION_SCOPE_MISMATCH");
+            repository.checkCredentialRevision(job);
+            transfers.add(id);
+          }
+          String token =
+              publicationSession.begin(
+                  credentials, call.getString("collection"), selected, transfers);
+          call.resolve(new JSObject().put("publicationSession", token));
+        });
+  }
+
+  @PluginMethod
+  public void endTripPublication(PluginCall call) {
+    work(
+        call,
+        () -> {
+          publicationSession.end(call.getString("publicationSession"));
+          call.resolve();
+        });
   }
 
   @ActivityCallback
@@ -484,8 +546,15 @@ public class R2StoragePlugin extends Plugin {
 
   @PluginMethod
   public void uploadObject(PluginCall call) {
-    authenticated(
+    tripAuthorized(
         call,
+        () -> {
+          publicationSession.selection(
+              call.getString("publicationSession"),
+              repository().store.credentials("public"),
+              call.getString("slot"),
+              call.getString("selectionId"));
+        },
         () -> {
           String slot = R2Policy.slot(call.getString("slot"));
           R2Repository repository = repository();
@@ -518,6 +587,12 @@ public class R2StoragePlugin extends Plugin {
                   .put("uploadedBytes", 0)
                   .put("totalBytes", selected.optLong("size"));
           repository.job(job);
+          if (call.getString("publicationSession") != null)
+            publicationSession.addTransfer(
+                call.getString("publicationSession"),
+                credentials,
+                call.getString("selectionId"),
+                id);
           R2TransferWorker.enqueue(getContext(), id);
           call.resolve(js(repository.safeJob(job)));
         });
@@ -538,8 +613,15 @@ public class R2StoragePlugin extends Plugin {
 
   @PluginMethod
   public void resumeTransfer(PluginCall call) {
-    authenticated(
+    tripAuthorized(
         call,
+        () -> {
+          publicationSession.transfer(
+              call.getString("publicationSession"),
+              repository().store.credentials("public"),
+              repository().job(call.getString("id")),
+              null);
+        },
         () -> {
           String id = call.getString("id");
           R2Repository repository = repository();
@@ -788,8 +870,15 @@ public class R2StoragePlugin extends Plugin {
 
   @PluginMethod
   public void publishTripMedia(PluginCall call) {
-    authenticated(
+    tripAuthorized(
         call,
+        () -> {
+          publicationSession.transfer(
+              call.getString("publicationSession"),
+              repository().store.credentials("public"),
+              repository().job(call.getString("transferId")),
+              call.getString("collection"));
+        },
         () -> {
           R2Repository repository = repository();
           R2Credentials credentials = repository.store.credentials("public");
@@ -1089,10 +1178,17 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @Override
+  protected void handleOnStop() {
+    publicationSession.clear();
+    super.handleOnStop();
+  }
+
+  @Override
   protected void handleOnDestroy() {
     if (recoveryPassword != null) Arrays.fill(recoveryPassword, '\0');
     if (pendingKit != null) Arrays.fill(pendingKit, (byte) 0);
     selections.clear();
+    publicationSession.clear();
     super.handleOnDestroy();
   }
 }

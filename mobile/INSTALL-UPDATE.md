@@ -1,4 +1,4 @@
-Atlas 1.4.8 — verified stable signing
+Atlas 1.4.9 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
@@ -52,3 +52,16 @@ Install over the existing Atlas Next app without uninstalling or clearing storag
 Open the existing Creator Studio trip and tap Publish again. Named-place selections
 and transfer IDs survive this update; verified completed uploads are reused. The
 build does not access your bucket or upload any personal photos.
+
+Trip publishing: verify your device once for the reviewed batch, instead of once
+for each upload and publication. This grant covers only the chosen public files,
+their saved transfers and this trip collection. It ends on finishing, pausing,
+leaving the app, 30 minutes idle or two hours total. Credential changes, deletion,
+private operations and unrelated uploads still require separate verification.
+
+Finish uploads later saves your place selections and completed publications.
+An upload already running may continue in native Cloud Storage. Resume publishing
+reuses verified files and retries the same paused/interrupted transfer IDs where
+supported. A file at 100% can still be undergoing checksum verification. Place
+counts refresh as records finish; the website changes only at the final publish
+step. No personal cloud access or physical-device tests are part of this build.

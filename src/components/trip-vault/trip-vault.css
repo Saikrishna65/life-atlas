@@ -287,7 +287,7 @@
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
 }
 .tv-primary {
-  background: var(--tv-cyan);
+  background: var(--tv-cyan, #285547);
   color: #ffffff !important;
   box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
 }
@@ -2033,3 +2033,11 @@
 .tv-website-publisher fieldset { border:0; min-width:0; padding:0; }
 
 .tv-website-file-preview { width:90px; height:90px; object-fit:cover; border-radius:10px; display:block; margin-bottom:8px; }
+
+/* Creator Studio mounts the publisher outside the Trip Vault theme boundary. */
+.tv-website-publisher { --tv-cyan:#285547; --tv-text:#20392e; --tv-sub:#53665b; --tv-panel:#f5f7f3; --tv-line:#d6dfd8; }
+.tv-website-publisher .tv-primary { background:#285547; color:#fff !important; opacity:1; }
+.tv-website-publisher .tv-primary:disabled { background:#52665d; color:#fff !important; cursor:not-allowed; }
+.tv-website-publisher .tv-notice { padding:14px; border:1px solid #c4d8cb; background:#eef5ef; color:#264b37; border-radius:12px; font-size:13px; line-height:1.6; }
+
+.tv-website-publisher .tv-fine { overflow-wrap:anywhere; }

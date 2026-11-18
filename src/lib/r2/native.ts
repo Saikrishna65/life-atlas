@@ -46,6 +46,7 @@ interface R2Plugin {
     slot: BucketSlot;
     selectionId: string;
     stripMetadata?: boolean;
+    publicationSession?: string;
   }): Promise<Transfer>;
   downloadObject(input: {
     slot: BucketSlot;
@@ -55,7 +56,7 @@ interface R2Plugin {
   getTransferProgress(): Promise<{ transfers: Transfer[] }>;
   cancelTransfer(input: { id: string }): Promise<void>;
   pauseTransfer(input: { id: string }): Promise<void>;
-  resumeTransfer(input: { id: string }): Promise<void>;
+  resumeTransfer(input: { id: string; publicationSession?: string }): Promise<void>;
   startMultipartUpload(input: { id: string }): Promise<unknown>;
   uploadMultipartPart(input: { id: string; number: number }): Promise<unknown>;
   completeMultipartUpload(input: { id: string }): Promise<unknown>;
@@ -72,7 +73,9 @@ interface R2Plugin {
     websiteUrl: string;
     catalog: PublicMediaCatalog;
   }>;
-  publishTripMedia(input:PublishInput):Promise<{item:import("./types").PublishedMedia;manifestUrl:string}>;
+  beginTripPublication(input:{collection:string;selectionIds:string[];transferIds:string[]}):Promise<{publicationSession:string}>;
+  endTripPublication(input:{publicationSession:string}):Promise<void>;
+  publishTripMedia(input:PublishInput & {publicationSession?:string}):Promise<{item:import("./types").PublishedMedia;manifestUrl:string}>;
   unpublishMedia(input: {
     id: string;
   }): Promise<{ catalog: PublicMediaCatalog }>;
