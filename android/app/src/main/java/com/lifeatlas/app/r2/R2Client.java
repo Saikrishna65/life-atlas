@@ -8,8 +8,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.json.*;
 import org.w3c.dom.*;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.signer.Aws4Signer;
-import software.amazon.awssdk.auth.signer.params.Aws4SignerParams;
+import software.amazon.awssdk.auth.signer.AwsS3V4Signer;
+import software.amazon.awssdk.auth.signer.params.AwsS3V4SignerParams;
 import software.amazon.awssdk.http.*;
 import software.amazon.awssdk.regions.Region;
 
@@ -137,10 +137,14 @@ public final class R2Client {
               throw new IllegalStateException("SOURCE_UNAVAILABLE");
             }
           });
-    return Aws4Signer.create()
+    // The generic signer omits S3's required x-amz-content-sha256 header.
+    // Hash the original payload; R2 does not need AWS's chunked wire encoding.
+    return AwsS3V4Signer.create()
         .sign(
             builder.build(),
-            Aws4SignerParams.builder()
+            AwsS3V4SignerParams.builder()
+                .enablePayloadSigning(true)
+                .enableChunkedEncoding(false)
                 .awsCredentials(AwsBasicCredentials.create(access, secret))
                 .signingName("s3")
                 .signingRegion(Region.of("auto"))
@@ -158,8 +162,9 @@ public final class R2Client {
       Progress progress)
       throws Exception {
     HttpURLConnection connection = null;
+    SdkHttpFullRequest signed;
     try {
-      SdkHttpFullRequest signed =
+      signed =
           sign(
               credentials.endpoint,
               credentials.bucket,
@@ -170,6 +175,10 @@ public final class R2Client {
               body,
               credentials.access,
               credentials.secret);
+    } catch (Exception error) {
+      throw new R2Exception("R2_SIGNING_FAILED");
+    }
+    try {
       connection = (HttpURLConnection) signed.getUri().toURL().openConnection();
       connection.setInstanceFollowRedirects(false);
       connection.setRequestMethod(method);
@@ -202,24 +211,15 @@ public final class R2Client {
         remoteCode = text(xml(response.read(65536)), "Code");
       } catch (Exception ignored) {
       }
-      String code =
-          response.status == 401
-                  || remoteCode.equals("SignatureDoesNotMatch")
-                  || remoteCode.equals("InvalidAccessKeyId")
-              ? "AUTHENTICATION_FAILED"
-              : response.status == 403
-                  ? "PERMISSION_DENIED"
-                  : response.status == 404
-                      ? (key.isEmpty() ? "BUCKET_NOT_FOUND" : "OBJECT_NOT_FOUND")
-                      : response.status == 412
-                          ? "CATALOG_CONFLICT"
-                          : response.status == 429 || response.status >= 500
-                              ? "REMOTE_TEMPORARY_FAILURE"
-                              : "R2_REQUEST_REJECTED";
+      String code = responseCode(response.status, remoteCode, key.isEmpty());
       response.close();
       throw new R2Exception(code);
     } catch (R2Exception error) {
+      if (connection != null) connection.disconnect();
       throw error;
+    } catch (javax.net.ssl.SSLException error) {
+      if (connection != null) connection.disconnect();
+      throw new R2Exception("TLS_CONNECTION_FAILED");
     } catch (java.net.UnknownHostException
         | java.net.ConnectException
         | java.net.SocketTimeoutException error) {
@@ -229,6 +229,19 @@ public final class R2Client {
       if (connection != null) connection.disconnect();
       throw new R2Exception("R2_REQUEST_FAILED");
     }
+  }
+
+  static String responseCode(int status, String remoteCode, boolean bucket) {
+    if (remoteCode.equals("RequestTimeTooSkewed") || remoteCode.equals("RequestExpired"))
+      return "CLOCK_SKEW";
+    if (status == 401 || remoteCode.equals("SignatureDoesNotMatch") || remoteCode.equals("InvalidAccessKeyId"))
+      return "AUTHENTICATION_FAILED";
+    if (status == 301 || status == 307 || remoteCode.equals("PermanentRedirect")) return "INVALID_ENDPOINT";
+    if (status == 403) return "PERMISSION_DENIED";
+    if (status == 404) return bucket ? "BUCKET_NOT_FOUND" : "OBJECT_NOT_FOUND";
+    if (status == 412) return "CATALOG_CONFLICT";
+    if (status == 429 || status >= 500) return "REMOTE_TEMPORARY_FAILURE";
+    return "R2_REQUEST_REJECTED";
   }
 
   public static Document xml(byte[] value) throws Exception {

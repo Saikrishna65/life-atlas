@@ -3,8 +3,8 @@ import {writeFileSync} from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 
-// Public certificate of the published 1.4.1 Vault and Next builds. Never a key.
-export const publishedCertificate = '347c516b8eccc5e7fff2126f08f57a1e929671094f875ff9cd56e86f3f333fd3';
+// Public certificate of the published 1.4.4 stable Vault and Next builds. Never a key.
+export const publishedCertificate = '2f19571f9d6a4a3b4c7250397b7618f04e047beeeaa0023713e2a6c0a745af7d';
 
 export function verifyUpdate(certs, badging, expectedPackage, freshInstallCertificate) {
   if(freshInstallCertificate && !/^[a-f0-9]{64}$/.test(freshInstallCertificate))throw new Error('Invalid preserved certificate.');
@@ -13,10 +13,10 @@ export function verifyUpdate(certs, badging, expectedPackage, freshInstallCertif
     throw new Error('Signing certificate does not match the published app. APK must not be offered as an update.');
   }
   const identity = badging.match(/^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'/m);
-  if (!identity || identity[1] !== expectedPackage || Number(identity[2]) <= 10) {
+  if (!identity || identity[1] !== expectedPackage || Number(identity[2]) <= 11) {
     throw new Error('Wrong package or non-increasing version code.');
   }
-  return {packageId: identity[1], versionCode: Number(identity[2]), versionName: identity[3], certificateSha256: signers[0][1], compatibleWithPublishedVersion: signers[0][1] === publishedCertificate ? '1.4.1' : null, installMode: freshInstallCertificate ? 'fresh-install' : 'update'};
+  return {packageId: identity[1], versionCode: Number(identity[2]), versionName: identity[3], certificateSha256: signers[0][1], compatibleWithPublishedVersion: signers[0][1] === publishedCertificate ? '1.4.4' : null, installMode: freshInstallCertificate ? 'fresh-install' : 'update'};
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
