@@ -5,9 +5,16 @@ export function isActivePageNode(node:Element,root:Element):boolean {
   }
   return true;
 }
+/** Decorative/lazy scenes never hold the first view behind a full-screen loader. */
+export function isInitialViewportAsset(node:Element):boolean {
+  if(node.closest('[data-loading-critical]'))return true;
+  if(node instanceof HTMLVideoElement && node.dataset.showing==='false')return false;
+  const rect=node.getBoundingClientRect();
+  return rect.width>0&&rect.height>0&&rect.top<window.innerHeight&&rect.bottom>0;
+}
 type Asset = {source:string; state:'pending'|'ready'|'error'; dispose:()=>void};
 /** Track decoded display assets, never full video downloads or unseen originals. */
-export function trackPageAssets(root:Element,changed:()=>void) {
+export function trackPageAssets(root:Element,changed:()=>void,options:{initialViewportOnly?:boolean}={}) {
   const elements=new Map<Element,Asset>();
   const images=new Map<string,Asset>();
   let disposed=false;
@@ -57,13 +64,13 @@ export function trackPageAssets(root:Element,changed:()=>void) {
   return {
     scan(){
       const active=new Set<string>();
-      root.querySelectorAll<HTMLImageElement>('img').forEach(image=>{if(isActivePageNode(image,root))watchImage(image);});
-      root.querySelectorAll<HTMLVideoElement>('video').forEach(video=>{if(isActivePageNode(video,root))watchVideo(video,active);});
+      root.querySelectorAll<HTMLImageElement>('img').forEach(image=>{if(isActivePageNode(image,root)&&(!options.initialViewportOnly||isInitialViewportAsset(image)))watchImage(image);});
+      root.querySelectorAll<HTMLVideoElement>('video').forEach(video=>{if(isActivePageNode(video,root)&&(!options.initialViewportOnly||isInitialViewportAsset(video)))watchVideo(video,active);});
       root.querySelectorAll<HTMLElement>('[style*="background-image"]').forEach(el=>{
-        if(!isActivePageNode(el,root))return;
+        if(!isActivePageNode(el,root)||(options.initialViewportOnly&&!isInitialViewportAsset(el)))return;
         for(const match of el.style.backgroundImage.matchAll(/url\(["']?([^"')]+)["']?\)/g))watchURL(match[1],active);
       });
-      const current=[...[...elements].filter(([el])=>el.isConnected&&root.contains(el)&&isActivePageNode(el,root)).map(([,asset])=>asset),...[...images.values()].filter(asset=>active.has(asset.source))];
+      const current=[...[...elements].filter(([el])=>el.isConnected&&root.contains(el)&&isActivePageNode(el,root)&&(!options.initialViewportOnly||isInitialViewportAsset(el))).map(([,asset])=>asset),...[...images.values()].filter(asset=>active.has(asset.source))];
       return {pending:current.filter(asset=>asset.state==='pending').length,failed:current.filter(asset=>asset.state==='error').length,total:current.length};
     },
     dispose(){disposed=true;elements.forEach(asset=>asset.dispose());images.forEach(asset=>asset.dispose());elements.clear();images.clear();},

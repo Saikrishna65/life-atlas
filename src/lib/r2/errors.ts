@@ -1,4 +1,5 @@
 const messages: Record<string, string> = {
+  SELECTION_LIMIT_EXCEEDED: "Select up to 20 photos or videos at a time. Add another batch for the same place.",
   ANDROID_VERSION_UNSUPPORTED:
     "Cloud storage needs Android 8 or later. Your local vaults remain available.",
   BUNDLED_APP_REQUIRED:

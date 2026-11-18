@@ -1,9 +1,9 @@
-Atlas 1.4.5 — verified stable signing
+Atlas 1.4.6 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 12.
+3. Open the matching APK and choose Update. This build uses version code 13.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -32,3 +32,11 @@ AWS chunked encoding. Native transport errors have safe, actionable diagnostics.
 Update the existing Atlas Next app; saved R2 credentials remain in native storage.
 No user bucket was accessed by the build or test suite. Retest your connection
 inside the app after installing the update.
+
+Creator Studio: create a trip and choose its globe pin, add named places, then
+select photos/videos under each place. Up to 20 media files per selection; repeat
+for more batches, up to 250 cloud media items per trip. Nothing is uploaded until
+you approve publishing. Pending transfers and completed public media are saved
+per place. Website updates append media and preserve existing routes/statistics.
+The public loader now waits only for the initial viewport, with a four-second
+asset budget after hydration. Other scenes and media remain lazy-loaded.

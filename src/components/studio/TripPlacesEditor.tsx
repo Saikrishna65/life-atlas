@@ -1,0 +1,28 @@
+"use client";
+import Image from 'next/image';
+import {useState,useEffect} from 'react';
+import {Plus,Images} from 'lucide-react';
+import type {PublishedMedia} from '@/lib/r2/types';
+import {websiteSlug} from '@/lib/vault/website-payload';
+import type {TripRecord} from '@/lib/vault/types';
+import {addTripPlace,addPlaceFiles,editTripPlaces,MEDIA_BATCH_LIMIT,TRIP_PUBLIC_MEDIA_LIMIT} from '@/lib/studio/trip-places';
+import {R2,nativeR2Available,systemAction,storageError} from '@/lib/r2/native';
+export default function TripPlacesEditor({trip}:{trip:TripRecord}){
+ const places=trip.websitePlaces||[];
+ const [name,setName]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[previews,setPreviews]=useState<Record<string,string>>({}),[catalog,setCatalog]=useState<PublishedMedia[]>([]);
+ const slug=websiteSlug(trip),tripTitle=trip.title;
+ useEffect(()=>{let alive=true;if(nativeR2Available())void R2.getPublicCatalog().then(result=>{if(alive)setCatalog(result.catalog.items.filter(item=>item.category==='expedition'&&[slug,tripTitle].some(value=>value.toLowerCase()===item.collection.toLowerCase())));}).catch(()=>{});return()=>{alive=false;};},[slug,tripTitle]);
+ async function run(action:()=>Promise<TripRecord>){if(busy)return;setBusy(true);setError('');try{await action();}catch(e){setError(e&&typeof e==='object'&&'code' in e?storageError(e):e instanceof Error?e.message:storageError(e));}finally{setBusy(false);}}
+ async function pick(placeId:string){await run(async()=>{const {files}=await systemAction(()=>R2.pickMedia({picker:'documents'}));const saved=await addPlaceFiles(trip.id,placeId,files);for(const file of files)void R2.getSelectionPreview({id:file.id}).then(p=>setPreviews(old=>({...old,[file.id]:p.thumbnail}))).catch(()=>{});return saved;});}
+ return <section className="cs-trip-places"><div className="cs-section-intro"><div><span className="cs-eyebrow">YOUR TRIP, PLACE BY PLACE</span><h3>Places along the way.</h3><p>Add a place, then choose its photos and videos. These groups belong only to this trip.</p></div></div>
+ <form className="cs-add-place" onSubmit={e=>{e.preventDefault();void run(async()=>{const saved=await addTripPlace(trip.id,name);setName('');return saved;});}}><label>Place name<input required maxLength={54} value={name} disabled={busy} onChange={e=>setName(e.target.value)} placeholder="A waterfall, a village, a café…"/></label><button className="cs-secondary" disabled={busy||!name.trim()}><Plus size={16}/> Add place</button></form>
+ {places.map((place,index)=><details className="cs-place" key={place.id} open={index===0}><summary><strong>{place.name}</strong><span>{place.files.length} selected · {place.publishedMedia.length} public</span></summary><fieldset disabled={busy}>
+ <form className="cs-place-name" onSubmit={e=>{e.preventDefault();const value=String(new FormData(e.currentTarget).get('name')||'').trim();void run(()=>editTripPlaces(trip.id,items=>{if(!value||value.length>54)throw Error('Add a valid place name.');if(items.some(p=>p.id!==place.id&&p.name.toLowerCase()===value.toLowerCase()))throw Error('This trip already has that place.');return items.map(p=>p.id===place.id?{...p,name:value}:p);}));}}><label>Place name<input name="name" required maxLength={54} defaultValue={place.name} key={place.name}/></label><button className="cs-link">Save name</button></form>
+ {nativeR2Available()?<button type="button" className="cs-secondary" onClick={()=>void pick(place.id)}><Images size={16}/> Add photos / videos to {place.name}</button>:<p className="cs-note">Use the Android app to select original photos and videos.</p>}
+ {!!catalog.length&&<details><summary>Use a photo or video already published for this trip</summary>{catalog.map(item=><button type="button" className="cs-secondary" key={item.id} disabled={place.publishedMedia.some(media=>media.id===item.id)} onClick={()=>void run(()=>editTripPlaces(trip.id,items=>items.map(p=>({...p,publishedMedia:[...p.publishedMedia.filter(media=>media.id!==item.id),...(p.id===place.id?[item]:[])]}))))}>{item.title} · {item.mimeType.startsWith('video/')?'Video':'Photo'} · Assign to {place.name}</button>)}</details>}
+ <div className="cs-place-media">{place.files.map(file=><div key={file.id}>{previews[file.id]?<Image src={previews[file.id]} alt={file.name} width={64} height={64} unoptimized/>:<Images size={24}/>}<span>{file.name}<small>Selected on this device</small></span><button type="button" className="cs-link" disabled={!!place.transferIds[file.id]} onClick={()=>void run(()=>editTripPlaces(trip.id,items=>items.map(p=>p.id===place.id?{...p,files:p.files.filter(f=>f.id!==file.id)}:p)))}>Remove</button></div>)}{place.publishedMedia.map(item=><div key={item.id}>{(item.thumbnailUrl||item.mimeType.startsWith('image/'))?<Image src={item.thumbnailUrl||item.url} alt="Published media" width={64} height={64} unoptimized loading="lazy"/>:<Images size={24}/>}<span>{item.title}<small>Public copy · original unchanged</small></span></div>)}</div>
+ {!place.files.length&&!place.publishedMedia.length&&<p className="cs-note">No media here yet.</p>}
+ {!place.publishedMedia.length&&!Object.keys(place.transferIds).length&&<button type="button" className="cs-link" onClick={()=>{if(confirm(`Remove ${place.name} and its selections? Original files will not be deleted.`))void run(()=>editTripPlaces(trip.id,items=>items.filter(p=>p.id!==place.id)));}}>Remove place</button>}
+ </fieldset></details>)}
+ <p className="cs-note">Select up to {MEDIA_BATCH_LIMIT} photos or videos per batch. Add more batches to any place, up to {TRIP_PUBLIC_MEDIA_LIMIT} cloud media items per trip. Selecting files does not upload or publish them.</p>{error&&<p className="cs-error" role="alert">{error}</p>}</section>;
+}

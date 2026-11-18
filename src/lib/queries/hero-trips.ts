@@ -16,7 +16,7 @@ export async function getLatestHeroTrips(slugs?:string[],source=prisma): Promise
         id: trip.id,
         slug: trip.slug,
         title: trip.title,
-        image: trip.coverImage || trip.photos[0]?.url || publishedTripMedia(trip.routeData).find(item=>item.kind==="photo")?.url || "",
+        image: publishedTripMedia(trip.routeData).find(item=>item.url===trip.coverImage)?.poster || trip.coverImage || trip.photos[0]?.url || publishedTripMedia(trip.routeData).find(item=>item.kind==="photo")?.poster || publishedTripMedia(trip.routeData).find(item=>item.kind==="photo")?.url || "",
         sample: false,
         video:publishedTripMedia(trip.routeData).find(item=>item.kind==="video")?.url,
       }));

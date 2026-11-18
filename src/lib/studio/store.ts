@@ -8,7 +8,7 @@ function open():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{const
 export async function saveSectionDraft(record:SectionRecord&{pendingFiles?:SelectedMedia[];transfers?:Record<string,string>}){const db=await open();try{await new Promise<void>((resolve,reject)=>{const tx=db.transaction('entries','readwrite');tx.objectStore('entries').put({id:`website-section-${record.key}`,kind:'website-section',section:'Website section',fields:{title:record.key},key:record.key,revision:record.revision,content:record.content,updatedAt:new Date().toISOString(),pendingFiles:record.pendingFiles,transfers:record.transfers} satisfies SectionDraft);tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});}finally{db.close();}}
 export async function readSectionDrafts():Promise<SectionDraft[]>{const db=await open();try{return await new Promise((resolve,reject)=>{const request=db.transaction('entries').objectStore('entries').getAll();request.onsuccess=()=>resolve(request.result.filter(item=>item.kind==='website-section'));request.onerror=()=>reject(request.error);});}finally{db.close();}}
 export async function clearSectionDraft(key:SectionKey){const db=await open();try{await new Promise<void>((resolve,reject)=>{const tx=db.transaction('entries','readwrite');tx.objectStore('entries').delete(`website-section-${key}`);tx.oncomplete=()=>resolve();tx.onabort=()=>reject(tx.error);});}finally{db.close();}}
-export interface PastTripFields {title:string;destination:string;startDate:string;endDate:string;}
+export interface PastTripFields {title:string;destination:string;startDate:string;endDate:string;mapLocation?:import('../vault/types').WebsiteMapLocation;}
 export async function savePastTrip(fields:PastTripFields,id?:string):Promise<TripRecord>{
  const title=fields.title.trim();if(!title)throw Error('Give this journey a title.');
  if(fields.startDate&&!Number.isFinite(Date.parse(fields.startDate))||fields.endDate&&!Number.isFinite(Date.parse(fields.endDate)))throw Error('Choose valid travel dates, or leave them empty.');
@@ -16,7 +16,8 @@ export async function savePastTrip(fields:PastTripFields,id?:string):Promise<Tri
  const previous=id?await getTrip(id):null;
  if(id&&(!previous||previous.studioOrigin!=='past-trip'))throw Error('Edit an existing vault trip in Trip Vault so its linked plans stay consistent.');
  if(previous&&(previous.status==='ACTIVE'||previous.liveExpedition?.status==='ACTIVE'))throw Error('Edit an active journey in Trip Vault. Its existing recording was preserved.');
+ if(fields.mapLocation&&(!Number.isFinite(fields.mapLocation.latitude)||!Number.isFinite(fields.mapLocation.longitude)||Math.abs(fields.mapLocation.latitude)>90||Math.abs(fields.mapLocation.longitude)>180))throw Error('Choose a valid map location.');
  const now=new Date().toISOString();
- const trip:TripRecord={...(previous??{id:crypto.randomUUID(),status:'ARCHIVED',travelStyle:'OTHER',budgetTotal:0,currency:'INR',createdAt:now}),studioOrigin:'past-trip',title,destination:fields.destination.trim(),startDate:fields.startDate,endDate:fields.endDate||undefined,updatedAt:now};
+ const trip:TripRecord={...(previous??{id:crypto.randomUUID(),status:'ARCHIVED',travelStyle:'OTHER',budgetTotal:0,currency:'INR',createdAt:now}),studioOrigin:'past-trip',...(fields.mapLocation?{websiteLocation:fields.mapLocation}:{}),title,destination:fields.destination.trim(),startDate:fields.startDate,endDate:fields.endDate||undefined,updatedAt:now};
  await saveTrip(trip);notifyVaultChange();return trip;
 }

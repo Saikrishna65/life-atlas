@@ -375,7 +375,8 @@ public class R2StoragePlugin extends Plugin {
           }
           List<Uri> uris = new ArrayList<>();
           if (data.getClipData() != null) {
-            for (int i = 0; i < Math.min(20, data.getClipData().getItemCount()); i++)
+            if(data.getClipData().getItemCount()>20)throw new R2Exception("SELECTION_LIMIT_EXCEEDED");
+            for (int i = 0; i < data.getClipData().getItemCount(); i++)
               uris.add(data.getClipData().getItemAt(i).getUri());
           } else if (data.getData() != null) uris.add(data.getData());
           for (Uri uri : uris) {

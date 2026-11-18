@@ -173,7 +173,7 @@ export default function TripFilmStage({
     >
       {films.slice(0, count).map((film, index) => {
         const mounted =
-          publicLoading || prepared.includes(index) || index === active ||
+          prepared.includes(index) || index === active ||
           index === requested ||
           index === outgoing ||
           (index === prewarmed && playing && !reduced);

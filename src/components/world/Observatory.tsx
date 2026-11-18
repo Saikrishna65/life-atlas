@@ -1,5 +1,4 @@
 "use client";
-import {onPublicPreload} from "@/lib/public-loading/readiness";
 import { KineticHeading, RouteDrawing } from "./EditorialElements";
 import Link from "next/link";
 import Image from "next/image";
@@ -41,7 +40,6 @@ export default function Observatory({places=[]}:{places?:PublicPlace[]}) {
   useEffect(() => {
     const element = root.current;
     if (!element) return;
-    const releasePreload = onPublicPreload(() => setReady(true));
     const observer = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return;
       // The globe owns its renderer and error fallback. A separate capability
@@ -50,7 +48,7 @@ export default function Observatory({places=[]}:{places?:PublicPlace[]}) {
       observer.disconnect();
     }, { rootMargin: "100px" });
     observer.observe(element.querySelector(".observatory-core") ?? element);
-    return () => {observer.disconnect();releasePreload();};
+    return () => {observer.disconnect();};
   }, []);
 
   return (

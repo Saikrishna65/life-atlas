@@ -1,0 +1,6 @@
+"use client";
+import {MapContainer,TileLayer,CircleMarker,useMapEvents} from 'react-leaflet';
+import type {WebsiteMapLocation} from '@/lib/vault/types';
+import 'leaflet/dist/leaflet.css';
+function Selection({value,onChange}:{value?:WebsiteMapLocation;onChange:(point:WebsiteMapLocation)=>void}){const map=useMapEvents({click:event=>onChange({latitude:event.latlng.wrap().lat,longitude:event.latlng.wrap().lng}),keydown:event=>{if(event.originalEvent.key==='Enter'){event.originalEvent.preventDefault();const center=map.getCenter().wrap();onChange({latitude:center.lat,longitude:center.lng});}}});return value?<CircleMarker center={[value.latitude,value.longitude]} radius={9} pathOptions={{color:'#fff',fillColor:'#315e4b',fillOpacity:1,weight:3}}/>:null;}
+export default function TripMapPickerInner({value,onChange}:{value?:WebsiteMapLocation;onChange:(point:WebsiteMapLocation)=>void}){return <MapContainer center={value?[value.latitude,value.longitude]:[22,78]} zoom={value?8:3} style={{height:300,width:'100%',zIndex:0}} scrollWheelZoom={false}><TileLayer url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'/><Selection value={value} onChange={onChange}/></MapContainer>;}

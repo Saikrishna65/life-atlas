@@ -57,7 +57,7 @@ export function publicTripDetail(trip: PublicTripInput, next?: { slug: string; t
     stops: [...trip.tripPlaces].sort((a,b) => (a.visitDate?.getTime() ?? Infinity) - (b.visitDate?.getTime() ?? Infinity)).flatMap(({ place }) => validPoint(place) ? [{ id: place.id, name: place.name, latitude: place.latitude, longitude: place.longitude, description: place.description }] : []),
     metrics,
     days: trip.tripDays.filter(day => day.title?.trim() || day.description?.trim()).map(day => ({ id: day.id, day: day.dayIndex, date: day.date?.toISOString(), title: day.title || `Day ${day.dayIndex}`, place: trip.destination, description: day.description?.trim() || "", beats: [] })),
-    media: [...trip.photos.filter(photo => photo.url).map(photo => ({ id: photo.id, url: photo.url, kind: "photo" as const, place: photo.place?.name || "Unassigned", category: "Trip photography", caption: photo.caption || undefined })),...publicMedia],
+    media: [...new Map([...trip.photos.filter(photo => photo.url).map(photo => ({ id: photo.id, url: photo.url, kind: "photo" as const, place: photo.place?.name || "Unassigned", category: "Trip photography", caption: photo.caption || undefined })),...publicMedia].map(item=>[item.url,item])).values()],
     next: next ? { slug: next.slug, title: next.title, image: next.coverImage || "" } : undefined,
   };
 }

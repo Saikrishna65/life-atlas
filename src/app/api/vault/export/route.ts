@@ -1,3 +1,4 @@
+import {mergeTripPublication} from "@/lib/studio/publication";
 import {ensureWebsiteSchema} from "@/lib/studio/server";
 import {allowAtlasMutation} from "@/lib/mobileRequest";
 import { Prisma } from "@prisma/client";
@@ -29,6 +30,7 @@ export async function POST(request: Request) {
       preserveExistingRoute=false,
       publicMedia=[],
       preserveExistingMedia=false,
+      appendExistingMedia=false,
       preserveExistingItinerary=false,
     } = body;
 
@@ -40,6 +42,7 @@ export async function POST(request: Request) {
     }
 
     if(!Array.isArray(publicMedia)||publicMedia.length>250||publicMedia.some((item: {url?:unknown;poster?:unknown;kind?:unknown})=>!item||!['photo','video'].includes(String(item.kind))||typeof item.url!=='string'||!/^https:\/\//.test(item.url)||(item.poster&&!/^https:\/\//.test(String(item.poster)))))return NextResponse.json({error:'Choose valid public media URLs.'},{status:400});
+    if(!Array.isArray(places)||places.length>200||places.some(pl=>pl&&typeof pl==='object'&&((pl.id!==undefined&&(typeof pl.id!=='string'||!/^[-a-zA-Z0-9_]{1,80}$/.test(pl.id)))||((pl.latitude!==undefined||pl.longitude!==undefined)&&(!Number.isFinite(pl.latitude)||!Number.isFinite(pl.longitude)||Math.abs(pl.latitude)>90||Math.abs(pl.longitude)>180)))))return NextResponse.json({error:'Choose a valid trip map location.'},{status:400});
     await ensureWebsiteSchema();
     const saved=await prisma.$transaction(async db=>{
     // 1. Get or create author user
@@ -94,9 +97,9 @@ export async function POST(request: Request) {
     const priorRoute=existingTrip?.routeData && typeof existingTrip.routeData==='object'&&!Array.isArray(existingTrip.routeData)?existingTrip.routeData:{};
     const nextRoute=routeData&&typeof routeData==='object'&&!Array.isArray(routeData)?routeData:preserveExistingRoute?priorRoute:{};
     const storedRoute={...nextRoute} as Record<string,unknown>;
-    if(preserveExistingMedia && "publication" in priorRoute)storedRoute.publication=priorRoute.publication;
-    if(!preserveExistingMedia)delete storedRoute.publication;
-    if(publicMedia.length)storedRoute.publication={media:publicMedia};
+    if((preserveExistingMedia||appendExistingMedia) && "publication" in priorRoute)storedRoute.publication=priorRoute.publication;
+    if(!preserveExistingMedia&&!appendExistingMedia)delete storedRoute.publication;
+    if(publicMedia.length)storedRoute.publication={media:mergeTripPublication((priorRoute as {publication?:{media?:unknown[]}}).publication?.media,publicMedia,appendExistingMedia)};
     const retainedTotals={distance:existingTrip?.totalDistanceKm??null,ascent:existingTrip?.elevationGainMeters??null,altitude:existingTrip?.maxElevationMeters??null};
     let trip;
     if (existingTrip) {
@@ -119,8 +122,8 @@ export async function POST(request: Request) {
       });
       // Clear previous child records to perform a clean refresh
       if(!preserveExistingItinerary)await db.tripDay.deleteMany({ where: { tripId: trip.id } });
-      await db.tripPlace.deleteMany({ where: { tripId: trip.id } });
-      if(!preserveExistingMedia)await db.photo.deleteMany({ where: { tripId: trip.id } });
+      if(!appendExistingMedia)await db.tripPlace.deleteMany({ where: { tripId: trip.id } });
+      if(!preserveExistingMedia&&!appendExistingMedia)await db.photo.deleteMany({ where: { tripId: trip.id } });
     } else {
       // Generate guaranteed unique slug for new trip
       let suffix = 1;
@@ -155,12 +158,13 @@ export async function POST(request: Request) {
         const plName = typeof pl === "string" ? pl.trim() : (pl?.title || pl?.name)?.trim();
         if (!plName) continue;
 
-        const plSlug = plName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "") || "place";
+        const scoped=typeof pl==='object'&&typeof pl.id==='string'?`${trip.slug}-${pl.id}`:"";
+        const plSlug = scoped || plName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "") || "place";
         let place = await db.place.findFirst({
           where: {
             OR: [
               { slug: plSlug },
-              { name: { equals: plName, mode: "insensitive" } },
+              ...(scoped?[]:[{ name: { equals: plName, mode: "insensitive" as const } }]),
             ],
           },
         });
@@ -179,6 +183,8 @@ export async function POST(request: Request) {
           });
         }
 
+        if(typeof pl==='object'&&Number.isFinite(pl.latitude)&&Number.isFinite(pl.longitude)&&Math.abs(pl.latitude)<=90&&Math.abs(pl.longitude)<=180){place=await db.place.update({where:{id:place.id},data:{latitude:pl.latitude,longitude:pl.longitude,...(scoped?{name:plName}:{})}});}
+        if(scoped&&place.name!==plName)place=await db.place.update({where:{id:place.id},data:{name:plName}});
         placeMap.set(plName.toLowerCase(), place.id);
 
         // Link TripPlace
@@ -292,6 +298,8 @@ export async function POST(request: Request) {
       revalidatePath("/timeline");
       revalidatePath("/photography");
       revalidatePath("/explore");
+      revalidatePath("/map");
+      revalidatePath("/places");
     } catch (e) {
       console.warn("Revalidation notice:", e);
     }
@@ -307,6 +315,7 @@ export async function POST(request: Request) {
       message: `Expedition successfully published to Life Atlas Public Journal!`,
     });
   } catch (err: unknown) {
+    if(err instanceof RangeError&&err.message==='PUBLIC_MEDIA_LIMIT')return NextResponse.json({error:'This trip supports up to 250 public photos and videos.'},{status:400});
     console.error("Public Journal Export Error:", err);
     const msg = err instanceof Error ? err.message : "Internal database error";
     return NextResponse.json(

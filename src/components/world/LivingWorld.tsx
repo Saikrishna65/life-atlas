@@ -1,7 +1,6 @@
 "use client";
 import type {PublicPlace} from "@/lib/queries/public-content";
 import PublicPageReady from "@/components/layout/PublicPageReady";
-import {onPublicPreload} from "@/lib/public-loading/readiness";
 import dynamic from "next/dynamic";
 import { Suspense, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import type {PeoplePhoto} from "@/lib/public-trips/types";
@@ -46,7 +45,6 @@ function Deferred({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const releasePreload = onPublicPreload(() => setReady(true));
     const io = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting) {
@@ -75,7 +73,6 @@ function Deferred({
     document.addEventListener("click", activate);
     return () => {
       io.disconnect();
-      releasePreload();
       window.removeEventListener("hashchange", hash);
       window.removeEventListener("world-chapter-request", request);
       document.removeEventListener("click", activate);

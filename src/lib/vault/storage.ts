@@ -1003,7 +1003,7 @@ export async function getLiveExpedition(tripId: ID): Promise<LiveExpeditionSessi
 }
 
 /** Read and patch in a single transaction so tracking and publishing cannot overwrite each other. */
-export async function patchTripFields(tripId:ID,fields:Partial<Pick<TripRecord,"liveExpedition"|"publishedSlug"|"publishedAt">>):Promise<TripRecord>{
+export async function patchTripFields(tripId:ID,fields:Partial<Pick<TripRecord,"liveExpedition"|"publishedSlug"|"publishedAt"|"websitePlaces"|"websiteLocation">>):Promise<TripRecord>{
   const db=await getVaultDB();
   return new Promise((resolve,reject)=>{
     const transaction=db.transaction("trips","readwrite"),store=transaction.objectStore("trips");let result:TripRecord;

@@ -107,7 +107,16 @@ export interface DestinationStop {
   orderIndex: number;
 }
 
+export interface WebsiteMapLocation {latitude:number;longitude:number;}
+export interface TripWebsitePlace {
+  id:string; name:string;
+  files:import('../r2/types').SelectedMedia[];
+  transferIds:Record<string,string>;
+  publishedMedia:import('../r2/types').PublishedMedia[];
+}
 export interface TripRecord {
+  websiteLocation?:WebsiteMapLocation;
+  websitePlaces?:TripWebsitePlace[];
   finance?: import("../finance/trips/policy").TripFinanceSettings;
   id: ID;
   title: string;
