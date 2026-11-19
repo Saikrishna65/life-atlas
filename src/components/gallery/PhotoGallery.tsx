@@ -63,6 +63,7 @@ import GalleryThumbnail from "./GalleryThumbnail";
 import GalleryAssign from "./GalleryAssign";
 import { useGalleryLayout } from "./useGalleryLayout";
 import "./gallery.css";
+const GalleryPlaces = dynamic(() => import("./GalleryPlaces"), { ssr: false });
 const GalleryTripControls = dynamic(() => import("./GalleryTripControls"), {
   ssr: false,
 });
@@ -76,7 +77,9 @@ export default function PhotoGallery() {
   const supported = nativeR2Available(),
     { trips } = useTripVault();
   const [access, setAccess] = useState(initialAccess),
-    [view, setView] = useState<"device" | "cloud" | "trips">("device"),
+    [view, setView] = useState<"device" | "cloud" | "trips" | "places">(
+      "device",
+    ),
     [items, setItems] = useState<DeviceMedia[]>([]),
     [cursor, setCursor] = useState(""),
     [hasMore, setHasMore] = useState(false),
@@ -659,7 +662,9 @@ export default function PhotoGallery() {
       (a.slot !== "private" || a.id === viewer),
   );
   return (
-    <main className="private-gallery">
+    <main
+      className={`private-gallery${view === "places" ? " has-place-organizer" : ""}`}
+    >
       <header className="pg-top">
         <Link href="/secret">
           <ArrowLeft size={17} /> Private Atlas
@@ -686,7 +691,7 @@ export default function PhotoGallery() {
       </section>
       <div className="pg-toolbar">
         <nav aria-label="Gallery views">
-          {(["device", "cloud", "trips"] as const).map((v) => (
+          {(["device", "cloud", "trips", "places"] as const).map((v) => (
             <button
               key={v}
               aria-pressed={view === v}
@@ -711,7 +716,9 @@ export default function PhotoGallery() {
                 ? "On my phone"
                 : v === "cloud"
                   ? "In the cloud"
-                  : "Trips & places"}
+                  : v === "places"
+                    ? "Places organizer"
+                    : "Trips & places"}
             </button>
           ))}
         </nav>
@@ -773,7 +780,9 @@ export default function PhotoGallery() {
               </button>
             </div>
           </div>
-          {view !== "cloud" && access.status === "denied" ? (
+          {view === "places" ? (
+            <GalleryPlaces />
+          ) : view !== "cloud" && access.status === "denied" ? (
             <section className="pg-permission">
               <ImageIcon size={36} />
               <h2>Let my memories in.</h2>

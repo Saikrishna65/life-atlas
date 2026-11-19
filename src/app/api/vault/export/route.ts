@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       existingSlug,
       preserveExistingRoute=false,
       publicMedia=[],
+      globeLocation,
       preserveExistingMedia=false,
       appendExistingMedia=false,
       preserveExistingItinerary=false,
@@ -59,7 +60,8 @@ export async function POST(request: Request) {
     }
 
     if(!Array.isArray(publicMedia)||publicMedia.length>250||publicMedia.some((item: {url?:unknown;poster?:unknown;kind?:unknown})=>!item||!['photo','video'].includes(String(item.kind))||typeof item.url!=='string'||!/^https:\/\//.test(item.url)||(item.poster&&!/^https:\/\//.test(String(item.poster)))))return NextResponse.json({error:'Choose valid public media URLs.'},{status:400});
-    if(!Array.isArray(places)||places.length>200||places.some(pl=>pl&&typeof pl==='object'&&((pl.id!==undefined&&(typeof pl.id!=='string'||!/^[-a-zA-Z0-9_]{1,80}$/.test(pl.id)))||((pl.latitude!==undefined||pl.longitude!==undefined)&&(!Number.isFinite(pl.latitude)||!Number.isFinite(pl.longitude)||Math.abs(pl.latitude)>90||Math.abs(pl.longitude)>180)))))return NextResponse.json({error:'Choose a valid trip map location.'},{status:400});
+    if(!Array.isArray(places)||places.length>200||places.some(pl=>pl&&typeof pl==='object'&&((pl.locationVisibility!==undefined&&!['exact','approximate','hidden'].includes(pl.locationVisibility))||(pl.id!==undefined&&(typeof pl.id!=='string'||!/^[-a-zA-Z0-9_]{1,80}$/.test(pl.id)))||((pl.latitude!==undefined||pl.longitude!==undefined)&&(!Number.isFinite(pl.latitude)||!Number.isFinite(pl.longitude)||Math.abs(pl.latitude)>90||Math.abs(pl.longitude)>180)))))return NextResponse.json({error:'Choose a valid trip map location.'},{status:400});
+    if(globeLocation!==undefined&&(!globeLocation||!Number.isFinite(globeLocation.latitude)||!Number.isFinite(globeLocation.longitude)||Math.abs(globeLocation.latitude)>90||Math.abs(globeLocation.longitude)>180))return NextResponse.json({error:'Choose a valid trip globe location.'},{status:400});
     await ensureWebsiteSchema();
     const saved=await prisma.$transaction(async db=>{
     // 1. Get or create author user
@@ -118,6 +120,7 @@ export async function POST(request: Request) {
     if((preserveExistingMedia||appendExistingMedia) && "publication" in priorRoute)storedRoute.publication=priorRoute.publication;
     if(!preserveExistingMedia&&!appendExistingMedia)delete storedRoute.publication;
     if(publicMedia.length)storedRoute.publication={...(priorRoute as {publication?:Record<string,unknown>}).publication,media:mergeTripPublication((priorRoute as {publication?:{media?:unknown[]}}).publication?.media,publicMedia,appendExistingMedia)};
+    if(globeLocation)storedRoute.publication={...(storedRoute.publication as Record<string,unknown>||{}),tripLocation:globeLocation};
     let chosenCoverImage=coverImage;
     const candidates=tripCoverCandidates(storedRoute,preserveExistingMedia||appendExistingMedia?existingTrip?.photos||[]:[]);
     const previousCover=readTripCover(storedRoute);
@@ -209,7 +212,8 @@ export async function POST(request: Request) {
           });
         }
 
-        if(typeof pl==='object'&&Number.isFinite(pl.latitude)&&Number.isFinite(pl.longitude)&&Math.abs(pl.latitude)<=90&&Math.abs(pl.longitude)<=180){place=await db.place.update({where:{id:place.id},data:{latitude:pl.latitude,longitude:pl.longitude,...(scoped?{name:plName}:{})}});}
+        if(typeof pl==='object'&&pl.locationVisibility==='hidden'){place=await db.place.update({where:{id:place.id},data:{latitude:null,longitude:null}});}
+        if(typeof pl==='object'&&pl.locationVisibility!=='hidden'&&Number.isFinite(pl.latitude)&&Number.isFinite(pl.longitude)&&Math.abs(pl.latitude)<=90&&Math.abs(pl.longitude)<=180){place=await db.place.update({where:{id:place.id},data:{latitude:pl.latitude,longitude:pl.longitude,...(scoped?{name:plName}:{})}});}
         if(scoped&&place.name!==plName)place=await db.place.update({where:{id:place.id},data:{name:plName}});
         placeMap.set(plName.toLowerCase(), place.id);
 

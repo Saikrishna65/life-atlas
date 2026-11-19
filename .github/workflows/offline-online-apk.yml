@@ -45,7 +45,7 @@ jobs:
           npx tsc --noEmit
           node --test tests/mobile/apkUpdate.test.mjs
           node --import tsx --test tests/r2/*.test.ts
-          node --import tsx --test tests/studio/*.test.ts tests/gallery/*.test.ts tests/vault/websitePayload.test.ts tests/public/public-loading.test.ts
+          node --import tsx --test tests/studio/*.test.ts tests/gallery/*.test.ts tests/vault/websitePayload.test.ts tests/public/public-loading.test.ts tests/public/globe-trip-pins.test.ts
           node --import tsx --test tests/cloud-vault/signingAuthorization.test.ts
           npm run build:mobile
           npx cap sync android

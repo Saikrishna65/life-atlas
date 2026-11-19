@@ -1,4 +1,5 @@
 const messages: Record<string, string> = {
+  INVALID_PLACE_CATALOG: "The place catalog is invalid or belongs to a different recovery key. Local places are unchanged.",
   ANDROID_TRANSFER_STOPPED: "Android stopped this transfer. Its saved parts and original remain available; resume approved uploads to continue.",
   BACKGROUND_UPLOAD_RESTRICTED: "Android prevented the upload service from starting. Reopen Atlas Next, allow background battery usage for it, and resume approved uploads.",
   STORAGE_PERMISSION_DENIED: "Android denied access to the source file or upload service. Open Atlas Next and check its permissions; your original and saved selections remain unchanged.",

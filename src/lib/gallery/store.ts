@@ -80,3 +80,34 @@ export async function saveGalleryPreference(id: string, value: unknown) {
     db.close();
   }
 }
+
+export async function editGalleryPreference<T>(
+  id: string,
+  fallback: T,
+  edit: (value: T) => T,
+): Promise<T> {
+  const db = await open();
+  try {
+    return await new Promise<T>((resolve, reject) => {
+      const tx = db.transaction("preferences", "readwrite"),
+        store = tx.objectStore("preferences"),
+        get = store.get(id);
+      let next: T;
+      get.onsuccess = () => {
+        try {
+          next = edit(get.result?.value ?? fallback);
+          store.put({ id, value: next });
+        } catch (error) {
+          tx.abort();
+          reject(error);
+        }
+      };
+      tx.oncomplete = () => resolve(next);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () =>
+        reject(tx.error || Error("Gallery change was not saved."));
+    });
+  } finally {
+    db.close();
+  }
+}

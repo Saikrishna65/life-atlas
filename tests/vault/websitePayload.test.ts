@@ -20,3 +20,8 @@ test('approved immutable publication URLs reach the website without local transf
  assert.equal(body.publicMedia[0].place,'Deoria Tal');
  assert.ok(!JSON.stringify(body).includes('transferIds'));
 });
+
+test('place privacy settings and individual pins remain separate from the globe trip location',()=>{
+ const grouped={...trip,websiteLocation:{latitude:30,longitude:78},websitePlaces:[{id:'temple',name:'Tungnath',mapLocation:{latitude:30.49,longitude:79.22},mapPrecision:'approximate' as const,files:[],transferIds:{},publishedMedia:[]},{id:'stay',name:'My stay',mapPrecision:'hidden' as const,files:[],transferIds:{},publishedMedia:[]}]};
+ const body=websitePayload(grouped,[],[],{memoryIds:[]});assert.deepEqual(body.globeLocation,{latitude:30,longitude:78});const temple=body.places.find(p=>p.id==='temple')!;assert.equal(temple.latitude,30.49);assert.equal(temple.locationVisibility,'approximate');const stay=body.places.find(p=>p.id==='stay')!;assert.equal(stay.locationVisibility,'hidden');assert.equal(stay.latitude,undefined);assert.equal(body.routeData,undefined);assert.equal(body.preserveExistingRoute,true);
+});

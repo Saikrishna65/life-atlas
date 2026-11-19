@@ -28,6 +28,8 @@ export interface ConfigurationInput {
   publicBaseUrl: string;
 }
 export interface SelectedMedia {
+  galleryId?:string;
+  sourceStamp?:string;
   id: string;
   name: string;
   size: number;

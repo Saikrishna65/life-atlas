@@ -30,7 +30,7 @@ export interface PublicTripInput {
   id: string; slug: string; title: string; destination: string; description: string | null;
   coverImage: string | null; duration: string | null; startDate: Date | null; routeData: unknown;
   totalDistanceKm: number | null; maxElevationMeters: number | null; elevationGainMeters: number | null;
-  tripPlaces: { visitDate?: Date | null; place: { id: string; name: string; latitude: number | null; longitude: number | null; description: string | null } }[];
+  tripPlaces: { visitDate?: Date | null; place: { id: string; slug?:string; name: string; latitude: number | null; longitude: number | null; description: string | null } }[];
   tripDays: { id: string; dayIndex: number; date: Date | null; title: string | null; description: string | null }[];
   photos: { id: string; url: string; caption: string | null; place?: { name: string } | null }[];
 }
@@ -56,7 +56,7 @@ export function publicTripDetail(trip: PublicTripInput, next?: { slug: string; t
     id: trip.id, slug: trip.slug, title: trip.title, region: trip.destination, overview: trip.description?.trim() || "",
     cover: chosenCover?.kind==="photo"?chosenCover.url:chosenCover?.poster||trip.coverImage || trip.photos.find(photo => photo.url)?.url || "", coverKind:chosenCover?.kind, coverFilm:chosenCover?chosenCover.kind==="video"?chosenCover.url:undefined:publicMedia.find(item=>item.kind==="video")?.url, sample: false, date: trip.startDate?.toISOString(),
     duration: trip.duration?.trim() || "", paths: route.paths,
-    stops: [...trip.tripPlaces].sort((a,b) => (a.visitDate?.getTime() ?? Infinity) - (b.visitDate?.getTime() ?? Infinity)).flatMap(({ place }) => validPoint(place) ? [{ id: place.id, name: place.name, latitude: place.latitude, longitude: place.longitude, description: place.description }] : []),
+    stops: [...trip.tripPlaces].filter(({place})=>!(place.slug===trip.slug+"-trip-location"&&trip.tripPlaces.some(p=>p.place.slug!==trip.slug+"-trip-location"&&validPoint(p.place)))).sort((a,b) => (a.visitDate?.getTime() ?? Infinity) - (b.visitDate?.getTime() ?? Infinity)).flatMap(({ place }) => validPoint(place) ? [{ id: place.id, name: place.name, latitude: place.latitude, longitude: place.longitude, description: place.description }] : []),
     metrics,
     days: trip.tripDays.filter(day => day.title?.trim() || day.description?.trim()).map(day => ({ id: day.id, day: day.dayIndex, date: day.date?.toISOString(), title: day.title || `Day ${day.dayIndex}`, place: trip.destination, description: day.description?.trim() || "", beats: [] })),
     media: [...new Map([...trip.photos.filter(photo => photo.url).map(photo => ({ id: photo.id, url: photo.url, kind: "photo" as const, place: photo.place?.name || "Unassigned", category: "Trip photography", caption: photo.caption || undefined })),...publicMedia].map(item=>[item.url,item])).values()],

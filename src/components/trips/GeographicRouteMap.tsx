@@ -84,9 +84,7 @@ export default function GeographicRouteMap({
   const points = useMemo<[number, number][]>(
     () => [
       ...paths.flat().map((p) => [p.latitude, p.longitude] as [number, number]),
-      ...(paths.length
-        ? []
-        : stops.map((p) => [p.latitude, p.longitude] as [number, number])),
+      ...stops.map((p) => [p.latitude, p.longitude] as [number, number]),
     ],
     [paths, stops],
   );

@@ -327,6 +327,114 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void readDeviceLocations(PluginCall call) {
+    try {
+      guard();
+    } catch (Exception e) {
+      fail(call, e);
+      return;
+    }
+    if (Build.VERSION.SDK_INT >= 29
+        && getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      requestPermissionForAlias("galleryOriginal", call, "galleryLocationPermission");
+      return;
+    }
+    work(
+        call,
+        () ->
+            call.resolve(
+                new JSObject()
+                    .put(
+                        "items",
+                        R2GalleryLocations.read(
+                            getContext(),
+                            call.getArray("ids"),
+                            call.getObject("versions"),
+                            false,
+                            repository()))));
+  }
+
+  @PermissionCallback
+  private void galleryLocationPermission(PluginCall call) {
+    if (getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      call.reject("ORIGINAL_MEDIA_ACCESS_REQUIRED", "ORIGINAL_MEDIA_ACCESS_REQUIRED");
+      return;
+    }
+    readDeviceLocations(call);
+  }
+
+  @PluginMethod
+  public void fingerprintGalleryMedia(PluginCall call) {
+    try {
+      guard();
+    } catch (Exception e) {
+      fail(call, e);
+      return;
+    }
+    if (Build.VERSION.SDK_INT >= 29
+        && getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      requestPermissionForAlias("galleryOriginal", call, "galleryFingerprintPermission");
+      return;
+    }
+    work(
+        call,
+        () ->
+            call.resolve(
+                new JSObject()
+                    .put(
+                        "items",
+                        R2GalleryLocations.read(
+                            getContext(),
+                            call.getArray("ids"),
+                            call.getObject("versions"),
+                            true,
+                            repository()))));
+  }
+
+  @PermissionCallback
+  private void galleryFingerprintPermission(PluginCall call) {
+    if (getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      call.reject("ORIGINAL_MEDIA_ACCESS_REQUIRED", "ORIGINAL_MEDIA_ACCESS_REQUIRED");
+      return;
+    }
+    fingerprintGalleryMedia(call);
+  }
+
+  @PluginMethod
+  public void backupPlaceCatalog(PluginCall call) {
+    authenticated(
+        call, () -> call.resolve(js(R2PlaceBackup.save(repository(), call.getObject("catalog")))));
+  }
+
+  @PluginMethod
+  public void listPlaceBackups(PluginCall call) {
+    authenticated(
+        call,
+        () -> {
+          R2Repository repo = repository();
+          byte[] keys = repo.keyset();
+          try {
+            call.resolve(
+                js(
+                    new R2Client(repo.store.credentials("private"))
+                        .list(R2PlaceBackup.prefix(keys), call.getString("cursor", ""))));
+          } finally {
+            java.util.Arrays.fill(keys, (byte) 0);
+          }
+        });
+  }
+
+  @PluginMethod
+  public void restorePlaceCatalog(PluginCall call) {
+    authenticated(
+        call,
+        () ->
+            call.resolve(
+                new JSObject()
+                    .put("catalog", R2PlaceBackup.restore(repository(), call.getString("key")))));
+  }
+
+  @PluginMethod
   public void openGalleryCloudPreview(PluginCall call) {
     authenticated(
         call,

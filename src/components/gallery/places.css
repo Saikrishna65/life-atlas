@@ -1,0 +1,462 @@
+.gallery-places {
+  padding: clamp(20px, 4vw, 64px) 0 80px;
+  color: #edf2e9;
+}
+.gp-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  align-items: flex-end;
+  margin: 16px 0 38px;
+}
+.gp-heading h2 {
+  font-size: clamp(36px, 5vw, 76px);
+  line-height: 1;
+  letter-spacing: -0.05em;
+  font-weight: 450;
+  margin: 20px 0;
+}
+.gp-heading h2 em {
+  font-family: Georgia, serif;
+  color: #c3d2b2;
+  font-weight: 400;
+}
+.gp-heading p {
+  color: #a5b8ac;
+  max-width: 460px;
+}
+.gp-tools {
+  display: grid;
+  gap: 10px;
+  min-width: 240px;
+}
+.gallery-places button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid #ffffff29;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: #ffffff08;
+  color: inherit;
+}
+.gallery-places button:hover {
+  background: #ffffff13;
+}
+.gallery-places button:disabled {
+  opacity: 0.45;
+}
+.gallery-places .pg-primary {
+  background: #dce9d4;
+  color: #18392b;
+  border-color: transparent;
+}
+.gp-overview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 30px;
+  padding: 22px 0;
+  border-block: 1px solid #ffffff20;
+  color: #b8c9bb;
+  font-size: 13px;
+}
+.gp-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 28px 0;
+}
+.gp-modes [aria-pressed="true"] {
+  background: #dce9d4;
+  color: #18392b;
+}
+.gp-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 32px;
+}
+.gp-index {
+  border-right: 1px solid #ffffff20;
+  padding-right: 24px;
+}
+.gp-index label,
+.gp-review label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+  color: #c1cfc5;
+}
+.gp-index input[type="range"] {
+  width: 100%;
+  accent-color: #d4dcb0;
+}
+.gp-index strong {
+  font-size: 22px;
+}
+.gallery-places .gp-place-link {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  margin-top: 10px;
+  padding: 15px 10px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #ffffff15;
+  border-radius: 0;
+}
+.gp-place-link[aria-pressed="true"] {
+  background: #c2d4b518;
+}
+.gp-place-link span {
+  min-width: 0;
+}
+.gp-place-link small {
+  display: block;
+  margin-top: 6px;
+  color: #9eb2a5;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.gp-edit-head {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.gp-edit-head label {
+  flex: 1;
+  min-width: 180px;
+}
+.gallery-places input:not([type="range"]),
+.gallery-places select {
+  background: #162d25;
+  color: #eff3eb;
+  border: 1px solid #ffffff30;
+  border-radius: 8px;
+  min-height: 42px;
+  padding: 10px;
+  width: 100%;
+  max-width: 100%;
+}
+.gp-map {
+  height: 380px;
+  position: relative;
+  margin-bottom: 64px;
+  border: 1px solid #ffffff30;
+  border-radius: 12px;
+}
+.gp-map .leaflet-container {
+  border-radius: 12px;
+}
+.gp-map p {
+  position: absolute;
+  top: 100%;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #a8bdb0;
+  margin: 10px 0;
+  max-width: 100%;
+}
+.gp-map-placeholder {
+  height: 380px;
+  display: grid;
+  place-items: center;
+}
+.gp-coordinates,
+.gp-trip-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+}
+.gp-coordinates label {
+  flex: 1;
+  min-width: 140px;
+}
+.gp-trip-tools {
+  background: #ffffff06;
+  border: 1px solid #ffffff15;
+  padding: 20px;
+  border-radius: 12px;
+  margin: 24px 0;
+}
+.gp-trip-tools label {
+  flex: 1;
+  min-width: 170px;
+}
+.gp-media-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin: 30px 0 18px;
+}
+.gp-media-toolbar label {
+  flex: 1;
+  min-width: 170px;
+}
+.gp-media-toolbar span {
+  font-size: 11px;
+  color: #a1b8a9;
+}
+.gp-bulk {
+  padding: 14px;
+  border: 1px solid #b4c79966;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-radius: 12px;
+  margin-bottom: 18px;
+  background: #a4bf8e0a;
+}
+.gp-bulk select {
+  max-width: 240px;
+}
+.gp-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px 12px;
+}
+.gp-photo-grid article {
+  position: relative;
+  min-width: 0;
+  border: 1px solid transparent;
+  padding: 4px;
+  border-radius: 10px;
+}
+.gp-photo-grid article.is-selected {
+  border-color: #d3e4bb;
+  background: #d3e4bb0a;
+}
+.gallery-places .gp-photo {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  aspect-ratio: 1;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #ffffff08;
+}
+.gp-photo > div {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+.gp-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gallery-places .gp-pick {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 0;
+  min-height: 30px;
+  height: 30px;
+  width: 30px;
+  background: #142e25eb;
+  border-radius: 50%;
+}
+.gp-photo-grid article > div {
+  padding: 9px 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.gp-photo-grid article small {
+  display: block;
+  font-size: 10px;
+  color: #9fb3a5;
+  margin-top: 5px;
+}
+.gp-photo-grid article > button:last-child:not(.gp-pick):not(.gp-photo) {
+  min-height: 28px;
+  font-size: 10px;
+  padding: 5px 8px;
+}
+.gp-detached {
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  font-size: 11px;
+  height: 100%;
+  color: #b2c4b5;
+}
+.gp-empty {
+  padding: 42px 12px;
+  color: #a5b9ac;
+  line-height: 1.7;
+  font-size: 13px;
+}
+.gp-progress {
+  position: sticky;
+  top: 18px;
+  z-index: 5;
+  background: #dce9d4;
+  color: #1d3d2e;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 18px;
+  box-shadow: 0 10px 40px #0004;
+  margin-bottom: 16px;
+}
+.gp-progress button {
+  border-color: #1c3b2d44;
+  font-size: 11px;
+}
+.gp-recovery {
+  padding: 24px;
+  background: #10281f;
+  border: 1px solid #c6d7b632;
+  border-radius: 14px;
+  margin-bottom: 28px;
+}
+.gp-recovery h3 {
+  font-size: 25px;
+  font-weight: 400;
+  margin: 0 0 14px;
+}
+.gp-recovery p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #b0c2b5;
+  max-width: 850px;
+}
+.gp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.gp-snapshot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid #ffffff17;
+  font-size: 12px;
+}
+@media (min-width: 1500px) {
+  .gp-photo-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1000px) {
+  .gp-layout {
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 18px;
+  }
+  .gp-index {
+    padding-right: 14px;
+  }
+  .gp-photo-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .gp-heading {
+    align-items: start;
+    gap: 20px;
+  }
+  .gp-tools {
+    min-width: 190px;
+  }
+}
+@media (max-width: 680px) {
+  .gp-heading {
+    display: block;
+  }
+  .gp-tools {
+    margin-top: 25px;
+  }
+  .gp-layout {
+    display: block;
+  }
+  .gp-index {
+    border: 0;
+    padding: 0 0 20px;
+    max-height: 320px;
+    overflow: auto;
+  }
+  .gp-photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gp-map {
+    height: 290px;
+    margin-bottom: 80px;
+  }
+  .gp-progress {
+    font-size: 12px;
+    top: 8px;
+  }
+  .gp-coordinates label {
+    min-width: 110px;
+  }
+  .gp-modes button {
+    flex: 1;
+    font-size: 11px;
+  }
+  .gp-trip-tools {
+    padding: 12px;
+  }
+  .gp-modes {
+    gap: 5px;
+  }
+  .gp-overview {
+    gap: 12px 18px;
+  }
+  .gp-snapshot {
+    font-size: 10px;
+  }
+}
+
+.gp-new-trip {
+  flex-basis: 100%;
+  border: 1px solid #ffffff20;
+  padding: 16px;
+  border-radius: 10px;
+}
+.gp-new-trip .studio-trip-map {
+  margin-top: 15px;
+}
+
+/* This gallery page has a pale canvas; place review is a contained forest work area. */
+.gallery-places {
+  background: #183b2c;
+  padding: clamp(18px, 3.4vw, 48px);
+  border-radius: 20px;
+  margin-top: 24px;
+  isolation: isolate;
+}
+.gallery-places h2,
+.gallery-places h3 {
+  color: #edf2e9;
+}
+.has-place-organizer .pg-intro {
+  min-height: 0;
+  padding: 24px;
+  margin-block: 16px;
+}
+.has-place-organizer .pg-intro h1 {
+  font-size: clamp(26px, 3vw, 40px);
+}
+.has-place-organizer .pg-intro .pg-orbit {
+  display: none;
+}
+@media (max-width: 680px) {
+  .gallery-places {
+    padding: 20px 14px;
+    border-radius: 16px;
+  }
+  .has-place-organizer .pg-intro {
+    padding: 18px;
+  }
+  .gp-heading h2 {
+    font-size: 34px;
+  }
+}

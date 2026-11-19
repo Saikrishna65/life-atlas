@@ -109,6 +109,11 @@ export interface DestinationStop {
 
 export interface WebsiteMapLocation {latitude:number;longitude:number;}
 export interface TripWebsitePlace {
+  libraryPlaceId?:string;
+  libraryMediaIds?:string[];
+  mapLocation?:WebsiteMapLocation;
+  mapPrecision?:'exact'|'approximate'|'hidden';
+  visitLabel?:string;
   id:string; name:string;
   files:import('../r2/types').SelectedMedia[];
   transferIds:Record<string,string>;

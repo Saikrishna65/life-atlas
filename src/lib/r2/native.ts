@@ -13,6 +13,11 @@ import type {
   Transfer,
 } from "./types";
 interface R2Plugin {
+  readDeviceLocations(input:{ids:string[];versions:Record<string,string>}):Promise<{items:import('../gallery/places').LocationRead[]}>;
+  fingerprintGalleryMedia(input:{ids:string[];versions:Record<string,string>}):Promise<{items:import('../gallery/places').LocationRead[]}>;
+  backupPlaceCatalog(input:{catalog:import('../gallery/places').PlaceLibrary}):Promise<{key:string;size:number}>;
+  listPlaceBackups(input:{cursor:string}):Promise<ObjectPage>;
+  restorePlaceCatalog(input:{key:string}):Promise<{catalog:unknown}>;
   getGalleryAccess():Promise<import('../gallery/types').GalleryAccess>;
   requestGalleryAccess():Promise<import('../gallery/types').GalleryAccess>;
   openGallerySettings():Promise<void>;

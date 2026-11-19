@@ -15,21 +15,21 @@ export function websitePayload(trip:TripRecord,memories:TripMemoryRecord[],days:
   if(!title)throw Error('Give this journey a title.');
   const date=trip.startDate || selected.map(m=>m.date).filter(Boolean).sort()[0];
 
-  const places=new Map<string,{id?:string;name:string;latitude?:number;longitude?:number}>();
+  const places=new Map<string,{id?:string;name:string;latitude?:number;longitude?:number;locationVisibility?:string}>();
   if(trip.destination.trim())places.set(trip.destination.toLowerCase(),{name:trip.destination.trim()});
   for(const memory of selected){const name=(memory.placeName||memory.location)?.trim();if(name)places.set(name.toLowerCase(),{name});}
   if(options.includeRoute)for(const waypoint of trip.waypoints??[]){
     if(waypoint.title?.trim())places.set(waypoint.title.toLowerCase(),{name:waypoint.title.trim(),latitude:waypoint.latitude,longitude:waypoint.longitude});
   }
-  for(const group of trip.websitePlaces||[])places.set(group.name.trim().toLowerCase(),{id:group.id,name:group.name.trim()});
-  if(trip.websiteLocation)places.set((trip.destination.trim()||title).toLowerCase(),{id:'trip-location',name:trip.destination.trim()||title,...trip.websiteLocation});
+  for(const group of trip.websitePlaces||[])places.set(group.name.trim().toLowerCase(),{id:group.id,name:group.name.trim(),locationVisibility:group.mapPrecision,...(group.mapPrecision!=='hidden'?group.mapLocation:{})});
+  if(trip.websiteLocation)places.set('__atlas_trip_location__',{id:'trip-location',name:trip.destination.trim()||title,...trip.websiteLocation});
   const media=publicMedia.map(item=>({id:item.id,url:item.url,poster:item.thumbnailUrl,manifestUrl:item.manifestUrl,kind:item.mimeType.startsWith('video/')?'video' as const:'photo' as const,
     place:item.tags.find(tag=>tag.startsWith('place:'))?.slice(6).trim()||'Unassigned',category:'Trip journal'}));
   const photoCover=selected.flatMap(memory=>memory.images?.length?memory.images:memory.imageDataUrl?[memory.imageDataUrl]:[])[0] || media.find(item=>item.kind==='photo')?.url;
   return {tripId:trip.id,title,destination:trip.destination.trim(),startDate:date||undefined,endDate:trip.endDate||undefined,
     description:options.description?.trim()||undefined,coverImage:photoCover,existingSlug:websiteSlug(trip),
     ...(trip.websiteHeroMediaId!==undefined?{heroMediaId:trip.websiteHeroMediaId}:{}),
-    preserveExistingRoute:true,
+    preserveExistingRoute:true,globeLocation:trip.websiteLocation,
     appendExistingMedia:options.appendExistingMedia===true,
     preserveExistingMedia:selected.length===0&&media.length===0,
     preserveExistingItinerary:!options.includeItinerary,

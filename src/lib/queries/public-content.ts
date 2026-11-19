@@ -11,3 +11,7 @@ export async function getPublicPlaces(source=prisma):Promise<PublicPlace[]> {
     return places.map(place=>({...place,region:place.region||'',description:place.description||'',image:place.coverImage||''}));
   }catch{return [];}
 }
+
+export async function getGlobeTripPlaces(source=prisma):Promise<PublicPlace[]>{
+ try{const {globeTripPins}=await import('../public-trips/globe-pins');const trips=await source.trip.findMany({orderBy:{startDate:'desc'},select:{id:true,slug:true,title:true,destination:true,coverImage:true,routeData:true,tripPlaces:{select:{place:{select:{id:true,slug:true,name:true,latitude:true,longitude:true,country:true,region:true,description:true,coverImage:true}}}}}});return globeTripPins(trips);}catch{return [];}
+}

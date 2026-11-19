@@ -55,7 +55,7 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
    }
    await checkPaused();
    for(const group of latest.websitePlaces||[]){
-    selected.push(...group.publishedMedia.map(item=>({...item,tags:[...item.tags.filter(tag=>!tag.startsWith('place:')&&!tag.startsWith('place-id:')),`place:${group.name}`,`place-id:${group.id}`]})));
+    selected.push(...group.publishedMedia.map(item=>({...item,tags:[...item.tags.filter(tag=>!tag.startsWith('place:')&&!tag.startsWith('place-id:')),`place:${group.name}`,`place-id:${group.id}`,...(group.libraryPlaceId?[`library-place-id:${group.libraryPlaceId}`]:[])]})));
     for(const file of group.files){
      await checkPaused();
      let job:Transfer|undefined;
@@ -64,7 +64,7 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
      if(savedId&&!job)throw Error('A saved upload is unavailable. Check Cloud Storage before selecting this file again.');
      if(!job)throw Error('This approved upload is unavailable in Cloud Storage. Your selected original remains saved.');
      job=await waitForTransfer(job,publicationSession);await checkPaused();setProgress(`Publishing ${group.name} · ${file.name}`);
-     const result=await R2.publishTripMedia({publicationSession,transferId:job.id,title:title.trim(),description:'',tags:[`place:${group.name}`,`place-id:${group.id}`],category:'expedition',collection:websiteSlug(latest),acknowledgeMetadata:true});
+     const result=await R2.publishTripMedia({publicationSession,transferId:job.id,title:title.trim(),description:'',tags:[`place:${group.name}`,`place-id:${group.id}`,...(group.libraryPlaceId?[`library-place-id:${group.libraryPlaceId}`]:[])],category:'expedition',collection:websiteSlug(latest),acknowledgeMetadata:true});
      const item=result.item;if(!item)throw Error('The publication record did not confirm this media. Its original remains unchanged.');
      setTrip(await rememberPlacePublication(tripId,group.id,file.id,item));selected.push(item);
     }
