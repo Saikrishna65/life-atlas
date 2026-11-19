@@ -1,9 +1,9 @@
-Atlas 1.8.0 — verified stable signing
+Atlas 1.8.1 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 27.
+3. Open the matching APK and choose Update. This build uses version code 28.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -146,3 +146,8 @@ kit on a replacement phone, then Restore index from R2 to rebuild the cloud libr
 Takeout ZIP import is offline and requires explicit Start for each archive; it
 retains supported sidecar dates/locations/descriptions separately from originals.
 See docs/GALLERY-LIBRARY.md for setup, supported formats and recovery limitations.
+
+Gallery redesign (1.8.1): Photo-first collection, direct album browsing, explicit
+Select / Done mode, thumb-reachable selection actions, journey chooser, and
+unified Places and Backup tools. Search, filters, cloud-copy checks, encrypted
+backup and publishing retain their existing behavior. Install as an update.

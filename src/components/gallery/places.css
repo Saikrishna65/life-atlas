@@ -848,3 +848,124 @@
     margin-top: 20px;
   }
 }
+
+/* Location workspace: the same bright collection surface as Photos. */
+.private-gallery .gallery-places {
+  color: #1c2926;
+  padding: 8px 0 60px;
+}
+.private-gallery .gp-heading {
+  margin: 0 0 24px;
+  gap: 20px;
+  align-items: center;
+}
+.private-gallery .gp-heading h2 {
+  font-size: 24px;
+  letter-spacing: -0.7px;
+  margin: 8px 0;
+  font-weight: 550;
+}
+.private-gallery .gp-heading p {
+  font-size: 12px;
+  color: #6c7975;
+}
+.private-gallery .gp-heading .gp-tools {
+  gap: 7px;
+}
+.private-gallery .gallery-places :is(input, select) {
+  background: white;
+  color: #1c2926;
+  border-color: #dce6df;
+}
+.private-gallery .gp-modes {
+  gap: 6px;
+  padding: 0 0 18px;
+  overflow: auto;
+}
+.private-gallery .gp-modes button {
+  border: 0;
+  background: #f3f7f2;
+  white-space: nowrap;
+}
+.private-gallery .gp-modes button[aria-pressed="true"] {
+  background: #245d49;
+  color: white;
+}
+.private-gallery :is(.gp-index, .gp-review, .gp-recovery) {
+  background: #f7f9f5;
+  border: 1px solid #e0e8e0;
+  border-radius: 18px;
+  color: #1c2926;
+}
+.private-gallery .gp-place-link {
+  background: white;
+  color: #1c2926;
+  border: 1px solid #e0e8e0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 8px;
+}
+.private-gallery .gp-place-link[aria-pressed="true"] {
+  background: #e7f1e8;
+  border-color: #8dae97;
+}
+.private-gallery
+  :is(.gp-place-link small, .pg-muted, .gp-coordinates, .gp-empty) {
+  color: #6c7975;
+}
+.private-gallery .gp-overview {
+  border: 0;
+  background: #f5f8f4;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 12px;
+}
+.private-gallery .gp-photo-grid {
+  gap: 7px;
+}
+.private-gallery .gp-photo-grid article {
+  border-radius: 9px;
+  overflow: hidden;
+}
+.private-gallery .gp-bulk {
+  background: #e7f1e8;
+  color: #245d49;
+}
+.private-gallery .gp-trip-tools {
+  border-color: #dce6df;
+}
+.private-gallery .gp-recovery summary {
+  font-size: 12px;
+  font-weight: 550;
+}
+.private-gallery .gp-actions {
+  gap: 8px;
+}
+@media (max-width: 700px) {
+  .private-gallery .gp-heading {
+    display: block;
+  }
+  .private-gallery .gp-heading h2 {
+    font-size: 22px;
+  }
+  .private-gallery .gp-tools {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 15px;
+  }
+  .private-gallery .gp-tools button {
+    font-size: 11px;
+  }
+  .private-gallery .gp-index {
+    padding: 14px;
+  }
+  .private-gallery .gp-layout {
+    gap: 16px;
+  }
+  .private-gallery .gp-place-link {
+    padding: 13px;
+  }
+  .private-gallery .gp-overview {
+    font-size: 11px;
+  }
+}

@@ -205,8 +205,8 @@ export default function LibraryHub() {
       </header>
       <section className="gl-heading">
         <div>
-          <h1>My library, safely kept.</h1>
-          <p>Originals, private backup, and recovery in one place.</p>
+          <h1>Your library. Your rules.</h1>
+          <p>Choose what to keep, where it goes, and when it uploads.</p>
         </div>
         <button
           disabled={busy}
@@ -320,6 +320,10 @@ export default function LibraryHub() {
                   />{" "}
                   Enable automatic encrypted private backup
                 </label>
+                <h3>What and when</h3>
+                <p>
+                  Choose your media, then the conditions for automatic uploads.
+                </p>
                 <div className="gl-options">
                   {(
                     [

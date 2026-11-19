@@ -429,3 +429,152 @@
     font-size: 11px;
   }
 }
+
+/* Shared Gallery tools language. */
+.gallery-library {
+  color: #1c2926;
+  padding-top: calc(20px + env(safe-area-inset-top));
+}
+.gallery-library a,
+.gl-top svg {
+  color: #245d49;
+}
+.gl-top > span {
+  color: #1c2926;
+  font-weight: 550;
+}
+.gl-heading {
+  margin: 38px 0 28px;
+}
+.gl-heading h1 {
+  font-size: clamp(30px, 4vw, 45px);
+  letter-spacing: -1.5px;
+  font-weight: 550;
+}
+.gallery-library button {
+  border-radius: 12px;
+  min-height: 44px;
+  color: #245d49;
+  border-color: #dce6df;
+}
+.gallery-library .gl-primary {
+  background: #245d49;
+  border-color: #245d49;
+}
+.gl-tabs {
+  border-bottom: 1px solid #e0e8e0;
+  padding-bottom: 16px;
+  gap: 9px;
+}
+.gl-tabs button[aria-pressed="true"] {
+  background: #1c2926;
+  color: white;
+  border-color: #1c2926;
+}
+.gl-panel {
+  background: #f7f9f5;
+  border: 1px solid #e1e8de;
+  border-radius: 20px;
+  padding: 26px;
+}
+.gl-panel h2 {
+  color: #1c2926;
+  font-size: 21px;
+  letter-spacing: -0.5px;
+}
+.gl-panel p,
+.gl-check {
+  color: #5e7165;
+  font-size: 13px;
+}
+.gl-backup-state {
+  background: #eaf2e7;
+  border-color: #d8e5d4;
+}
+.gl-backup-state > svg {
+  color: #4a7c59;
+}
+.gl-panel input[type="checkbox"],
+.gl-item-select input {
+  accent-color: #245d49;
+}
+.gl-albums {
+  gap: 10px;
+}
+.gl-albums > .gl-check {
+  background: white;
+  border: 1px solid #e1e8de;
+  border-radius: 12px;
+  padding: 12px;
+  margin: 0;
+}
+.gl-albums small {
+  color: #728675;
+}
+.gl-selection {
+  background: #e7f1e8;
+  border-color: #d0e0d0;
+  color: #245d49;
+}
+.gl-notice {
+  background: #e7f1e8;
+  color: #245d49;
+  border-color: #d0e0d0;
+}
+.gl-grid {
+  gap: 25px 12px;
+}
+.gallery-library .gl-photo {
+  border-radius: 12px;
+}
+.gl-retention {
+  color: #5e7165;
+}
+.gl-retention select {
+  border-color: #dce6df;
+  color: #245d49;
+}
+.gl-options {
+  gap: 2px 25px;
+}
+@media (max-width: 700px) {
+  .gallery-library {
+    padding-inline: 16px;
+  }
+  .gl-heading {
+    margin: 26px 0 22px;
+  }
+  .gl-heading h1 {
+    font-size: 31px;
+  }
+  .gl-top > span {
+    font-size: 14px;
+  }
+  .gl-panel {
+    padding: 20px 16px;
+    border-radius: 16px;
+  }
+  .gl-panel p,
+  .gl-check {
+    font-size: 12px;
+  }
+  .gl-panel h2 {
+    font-size: 19px;
+  }
+  .gl-tabs button {
+    font-size: 10px;
+    min-height: 60px;
+  }
+  .gl-albums {
+    grid-template-columns: 1fr;
+  }
+  .gl-options {
+    margin: 16px 0;
+  }
+  .gl-albums > .gl-check {
+    padding: 13px;
+  }
+  .gl-library-intro button {
+    width: 100%;
+  }
+}

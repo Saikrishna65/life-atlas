@@ -18,7 +18,6 @@ import {
   SlidersHorizontal,
   X,
   MapPin,
-  MoreHorizontal,
   Settings,
   Trash2,
 } from "lucide-react";
@@ -129,7 +128,8 @@ export default function PhotoGallery() {
     [drawer, setDrawer] = useState(false),
     [websiteControls, setWebsiteControls] = useState(false),
     [online, setOnline] = useState(true),
-    [filtersOpen, setFiltersOpen] = useState(false);
+    [filtersOpen, setFiltersOpen] = useState(false),
+    [selectionMode, setSelectionMode] = useState(false);
   const grid = useRef<HTMLDivElement>(null),
     sentinel = useRef<HTMLDivElement>(null),
     deviceGeneration = useRef(0),
@@ -642,7 +642,7 @@ export default function PhotoGallery() {
     }
   }
   async function openAsset(asset: GalleryAsset) {
-    if (selected.length && asset.device) {
+    if ((selected.length || selectionMode) && asset.device) {
       toggle(asset.id);
       return;
     }
@@ -713,7 +713,8 @@ export default function PhotoGallery() {
           </Link>
           <Aperture size={29} strokeWidth={1.8} />
           <span>
-            Atlas <strong>Photos</strong>
+            <strong>Gallery</strong>
+            <small>Life Atlas</small>
           </span>
         </div>
         <label className="pg-search">
@@ -721,7 +722,7 @@ export default function PhotoGallery() {
           <input
             aria-label="Search gallery"
             type="search"
-            placeholder="Search filenames"
+            placeholder="Find a photo or video…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -732,7 +733,8 @@ export default function PhotoGallery() {
             aria-label="Library backup and recovery"
             className="pg-library-link"
           >
-            <Settings size={20} />
+            <Settings size={18} />
+            <span>Backup & tools</span>
           </Link>
           <button
             aria-label="Open transfer queue"
@@ -769,6 +771,7 @@ export default function PhotoGallery() {
               onClick={() => {
                 setView(v);
                 setSelected([]);
+                setSelectionMode(false);
                 if (v !== "trips") {
                   setTripFilter("");
                   setPlaceFilter("");
@@ -808,7 +811,7 @@ export default function PhotoGallery() {
         <div>
           <h1>
             {view === "device"
-              ? "Photos"
+              ? "Your photos."
               : view === "cloud"
                 ? "Cloud library"
                 : view === "trips"
@@ -817,7 +820,7 @@ export default function PhotoGallery() {
           </h1>
           <p>
             {view === "device"
-              ? "Your photos and videos, all together."
+              ? "The everyday. The unforgettable. All here."
               : view === "cloud"
                 ? "Browse your public and encrypted private originals."
                 : view === "trips"
@@ -825,16 +828,31 @@ export default function PhotoGallery() {
                   : "Find familiar places in your photo library."}
           </p>
         </div>
-        {view !== "places" && (
-          <button
-            aria-label="Gallery filters"
-            aria-expanded={filtersOpen}
-            onClick={() => setFiltersOpen((v) => !v)}
-          >
-            <SlidersHorizontal size={18} />
-            <span>Filters{activeFilters ? ` · ${activeFilters}` : ""}</span>
-          </button>
-        )}
+        <div className="pg-heading-actions">
+          {view !== "places" && view !== "cloud" && (
+            <button
+              className="pg-select-mode"
+              aria-pressed={selectionMode}
+              onClick={() => {
+                setSelectionMode(!selectionMode);
+                setSelected([]);
+              }}
+            >
+              <Check size={17} />
+              {selectionMode ? "Done" : "Select"}
+            </button>
+          )}
+          {view !== "places" && (
+            <button
+              aria-label="Gallery filters"
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((v) => !v)}
+            >
+              <SlidersHorizontal size={18} />
+              <span>Filters{activeFilters ? ` · ${activeFilters}` : ""}</span>
+            </button>
+          )}
+        </div>
       </section>
       {!supported ? (
         <section className="pg-permission">
@@ -849,7 +867,9 @@ export default function PhotoGallery() {
         </section>
       ) : (
         <>
-          <div className="pg-access">
+          <div
+            className={`pg-access ${access.status === "full" && online ? "is-ready" : ""}`}
+          >
             <span>
               <span className={`pg-dot ${online ? "" : "is-offline"}`} />
               {!online
@@ -869,6 +889,7 @@ export default function PhotoGallery() {
                 </button>
               )}
               <button
+                hidden={!filtersOpen}
                 onClick={() =>
                   void systemAction(() => R2.openGallerySettings())
                 }
@@ -929,6 +950,41 @@ export default function PhotoGallery() {
                   </button>
                 </div>
               )}
+              {view === "trips" && (
+                <nav className="pg-journeys" aria-label="Your journeys">
+                  {trips.length ? (
+                    trips.map((trip) => (
+                      <button
+                        key={trip.id}
+                        aria-pressed={tripFilter === trip.id}
+                        onClick={() => {
+                          setTripFilter(trip.id);
+                          setPlaceFilter("");
+                        }}
+                      >
+                        <MapPin size={20} />
+                        <span>
+                          {trip.title}
+                          <small>
+                            {trip.websitePlaces?.length || 0} places
+                          </small>
+                        </span>
+                        <ArrowLeft
+                          size={17}
+                          style={{ transform: "rotate(180deg)" }}
+                        />
+                      </button>
+                    ))
+                  ) : (
+                    <p>
+                      No journeys yet.{" "}
+                      <Link href="/secret/studio">
+                        Create your first trip in Studio ↗
+                      </Link>
+                    </p>
+                  )}
+                </nav>
+              )}
               <div className="pg-quick-filters">
                 <button
                   aria-pressed={kind === "all"}
@@ -954,13 +1010,32 @@ export default function PhotoGallery() {
                 >
                   <Heart size={15} /> Favorites
                 </button>
-                <button
-                  aria-pressed={filtersOpen}
-                  onClick={() => setFiltersOpen((v) => !v)}
-                >
-                  <MoreHorizontal size={18} /> More
-                </button>
               </div>
+              {view === "device" && albums.length > 0 && (
+                <nav className="pg-album-strip" aria-label="Device albums">
+                  <button aria-pressed={!album} onClick={() => setAlbum("")}>
+                    <Aperture size={18} />
+                    <span>
+                      Everything<small>All albums</small>
+                    </span>
+                  </button>
+                  {albums.map((a) => (
+                    <button
+                      key={a.name}
+                      aria-pressed={album === a.name}
+                      onClick={() => setAlbum(album === a.name ? "" : a.name)}
+                    >
+                      <ImageIcon size={18} />
+                      <span>
+                        {a.name}
+                        <small>
+                          {a.count ? `${a.count} items` : "Device album"}
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+                </nav>
+              )}
               <div className="pg-filters" hidden={!filtersOpen}>
                 <select
                   aria-label="Media type"
@@ -1209,7 +1284,7 @@ export default function PhotoGallery() {
                   return (
                     <article
                       key={asset.id}
-                      className={`pg-tile ${selected.includes(asset.id) ? "is-selected" : ""} ${selected.length ? "in-selection-mode" : ""}`}
+                      className={`pg-tile ${selected.includes(asset.id) ? "is-selected" : ""} ${selected.length || selectionMode ? "in-selection-mode" : ""}`}
                       style={{
                         position: "absolute",
                         left: position.x,
@@ -1263,7 +1338,10 @@ export default function PhotoGallery() {
                             hold.current.handled = false;
                             return;
                           }
-                          if (selected.length && asset.device) {
+                          if (
+                            (selected.length || selectionMode) &&
+                            asset.device
+                          ) {
                             toggle(asset.id, event.shiftKey);
                             return;
                           }
@@ -1447,7 +1525,13 @@ export default function PhotoGallery() {
           <button disabled={busy || !online} onClick={() => void checkCloud()}>
             {busy ? "Working…" : "Check cloud"}
           </button>
-          <button aria-label="Clear selection" onClick={() => setSelected([])}>
+          <button
+            aria-label="Clear selection"
+            onClick={() => {
+              setSelected([]);
+              setSelectionMode(false);
+            }}
+          >
             <X size={18} />
           </button>
         </aside>
