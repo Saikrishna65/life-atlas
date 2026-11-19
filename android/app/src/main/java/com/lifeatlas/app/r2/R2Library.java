@@ -284,35 +284,44 @@ final class R2Library {
     return creds;
   }
 
+  interface RecordSync {
+    void write(JSONObject record) throws Exception;
+  }
+
   static void purge(R2Repository repo, String id) throws Exception {
     try (R2LibraryStore store = new R2LibraryStore(repo)) {
-      JSONObject r = store.get(id);
-      if (!Set.of("trashed", "deleted").contains(r.getString("state"))
-          || !r.getString("slot").equals("private"))
-        throw new R2Exception("LIBRARY_DELETE_NOT_ALLOWED");
-      R2Client client = new R2Client(checkScope(repo, r));
-      r = revise(r, "deleted").put("cleanupPending", true);
-      store.put(r, true);
-      sync(repo, store, r); // Tombstone must be durable BEFORE deleting the media.
-      for (String field : List.of("key", "thumbnailKey", "clipKey")) {
-        String key = r.optString(field);
-        if (key.isEmpty()) continue;
-        try {
-          JSONObject head = client.head(key);
-          String expected =
-              r.optString(
-                  field.equals("key")
-                      ? "sha256"
-                      : field.equals("thumbnailKey") ? "thumbnailSha256" : "clipSha256");
-          if (!expected.equals(head.optString("sha256"))) throw new R2Exception("INTEGRITY_FAILED");
-          client.delete(key);
-        } catch (R2Exception e) {
-          if (!e.code.equals("OBJECT_NOT_FOUND")) throw e;
-        }
-      }
-      r = revise(r, "deleted").put("cleanupPending", false);
-      store.put(r, true);
-      sync(repo, store, r);
+      R2Client client = new R2Client(checkScope(repo, store.get(id)));
+      purge(store, id, client, record -> sync(repo, store, record));
     }
+  }
+
+  static void purge(R2LibraryStore store, String id, R2Transport client, RecordSync index)
+      throws Exception {
+    JSONObject r = store.get(id);
+    if (!Set.of("trashed", "deleted").contains(r.getString("state"))
+        || !r.getString("slot").equals("private"))
+      throw new R2Exception("LIBRARY_DELETE_NOT_ALLOWED");
+    r = revise(r, "deleted").put("cleanupPending", true);
+    store.put(r, true);
+    index.write(r); // Tombstone must be durable BEFORE deleting the media.
+    for (String field : List.of("key", "thumbnailKey", "clipKey")) {
+      String key = r.optString(field);
+      if (key.isEmpty()) continue;
+      try {
+        JSONObject head = client.head(key);
+        String expected =
+            r.optString(
+                field.equals("key")
+                    ? "sha256"
+                    : field.equals("thumbnailKey") ? "thumbnailSha256" : "clipSha256");
+        if (!expected.equals(head.optString("sha256"))) throw new R2Exception("INTEGRITY_FAILED");
+        client.delete(key);
+      } catch (R2Exception e) {
+        if (!e.code.equals("OBJECT_NOT_FOUND")) throw e;
+      }
+    }
+    r = revise(r, "deleted").put("cleanupPending", false);
+    store.put(r, true);
+    index.write(r);
   }
 }

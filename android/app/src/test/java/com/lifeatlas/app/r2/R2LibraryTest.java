@@ -275,4 +275,95 @@ public class R2LibraryTest {
         androidx.work.NetworkType.CONNECTED,
         R2AutoBackup.constraints(new JSONObject().put("wifiOnly", false)).getRequiredNetworkType());
   }
+
+  static class DeletionCloud extends Cloud {
+    final java.util.List<String> deleted = new java.util.ArrayList<>();
+    boolean wrongHash = false, durable = false, failPreview = false;
+
+    @Override
+    public JSONObject head(String key) throws Exception {
+      if (deleted.contains(key)) throw new R2Exception("OBJECT_NOT_FOUND");
+      return new JSONObject().put("sha256", wrongHash ? "0".repeat(64) : "c".repeat(64));
+    }
+
+    @Override
+    public void delete(String key) {
+      assertTrue("Tombstone must be durable before cloud deletion", durable);
+      if (failPreview && key.contains("thumbnail"))
+        throw new IllegalStateException("Synthetic outage");
+      deleted.add(key);
+    }
+  }
+
+  @Test
+  public void failedTombstonePublicationCannotDeleteOriginals() throws Exception {
+    try (R2LibraryStore store = new R2LibraryStore(R2TripQueueTest.repository())) {
+      JSONObject r = record().put("state", "trashed");
+      store.put(r, true);
+      DeletionCloud cloud = new DeletionCloud();
+      try {
+        R2Library.purge(
+            store,
+            r.getString("id"),
+            cloud,
+            value -> {
+              throw new R2Exception("NETWORK_UNAVAILABLE");
+            });
+        fail();
+      } catch (R2Exception expected) {
+      }
+      assertTrue(cloud.deleted.isEmpty());
+      assertTrue(store.get(r.getString("id")).getBoolean("cleanupPending"));
+    }
+  }
+
+  @Test
+  public void cleanupRejectsChangedRemoteBytesAndNeverDeletesActiveFiles() throws Exception {
+    try (R2LibraryStore store = new R2LibraryStore(R2TripQueueTest.repository())) {
+      JSONObject r = record();
+      store.put(r, true);
+      DeletionCloud cloud = new DeletionCloud();
+      try {
+        R2Library.purge(store, r.getString("id"), cloud, value -> {});
+        fail();
+      } catch (R2Exception e) {
+        assertEquals("LIBRARY_DELETE_NOT_ALLOWED", e.code);
+      }
+      store.put(R2Library.revise(r, "trashed"), true);
+      cloud.wrongHash = true;
+      try {
+        R2Library.purge(store, r.getString("id"), cloud, value -> cloud.durable = true);
+        fail();
+      } catch (R2Exception e) {
+        assertEquals("INTEGRITY_FAILED", e.code);
+      }
+      assertTrue(cloud.deleted.isEmpty());
+    }
+  }
+
+  @Test
+  public void interruptedPurgeRetriesOnlyRemainingManagedObjects() throws Exception {
+    try (R2LibraryStore store = new R2LibraryStore(R2TripQueueTest.repository())) {
+      JSONObject r =
+          record()
+              .put("state", "trashed")
+              .put("thumbnailKey", "encrypted/previews/thumbnail.atlas")
+              .put("thumbnailSha256", "c".repeat(64));
+      store.put(r, true);
+      DeletionCloud cloud = new DeletionCloud();
+      cloud.failPreview = true;
+      try {
+        R2Library.purge(store, r.getString("id"), cloud, value -> cloud.durable = true);
+        fail();
+      } catch (IllegalStateException expected) {
+      }
+      assertEquals(java.util.List.of(r.getString("key")), cloud.deleted);
+      assertTrue(store.get(r.getString("id")).getBoolean("cleanupPending"));
+      cloud.failPreview = false;
+      R2Library.purge(store, r.getString("id"), cloud, value -> cloud.durable = true);
+      assertEquals(2, cloud.deleted.size());
+      assertEquals("deleted", store.get(r.getString("id")).getString("state"));
+      assertFalse(store.get(r.getString("id")).getBoolean("cleanupPending"));
+    }
+  }
 }
