@@ -106,6 +106,10 @@ public final class R2AutoBackupWorker extends Worker {
           if (page.getBoolean("complete") || queued >= 80 || pages >= 10) break;
         } while (true);
       }
+      // Continue bounded metadata scans even when all first pages were already backed up.
+      if (!cursor.isEmpty() && queued < 80 && pages >= 10)
+        R2AutoBackup.continueScan(
+            getApplicationContext(), repo.store.snapshot().getJSONObject("autoBackup"));
       return Result.success();
     } catch (Exception e) {
       try {

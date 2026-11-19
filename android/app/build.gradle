@@ -22,7 +22,10 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    testOptions { unitTests.includeAndroidResources = true }
+    testOptions {
+        unitTests.includeAndroidResources = true
+        unitTests.all { testLogging { events "failed"; exceptionFormat "full" } }
+    }
     // CI loads the existing private key; never rely on a runner-generated debug key.
     if (System.getenv('ATLAS_SIGNING_STORE')) {
         signingConfigs.debug.storeFile = file(System.getenv('ATLAS_SIGNING_STORE'))

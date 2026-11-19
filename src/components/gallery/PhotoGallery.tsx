@@ -110,6 +110,7 @@ export default function PhotoGallery() {
     [dateFrom, setDateFrom] = useState(""),
     [dateTo, setDateTo] = useState(""),
     [columns, setColumns] = useState(3),
+    [maxColumns, setMaxColumns] = useState(6),
     [selected, setSelected] = useState<string[]>([]),
     [selectionMedia, setSelectionMedia] = useState<Record<string, DeviceMedia>>(
       {},
@@ -147,6 +148,16 @@ export default function PhotoGallery() {
     setError(
       e instanceof Error && !("code" in e) ? e.message : storageError(e),
     );
+  useEffect(() => {
+    const fit = () => {
+      const limit = window.innerWidth < 701 ? 3 : 6;
+      setMaxColumns(limit);
+      setColumns((value) => Math.min(value, limit));
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
   const reloadJobs = useCallback(async () => {
     if (!supported) return;
     try {
@@ -172,7 +183,8 @@ export default function PhotoGallery() {
       window.innerWidth < 701 ? 3 : 5,
     )
       .then((v) => {
-        if (alive) setColumns(Math.max(2, Math.min(6, v)));
+        if (alive)
+          setColumns(Math.max(2, Math.min(window.innerWidth < 701 ? 3 : 6, v)));
       })
       .catch(() => {});
     if (supported) {
@@ -511,7 +523,7 @@ export default function PhotoGallery() {
         setColumns((c) => {
           const next = Math.max(
             2,
-            Math.min(6, c + (distance > start ? -1 : 1)),
+            Math.min(maxColumns, c + (distance > start ? -1 : 1)),
           );
           void saveGalleryPreference("photos-density", next);
           return next;
@@ -525,7 +537,7 @@ export default function PhotoGallery() {
       node.removeEventListener("touchstart", begin);
       node.removeEventListener("touchmove", move);
     };
-  }, [access.status, supported, view]);
+  }, [access.status, supported, view, maxColumns]);
   const closeViewer = useCallback(() => {
     opening.current++;
     setViewer("");
@@ -1038,7 +1050,7 @@ export default function PhotoGallery() {
                     aria-label="Gallery density"
                     type="range"
                     min={2}
-                    max={6}
+                    max={maxColumns}
                     value={columns}
                     onChange={(e) => {
                       setColumns(+e.target.value);

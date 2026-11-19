@@ -10,6 +10,9 @@ import java.util.*;
 import org.json.*;
 
 public final class R2LibraryWorker extends Worker {
+  private static final java.util.concurrent.atomic.AtomicInteger NOTIFICATIONS =
+      new java.util.concurrent.atomic.AtomicInteger(18406);
+
   public R2LibraryWorker(Context c, WorkerParameters p) {
     super(c, p);
   }
@@ -43,8 +46,9 @@ public final class R2LibraryWorker extends Worker {
             .setOngoing(true)
             .build();
     return Build.VERSION.SDK_INT >= 29
-        ? new ForegroundInfo(18406, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        : new ForegroundInfo(18406, n);
+        ? new ForegroundInfo(
+            NOTIFICATIONS.incrementAndGet(), n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        : new ForegroundInfo(NOTIFICATIONS.incrementAndGet(), n);
   }
 
   void status(R2Repository repo, String action, String state, int count, String error)

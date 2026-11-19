@@ -112,6 +112,7 @@ final class R2AutoBackup {
             new PeriodicWorkRequest.Builder(
                     R2AutoBackupWorker.class, 1, java.util.concurrent.TimeUnit.HOURS)
                 .setConstraints(constraints(config))
+                .addTag("atlas-r2")
                 .build());
     scan(c, config);
   }
@@ -127,6 +128,18 @@ final class R2AutoBackup {
                 .setConstraints(constraints(config))
                 .setBackoffCriteria(
                     BackoffPolicy.EXPONENTIAL, 30, java.util.concurrent.TimeUnit.SECONDS)
+                .build());
+  }
+
+  static void continueScan(Context c, JSONObject config) {
+    if (!config.optBoolean("enabled")) return;
+    WorkManager.getInstance(c)
+        .enqueueUniqueWork(
+            NOW,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
+            new OneTimeWorkRequest.Builder(R2AutoBackupWorker.class)
+                .addTag("atlas-r2")
+                .setConstraints(constraints(config))
                 .build());
   }
 

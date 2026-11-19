@@ -90,6 +90,11 @@ public class R2TakeoutTest {
     context = RuntimeEnvironment.getApplication();
     repo = R2TripQueueTest.repository();
     provider = new Provider();
+    android.content.pm.ProviderInfo info = new android.content.pm.ProviderInfo();
+    info.authority = "media;takeout";
+    info.exported = true;
+    info.grantUriPermissions = true;
+    provider.attachInfo(context, info);
     ShadowContentResolver.registerProviderInternal("media", provider);
     ShadowContentResolver.registerProviderInternal("takeout", provider);
   }
