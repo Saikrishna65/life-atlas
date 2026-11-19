@@ -102,7 +102,7 @@ public class R2DeviceGalleryTest {
   @Config(sdk = 29)
   public void modernGalleryRequiresOriginalUnredactedMedia() {
     Uri original = R2DeviceGallery.originalUri("image:external_primary:42");
-    assertTrue(android.provider.MediaStore.getRequireOriginal(original));
+    assertEquals("1", original.getQueryParameter("requireOriginal"));
     assertEquals("media", original.getAuthority());
     assertEquals("content", original.getScheme());
   }
