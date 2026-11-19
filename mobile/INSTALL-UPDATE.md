@@ -1,9 +1,9 @@
-Atlas 1.7.0 — verified stable signing
+Atlas 1.8.0 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 26.
+3. Open the matching APK and choose Update. This build uses version code 27.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -132,3 +132,17 @@ Not checked is distinct from not uploaded. Cloud checks use exact file hashes
 and this installation's known upload history; they cannot find every object
 uploaded elsewhere. Cached cloud listings are bucket-scoped and labelled.
 Legacy trip publication status is refreshed when that trip is selected.
+
+
+Library tools (1.8.0): Gallery → settings icon → Backup / Cloud photos /
+Cloud trash / Takeout import. Private automatic backup is OFF by default.
+Connect your private bucket and verify/save its recovery kit before enabling it.
+Select albums, network and charging preferences, approve and save. Original
+bytes remain unchanged; optional short video clips are separate previews.
+
+Cloud trash keeps recoverable encrypted copies until you explicitly purge them.
+Phone trash is separate and uses Android confirmation. Restore the same recovery
+kit on a replacement phone, then Restore index from R2 to rebuild the cloud library.
+Takeout ZIP import is offline and requires explicit Start for each archive; it
+retains supported sidecar dates/locations/descriptions separately from originals.
+See docs/GALLERY-LIBRARY.md for setup, supported formats and recovery limitations.

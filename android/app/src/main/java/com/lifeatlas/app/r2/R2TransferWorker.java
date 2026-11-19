@@ -21,11 +21,25 @@ public final class R2TransferWorker extends Worker {
     super(context, params);
   }
 
-  private static OneTimeWorkRequest request(String id) {
+  private static OneTimeWorkRequest request(Context context, String id) {
+    JSONObject policy = new JSONObject();
+    try {
+      policy = new R2Repository(context).job(id);
+    } catch (Exception ignored) {
+    }
+    Constraints constraints =
+        policy.optBoolean("autoBackup")
+            ? new Constraints.Builder()
+                .setRequiredNetworkType(
+                    policy.optBoolean("backupWifiOnly", true)
+                        ? NetworkType.UNMETERED
+                        : NetworkType.CONNECTED)
+                .setRequiresCharging(policy.optBoolean("backupChargingOnly"))
+                .build()
+            : new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build();
     return new OneTimeWorkRequest.Builder(R2TransferWorker.class)
         .setInputData(new Data.Builder().putString("id", id).build())
-        .setConstraints(
-            new Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+        .setConstraints(constraints)
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, java.util.concurrent.TimeUnit.SECONDS)
         .addTag("atlas-r2")
         .addTag("atlas-r2-" + id)
@@ -34,7 +48,16 @@ public final class R2TransferWorker extends Worker {
 
   public static synchronized void enqueue(Context context, String id) {
     WorkManager.getInstance(context)
-        .enqueueUniqueWork("atlas-r2-queue", ExistingWorkPolicy.APPEND_OR_REPLACE, request(id));
+        .enqueueUniqueWork(
+            queueName(context, id), ExistingWorkPolicy.APPEND_OR_REPLACE, request(context, id));
+  }
+
+  private static String queueName(Context context, String id) {
+    try {
+      if (new R2Repository(context).job(id).optBoolean("autoBackup")) return "atlas-r2-auto-queue";
+    } catch (Exception ignored) {
+    }
+    return "atlas-r2-queue";
   }
 
   /** A single WorkManager transaction persists the complete serial batch before returning. */
@@ -43,8 +66,10 @@ public final class R2TransferWorker extends Worker {
     WorkContinuation chain =
         WorkManager.getInstance(context)
             .beginUniqueWork(
-                "atlas-r2-queue", ExistingWorkPolicy.APPEND_OR_REPLACE, request(ids.getString(0)));
-    for (int i = 1; i < ids.length(); i++) chain = chain.then(request(ids.getString(i)));
+                queueName(context, ids.getString(0)),
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
+                request(context, ids.getString(0)));
+    for (int i = 1; i < ids.length(); i++) chain = chain.then(request(context, ids.getString(i)));
     chain.enqueue().getResult().get();
   }
 
@@ -79,7 +104,15 @@ public final class R2TransferWorker extends Worker {
     long now = System.currentTimeMillis();
     if (now - lastControlCheck < 250) return;
     lastControlCheck = now;
-    String status = repository.job(id).optString("status");
+    JSONObject currentJob = repository.job(id);
+    if (currentJob.optBoolean("autoBackup")) {
+      JSONObject config = repository.store.snapshot().optJSONObject("autoBackup");
+      if (config == null || !config.optBoolean("enabled")) {
+        repository.update(id, j -> j.put("status", "paused"));
+        throw new R2Exception("TRANSFER_INTERRUPTED");
+      }
+    }
+    String status = currentJob.optString("status");
     if (Set.of("cancelled", "cancelling", "paused").contains(status))
       throw new R2Exception("TRANSFER_INTERRUPTED");
   }
@@ -107,6 +140,13 @@ public final class R2TransferWorker extends Worker {
       if (job.optString("direction").equals("download")) {
         download(repository, job);
         notifyFinished(id, true);
+        return Result.success();
+      }
+      if (job.optBoolean("mediaVerified")) {
+        R2Library.commit(getApplicationContext(), repository, job);
+        repository.update(id, j -> j.put("status", "complete").put("verified", true));
+        repository.staging(id).delete();
+        archiveBackup(repository, id);
         return Result.success();
       }
       File staged = repository.staging(id);
@@ -155,7 +195,11 @@ public final class R2TransferWorker extends Worker {
               repository.store.credentials(job.getString("slot")),
               client,
               () -> check(repository, id))) {
+        repository.update(id, j -> j.put("status", "verifying").put("mediaVerified", true));
+        R2Library.commit(getApplicationContext(), repository, repository.job(id));
+        repository.update(id, j -> j.put("status", "complete"));
         staged.delete();
+        archiveBackup(repository, id);
         notifyFinished(id, true);
         return Result.success();
       }
@@ -289,6 +333,14 @@ public final class R2TransferWorker extends Worker {
           job.getString("slot").equals("public") && !credentials.base.isEmpty()
               ? credentials.base + "/" + R2Policy.path(key)
               : "";
+      if (job.getString("slot").equals("private"))
+        try {
+          R2LibraryPreviews.thumbnail(getApplicationContext(), repository, repository.job(id));
+        } catch (Exception e) {
+          repository.update(id, j -> j.put("previewWarning", "PREVIEW_UNAVAILABLE"));
+        }
+      repository.update(id, j -> j.put("mediaVerified", true));
+      R2Library.commit(getApplicationContext(), repository, repository.job(id));
       repository.update(
           id,
           j -> {
@@ -305,6 +357,7 @@ public final class R2TransferWorker extends Worker {
           });
       staged.delete();
       notifyFinished(id, true);
+      archiveBackup(repository, id);
       return Result.success();
     } catch (Exception error) {
       String code = R2Policy.safeError(error);
@@ -381,6 +434,21 @@ public final class R2TransferWorker extends Worker {
     }
   }
 
+  private void archiveBackup(R2Repository repo, String id) throws Exception {
+    JSONObject job = repo.job(id);
+    if (!job.optBoolean("autoBackup")) return;
+    // Only automatic jobs with a durable cloud index may leave the bounded transfer journal.
+    repo.store.edit(
+        state -> {
+          state.getJSONObject("transfers").remove(id);
+          JSONObject selections = state.optJSONObject("selections");
+          if (selections != null) selections.remove(job.optString("gallerySelectionId"));
+        });
+    JSONObject config = repo.store.snapshot().optJSONObject("autoBackup");
+    if (config != null && config.optBoolean("enabled"))
+      R2AutoBackup.scan(getApplicationContext(), config);
+  }
+
   private void prepare(R2Repository repository, JSONObject job, File staged) throws Exception {
     String id = job.getString("id");
     repository.transition(id, "preparing");
@@ -390,6 +458,20 @@ public final class R2TransferWorker extends Worker {
                 R2DeviceGallery.stamp(
                     new R2DeviceGallery(getApplicationContext()).one(job.getString("galleryId")))))
       throw new R2Exception("SOURCE_CHANGED");
+    if (!job.optString("galleryId").isEmpty())
+      try {
+        JSONObject imported =
+            R2ImportedMetadata.find(
+                getApplicationContext(), repository, job.getString("galleryId"));
+        if (imported != null)
+          repository.update(
+              id,
+              j -> {
+                j.put("takeout", imported);
+                if (imported.has("capturedAt")) j.put("capturedAt", imported.getLong("capturedAt"));
+              });
+      } catch (Exception ignored) {
+      }
     Uri uri = Uri.parse(job.getString("source"));
     boolean encrypted = job.getString("slot").equals("private");
     if (staged.exists() && !staged.delete()) throw new R2Exception("LOCAL_STORAGE_UNAVAILABLE");

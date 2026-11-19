@@ -58,6 +58,8 @@ final class R2Duplicates {
         || job.has("uploadId")
         || job.optLong("uploadedBytes") > 0) return false;
     JSONArray jobs = repository.jobs();
+    JSONArray indexed = R2Library.duplicateCandidates(repository, job, credentials);
+    for (int i = 0; i < indexed.length(); i++) jobs.put(indexed.getJSONObject(i));
     List<JSONObject> candidates = new ArrayList<>();
     for (int i = 0; i < jobs.length(); i++)
       if (matches(job, jobs.getJSONObject(i), credentials)) candidates.add(jobs.getJSONObject(i));

@@ -96,6 +96,7 @@ export function recordLocationReads(
       kind: device.kind,
       size: device.size,
       gps: read.gps ?? old?.gps,
+      gpsSource:read.gpsSource??old?.gpsSource,
       capturedAt: read.capturedAt || old?.capturedAt || device.addedAt,
       timeSource: read.timeSource || old?.timeSource || "library-added",
       scanState: read.fingerprint && old ? old.scanState : read.state,

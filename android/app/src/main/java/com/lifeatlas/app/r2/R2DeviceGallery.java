@@ -94,6 +94,7 @@ final class R2DeviceGallery {
         .put("height", number(c, "height"))
         .put("duration", number(c, "duration"))
         .put("album", string(c, "bucket_display_name"))
+        .put("albumId", volume + ":" + number(c, "bucket_id"))
         .put("uri", uri(id).toString());
   }
 
@@ -111,6 +112,7 @@ final class R2DeviceGallery {
                 "height",
                 "duration",
                 "bucket_display_name",
+                "bucket_id",
                 "media_type"));
     if (Build.VERSION.SDK_INT >= 29) values.add("volume_name");
     if (Build.VERSION.SDK_INT >= 30) values.add("generation_modified");
@@ -387,8 +389,11 @@ final class R2DeviceGallery {
             }
           }
           copy.put("state", "not-found");
-          for (int n = 0; n < jobs.length(); n++) {
-            JSONObject job = jobs.getJSONObject(n);
+          JSONArray candidates = new JSONArray(jobs.toString());
+          JSONArray indexed = R2Library.duplicateCandidates(repository, probe, credentials);
+          for (int j = 0; j < indexed.length(); j++) candidates.put(indexed.getJSONObject(j));
+          for (int n = 0; n < candidates.length(); n++) {
+            JSONObject job = candidates.getJSONObject(n);
             if (!R2Duplicates.matches(probe, job, credentials)) continue;
             try {
               JSONObject head = new R2Client(credentials).head(job.getString("key"));

@@ -121,6 +121,19 @@ final class R2GalleryLocations {
           } catch (Exception error) {
             item.put("state", "unsupported");
           }
+        if (!fingerprints)
+          try {
+            JSONObject imported = R2ImportedMetadata.find(context, repo, id);
+            if (imported != null) {
+              if (imported.has("gps"))
+                item.put("gps", imported.getJSONObject("gps"))
+                    .put("gpsSource", "takeout")
+                    .put("state", "found");
+              if (imported.has("capturedAt"))
+                item.put("capturedAt", imported.getLong("capturedAt")).put("timeSource", "takeout");
+            }
+          } catch (Exception ignored) {
+          }
         if (!stamp.equals(R2DeviceGallery.stamp(gallery.one(id))))
           throw new R2Exception("SOURCE_CHANGED");
         result.put(item);

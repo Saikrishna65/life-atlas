@@ -143,6 +143,7 @@ public final class R2Policy {
               "MissingForegroundServiceTypeException",
               "InvalidForegroundServiceTypeException")
           .contains(type)) return "BACKGROUND_UPLOAD_RESTRICTED";
+      if (cause instanceof java.util.zip.ZipException) return "INVALID_IMPORT_ARCHIVE";
       if (cause instanceof SecurityException) return "STORAGE_PERMISSION_DENIED";
       if (cause instanceof java.io.FileNotFoundException) return "SOURCE_UNAVAILABLE";
     }

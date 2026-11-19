@@ -22,6 +22,7 @@ const routes = [
   { pattern: new RegExp("^/secret/music/queue/?$"), params: [], Page: lazyPage(() => import("../src/app/secret/music/queue/page")) },
   { pattern: new RegExp("^/secret/vault/new/?$"), params: [], Page: lazyPage(() => import("../src/app/secret/vault/new/page")) },
   { pattern: new RegExp("^/secret/finance/?$"), params: [], Page: lazyPage(() => import("../src/app/secret/finance/page")) },
+  { pattern: new RegExp("^/secret/gallery/library/?$"), params: [], Page: lazyPage(() => import("../src/app/secret/gallery/library/page")) },
   { pattern: new RegExp("^/secret/gallery/?$"), params: [], Page: lazyPage(() => import("../src/app/secret/gallery/page")) },
   { pattern: new RegExp("^/secret/studio/?$"), params: [], Page: lazyPage(() => import("../src/app/secret/studio/page")) },
   { pattern: new RegExp("^/secret/music/?$"), params: [], Page: lazyPage(() => import("../src/app/secret/music/page")) },

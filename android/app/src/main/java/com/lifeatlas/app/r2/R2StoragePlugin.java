@@ -1563,11 +1563,520 @@ public class R2StoragePlugin extends Plugin {
         });
   }
 
+  private volatile String librarySession = "";
+
+  private void libraryGuard(PluginCall call) throws Exception {
+    if (!galleryForeground
+        || librarySession.isEmpty()
+        || !librarySession.equals(call.getString("session")))
+      throw new R2Exception("LIBRARY_UNLOCK_REQUIRED");
+  }
+
+  @PluginMethod
+  public void beginLibrarySession(PluginCall call) {
+    authenticated(
+        call,
+        () -> {
+          if (!galleryForeground) throw new R2Exception("LIBRARY_UNLOCK_REQUIRED");
+          librarySession = UUID.randomUUID().toString();
+          call.resolve(new JSObject().put("session", librarySession));
+        });
+  }
+
+  @PluginMethod
+  public void endLibrarySession(PluginCall call) {
+    work(
+        call,
+        () -> {
+          librarySession = "";
+          R2LibraryPreviews.clear(getContext());
+          R2GalleryPreview.clear(getContext());
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void getLibraryStatus(PluginCall call) {
+    work(
+        call,
+        () -> {
+          R2Repository repo = repository();
+          JSONObject state = repo.store.snapshot();
+          JSONObject result =
+              new JSONObject()
+                  .put(
+                      "autoBackup",
+                      state.optJSONObject("autoBackup") == null
+                          ? new JSONObject().put("enabled", false)
+                          : state.getJSONObject("autoBackup"))
+                  .put(
+                      "task",
+                      state.optJSONObject("libraryTask") == null
+                          ? new JSONObject()
+                          : state.getJSONObject("libraryTask"));
+          JSONArray imports = new JSONArray();
+          JSONObject jobs = state.optJSONObject("takeoutJobs");
+          if (jobs != null) {
+            Iterator<String> ids = jobs.keys();
+            while (ids.hasNext()) {
+              JSONObject raw = jobs.getJSONObject(ids.next()), safe = new JSONObject();
+              for (String key :
+                  List.of("id", "name", "status", "error", "files", "bytes", "currentFile"))
+                if (raw.has(key)) safe.put(key, raw.get(key));
+              imports.put(safe);
+            }
+          }
+          result
+              .put("imports", imports)
+              .put("androidSdk", Build.VERSION.SDK_INT)
+              .put("trashDays", state.optInt("libraryTrashDays", 30));
+          if (new java.io.File(repo.store.directory(), "library.db").exists())
+            try (R2LibraryStore library = new R2LibraryStore(repo)) {
+              result.put("importSummary", library.importSummary());
+            }
+          JSONArray transfers = repo.jobs();
+          int active = 0, failed = 0;
+          for (int i = 0; i < transfers.length(); i++) {
+            JSONObject j = transfers.getJSONObject(i);
+            if (!j.optBoolean("autoBackup")) continue;
+            if (Set.of("failed", "interrupted").contains(j.optString("status"))) failed++;
+            else if (!Set.of("cancelled", "complete", "paused").contains(j.optString("status")))
+              active++;
+          }
+          result.put(
+              "backupTransfers", new JSONObject().put("active", active).put("failed", failed));
+          call.resolve(js(result));
+        });
+  }
+
+  @PluginMethod
+  public void getBackupAlbums(PluginCall call) {
+    work(
+        call,
+        () -> {
+          Map<String, JSONObject> albums = new TreeMap<>();
+          String cursor = "";
+          do {
+            JSONObject page =
+                new R2DeviceGallery(getContext()).list(cursor, "", "all", "", "newest");
+            JSONArray rows = page.getJSONArray("items");
+            for (int i = 0; i < rows.length(); i++) {
+              JSONObject media = rows.getJSONObject(i);
+              String id = media.optString("albumId");
+              if (id.isEmpty()) continue;
+              JSONObject album = albums.get(id);
+              if (album == null) {
+                album =
+                    new JSONObject()
+                        .put("id", id)
+                        .put("name", media.optString("album", "Unnamed album"))
+                        .put("count", 0);
+                albums.put(id, album);
+              }
+              album.put("count", album.getInt("count") + 1);
+            }
+            if (page.getBoolean("complete")) break;
+            cursor = page.getString("cursor");
+          } while (true);
+          call.resolve(new JSObject().put("albums", new JSONArray(albums.values())));
+        });
+  }
+
+  @PluginMethod
+  public void configureAutoBackup(PluginCall call) {
+    try {
+      guard();
+    } catch (Exception e) {
+      fail(call, e);
+      return;
+    }
+    JSObject settings = call.getObject("settings");
+    if (settings != null
+        && settings.optBoolean("enabled")
+        && Build.VERSION.SDK_INT >= 29
+        && getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      requestPermissionForAlias("galleryOriginal", call, "backupOriginalPermission");
+      return;
+    }
+    authenticated(
+        call,
+        () ->
+            call.resolve(
+                js(
+                    R2AutoBackup.configure(
+                        getContext(), repository(), call.getObject("settings")))));
+  }
+
+  @PermissionCallback
+  private void backupOriginalPermission(PluginCall call) {
+    if (getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      call.reject("ORIGINAL_MEDIA_ACCESS_REQUIRED", "ORIGINAL_MEDIA_ACCESS_REQUIRED");
+      return;
+    }
+    configureAutoBackup(call);
+  }
+
+  @PluginMethod
+  public void scanBackupNow(PluginCall call) {
+    work(
+        call,
+        () -> {
+          R2Repository repo = repository();
+          JSONObject config = repo.store.snapshot().optJSONObject("autoBackup");
+          R2AutoBackup.valid(getContext(), repo, config);
+          R2AutoBackup.scan(getContext(), config);
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void listLibrary(PluginCall call) {
+    work(
+        call,
+        () -> {
+          libraryGuard(call);
+          R2Repository repo = repository();
+          String slot = R2Policy.slot(call.getString("slot", "private")),
+              state = call.getString("state", "active");
+          if (!Set.of("active", "trashed", "deleted", "conflict").contains(state))
+            throw new R2Exception("INVALID_SELECTION");
+          int offset = Math.max(0, call.getInt("offset", 0));
+          try (R2LibraryStore index = new R2LibraryStore(repo)) {
+            String scope = R2Duplicates.scope(repo.store.credentials(slot));
+            JSONArray rows = index.page(scope, state, offset, 51), safe = new JSONArray();
+            for (int i = 0; i < Math.min(50, rows.length()); i++)
+              safe.put(R2Library.safe(rows.getJSONObject(i)));
+            call.resolve(
+                new JSObject()
+                    .put("items", safe)
+                    .put("offset", offset + safe.length())
+                    .put("complete", rows.length() <= 50)
+                    .put("counts", index.counts(scope)));
+          }
+        });
+  }
+
+  @PluginMethod
+  public void libraryThumbnail(PluginCall call) {
+    work(
+        call,
+        () -> {
+          libraryGuard(call);
+          R2Repository repo = repository();
+          try (R2LibraryStore store = new R2LibraryStore(repo)) {
+            JSONObject record = store.get(call.getString("id"));
+            R2Library.checkScope(repo, record);
+            if (!Set.of("active", "trashed").contains(record.optString("state")))
+              throw new R2Exception("LIBRARY_ITEM_IN_TRASH");
+            java.io.File cached =
+                new java.io.File(
+                    R2LibraryPreviews.cache(getContext()), record.getString("id") + ".jpg");
+            JSONObject result =
+                cached.exists()
+                    ? new JSONObject().put("path", cached.getAbsolutePath())
+                    : R2LibraryPreviews.open(getContext(), repo, record, "thumbnail");
+            try {
+              libraryGuard(call);
+            } catch (Exception error) {
+              R2LibraryPreviews.clear(getContext());
+              throw error;
+            }
+            call.resolve(js(result));
+          }
+        });
+  }
+
+  @PluginMethod
+  public void libraryPreview(PluginCall call) {
+    work(
+        call,
+        () -> {
+          libraryGuard(call);
+          R2Repository repo = repository();
+          try (R2LibraryStore store = new R2LibraryStore(repo)) {
+            JSONObject r = store.get(call.getString("id"));
+            String variant = call.getString("variant", "original");
+            if (!Set.of("original", "clip").contains(variant))
+              throw new R2Exception("INVALID_SELECTION");
+            JSONObject preview = R2LibraryPreviews.open(getContext(), repo, r, variant);
+            try {
+              libraryGuard(call);
+            } catch (Exception error) {
+              if (preview.has("token"))
+                R2GalleryPreview.release(getContext(), preview.getString("token"));
+              throw error;
+            }
+            call.resolve(js(preview));
+          }
+        });
+  }
+
+  @PluginMethod
+  public void downloadLibraryOriginal(PluginCall call) {
+    work(
+        call,
+        () -> {
+          libraryGuard(call);
+          R2Repository repo = repository();
+          try (R2LibraryStore store = new R2LibraryStore(repo)) {
+            JSONObject r = store.get(call.getString("id"));
+            R2Library.checkScope(repo, r);
+            call.getData()
+                .put("slot", r.getString("slot"))
+                .put("key", r.getString("key"))
+                .put("name", r.getString("name"));
+            downloadObject(call);
+          }
+        });
+  }
+
+  @PluginMethod
+  public void getDeviceTrash(PluginCall call) {
+    work(
+        call,
+        () -> {
+          if (Build.VERSION.SDK_INT < 30) throw new R2Exception("ANDROID_11_REQUIRED");
+          String cursor = call.getString("cursor", "0:external");
+          String[] parts = cursor.split(":", 2);
+          if (parts.length != 2
+              || !parts[0].matches("[0-9]+")
+              || !parts[1].matches("[a-zA-Z0-9_-]+")) throw new R2Exception("INVALID_SELECTION");
+          android.os.Bundle args = new android.os.Bundle();
+          args.putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY);
+          args.putString(
+              ContentResolver.QUERY_ARG_SQL_SELECTION,
+              "media_type IN(1,3) AND (_id>? OR (_id=? AND volume_name>?))");
+          args.putStringArray(
+              ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
+              new String[] {parts[0], parts[0], parts[1]});
+          args.putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, "_id ASC,volume_name ASC");
+          args.putInt(ContentResolver.QUERY_ARG_LIMIT, 81);
+          JSONArray rows = new JSONArray();
+          boolean more = false;
+          String next = cursor;
+          try (Cursor c =
+              getContext()
+                  .getContentResolver()
+                  .query(
+                      MediaStore.Files.getContentUri("external"),
+                      new String[] {
+                        "_id", "_display_name", "mime_type", "_size", "volume_name", "date_expires"
+                      },
+                      args,
+                      null)) {
+            while (c != null && c.moveToNext()) {
+              if (rows.length() == 80) {
+                more = true;
+                break;
+              }
+              String mime = c.getString(2), volume = c.getString(4);
+              rows.put(
+                  new JSONObject()
+                      .put(
+                          "id",
+                          (mime.startsWith("video/") ? "video:" : "image:")
+                              + volume
+                              + ":"
+                              + c.getLong(0))
+                      .put("name", c.getString(1))
+                      .put("mimeType", mime)
+                      .put("size", c.getLong(3))
+                      .put("expiresAt", c.getLong(5) * 1000));
+              next = c.getLong(0) + ":" + volume;
+            }
+          }
+          call.resolve(
+              new JSObject().put("items", rows).put("cursor", next).put("complete", !more));
+        });
+  }
+
+  @PluginMethod
+  public void saveLibraryPreferences(PluginCall call) {
+    work(
+        call,
+        () -> {
+          int days = call.getInt("trashDays", 30);
+          if (!Set.of(7, 30, 60, 90).contains(days)) throw new R2Exception("INVALID_SELECTION");
+          repository().store.edit(state -> state.put("libraryTrashDays", days));
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void changeLibraryTrash(PluginCall call) {
+    authenticated(
+        call,
+        () -> {
+          R2Repository repo = repository();
+          String action = call.getString("action");
+          JSONArray ids = call.getArray("ids");
+          if (ids == null || ids.length() == 0 || ids.length() > 100)
+            throw new R2Exception("INVALID_SELECTION");
+          for (int i = 0; i < ids.length(); i++) {
+            if (action.equals("trash"))
+              R2Library.trash(repo, ids.getString(i), call.getInt("days", 30));
+            else if (action.equals("restore")) R2Library.restoreTrash(repo, ids.getString(i));
+            else if (action.equals("purge")) R2Library.purge(repo, ids.getString(i));
+            else throw new R2Exception("INVALID_SELECTION");
+          }
+          librarySession = java.util.UUID.randomUUID().toString();
+          call.resolve(new JSObject().put("session", librarySession));
+        });
+  }
+
+  @PluginMethod
+  public void startLibraryTask(PluginCall call) {
+    authenticated(
+        call,
+        () -> {
+          String action = call.getString("action");
+          if (!Set.of("restore", "sync", "reconcile").contains(action))
+            throw new R2Exception("INVALID_SELECTION");
+          repository().keyset();
+          R2LibraryWorker.enqueue(getContext(), action);
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void trashDeviceMedia(PluginCall call) {
+    work(
+        call,
+        () -> {
+          if (Build.VERSION.SDK_INT < 30) throw new R2Exception("ANDROID_11_REQUIRED");
+          JSONArray ids = call.getArray("ids");
+          if (ids == null || ids.length() == 0 || ids.length() > 100)
+            throw new R2Exception("INVALID_SELECTION");
+          List<Uri> uris = new ArrayList<>();
+          for (int i = 0; i < ids.length(); i++) uris.add(R2DeviceGallery.uri(ids.getString(i)));
+          PendingIntent intent =
+              MediaStore.createTrashRequest(
+                  getContext().getContentResolver(), uris, call.getBoolean("trashed", true));
+          Intent launch =
+              new androidx.activity.result.contract.ActivityResultContracts
+                      .StartIntentSenderForResult()
+                  .createIntent(
+                      getContext(),
+                      new androidx.activity.result.IntentSenderRequest.Builder(intent).build());
+          startActivityForResult(call, launch, "phoneTrashResult");
+        });
+  }
+
+  @ActivityCallback
+  private void phoneTrashResult(PluginCall call, ActivityResult result) {
+    if (call != null)
+      call.resolve(new JSObject().put("approved", result.getResultCode() == Activity.RESULT_OK));
+  }
+
+  @PluginMethod
+  public void pickTakeoutArchives(PluginCall call) {
+    work(
+        call,
+        () -> {
+          Intent intent =
+              new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                  .setType("application/zip")
+                  .addCategory(Intent.CATEGORY_OPENABLE)
+                  .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                  .addFlags(
+                      Intent.FLAG_GRANT_READ_URI_PERMISSION
+                          | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+          startActivityForResult(call, intent, "takeoutPicked");
+        });
+  }
+
+  @ActivityCallback
+  private void takeoutPicked(PluginCall call, ActivityResult result) {
+    if (call == null) return;
+    if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
+      call.resolve(new JSObject().put("files", new JSONArray()));
+      return;
+    }
+    work(
+        call,
+        () -> {
+          Intent data = result.getData();
+          List<Uri> uris = new ArrayList<>();
+          if (data.getClipData() != null)
+            for (int i = 0; i < data.getClipData().getItemCount(); i++)
+              uris.add(data.getClipData().getItemAt(i).getUri());
+          else if (data.getData() != null) uris.add(data.getData());
+          if (uris.size() > 10) throw new R2Exception("INVALID_SELECTION");
+          JSONArray out = new JSONArray();
+          for (Uri uri : uris) {
+            getContext()
+                .getContentResolver()
+                .takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            String id = UUID.randomUUID().toString(), name = "Takeout archive";
+            try (Cursor c =
+                getContext()
+                    .getContentResolver()
+                    .query(uri, new String[] {OpenableColumns.DISPLAY_NAME}, null, null, null)) {
+              if (c != null && c.moveToFirst()) name = c.getString(0);
+            }
+            JSONObject job =
+                new JSONObject()
+                    .put("id", id)
+                    .put("uri", uri.toString())
+                    .put("name", name)
+                    .put("status", "selected")
+                    .put("files", 0);
+            repository()
+                .store
+                .edit(
+                    state -> {
+                      JSONObject jobs = state.optJSONObject("takeoutJobs");
+                      if (jobs == null) {
+                        jobs = new JSONObject();
+                        state.put("takeoutJobs", jobs);
+                      }
+                      jobs.put(id, job);
+                    });
+            out.put(new JSONObject().put("id", id).put("name", name));
+          }
+          call.resolve(new JSObject().put("files", out));
+        });
+  }
+
+  @PluginMethod
+  public void controlTakeoutImport(PluginCall call) {
+    work(
+        call,
+        () -> {
+          String id = call.getString("id"), action = call.getString("action");
+          JSONObject job =
+              repository().store.snapshot().getJSONObject("takeoutJobs").getJSONObject(id);
+          if (action.equals("pause")) {
+            repository()
+                .store
+                .edit(
+                    state ->
+                        state
+                            .getJSONObject("takeoutJobs")
+                            .getJSONObject(id)
+                            .put("status", "paused"));
+          } else if (action.equals("start")) {
+            repository()
+                .store
+                .edit(
+                    state ->
+                        state
+                            .getJSONObject("takeoutJobs")
+                            .getJSONObject(id)
+                            .put("status", "queued"));
+            R2TakeoutWorker.enqueue(getContext(), id);
+          } else throw new R2Exception("INVALID_SELECTION");
+          call.resolve();
+        });
+  }
+
   private volatile boolean galleryForeground = true;
 
   @Override
   protected void handleOnPause() {
     galleryForeground = false;
+    librarySession = "";
+    R2LibraryPreviews.clear(getContext());
     R2GalleryPreview.clear(getContext());
     super.handleOnPause();
   }
@@ -1583,6 +2092,8 @@ public class R2StoragePlugin extends Plugin {
     if (recoveryPassword != null) Arrays.fill(recoveryPassword, '\0');
     if (pendingKit != null) Arrays.fill(pendingKit, (byte) 0);
     R2GalleryPreview.clear(getContext());
+    librarySession = "";
+    R2LibraryPreviews.clear(getContext());
     selections.clear();
     publicationSession.clear();
     super.handleOnDestroy();

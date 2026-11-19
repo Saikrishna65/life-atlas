@@ -13,6 +13,23 @@ import type {
   Transfer,
 } from "./types";
 interface R2Plugin {
+  getDeviceTrash(input:{cursor:string}):Promise<{items:{id:string;name:string;mimeType:string;size:number;expiresAt:number}[];cursor:string;complete:boolean}>;
+  saveLibraryPreferences(input:{trashDays:number}):Promise<void>;
+  beginLibrarySession():Promise<{session:string}>;
+  endLibrarySession():Promise<void>;
+  getLibraryStatus():Promise<import('../gallery/library').LibraryStatus>;
+  getBackupAlbums():Promise<{albums:{id:string;name:string;count:number}[]}>;
+  configureAutoBackup(input:{settings:import('../gallery/library').BackupSettings}):Promise<import('../gallery/library').BackupSettings>;
+  scanBackupNow():Promise<void>;
+  listLibrary(input:{session:string;slot:'public'|'private';state:string;offset:number}):Promise<import('../gallery/library').LibraryPage>;
+  libraryThumbnail(input:{session:string;id:string}):Promise<{path?:string;url?:string}>;
+  libraryPreview(input:{session:string;id:string;variant:'original'|'clip'}):Promise<{path?:string;url?:string;token?:string;mimeType?:string}>;
+  downloadLibraryOriginal(input:{session:string;id:string}):Promise<unknown>;
+  changeLibraryTrash(input:{action:'trash'|'restore'|'purge';ids:string[];days?:number}):Promise<{session:string}>;
+  startLibraryTask(input:{action:'restore'|'sync'|'reconcile'}):Promise<void>;
+  trashDeviceMedia(input:{ids:string[];trashed:boolean}):Promise<{approved:boolean}>;
+  pickTakeoutArchives():Promise<{files:{id:string;name:string}[]}>;
+  controlTakeoutImport(input:{id:string;action:'start'|'pause'}):Promise<void>;
   readDeviceLocations(input:{ids:string[];versions:Record<string,string>}):Promise<{items:import('../gallery/places').LocationRead[]}>;
   fingerprintGalleryMedia(input:{ids:string[];versions:Record<string,string>}):Promise<{items:import('../gallery/places').LocationRead[]}>;
   backupPlaceCatalog(input:{catalog:import('../gallery/places').PlaceLibrary}):Promise<{key:string;size:number}>;

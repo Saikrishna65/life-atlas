@@ -138,6 +138,53 @@ public final class R2SecureStore {
     return new R2Credentials(record);
   }
 
+  byte[] seal(String aad, byte[] plain) throws Exception {
+    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+    cipher.init(Cipher.ENCRYPT_MODE, key());
+    cipher.updateAAD(aad.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    byte[] encrypted = cipher.doFinal(plain),
+        iv = cipher.getIV(),
+        out = new byte[iv.length + encrypted.length];
+    System.arraycopy(iv, 0, out, 0, iv.length);
+    System.arraycopy(encrypted, 0, out, iv.length, encrypted.length);
+    return out;
+  }
+
+  byte[] unseal(String aad, byte[] value) throws Exception {
+    if (value.length < 28) throw new R2Exception("KEYSTORE_UNAVAILABLE");
+    try {
+      Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+      cipher.init(
+          Cipher.DECRYPT_MODE,
+          key(),
+          new GCMParameterSpec(128, java.util.Arrays.copyOfRange(value, 0, 12)));
+      cipher.updateAAD(aad.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      return cipher.doFinal(value, 12, value.length - 12);
+    } catch (Exception e) {
+      throw new R2Exception("KEYSTORE_UNAVAILABLE");
+    }
+  }
+
+  String localToken(String value) throws Exception {
+    final String[] secret = {null};
+    edit(
+        state -> {
+          secret[0] = state.optString("libraryLocalSecret");
+          if (secret[0].isEmpty()) {
+            byte[] key = new byte[32];
+            new java.security.SecureRandom().nextBytes(key);
+            secret[0] = java.util.Base64.getEncoder().encodeToString(key);
+            state.put("libraryLocalSecret", secret[0]);
+          }
+        });
+    byte[] raw = java.util.Base64.getDecoder().decode(secret[0]);
+    try {
+      return R2LibraryStore.token(raw, value);
+    } finally {
+      java.util.Arrays.fill(raw, (byte) 0);
+    }
+  }
+
   public boolean hardwareBacked() {
     try {
       return ((KeyInfo)

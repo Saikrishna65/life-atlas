@@ -4,6 +4,7 @@ export interface GeoPoint {
   longitude: number;
 }
 export interface LocationRead {
+  gpsSource?:"camera"|"takeout";
   id: string;
   sourceStamp: string;
   state: "found" | "missing" | "unsupported" | "unavailable";
@@ -13,6 +14,7 @@ export interface LocationRead {
   fingerprint?: string;
 }
 export interface PlaceMedia {
+  gpsSource?:"camera"|"takeout";
   sourceDeviceId?: string;
   cloud?: { slot: "public" | "private"; key: string; scope: string }[];
   id: string;

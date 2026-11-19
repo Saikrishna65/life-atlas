@@ -19,6 +19,8 @@ import {
   X,
   MapPin,
   MoreHorizontal,
+  Settings,
+  Trash2,
 } from "lucide-react";
 import {
   R2,
@@ -713,6 +715,13 @@ export default function PhotoGallery() {
           />
         </label>
         <div className="pg-header-actions">
+          <Link
+            href="/secret/gallery/library"
+            aria-label="Library backup and recovery"
+            className="pg-library-link"
+          >
+            <Settings size={20} />
+          </Link>
           <button
             aria-label="Open transfer queue"
             onClick={() => setDrawer(true)}
@@ -1391,6 +1400,35 @@ export default function PhotoGallery() {
               Details
             </button>
           )}
+          <button
+            disabled={busy}
+            onClick={() =>
+              void run(async () => {
+                if (
+                  !confirm(
+                    `Move ${chosen.length} phone files to Android trash? Cloud copies and albums are not deleted. Make sure important files are backed up first.`,
+                  )
+                )
+                  return;
+                const result = await systemAction(() =>
+                  R2.trashDeviceMedia({
+                    ids: chosen.map((m) => m.id),
+                    trashed: true,
+                  }),
+                );
+                if (result.approved) {
+                  setSelected([]);
+                  setRevision((n) => n + 1);
+                  setNotice(
+                    "Phone files moved to Android trash. Restore them from Library → Phone trash.",
+                  );
+                }
+              })
+            }
+            aria-label="Move phone files to trash"
+          >
+            <Trash2 size={16} />
+          </button>
           <button disabled={busy} onClick={() => setAssigning(true)}>
             <CloudUpload size={17} /> Add to trip / upload
           </button>

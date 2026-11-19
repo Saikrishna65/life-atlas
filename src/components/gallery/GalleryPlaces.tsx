@@ -1112,7 +1112,7 @@ export default function GalleryPlaces({
                   <span>{m.name}</span>
                   <small>
                     {m.gps
-                      ? "Camera GPS"
+                      ? m.gpsSource==='takeout'?'Imported location':"Camera GPS"
                       : assigned.has(m.id)
                         ? "Manually assigned · no GPS"
                         : "No readable GPS"}{" "}
