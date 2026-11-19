@@ -244,3 +244,73 @@ test("reconnection maps duplicate originals one-to-one, preserving distinct plac
   assert.notEqual(lib.places[0].members[0], lib.places[1].members[0]);
   assert.equal(lib.media.filter((m) => !m.device).length, 1);
 });
+
+test("a changed original becomes an unassigned new version; old place metadata is not silently rebound", () => {
+  const device = {
+    id: "image:external:1",
+    name: "photo.jpg",
+    kind: "photo" as const,
+    mimeType: "image/jpeg",
+    size: 100,
+    modifiedAt: 123,
+    addedAt: 123,
+    uri: "content://media/1",
+    width: 100,
+    height: 100,
+    duration: 0,
+    album: "Camera",
+  };
+  let lib = emptyPlaces();
+  lib = recordLocationReads(
+    lib,
+    [device],
+    [
+      {
+        id: device.id,
+        sourceStamp: "100:123",
+        state: "found",
+        gps: { latitude: 30, longitude: 79 },
+      },
+    ],
+  );
+  const first = lib.media[0].id;
+  lib.places = [place("temple", [first])];
+  lib = recordLocationReads(
+    lib,
+    [{ ...device, modifiedAt: 456 }],
+    [
+      {
+        id: device.id,
+        sourceStamp: "100:456",
+        state: "found",
+        gps: { latitude: 31, longitude: 80 },
+      },
+    ],
+  );
+  assert.equal(lib.media.length, 2);
+  assert.equal(lib.media.find((m) => m.id === first)?.device, undefined);
+  assert.equal(lib.places[0].members[0], first);
+  assert.equal(lib.media.find((m) => m.device)?.gps?.latitude, 31);
+});
+test("cloud object references round-trip separately from originals and reject unsafe paths", () => {
+  const lib = emptyPlaces();
+  const m = media("one");
+  m.cloud = [
+    {
+      slot: "private",
+      scope: "a".repeat(64),
+      key: "encrypted/photos/original.atlas",
+    },
+  ];
+  lib.media = [m];
+  lib.places = [place("temple", ["one"])];
+  assert.deepEqual(
+    validatePlaceCatalog(exportPlaceCatalog(lib)).media[0].cloud,
+    m.cloud,
+  );
+  m.cloud[0].key = "../unrelated";
+  assert.throws(
+    () => validatePlaceCatalog(exportPlaceCatalog(lib)),
+    /cloud references/,
+  );
+});

@@ -1,5 +1,5 @@
 import { R2, systemAction } from "../r2/native";
-import { mediaStamp } from "./model";
+import { mediaStamp, currentBucketTransfers } from "./model";
 import {
   readPlaces,
   changePlaces,
@@ -109,6 +109,47 @@ export async function backupPlaces(
     throw Error(
       "Create or restore and verify your private recovery kit in Cloud Storage first.",
     );
+  const transfers = currentBucketTransfers(
+    (await R2.getTransferProgress()).transfers,
+    configuration,
+  );
+  await changePlaces(
+    (lib) => ({
+      ...lib,
+      media: lib.media.map((m) => {
+        const cloud = transfers
+          .filter(
+            (j) =>
+              j.direction === "upload" &&
+              j.status === "complete" &&
+              j.verified &&
+              j.galleryId === (m.device?.id || m.sourceDeviceId) &&
+              j.sourceStamp === m.sourceStamp &&
+              j.key,
+          )
+          .map((j) => ({
+            slot: j.slot,
+            key: j.key,
+            scope: configuration[j.slot].storageScope || j.storageScope || "",
+          }))
+          .filter((c) => /^[a-f0-9]{64}$/.test(c.scope));
+        return cloud.length
+          ? {
+              ...m,
+              cloud: [
+                ...new Map(
+                  [...(m.cloud || []), ...cloud].map((c) => [
+                    c.slot + ":" + c.scope + ":" + c.key,
+                    c,
+                  ]),
+                ).values(),
+              ].slice(-20),
+            }
+          : m;
+      }),
+    }),
+    false,
+  );
   const library = await readPlaces(),
     ids = new Set(library.places.flatMap((p) => p.members)),
     members = library.media.filter((m) => ids.has(m.id) && m.device);
@@ -117,16 +158,28 @@ export async function backupPlaces(
     if (cancelled())
       throw Error("Backup cancelled. Local place records are saved.");
     const batch = members.slice(i, i + 1).map((m) => m.device!);
-    const { items } = await systemAction(() =>
-      R2.fingerprintGalleryMedia({
-        ids: batch.map((m) => m.id),
-        versions: Object.fromEntries(batch.map((m) => [m.id, mediaStamp(m)])),
-      }),
-    );
-    await changePlaces(
-      (old) => reconnectFingerprints(old, batch, items),
-      false,
-    );
+    try {
+      const { items } = await systemAction(() =>
+        R2.fingerprintGalleryMedia({
+          ids: batch.map((m) => m.id),
+          versions: Object.fromEntries(batch.map((m) => [m.id, mediaStamp(m)])),
+        }),
+      );
+      await changePlaces(
+        (old) => reconnectFingerprints(old, batch, items),
+        false,
+      );
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (
+        ![
+          "SOURCE_UNAVAILABLE",
+          "SOURCE_CHANGED",
+          "STORAGE_PERMISSION_DENIED",
+        ].includes(code || "")
+      )
+        throw error;
+    }
     count += batch.length;
     progress(count, "Preparing recoverable file identities");
   }
@@ -134,12 +187,11 @@ export async function backupPlaces(
     throw Error("Backup cancelled. Local place records are saved.");
   const current = await readPlaces(),
     catalog = exportPlaceCatalog(current);
-  if (catalog.media.some((m) => !m.fingerprint))
-    throw Error(
-      "Some saved photos are unavailable and have no recovery fingerprint. Reconnect them before backing up; existing backups are unchanged.",
-    );
   const result = await systemAction(() => R2.backupPlaceCatalog({ catalog }));
-  return result;
+  return {
+    ...result,
+    unmatched: catalog.media.filter((m) => !m.fingerprint).length,
+  };
 }
 export async function restorePlaces(key: string) {
   const result = await systemAction(() => R2.restorePlaceCatalog({ key })),

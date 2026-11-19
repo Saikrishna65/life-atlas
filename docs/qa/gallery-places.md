@@ -1,4 +1,4 @@
-# Places organizer — Atlas Next 1.6.0 (24)
+# Places organizer — Atlas Next 1.6.1 (25)
 
 Open **Private Atlas → Photo & video gallery → Places organizer**. Grant full
 photo/video access for all accessible local MediaStore items, or keep Android's
@@ -71,6 +71,13 @@ Reconnection reads accessible originals and matches keyed fingerprints, includin
 renamed files without GPS. Existing local place names and assignments win merge
 conflicts. Unavailable originals remain visible as detached records. Private trip
 vault contents are restored separately; trip references are not vault backups.
+
+Snapshots also retain known uploaded-object references scoped to their actual
+buckets. Detached records can open a matching public copy or an authenticated,
+integrity-checked private preview; previews are temporary and cleared on close
+or background. Cloud references are recorded history, not a claim that a remote
+object can never be removed. Missing originals without fingerprints still keep
+their place records, and can be manually reassigned after recovery.
 
 Snapshots are explicitly requested, not automatic synchronization. Cancellation
 stops between native batches/files; completed scan results persist. Android can

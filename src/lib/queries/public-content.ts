@@ -13,5 +13,11 @@ export async function getPublicPlaces(source=prisma):Promise<PublicPlace[]> {
 }
 
 export async function getGlobeTripPlaces(source=prisma):Promise<PublicPlace[]>{
- try{const {globeTripPins}=await import('../public-trips/globe-pins');const trips=await source.trip.findMany({orderBy:{startDate:'desc'},select:{id:true,slug:true,title:true,destination:true,coverImage:true,routeData:true,tripPlaces:{select:{place:{select:{id:true,slug:true,name:true,latitude:true,longitude:true,country:true,region:true,description:true,coverImage:true}}}}}});return globeTripPins(trips);}catch{return [];}
+ try{
+  const {globeTripPins}=await import('../public-trips/globe-pins');
+  // The explicit main pin is a scoped Place row. Avoid loading entire GPS tracks
+  // or all visited places just to render the landing-page globe.
+  const trips=await source.trip.findMany({orderBy:{startDate:'desc'},select:{id:true,slug:true,title:true,destination:true,coverImage:true,tripPlaces:{where:{place:{slug:{endsWith:'-trip-location'}}},select:{place:{select:{id:true,slug:true,name:true,latitude:true,longitude:true,country:true,region:true,description:true,coverImage:true}}}}}});
+  return globeTripPins(trips.map(trip=>({...trip,routeData:null})));
+ }catch{return [];}
 }

@@ -55,7 +55,7 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
    }
    await checkPaused();
    for(const group of latest.websitePlaces||[]){
-    selected.push(...group.publishedMedia.map(item=>({...item,tags:[...item.tags.filter(tag=>!tag.startsWith('place:')&&!tag.startsWith('place-id:')),`place:${group.name}`,`place-id:${group.id}`,...(group.libraryPlaceId?[`library-place-id:${group.libraryPlaceId}`]:[])]})));
+    selected.push(...group.publishedMedia.map(item=>({...item,tags:[...item.tags.filter(tag=>!tag.startsWith('place:')&&!tag.startsWith('place-id:')&&!tag.startsWith('library-place-id:')),`place:${group.name}`,`place-id:${group.id}`,...(group.libraryPlaceId?[`library-place-id:${group.libraryPlaceId}`]:[])]})));
     for(const file of group.files){
      await checkPaused();
      let job:Transfer|undefined;

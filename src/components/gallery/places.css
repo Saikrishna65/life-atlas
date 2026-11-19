@@ -460,3 +460,20 @@
     font-size: 34px;
   }
 }
+
+.gallery-places .pg-notice {
+  position: static;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  max-width: none;
+  margin: 16px 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.gallery-places .pg-notice {
+  width: 100%;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}

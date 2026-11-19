@@ -1,9 +1,9 @@
-Atlas 1.6.0 — verified stable signing
+Atlas 1.6.1 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 24.
+3. Open the matching APK and choose Update. This build uses version code 25.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only

@@ -13,6 +13,8 @@ export interface LocationRead {
   fingerprint?: string;
 }
 export interface PlaceMedia {
+  sourceDeviceId?: string;
+  cloud?: { slot: "public" | "private"; key: string; scope: string }[];
   id: string;
   device?: DeviceMedia;
   sourceStamp: string;
@@ -257,6 +259,7 @@ export function exportPlaceCatalog(library: PlaceLibrary) {
       .map((item) => {
         const copy = { ...item };
         delete copy.device;
+        delete copy.sourceDeviceId;
         return copy;
       }),
   };
@@ -298,6 +301,22 @@ export function validatePlaceCatalog(value: unknown): PlaceLibrary {
         !/^[a-f0-9]{24}:[a-f0-9]{64}$/.test(m.fingerprint))
     )
       throw Error("Invalid media record in catalog.");
+    if (
+      m.cloud !== undefined &&
+      (!Array.isArray(m.cloud) ||
+        m.cloud.length > 20 ||
+        m.cloud.some(
+          (c) =>
+            !c ||
+            !["public", "private"].includes(c.slot) ||
+            typeof c.key !== "string" ||
+            c.key.length > 1024 ||
+            c.key.split("/").some((s) => s === ".." || s === ".") ||
+            typeof c.scope !== "string" ||
+            !/^[a-f0-9]{64}$/.test(c.scope),
+        ))
+    )
+      throw Error("Invalid cloud references in catalog.");
     ids.add(m.id);
   }
   const assigned = new Set<string>();
@@ -359,19 +378,26 @@ export function validatePlaceCatalog(value: unknown): PlaceLibrary {
     ignored: Array.isArray(lib.ignored)
       ? lib.ignored.filter((id) => typeof id === "string")
       : [],
-    media: lib.media.map((m) => ({ ...m, device: undefined })),
+    media: lib.media.map((m) => ({
+      ...m,
+      device: undefined,
+      sourceDeviceId: undefined,
+    })),
     places: lib.places.map((p) => ({ ...p })),
   };
 }
 export function mergeRestoredPlaces(local: PlaceLibrary, remote: PlaceLibrary) {
   const mapping = new Map<string, string>(),
     media = [...local.media];
+  const matchedLocal = new Set<string>();
   for (const incoming of remote.media) {
     const same = local.media.find(
       (m) =>
-        m.id === incoming.id ||
-        (incoming.fingerprint && m.fingerprint === incoming.fingerprint),
+        !matchedLocal.has(m.id) &&
+        (m.id === incoming.id ||
+          (incoming.fingerprint && m.fingerprint === incoming.fingerprint)),
     );
+    if (same) matchedLocal.add(same.id);
     mapping.set(incoming.id, same?.id || incoming.id);
     if (!same) media.push({ ...incoming, device: undefined });
   }

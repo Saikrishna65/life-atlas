@@ -67,7 +67,14 @@ export function recordLocationReads(
   devices: DeviceMedia[],
   reads: LocationRead[],
 ) {
-  const media = [...library.media],
+  const versions = new Map(devices.map((d) => [d.id, mediaStamp(d)]));
+  const media = library.media.map((m) =>
+      m.device &&
+      versions.has(m.device.id) &&
+      versions.get(m.device.id) !== m.sourceStamp
+        ? { ...m, device: undefined, scanState: "unavailable" as const }
+        : m,
+    ),
     bySource = new Map(
       media.flatMap((m, i) =>
         m.device ? [[m.device.id + "|" + m.sourceStamp, i] as const] : [],
@@ -83,6 +90,7 @@ export function recordLocationReads(
       ...old,
       id: old?.id || crypto.randomUUID(),
       device,
+      sourceDeviceId: device.id,
       sourceStamp: stamp,
       name: device.name,
       kind: device.kind,

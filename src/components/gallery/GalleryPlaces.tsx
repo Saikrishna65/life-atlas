@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import TripMapPicker from "@/components/studio/TripMapPicker";
@@ -33,6 +33,7 @@ import {
   type SavedPlace,
   type GeoPoint,
   type PinPrecision,
+  type PlaceMedia,
 } from "@/lib/gallery/places";
 import {
   scanPlaceLibrary,
@@ -45,7 +46,7 @@ import { useTripVault } from "@/lib/vault/useTripVault";
 import GalleryThumbnail from "./GalleryThumbnail";
 import TripMediaViewer from "@/components/media/TripMediaViewer";
 import { gallerySource } from "@/lib/gallery/actions";
-import type { CloudObject } from "@/lib/r2/types";
+import type { StorageSummary, CloudObject } from "@/lib/r2/types";
 import "./places.css";
 const ReviewMap = dynamic(() => import("./PlaceReviewMap"), {
   ssr: false,
@@ -55,6 +56,12 @@ const ReviewMap = dynamic(() => import("./PlaceReviewMap"), {
 });
 export default function GalleryPlaces() {
   const { trips } = useTripVault();
+  const [summary, setSummary] = useState<StorageSummary>();
+  const [privatePreview, setPrivatePreview] = useState<{
+    id: string;
+    url: string;
+  }>();
+  const previewToken = useRef("");
   const [library, setLibrary] = useState<PlaceLibrary>(emptyPlaces),
     [mode, setMode] = useState<"suggestions" | "saved" | "unassigned" | "all">(
       "suggestions",
@@ -86,8 +93,20 @@ export default function GalleryPlaces() {
   const cancel = useRef(false),
     alive = useRef(true),
     busyRef = useRef(false);
+  const closeViewer = useCallback(() => {
+    setViewer("");
+    setPrivatePreview(undefined);
+    const token = previewToken.current;
+    previewToken.current = "";
+    if (token) void R2.releaseGalleryPreview({ token }).catch(() => {});
+  }, []);
   useEffect(() => {
     alive.current = true;
+    void R2.getConfigurationSummary()
+      .then((value) => {
+        if (alive.current) setSummary(value);
+      })
+      .catch(() => {});
     void readPlaces()
       .then((value) => {
         if (alive.current) setLibrary(value);
@@ -98,6 +117,61 @@ export default function GalleryPlaces() {
       cancel.current = true;
     };
   }, []);
+  useEffect(() => {
+    const hidden = () => {
+      if (document.hidden) closeViewer();
+    };
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      document.removeEventListener("visibilitychange", hidden);
+      const token = previewToken.current;
+      if (token) void R2.releaseGalleryPreview({ token }).catch(() => {});
+    };
+  }, [closeViewer]);
+  const cloudReference = (m: PlaceMedia, config = summary) =>
+    m.cloud?.find(
+      (c) =>
+        config?.[c.slot].configured && config[c.slot].storageScope === c.scope,
+    );
+  const mediaUrl = (m: PlaceMedia) => {
+    if (m.device) return gallerySource(m.device.uri);
+    if (privatePreview?.id === m.id) return privatePreview.url;
+    const copy = cloudReference(m);
+    const base = summary?.public.publicBaseUrl;
+    return copy?.slot === "public" && base
+      ? base.replace(/\/$/, "") +
+          "/" +
+          copy.key.split("/").map(encodeURIComponent).join("/")
+      : undefined;
+  };
+  async function openMedia(m: PlaceMedia) {
+    closeViewer();
+    if (m.device) {
+      setViewer(m.id);
+      return;
+    }
+    const config = await R2.getConfigurationSummary();
+    if (!alive.current) return;
+    setSummary(config);
+    const copy = cloudReference(m, config);
+    if (!copy)
+      throw Error(
+        "Reconnect the original, or configure the bucket that contains its saved cloud copy.",
+      );
+    if (copy.slot === "private") {
+      const preview = await systemAction(() =>
+        R2.openGalleryCloudPreview({ key: copy.key }),
+      );
+      if (!alive.current) {
+        await R2.releaseGalleryPreview({ token: preview.token });
+        return;
+      }
+      previewToken.current = preview.token;
+      setPrivatePreview({ id: m.id, url: gallerySource(preview.path) });
+    } else if (!config.public.publicBaseUrl)
+      throw Error("Configure the public media base URL to open this copy.");
+    setViewer(m.id);
+  }
   const suggestions = useMemo(
     () => suggestPlaces(library.media, library.places, radius, library.ignored),
     [library, radius],
@@ -137,15 +211,15 @@ export default function GalleryPlaces() {
   const shown = visible.slice(0, page * 60),
     chosen = new Set(selected);
   const viewerItems = visible
-    .filter((m) => m.device)
+    .filter((m) => mediaUrl(m))
     .map((m) => ({
       id: m.id,
-      url: gallerySource(m.device!.uri),
+      url: mediaUrl(m)!,
       kind: m.kind,
       place: saved && mode === "saved" ? saved.name : "Location review",
-      category: "Original on phone",
-      width: m.device!.width,
-      height: m.device!.height,
+      category: m.device ? "Original on phone" : "Recorded cloud original",
+      width: m.device?.width,
+      height: m.device?.height,
     }));
   async function run(task: () => Promise<void>) {
     if (busyRef.current) return;
@@ -334,6 +408,12 @@ export default function GalleryPlaces() {
       {notice && (
         <p role="status" className="pg-notice">
           {notice}
+          <button
+            aria-label="Dismiss place notification"
+            onClick={() => setNotice("")}
+          >
+            <X size={15} />
+          </button>
         </p>
       )}
       {showBackup && (
@@ -355,7 +435,7 @@ export default function GalleryPlaces() {
                     () => cancel.current,
                   );
                   setNotice(
-                    `Encrypted catalog saved as a new snapshot (${result.size.toLocaleString()} bytes). Keep your recovery kit independently safe.`,
+                    `Encrypted catalog saved as a new snapshot (${result.size.toLocaleString()} bytes). ${result.unmatched ? `${result.unmatched} unavailable originals need manual reconnection; their place records are saved. ` : ""}Keep your recovery kit independently safe.`,
                   );
                 })
               }
@@ -1000,20 +1080,16 @@ export default function GalleryPlaces() {
                 <button
                   className="gp-photo"
                   aria-label={`Preview ${m.name}`}
-                  onClick={() =>
-                    m.device
-                      ? setViewer(m.id)
-                      : setNotice(
-                          "This restored record needs exact-file reconnection before its original can open.",
-                        )
-                  }
+                  onClick={() => void run(() => openMedia(m))}
                 >
                   {m.device ? (
                     <GalleryThumbnail asset={deviceAsset(m.device, [])} />
                   ) : (
                     <span className="gp-detached">
                       <ImageIcon />
-                      Reconnect original
+                      {m.cloud?.length
+                        ? "Cloud reference saved"
+                        : "Reconnect original"}
                     </span>
                   )}
                 </button>
@@ -1082,7 +1158,7 @@ export default function GalleryPlaces() {
           items={viewerItems}
           selected={viewer}
           onSelect={setViewer}
-          onClose={() => setViewer("")}
+          onClose={closeViewer}
         />
       )}
     </section>
