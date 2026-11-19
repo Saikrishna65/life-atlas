@@ -465,7 +465,7 @@ export default function PhotoGallery() {
   const more = view === "cloud" ? cloudMore : hasMore;
   useEffect(() => {
     const node = sentinel.current;
-    if (!node || !more || loading) return;
+    if (!node || !more || loading || !layout.ready) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
@@ -477,7 +477,16 @@ export default function PhotoGallery() {
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [more, loading, view, requestCloud, cloudCursor, requestDevice, cursor]);
+  }, [
+    more,
+    loading,
+    view,
+    requestCloud,
+    cloudCursor,
+    requestDevice,
+    cursor,
+    layout.ready,
+  ]);
   useEffect(() => {
     const node = grid.current;
     if (!node) return;

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, type RefObject } from "react";
+import { useLayoutEffect, useMemo, useState, type RefObject } from "react";
 import { galleryLayout } from "@/lib/gallery/layout";
 import type { GalleryAsset } from "@/lib/gallery/types";
 export function useGalleryLayout(
@@ -11,7 +11,7 @@ export function useGalleryLayout(
 ) {
   const [width, setWidth] = useState(0),
     [viewport, setViewport] = useState({ top: 0, height: 1000 });
-  useEffect(() => {
+  useLayoutEffect(() => {
     const node = root.current;
     if (!node) return;
     let frame = 0;
@@ -61,6 +61,7 @@ export function useGalleryLayout(
             p.y <= viewport.top + viewport.height + 600,
         );
   return {
+    ready: width > 0,
     height: layout.height,
     visible,
     headers: layout.headers.filter(

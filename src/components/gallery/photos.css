@@ -969,9 +969,6 @@
   .pg-trip-filter select {
     font-size: 12px;
   }
-  .private-gallery:has(.pg-search input:focus) .pg-toolbar {
-    visibility: hidden;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   .private-gallery * {
