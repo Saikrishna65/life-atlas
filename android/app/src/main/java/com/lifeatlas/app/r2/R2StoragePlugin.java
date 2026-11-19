@@ -22,7 +22,22 @@ import java.security.MessageDigest;
 import java.util.*;
 import org.json.*;
 
-@CapacitorPlugin(name = "AtlasR2Storage")
+@CapacitorPlugin(
+    name = "AtlasR2Storage",
+    permissions = {
+      @Permission(
+          alias = "galleryImages",
+          strings = {"android.permission.READ_MEDIA_IMAGES"}),
+      @Permission(
+          alias = "galleryVideos",
+          strings = {"android.permission.READ_MEDIA_VIDEO"}),
+      @Permission(
+          alias = "galleryLimited",
+          strings = {"android.permission.READ_MEDIA_VISUAL_USER_SELECTED"}),
+      @Permission(
+          alias = "galleryLegacy",
+          strings = {"android.permission.READ_EXTERNAL_STORAGE"})
+    })
 public class R2StoragePlugin extends Plugin {
   interface Task {
     void run() throws Exception;
@@ -152,6 +167,162 @@ public class R2StoragePlugin extends Plugin {
         () -> {
           check.run();
           task.run();
+        });
+  }
+
+  private JSONObject galleryAccess() throws Exception {
+    return R2GalleryAccess.describe(
+        Build.VERSION.SDK_INT,
+        getPermissionState("galleryLegacy") == PermissionState.GRANTED,
+        getPermissionState("galleryImages") == PermissionState.GRANTED,
+        getPermissionState("galleryVideos") == PermissionState.GRANTED,
+        getPermissionState("galleryLimited") == PermissionState.GRANTED);
+  }
+
+  @PluginMethod
+  public void getGalleryAccess(PluginCall call) {
+    work(call, () -> call.resolve(js(galleryAccess())));
+  }
+
+  @PluginMethod
+  public void requestGalleryAccess(PluginCall call) {
+    try {
+      guard();
+    } catch (Exception e) {
+      fail(call, e);
+      return;
+    }
+    String[] aliases =
+        Build.VERSION.SDK_INT >= 34
+            ? new String[] {"galleryImages", "galleryVideos", "galleryLimited"}
+            : Build.VERSION.SDK_INT >= 33
+                ? new String[] {"galleryImages", "galleryVideos"}
+                : new String[] {"galleryLegacy"};
+    requestPermissionForAliases(aliases, call, "galleryPermissionResult");
+  }
+
+  @PermissionCallback
+  private void galleryPermissionResult(PluginCall call) {
+    getGalleryAccess(call);
+  }
+
+  @PluginMethod
+  public void openGallerySettings(PluginCall call) {
+    work(
+        call,
+        () -> {
+          Intent intent =
+              new Intent(
+                      android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                      Uri.parse("package:" + getContext().getPackageName()))
+                  .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+          getContext().startActivity(intent);
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void listDeviceMedia(PluginCall call) {
+    work(
+        call,
+        () -> {
+          if (galleryAccess().getString("status").equals("denied"))
+            throw new R2Exception("GALLERY_PERMISSION_REQUIRED");
+          call.resolve(
+              js(
+                  new R2DeviceGallery(getContext())
+                      .list(
+                          call.getString("cursor", ""),
+                          call.getString("query", ""),
+                          call.getString("kind", "all"),
+                          call.getString("album", ""),
+                          call.getString("order", "newest"))));
+        });
+  }
+
+  @PluginMethod
+  public void getGalleryAlbums(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(new JSObject().put("albums", new R2DeviceGallery(getContext()).albums())));
+  }
+
+  @PluginMethod
+  public void getDeviceThumbnail(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(
+                new JSObject()
+                    .put(
+                        "path",
+                        new R2DeviceGallery(getContext()).thumbnail(call.getString("id")))));
+  }
+
+  @PluginMethod
+  public void registerDeviceMedia(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(
+                new JSObject()
+                    .put(
+                        "files",
+                        new R2DeviceGallery(getContext())
+                            .register(call.getArray("ids"), call.getObject("versions")))));
+  }
+
+  @PluginMethod
+  public void checkDeviceCloud(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(
+                new JSObject()
+                    .put("items", new R2DeviceGallery(getContext()).check(call.getArray("ids")))));
+  }
+
+  @PluginMethod
+  public void openGalleryCloudPreview(PluginCall call) {
+    authenticated(
+        call,
+        () -> {
+          JSONObject result =
+              R2GalleryPreview.open(getContext(), repository(), call.getString("key"));
+          if (!galleryForeground || getActivity() == null || getActivity().isDestroyed()) {
+            R2GalleryPreview.release(getContext(), result.getString("token"));
+            throw new R2Exception("TRANSFER_INTERRUPTED");
+          }
+          call.resolve(js(result));
+        });
+  }
+
+  @PluginMethod
+  public void releaseGalleryPreview(PluginCall call) {
+    work(
+        call,
+        () -> {
+          R2GalleryPreview.release(getContext(), call.getString("token"));
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void queueGalleryUploads(PluginCall call) {
+    authenticated(
+        call,
+        () -> {
+          R2Repository repo = repository();
+          String slot = R2Policy.slot(call.getString("slot"));
+          R2Credentials credentials = repo.store.credentials(slot);
+          if (slot.equals("private") && !repo.store.snapshot().optBoolean("recoveryVerified"))
+            throw new R2Exception("RECOVERY_REQUIRED");
+          JSONObject result =
+              R2GalleryQueue.prepare(repo, credentials, slot, call.getArray("selectionIds"));
+          JSONArray enqueue = result.getJSONArray("enqueue");
+          R2TransferWorker.enqueueBatch(getContext(), enqueue);
+          call.resolve(new JSObject().put("transferIds", result.getJSONObject("transferIds")));
         });
   }
 
@@ -376,9 +547,14 @@ public class R2StoragePlugin extends Plugin {
         call,
         () -> {
           String slot = R2Policy.slot(call.getString("slot"));
+          R2Credentials credentials = repository().store.credentials(slot);
+          if (call.getString("revision") != null
+              && !credentials.revision.equals(call.getString("revision")))
+            throw new R2Exception("CREDENTIALS_CHANGED");
           JSONObject out =
-              new R2Client(repository().store.credentials(slot))
-                  .list(call.getString("prefix", ""), call.getString("cursor", ""));
+              new R2Client(credentials)
+                  .list(call.getString("prefix", ""), call.getString("cursor", ""))
+                  .put("revision", credentials.revision);
           call.resolve(js(out));
         });
   }
@@ -1236,10 +1412,26 @@ public class R2StoragePlugin extends Plugin {
         });
   }
 
+  private volatile boolean galleryForeground = true;
+
+  @Override
+  protected void handleOnPause() {
+    galleryForeground = false;
+    R2GalleryPreview.clear(getContext());
+    super.handleOnPause();
+  }
+
+  @Override
+  protected void handleOnResume() {
+    galleryForeground = true;
+    super.handleOnResume();
+  }
+
   @Override
   protected void handleOnDestroy() {
     if (recoveryPassword != null) Arrays.fill(recoveryPassword, '\0');
     if (pendingKit != null) Arrays.fill(pendingKit, (byte) 0);
+    R2GalleryPreview.clear(getContext());
     selections.clear();
     publicationSession.clear();
     super.handleOnDestroy();

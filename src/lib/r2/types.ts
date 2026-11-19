@@ -8,6 +8,7 @@ export interface BucketSummary {
   bucket?: string;
   publicBaseUrl?: string;
   revision?: string;
+  storageScope?:string;
 }
 export interface StorageSummary {
   supported: boolean;
@@ -83,6 +84,10 @@ export interface Transfer {
   publicUrl?: string;
   thumbnailUrl?: string;
   verified?: boolean;
+  storageScope?:string;
+  revision?:string;
+  galleryId?: string;
+  sourceStamp?: string;
   reused?: boolean;
   duplicateCheck?: boolean;
   direction: "upload" | "download";

@@ -1,0 +1,427 @@
+package com.lifeatlas.app.r2;
+
+import android.content.*;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.*;
+import android.provider.MediaStore;
+import android.util.Size;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.*;
+import org.json.*;
+
+/** MediaStore reads only. Originals are never modified, deleted or copied into the WebView. */
+final class R2DeviceGallery {
+  private final Context context;
+  private final R2Repository repository;
+  static final int PAGE = 80;
+
+  R2DeviceGallery(Context context) {
+    this(context, new R2Repository(context));
+  }
+
+  R2DeviceGallery(Context context, R2Repository repository) {
+    this.context = context;
+    this.repository = repository;
+  }
+
+  static long mediaNumber(String id) {
+    if (id == null || !id.matches("(?:image|video):[a-zA-Z0-9_-]{1,80}:[1-9][0-9]{0,17}"))
+      throw new IllegalArgumentException("INVALID_SELECTION");
+    return Long.parseLong(id.substring(id.lastIndexOf(':') + 1));
+  }
+
+  static Uri uri(String id) {
+    mediaNumber(id);
+    String volume = id.split(":")[1];
+    Uri collection =
+        Build.VERSION.SDK_INT >= 29
+            ? id.startsWith("image:")
+                ? MediaStore.Images.Media.getContentUri(volume)
+                : MediaStore.Video.Media.getContentUri(volume)
+            : id.startsWith("image:")
+                ? MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                : MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+    return ContentUris.withAppendedId(collection, mediaNumber(id));
+  }
+
+  static String stamp(JSONObject item) {
+    return item.optLong("size")
+        + ":"
+        + item.optLong("modifiedAt")
+        + (item.optLong("generation") > 0 ? ":" + item.optLong("generation") : "");
+  }
+
+  static String selectionId(JSONObject item) {
+    return UUID.nameUUIDFromBytes(
+            (item.optString("id") + ":" + stamp(item)).getBytes(StandardCharsets.UTF_8))
+        .toString();
+  }
+
+  private static long number(Cursor cursor, String key) {
+    int index = cursor.getColumnIndex(key);
+    return index < 0 || cursor.isNull(index) ? 0 : cursor.getLong(index);
+  }
+
+  private static String string(Cursor cursor, String key) {
+    int index = cursor.getColumnIndex(key);
+    return index < 0 || cursor.isNull(index) ? "" : cursor.getString(index);
+  }
+
+  private JSONObject item(Cursor c) throws Exception {
+    boolean video = number(c, "media_type") == 3;
+    String volume = Build.VERSION.SDK_INT >= 29 ? string(c, "volume_name") : "external";
+    String id = (video ? "video:" : "image:") + volume + ":" + number(c, "_id");
+    return new JSONObject()
+        .put("id", id)
+        .put("name", string(c, "_display_name"))
+        .put("kind", video ? "video" : "photo")
+        .put("mimeType", string(c, "mime_type"))
+        .put("size", number(c, "_size"))
+        .put("addedAt", number(c, "date_added") * 1000)
+        .put("modifiedAt", number(c, "date_modified") * 1000)
+        .put("generation", number(c, "generation_modified"))
+        .put("width", number(c, "width"))
+        .put("height", number(c, "height"))
+        .put("duration", number(c, "duration"))
+        .put("album", string(c, "bucket_display_name"))
+        .put("uri", uri(id).toString());
+  }
+
+  private String[] projection() {
+    List<String> values =
+        new ArrayList<>(
+            List.of(
+                "_id",
+                "_display_name",
+                "mime_type",
+                "_size",
+                "date_added",
+                "date_modified",
+                "width",
+                "height",
+                "duration",
+                "bucket_display_name",
+                "media_type"));
+    if (Build.VERSION.SDK_INT >= 29) values.add("volume_name");
+    if (Build.VERSION.SDK_INT >= 30) values.add("generation_modified");
+    return values.toArray(new String[0]);
+  }
+
+  JSONObject list(String cursor, String query, String kind, String album, String order)
+      throws Exception {
+    String selection = "media_type IN (1,3)";
+    List<String> args = new ArrayList<>();
+    if (Build.VERSION.SDK_INT >= 29) selection += " AND is_pending=0";
+    if (Build.VERSION.SDK_INT >= 30) selection += " AND is_trashed=0";
+    if (kind.equals("photo") || kind.equals("video"))
+      selection += " AND media_type=" + (kind.equals("photo") ? "1" : "3");
+    if (query.length() > 200 || album.length() > 200)
+      throw new IllegalArgumentException("INVALID_SELECTION");
+    if (!query.isEmpty()) {
+      selection += " AND _display_name LIKE ? ESCAPE '\\'";
+      args.add("%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
+    }
+    if (!album.isEmpty()) {
+      selection += " AND bucket_display_name=?";
+      args.add(album);
+    }
+    boolean ascending = order.equals("oldest");
+    String comparison = ascending ? ">" : "<";
+    if (!cursor.isEmpty()) {
+      if (!cursor.matches("[0-9]{1,15}:[0-9]{1,18}:[a-zA-Z0-9_-]{1,80}"))
+        throw new IllegalArgumentException("INVALID_SELECTION");
+      String[] parts = cursor.split(":");
+      selection +=
+          " AND (date_added " + comparison + " ? OR (date_added=? AND _id " + comparison + " ?)";
+      args.add(parts[0]);
+      args.add(parts[0]);
+      args.add(parts[1]);
+      if (Build.VERSION.SDK_INT >= 29) {
+        selection += " OR (date_added=? AND _id=? AND volume_name " + comparison + " ?)";
+        args.add(parts[0]);
+        args.add(parts[1]);
+        args.add(parts[2]);
+      }
+      selection += ")";
+    }
+    Bundle options = new Bundle();
+    options.putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection);
+    options.putStringArray(
+        ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, args.toArray(new String[0]));
+    options.putString(
+        ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
+        "date_added " + (ascending ? "ASC" : "DESC") + ", _id " + (ascending ? "ASC" : "DESC"));
+    if (Build.VERSION.SDK_INT >= 29)
+      options.putString(
+          ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
+          options.getString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER)
+              + ", volume_name "
+              + (ascending ? "ASC" : "DESC"));
+    options.putInt(ContentResolver.QUERY_ARG_LIMIT, PAGE + 1);
+    JSONArray items = new JSONArray();
+    String next = "";
+    boolean more = false;
+    JSONObject index = null;
+    try {
+      index = repository.store.snapshot().optJSONObject("galleryChecks");
+    } catch (Exception ignored) {
+      /* Phone media never depends on cloud credentials or a recoverable Keystore. */
+    }
+    Map<String, String> scopes = new HashMap<>();
+    if (index != null)
+      for (String slot : List.of("public", "private"))
+        try {
+          scopes.put(slot, R2Duplicates.scope(repository.store.credentials(slot)));
+        } catch (Exception ignored) {
+        }
+    try (Cursor c =
+        context
+            .getContentResolver()
+            .query(MediaStore.Files.getContentUri("external"), projection(), options, null)) {
+      while (c != null && c.moveToNext()) {
+        if (items.length() == PAGE) {
+          more = true;
+          break;
+        }
+        JSONObject entry = item(c),
+            saved = index == null ? null : index.optJSONObject(entry.getString("id"));
+        if (saved != null && stamp(entry).equals(saved.optString("stamp"))) {
+          JSONObject copies = new JSONObject();
+          for (String slot : List.of("public", "private")) {
+            JSONObject copy = saved.optJSONObject(slot);
+            if (copy != null)
+              try {
+                if (copy.optString("scope").equals(scopes.get(slot))) copies.put(slot, copy);
+              } catch (Exception ignored) {
+              }
+          }
+          entry.put("copies", copies);
+        }
+        items.put(entry);
+        next =
+            number(c, "date_added")
+                + ":"
+                + number(c, "_id")
+                + ":"
+                + (Build.VERSION.SDK_INT >= 29 ? string(c, "volume_name") : "external");
+      }
+    }
+    return new JSONObject()
+        .put("items", items)
+        .put("cursor", more ? next : "")
+        .put("complete", !more);
+  }
+
+  JSONArray albums() throws Exception {
+    Map<String, Integer> values = new TreeMap<>();
+    String where = "media_type IN (1,3)";
+    if (Build.VERSION.SDK_INT >= 29) where += " AND is_pending=0";
+    if (Build.VERSION.SDK_INT >= 30) where += " AND is_trashed=0";
+    try (Cursor c =
+        context
+            .getContentResolver()
+            .query(
+                MediaStore.Files.getContentUri("external"),
+                new String[] {"bucket_display_name"},
+                where,
+                null,
+                null)) {
+      while (c != null && c.moveToNext()) {
+        String name = string(c, "bucket_display_name");
+        if (!name.isEmpty()) values.put(name, values.getOrDefault(name, 0) + 1);
+      }
+    }
+    JSONArray out = new JSONArray();
+    for (Map.Entry<String, Integer> entry : values.entrySet())
+      out.put(new JSONObject().put("name", entry.getKey()).put("count", entry.getValue()));
+    return out;
+  }
+
+  JSONObject one(String id) throws Exception {
+    mediaNumber(id);
+    try (Cursor c =
+        context
+            .getContentResolver()
+            .query(
+                MediaStore.Files.getContentUri("external"),
+                projection(),
+                "_id=? AND media_type=?"
+                    + (Build.VERSION.SDK_INT >= 29 ? " AND volume_name=?" : ""),
+                Build.VERSION.SDK_INT >= 29
+                    ? new String[] {
+                      String.valueOf(mediaNumber(id)),
+                      id.startsWith("image:") ? "1" : "3",
+                      id.split(":")[1]
+                    }
+                    : new String[] {
+                      String.valueOf(mediaNumber(id)), id.startsWith("image:") ? "1" : "3"
+                    },
+                null)) {
+      if (c == null || !c.moveToFirst()) throw new R2Exception("SOURCE_UNAVAILABLE");
+      return item(c);
+    }
+  }
+
+  String thumbnail(String id) throws Exception {
+    JSONObject media = one(id);
+    File root = new File(context.getCacheDir(), "device-gallery");
+    root.mkdirs();
+    File file = new File(root, selectionId(media) + ".jpg");
+    if (!file.exists()) {
+      Bitmap bitmap =
+          Build.VERSION.SDK_INT >= 29
+              ? context.getContentResolver().loadThumbnail(uri(id), new Size(400, 400), null)
+              : id.startsWith("image:")
+                  ? MediaStore.Images.Thumbnails.getThumbnail(
+                      context.getContentResolver(),
+                      mediaNumber(id),
+                      MediaStore.Images.Thumbnails.MINI_KIND,
+                      null)
+                  : MediaStore.Video.Thumbnails.getThumbnail(
+                      context.getContentResolver(),
+                      mediaNumber(id),
+                      MediaStore.Video.Thumbnails.MINI_KIND,
+                      null);
+      if (bitmap == null) throw new R2Exception("PREVIEW_UNAVAILABLE");
+      try (OutputStream out = new FileOutputStream(file)) {
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 82, out);
+      } finally {
+        bitmap.recycle();
+      }
+      File[] files = root.listFiles();
+      if (files != null && files.length > 800) {
+        Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+        for (int i = 0; i < files.length - 700; i++) files[i].delete();
+      }
+    }
+    file.setLastModified(System.currentTimeMillis());
+    return file.getAbsolutePath();
+  }
+
+  JSONArray register(JSONArray ids, JSONObject versions) throws Exception {
+    if (ids == null || ids.length() == 0 || ids.length() > 100)
+      throw new R2Exception("INVALID_SELECTION");
+    JSONArray result = new JSONArray(), records = new JSONArray();
+    for (int i = 0; i < ids.length(); i++) {
+      JSONObject media = one(ids.getString(i));
+      if (versions != null && !stamp(media).equals(versions.optString(media.getString("id"))))
+        throw new R2Exception("SOURCE_CHANGED");
+      // MediaStore runtime access is durable across process death, subject to user revocation.
+      try (InputStream input =
+          context.getContentResolver().openInputStream(uri(media.getString("id")))) {
+        if (input == null) throw new R2Exception("SOURCE_UNAVAILABLE");
+      }
+      JSONObject record =
+          new JSONObject()
+              .put("id", selectionId(media))
+              .put("name", media.getString("name"))
+              .put("mimeType", media.getString("mimeType"))
+              .put("size", media.getLong("size"))
+              .put("persistent", true)
+              .put("galleryId", media.getString("id"))
+              .put("sourceStamp", stamp(media));
+      result.put(new JSONObject(record.toString()));
+      records.put(record.put("uri", media.getString("uri")));
+    }
+    repository.store.edit(
+        state -> {
+          JSONObject picks = state.optJSONObject("selections");
+          if (picks == null) {
+            picks = new JSONObject();
+            state.put("selections", picks);
+          }
+          for (int i = 0; i < records.length(); i++) {
+            JSONObject record = records.getJSONObject(i);
+            picks.put(record.getString("id"), record);
+          }
+        });
+    return result;
+  }
+
+  JSONArray check(JSONArray ids) throws Exception {
+    if (ids == null || ids.length() > 30) throw new R2Exception("INVALID_SELECTION");
+    JSONArray results = new JSONArray(), jobs = repository.jobs();
+    for (int i = 0; i < ids.length(); i++) {
+      JSONObject media = one(ids.getString(i));
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      try (InputStream in =
+          context.getContentResolver().openInputStream(uri(media.getString("id")))) {
+        if (in == null) throw new R2Exception("SOURCE_UNAVAILABLE");
+        byte[] buffer = new byte[65536];
+        int n;
+        while ((n = in.read(buffer)) != -1) digest.update(buffer, 0, n);
+      }
+      if (!stamp(media).equals(stamp(one(media.getString("id")))))
+        throw new R2Exception("SOURCE_CHANGED");
+      String hash = R2Policy.hex(digest.digest());
+      JSONObject saved = new JSONObject().put("stamp", stamp(media));
+      for (String slot : List.of("public", "private")) {
+        JSONObject copy =
+            new JSONObject().put("state", "unchecked").put("checkedAt", System.currentTimeMillis());
+        try {
+          R2Credentials credentials = repository.store.credentials(slot);
+          copy.put("scope", R2Duplicates.scope(credentials));
+          JSONObject probe =
+              new JSONObject()
+                  .put("id", "gallery-check")
+                  .put("slot", slot)
+                  .put("mimeType", media.getString("mimeType"))
+                  .put("contentSha256", hash)
+                  .put("sha256", hash);
+          if (slot.equals("private")) {
+            byte[] keys = repository.keyset();
+            try {
+              probe.put("keyId", R2Crypto.keyId(keys));
+            } finally {
+              Arrays.fill(keys, (byte) 0);
+            }
+          }
+          copy.put("state", "not-found");
+          for (int n = 0; n < jobs.length(); n++) {
+            JSONObject job = jobs.getJSONObject(n);
+            if (!R2Duplicates.matches(probe, job, credentials)) continue;
+            try {
+              JSONObject head = new R2Client(credentials).head(job.getString("key"));
+              if (head.optLong("size", -1) == job.optLong("totalBytes")
+                  && head.optString("sha256").equals(job.optString("sha256"))) {
+                copy.put("state", "verified")
+                    .put("key", job.getString("key"))
+                    .put("thumbnailUrl", job.optString("thumbnailUrl"));
+                break;
+              } else copy.put("state", "missing");
+            } catch (R2Exception e) {
+              if (e.code.equals("OBJECT_NOT_FOUND")) copy.put("state", "missing");
+              else throw e;
+            }
+          }
+        } catch (Exception e) {
+          copy.put("state", "unavailable");
+        }
+        saved.put(slot, copy);
+      }
+      final String id = media.getString("id");
+      repository.store.edit(
+          state -> {
+            JSONObject checks = state.optJSONObject("galleryChecks");
+            if (checks == null) {
+              checks = new JSONObject();
+              state.put("galleryChecks", checks);
+            }
+            checks.put(id, saved);
+          });
+      results.put(
+          new JSONObject()
+              .put("id", id)
+              .put(
+                  "copies",
+                  new JSONObject()
+                      .put("public", saved.getJSONObject("public"))
+                      .put("private", saved.getJSONObject("private"))));
+    }
+    return results;
+  }
+}

@@ -82,7 +82,10 @@ final class R2TripQueue {
                       .put("totalBytes", source.optLong("size"));
               jobs.put(id, job);
             }
-            job.put("tripSelectionId", selection).put("tripCollection", collection);
+            job.put("tripSelectionId", selection)
+                .put("tripCollection", collection)
+                .put("galleryId", source.optString("galleryId"))
+                .put("sourceStamp", source.optString("sourceStamp"));
             bindings.put(selection, job.getString("id"));
             if (!job.optString("status").equals("complete")) enqueue.put(job.getString("id"));
           }

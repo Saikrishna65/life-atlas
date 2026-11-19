@@ -83,10 +83,15 @@ final class R2QueueState {
   }
 
   static boolean eligible(JSONObject job) {
-    if (!job.optString("slot").equals("public")
-        || !job.optString("direction").equals("upload")
-        || job.optString("tripSelectionId").isEmpty()
-        || job.optString("tripCollection").isEmpty()) return false;
+    boolean trip =
+        "public".equals(job.optString("slot"))
+            && !job.optString("tripSelectionId").isEmpty()
+            && !job.optString("tripCollection").isEmpty();
+    boolean gallery =
+        job.optBoolean("galleryApproved")
+            && !job.optString("gallerySelectionId").isEmpty()
+            && Set.of("public", "private").contains(job.optString("slot"));
+    if (!"upload".equals(job.optString("direction")) || (!trip && !gallery)) return false;
     String state = job.optString("status");
     return Set.of("queued", "preparing", "uploading", "verifying", "interrupted").contains(state)
         || (state.equals("failed") && retryable(job.optString("error")));
@@ -95,7 +100,7 @@ final class R2QueueState {
   static JSONArray repair(R2Repository repository, Map<String, List<WorkInfo>> work)
       throws Exception {
     JSONArray ids = new JSONArray();
-    // Only durable, previously approved public jobs can be repaired without a new review.
+    // Only durable jobs with a native approval record can be repaired without another review.
     JSONArray jobs = repository.jobs();
     for (int i = 0; i < jobs.length(); i++) {
       JSONObject job = jobs.getJSONObject(i);
@@ -103,6 +108,8 @@ final class R2QueueState {
       if (!eligible(job) || active(work.getOrDefault(id, Collections.emptyList()))) continue;
       try {
         repository.checkCredentialRevision(job);
+        if (job.optString("slot").equals("private")
+            && !repository.store.snapshot().optBoolean("recoveryVerified")) continue;
       } catch (R2Exception changed) {
         continue;
       }

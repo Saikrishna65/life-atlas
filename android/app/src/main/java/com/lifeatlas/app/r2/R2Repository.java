@@ -164,6 +164,10 @@ public final class R2Repository {
           "thumbnailUrl",
           "verified",
           "reused",
+          "galleryId",
+          "storageScope",
+          "revision",
+          "sourceStamp",
           "duplicateCheck",
           "direction"
         }) if (job.has(key)) out.put(key, job.get(key));

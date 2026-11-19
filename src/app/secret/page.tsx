@@ -61,6 +61,7 @@ export default function SecretDashboard() {
         </p>
       </header>
 
+      <Link href="/secret/gallery" className="block rounded-2xl border border-muted bg-surface p-6 sm:p-7 mb-5"><span className="text-xs uppercase tracking-wider text-accent">MY VISUAL ATLAS</span><h2 className="text-2xl font-display mt-2">Photo & video gallery ↗</h2><p className="text-sm text-muted-foreground mt-2">Browse my phone, check cloud copies, and gather originals into trips and places.</p></Link>
       {/* Primary Feature Cards Grid: Trip Vault & Music Vault & Finance Vault & Creator Studio */}
       <section className="grid grid-cols-1 gap-6">
         {/* Card 1: Trip Vault (Offline Travel Command Center) */}

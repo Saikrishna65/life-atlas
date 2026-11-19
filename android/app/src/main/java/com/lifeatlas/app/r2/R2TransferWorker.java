@@ -384,6 +384,12 @@ public final class R2TransferWorker extends Worker {
   private void prepare(R2Repository repository, JSONObject job, File staged) throws Exception {
     String id = job.getString("id");
     repository.transition(id, "preparing");
+    if (!job.optString("galleryId").isEmpty()
+        && !job.optString("sourceStamp")
+            .equals(
+                R2DeviceGallery.stamp(
+                    new R2DeviceGallery(getApplicationContext()).one(job.getString("galleryId")))))
+      throw new R2Exception("SOURCE_CHANGED");
     Uri uri = Uri.parse(job.getString("source"));
     boolean encrypted = job.getString("slot").equals("private");
     if (staged.exists() && !staged.delete()) throw new R2Exception("LOCAL_STORAGE_UNAVAILABLE");
@@ -470,6 +476,13 @@ public final class R2TransferWorker extends Worker {
         exif.saveAttributes();
       }
       if (staged.length() == 0) throw new R2Exception("EMPTY_FILE");
+      if (!job.optString("galleryId").isEmpty()
+          && !job.optString("sourceStamp")
+              .equals(
+                  R2DeviceGallery.stamp(
+                      new R2DeviceGallery(getApplicationContext())
+                          .one(job.getString("galleryId")))))
+        throw new R2Exception("SOURCE_CHANGED");
       String sha = R2Io.sha(staged);
       long total = staged.length();
       repository.update(

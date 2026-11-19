@@ -16,6 +16,7 @@ export async function publishTripToWebsite(tripId:string,selection:string[]|Webs
   const result=await response.json().catch(()=>({}));
   if(!response.ok||!result.success)throw Error(result.error||`Publishing failed (${response.status}). Your saved trip is unchanged.`);
   // Fetch again: tracking may have appended points while network/media operations ran.
-  await patchTripFields(tripId,{publishedSlug:result.slug,publishedAt:new Date().toISOString()});
+  const latest=await getTrip(tripId);
+  await patchTripFields(tripId,{publishedSlug:result.slug,publishedAt:new Date().toISOString(),websitePublishedMediaIds:[...new Set([...(payload.appendExistingMedia||payload.preserveExistingMedia?latest?.websitePublishedMediaIds||[]:[]),...payload.publicMedia.map(m=>m.id)])]});
   notifyVaultChange();const service=appServiceUrl('/api/vault/export');return {...result,publicUrl:service.startsWith('http')?new URL(result.publicUrl,service).href:result.publicUrl};
 }

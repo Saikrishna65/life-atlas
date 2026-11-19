@@ -28,6 +28,7 @@ final class R2Credentials {
     return new JSONObject()
         .put("slot", slot)
         .put("configured", true)
+        .put("storageScope", R2Duplicates.scope(this))
         .put("accountId", account)
         .put("endpoint", endpoint)
         .put("bucket", bucket)

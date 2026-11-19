@@ -13,6 +13,17 @@ import type {
   Transfer,
 } from "./types";
 interface R2Plugin {
+  getGalleryAccess():Promise<import('../gallery/types').GalleryAccess>;
+  requestGalleryAccess():Promise<import('../gallery/types').GalleryAccess>;
+  openGallerySettings():Promise<void>;
+  listDeviceMedia(input:{cursor:string;query:string;kind:string;album:string;order:string}):Promise<import('../gallery/types').DevicePage>;
+  getGalleryAlbums():Promise<{albums:{name:string;count:number}[]}>;
+  getDeviceThumbnail(input:{id:string}):Promise<{path:string}>;
+  registerDeviceMedia(input:{ids:string[];versions?:Record<string,string>}):Promise<{files:SelectedMedia[]}>;
+  checkDeviceCloud(input:{ids:string[]}):Promise<{items:{id:string;copies:import('../gallery/types').DeviceMedia['copies']}[]}>;
+  openGalleryCloudPreview(input:{key:string}):Promise<{token:string;path:string;mimeType:string;name:string}>;
+  releaseGalleryPreview(input:{token:string}):Promise<void>;
+  queueGalleryUploads(input:{slot:BucketSlot;selectionIds:string[]}):Promise<{transferIds:Record<string,string>}>;
   setSensitiveScreen(input: { enabled: boolean }): Promise<void>;
   getConfigurationSummary(): Promise<StorageSummary>;
   saveConfiguration(input: ConfigurationInput): Promise<unknown>;
@@ -24,6 +35,7 @@ interface R2Plugin {
     slot: BucketSlot;
     prefix: string;
     cursor: string;
+    revision?:string;
   }): Promise<ObjectPage>;
   getObjectMetadata(input: {
     slot: BucketSlot;

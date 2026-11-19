@@ -1,9 +1,9 @@
-Atlas 1.4.14 — verified stable signing
+Atlas 1.5.0 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 21.
+3. Open the matching APK and choose Update. This build uses version code 22.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -110,3 +110,25 @@ privacy choices stay separate. Original files and previous cloud objects are
 never deleted by duplicate detection. Existing historical duplicates are not
 automatically removed. After resetting app storage or changing devices, upload
 history must still be present to identify earlier random-key objects.
+
+Private Gallery: open Photo & video gallery on the Private Atlas home screen.
+Tap Choose photo access and grant full photo/video access to browse all accessible
+MediaStore images and videos, or use Android selected-photo access. Change this
+at any time under Permissions. No files upload merely because they are visible.
+
+Select up to 100 files per Gallery batch (tap selection circles, long-press, or
+use Select loaded). Add to trip / upload → trip → place. Save selections only
+works offline. Save & upload originals requires explicit public-storage approval
+and one native authentication for the batch. Use Trips & places → a trip →
+website & cover controls to review publication and select a trip cover. Existing
+Creator Studio remains available. Each trip supports 250 public media items.
+
+Encrypted private upload is a separate action and requires verified recovery.
+It never adds these files to the website queue. Private cloud previews require
+network, authentication and temporary device space; cached decrypted previews
+are cleared on close/background. Originals are not compressed or modified.
+
+Not checked is distinct from not uploaded. Cloud checks use exact file hashes
+and this installation's known upload history; they cannot find every object
+uploaded elsewhere. Cached cloud listings are bucket-scoped and labelled.
+Legacy trip publication status is refreshed when that trip is selected.
