@@ -152,7 +152,7 @@ export async function backupPlaces(
   );
   const library = await readPlaces(),
     ids = new Set(library.places.flatMap((p) => p.members)),
-    members = library.media.filter((m) => ids.has(m.id) && m.device);
+    members = library.media.filter((m) => ids.has(m.id) && m.device && !m.fingerprint?.startsWith(configuration.keyId+':'));
   let count = 0;
   for (let i = 0; i < members.length; i += 1) {
     if (cancelled())

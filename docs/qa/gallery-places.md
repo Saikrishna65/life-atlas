@@ -79,6 +79,8 @@ or background. Cloud references are recorded history, not a claim that a remote
 object can never be removed. Missing originals without fingerprints still keep
 their place records, and can be manually reassigned after recovery.
 
+Versioned fingerprints are reused for unchanged files under the same recovery key, so renaming a place does not re-read every large video.
+
 Snapshots are explicitly requested, not automatic synchronization. Cancellation
 stops between native batches/files; completed scan results persist. Android can
 stop the app; reopen and scan again to reuse previously read metadata. Exact-file
