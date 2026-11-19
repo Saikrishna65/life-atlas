@@ -1,5 +1,7 @@
 import type {Transfer} from './types';
 export function transferScheduleText(job:Transfer){
+ if(job.reused&&job.status==='complete')return 'Already in cloud. Existing verified file reused; no duplicate uploaded.';
+ if(job.duplicateCheck&&job.status==='verifying')return 'Checking an existing cloud copy…';
  if(['complete','cancelled','cancelling','paused'].includes(job.status))return '';
  if(job.canRecover)return 'No active Android job. Resume approved uploads to restore this transfer.';
  if(job.androidWait==='QUOTA')return 'Android upload quota reached. Waiting for Android to allow work again.';

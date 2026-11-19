@@ -24,5 +24,5 @@ export default function TripPlacesEditor({trip}:{trip:TripRecord}){
  {!place.files.length&&!place.publishedMedia.length&&<p className="cs-note">No media here yet.</p>}
  {!place.publishedMedia.length&&!Object.keys(place.transferIds).length&&<button type="button" className="cs-link" onClick={()=>{if(confirm(`Remove ${place.name} and its selections? Original files will not be deleted.`))void run(()=>editTripPlaces(trip.id,items=>items.filter(p=>p.id!==place.id)));}}>Remove place</button>}
  </fieldset></details>)}
- <p className="cs-note">Select up to {MEDIA_BATCH_LIMIT} photos or videos per batch. Add more batches to any place, up to {TRIP_PUBLIC_MEDIA_LIMIT} cloud media items per trip. Selecting files does not upload or publish them.</p>{error&&<p className="cs-error" role="alert">{error}</p>}</section>;
+ <p className="cs-note">Select up to {MEDIA_BATCH_LIMIT} photos or videos per batch. Add more batches to any place, up to {TRIP_PUBLIC_MEDIA_LIMIT} cloud media items per trip. Selecting files does not upload or publish them. Previously uploaded files are checked to avoid duplicate cloud copies.</p>{error&&<p className="cs-error" role="alert">{error}</p>}</section>;
 }

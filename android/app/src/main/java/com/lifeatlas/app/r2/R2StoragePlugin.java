@@ -686,7 +686,15 @@ public class R2StoragePlugin extends Plugin {
         call,
         () -> {
           String id = call.getString("id");
-          repository().update(id, j -> j.put("status", "paused"));
+          repository()
+              .update(
+                  id,
+                  j -> {
+                    if (Set.of("complete", "cancelled", "cancelling")
+                        .contains(j.optString("status")))
+                      throw new R2Exception("TRANSFER_ALREADY_COMPLETE");
+                    j.put("status", "paused");
+                  });
           call.resolve();
         });
   }
@@ -701,7 +709,13 @@ public class R2StoragePlugin extends Plugin {
           JSONObject job = repository.job(id);
           if (job.optString("status").equals("complete"))
             throw new R2Exception("TRANSFER_ALREADY_COMPLETE");
-          repository.update(id, j -> j.put("status", "cancelling"));
+          repository.update(
+              id,
+              j -> {
+                if (j.optString("status").equals("complete"))
+                  throw new R2Exception("TRANSFER_ALREADY_COMPLETE");
+                j.put("status", "cancelling");
+              });
           // Soft cancellation preserves the rest of the WorkManager chain. An
           // interrupted worker repeats cleanup after its in-flight request settles.
           repository.cleanupCancelled(id);

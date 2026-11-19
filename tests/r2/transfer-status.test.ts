@@ -14,3 +14,7 @@ test('the running file appears before later queued files so an idle row does not
  const jobs=[job({id:'later',createdAt:2}),job({id:'running',workerState:'RUNNING',status:'uploading',createdAt:1}),job({id:'done',status:'complete'})];
  assert.deepEqual(sortTransfers(jobs).map(item=>item.id),['running','later','done']);assert.equal(jobs[0].id,'later');
 });
+test('verified duplicates clearly report reuse rather than another upload',()=>{
+ assert.match(transferScheduleText(job({status:'complete',verified:true,reused:true})),/no duplicate uploaded/);
+ assert.match(transferScheduleText(job({status:'verifying',duplicateCheck:true})),/existing cloud copy/);
+});

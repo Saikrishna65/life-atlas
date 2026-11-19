@@ -1068,12 +1068,11 @@ export default function CloudStorage() {
                       <header>
                         <strong>{transfer.name}</strong>
                         <span className={`r2-state ${transfer.status}`}>
-                          {transfer.status}
+                          {transfer.reused ? "reused" : transfer.status}
                         </span>
                       </header>
                       <p>
-                        {transfer.slot} · {transfer.direction} · {bytes(sent)} /{" "}
-                        {bytes(total)}
+                        {transfer.slot} · {transfer.reused ? `existing copy · ${bytes(total)}` : `${transfer.direction} · ${bytes(sent)} / ${bytes(total)}`}
                         {transfer.speed
                           ? ` · ${bytes(transfer.speed)}/s · ~${transfer.eta ?? 0}s left`
                           : ""}
@@ -1085,7 +1084,7 @@ export default function CloudStorage() {
                       />
                       {transferScheduleText(transfer)&&<p role="status">{transferScheduleText(transfer)}</p>}
                       {transfer.nextAttemptAt&&transfer.retryScheduled&&<small>Next retry no earlier than {new Date(transfer.nextAttemptAt).toLocaleTimeString()} · attempt {transfer.attempts||0}</small>}
-                      {transfer.status==='verifying'&&<small>Upload sent. Verifying {bytes(transfer.verifiedBytes)} / {bytes(transfer.verificationTotalBytes||total)}</small>}
+                      {transfer.status==='verifying'&&<small>{transfer.duplicateCheck?'Checking existing copy.':'Upload sent.'} Verifying {bytes(transfer.verifiedBytes)} / {bytes(transfer.verificationTotalBytes||total)}</small>}
                       {transfer.error && (
                         <p className="r2-transfer-error">
                           {storageError({ code: transfer.error })}

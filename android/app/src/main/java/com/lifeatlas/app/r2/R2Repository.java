@@ -56,7 +56,7 @@ public final class R2Repository {
 
   public void cleanupCancelled(String id) throws Exception {
     JSONObject job = job(id);
-    if (!job.optString("direction").equals("download")) {
+    if (!job.optString("direction").equals("download") && !job.optBoolean("reused")) {
       R2Client client = new R2Client(store.credentials(job.getString("slot")));
       String uploadId = job.optString("uploadId");
       if (!uploadId.isEmpty())
@@ -163,6 +163,8 @@ public final class R2Repository {
           "publicUrl",
           "thumbnailUrl",
           "verified",
+          "reused",
+          "duplicateCheck",
           "direction"
         }) if (job.has(key)) out.put(key, job.get(key));
     return out;

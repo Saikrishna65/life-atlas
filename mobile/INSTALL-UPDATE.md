@@ -1,9 +1,9 @@
-Atlas 1.4.13 — verified stable signing
+Atlas 1.4.14 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 20.
+3. Open the matching APK and choose Update. This build uses version code 21.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -102,3 +102,11 @@ Choose an uploaded photo or video, preview desktop/mobile framing, then tap
 Update website cover. For new unpublished media, publish the trip first.
 A cover change does not re-upload files or alter routes, place groups or galleries.
 The redesigned Studio includes a searchable journey rail and direct editing steps.
+
+Duplicate uploads: native uploads compare file content against verified upload
+history in this installation. A matching object in the same bucket is checked
+and reused rather than uploaded again. Public/private storage and metadata
+privacy choices stay separate. Original files and previous cloud objects are
+never deleted by duplicate detection. Existing historical duplicates are not
+automatically removed. After resetting app storage or changing devices, upload
+history must still be present to identify earlier random-key objects.

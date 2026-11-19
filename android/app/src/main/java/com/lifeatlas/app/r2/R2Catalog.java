@@ -137,7 +137,7 @@ public final class R2Catalog {
       throw new R2Exception("INTEGRITY_FAILED");
     JSONObject item =
         new JSONObject()
-            .put("id", job.getString("id"))
+            .put("id", job.optString("mediaId", job.getString("id")))
             .put("key", job.getString("key"))
             .put("url", credentials.base + "/" + R2Policy.path(job.getString("key")))
             .put("title", title)

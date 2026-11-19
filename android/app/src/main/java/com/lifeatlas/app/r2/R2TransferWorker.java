@@ -96,7 +96,13 @@ public final class R2TransferWorker extends Worker {
         return Result.success();
       setForegroundAsync(notification(id, "Preparing original media", -1)).get();
       repository.checkCredentialRevision(job);
-      repository.update(id, j -> j.put("speed", 0).remove("error"));
+      repository.update(
+          id,
+          j -> {
+            j.put("speed", 0);
+            j.remove("error");
+            j.remove("duplicateCheck");
+          });
       check(repository, id);
       if (job.optString("direction").equals("download")) {
         download(repository, job);
@@ -141,6 +147,17 @@ public final class R2TransferWorker extends Worker {
         if (!already) throw new R2Exception("OBJECT_KEY_CONFLICT");
       } catch (R2Exception e) {
         if (!e.code.equals("OBJECT_NOT_FOUND")) throw e;
+      }
+      if (!already
+          && R2Duplicates.reuse(
+              repository,
+              job,
+              repository.store.credentials(job.getString("slot")),
+              client,
+              () -> check(repository, id))) {
+        staged.delete();
+        notifyFinished(id, true);
+        return Result.success();
       }
       if (!already) {
         if (total < 32L * 1024 * 1024) {
@@ -404,7 +421,8 @@ public final class R2TransferWorker extends Worker {
             R2Envelope.encrypt(source, output, keyset, job.getString("key"), metadata);
           }
           final String keyId = R2Crypto.keyId(keyset);
-          repository.update(id, j -> j.put("keyId", keyId));
+          repository.update(
+              id, j -> j.put("keyId", keyId).put("contentSha256", metadata.getString("sha256")));
         } finally {
           Arrays.fill(keyset, (byte) 0);
         }
@@ -454,7 +472,16 @@ public final class R2TransferWorker extends Worker {
       if (staged.length() == 0) throw new R2Exception("EMPTY_FILE");
       String sha = R2Io.sha(staged);
       long total = staged.length();
-      repository.update(id, j -> j.put("sha256", sha).put("totalBytes", total));
+      repository.update(
+          id,
+          j -> {
+            j.put("sha256", sha)
+                .put("totalBytes", total)
+                .put(
+                    "storageScope",
+                    R2Duplicates.scope(repository.store.credentials(job.getString("slot"))));
+            if (!encrypted) j.put("contentSha256", sha);
+          });
     } catch (Exception e) {
       staged.delete();
       throw e;

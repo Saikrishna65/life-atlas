@@ -26,7 +26,7 @@ export async function waitForTripTransfer(id:string, controls:TripTransferContro
   const current=transfers.find(job=>job.id===id);
   if(!current)throw Error('This saved upload is unavailable. Check Cloud Storage; your selected originals are still saved.');
   const verifying=current.status==='verifying';
-  controls.progress(verifying?'Verifying original file…':current.status==='preparing'?'Preparing original file…':'Uploading original file…',current);
+  controls.progress(current.reused?'Already in cloud · reusing the verified original…':current.duplicateCheck?'Checking existing cloud copy…':verifying?'Verifying original file…':current.status==='preparing'?'Preparing original file…':'Uploading original file…',current);
   if(current.status==='complete'){
    if(!current.verified)throw Error('This upload did not pass integrity verification.');
    return current;

@@ -83,6 +83,8 @@ export interface Transfer {
   publicUrl?: string;
   thumbnailUrl?: string;
   verified?: boolean;
+  reused?: boolean;
+  duplicateCheck?: boolean;
   direction: "upload" | "download";
 }
 export interface ObjectMetadata {

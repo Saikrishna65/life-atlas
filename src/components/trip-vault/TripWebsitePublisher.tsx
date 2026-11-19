@@ -29,7 +29,7 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
    resume:id=>R2.resumeTransfer({id,publicationSession}),
    paused:()=>cancelled.current,
    offline:()=>navigator.onLine===false,
-   progress:(phase,current)=>{setJobs(previous=>({...previous,[job.id]:current}));setProgress(`${transferScheduleText(current)||phase} ${current.name} · ${bytes(current.status==='verifying'?current.verifiedBytes:current.uploadedBytes)} / ${bytes(current.totalBytes)}`);},
+   progress:(phase,current)=>{setJobs(previous=>({...previous,[job.id]:current}));setProgress(current.reused?`Already in cloud · ${current.name} · no duplicate uploaded`:`${transferScheduleText(current)||phase} ${current.name} · ${bytes(current.status==='verifying'?current.verifiedBytes:current.uploadedBytes)} / ${bytes(current.totalBytes)}`);},
   });
  }
  function checkPaused(){if(cancelled.current)throw new PublicationPaused();}
