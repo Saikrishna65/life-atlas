@@ -38,9 +38,13 @@ import PhoneTrash from "./PhoneTrash";
 import "./library-hub.css";
 export default function LibraryHub() {
   const supported = nativeR2Available(),
-    [tab, setTab] = useState<"backup" | "library" | "trash" | "import">(
-      "backup",
-    ),
+    [tab, setTab] = useState<"backup" | "library" | "trash" | "import">(() => {
+      const hash =
+        typeof window === "undefined" ? "" : window.location.hash.slice(1);
+      return ["backup", "library", "trash", "import"].includes(hash)
+        ? (hash as "backup" | "library" | "trash" | "import")
+        : "backup";
+    }),
     [status, setStatus] = useState<LibraryStatus>(),
     [summary, setSummary] = useState<StorageSummary>(),
     [settings, setSettings] = useState<BackupSettings>(defaultBackup),

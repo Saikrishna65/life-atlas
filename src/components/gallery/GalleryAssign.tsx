@@ -1,6 +1,18 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  LockKeyhole,
+  MapPin,
+  Mountain,
+  Plus,
+} from "lucide-react";
+import GalleryThumbnail from "./GalleryThumbnail";
+import { deviceAsset } from "@/lib/gallery/model";
+import "./gallery-wizard.css";
 import { Modal } from "@/components/world/primitives";
 import TripMapPicker from "@/components/studio/TripMapPicker";
 import { savePastTrip } from "@/lib/studio/store";
@@ -24,7 +36,7 @@ export default function GalleryAssign({
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
-  const [tripId, setTripId] = useState(trips[0]?.id || ""),
+  const [tripId, setTripId] = useState(""),
     [placeId, setPlaceId] = useState(""),
     [placeName, setPlaceName] = useState(""),
     [creating, setCreating] = useState(false),
@@ -33,7 +45,11 @@ export default function GalleryAssign({
     [slot, setSlot] = useState<"public" | "private">("public"),
     [consent, setConsent] = useState(false),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [step, setStep] = useState(0),
+    [uploadChoice, setUploadChoice] = useState(false);
+  const canContinue = creating ? !!title.trim() && !!location : !!tripId;
+  const canPlace = !!placeId || !!placeName.trim();
   const trip = trips.find((t) => t.id === tripId);
   async function save(upload: boolean) {
     if (busy) return;
@@ -104,137 +120,286 @@ export default function GalleryAssign({
       onClose={() => {
         if (!busy) onClose();
       }}
-      className="pg-dialog"
+      className="pg-dialog ga-wizard"
     >
-      <p className="pg-muted">
-        {media.length} selected originals. Keep each journey and its places
-        together.
-      </p>
-      <div className="pg-storage-choice">
-        <button
-          aria-pressed={slot === "public"}
-          disabled={busy}
-          onClick={() => setSlot("public")}
-        >
-          Trip / public storage
-        </button>
-        <button
-          aria-pressed={slot === "private"}
-          disabled={busy}
-          onClick={() => setSlot("private")}
-        >
-          Encrypted private storage
-        </button>
+      <div className="ga-step-line">
+        <span>{media.length} selected</span>
+        <span>
+          {step === 0
+            ? "CHOOSE A DESTINATION"
+            : slot === "private"
+              ? "PRIVATE BACKUP"
+              : `${step} OF 3`}
+        </span>
       </div>
-      {slot === "public" ? (
-        <div className="pg-form">
-          <label>
-            Trip
-            <select
-              aria-label="Trip"
-              value={creating ? "new" : tripId}
-              disabled={busy}
-              onChange={(e) => {
-                setCreating(e.target.value === "new");
-                setTripId(e.target.value === "new" ? "" : e.target.value);
+      {step > 0 && (
+        <button
+          className="ga-back"
+          disabled={busy}
+          onClick={() => {
+            setStep(slot === "private" ? 0 : step - 1);
+            setError("");
+          }}
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
+      )}
+      {step === 0 && (
+        <>
+          <h3 className="ga-title">
+            What would you
+            <br />
+            like to do?
+          </h3>
+          <p className="ga-description">
+            Choose one. Your originals stay on your phone.
+          </p>
+          <button
+            className="ga-intent"
+            onClick={() => {
+              setSlot("public");
+              setStep(1);
+            }}
+          >
+            <Mountain size={28} />
+            <span>
+              <strong>Add to a trip</strong>
+              <small>
+                Choose a trip and a place. Decide about uploading later.
+              </small>
+            </span>
+            <ArrowRight size={19} />
+          </button>
+          <button
+            className="ga-intent"
+            onClick={() => {
+              setSlot("private");
+              setStep(3);
+            }}
+          >
+            <LockKeyhole size={28} />
+            <span>
+              <strong>Back up privately</strong>
+              <small>
+                Encrypted cloud copies. Never added to your website.
+              </small>
+            </span>
+            <ArrowRight size={19} />
+          </button>
+        </>
+      )}
+      {step === 1 && (
+        <>
+          <h3 className="ga-title">Which trip?</h3>
+          <p className="ga-description">
+            Each journey keeps its own photos and places.
+          </p>
+          <div className="ga-choices">
+            {trips.map((t) => (
+              <button
+                key={t.id}
+                aria-pressed={!creating && tripId === t.id}
+                onClick={() => {
+                  setTripId(t.id);
+                  setCreating(false);
+                  setPlaceId("");
+                  setPlaceName("");
+                }}
+              >
+                <Mountain size={20} />
+                <span>{t.title}</span>
+                {tripId === t.id && !creating && <Check size={17} />}
+              </button>
+            ))}
+            <button
+              aria-pressed={creating}
+              onClick={() => {
+                setCreating(true);
+                setTripId("");
                 setPlaceId("");
                 setPlaceName("");
               }}
             >
-              <option value="">Choose a journey</option>
-              {trips.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.title}
-                </option>
-              ))}
-              <option value="new">+ Create a trip</option>
-            </select>
-          </label>
+              <Plus size={20} />
+              <span>Create a new trip</span>
+            </button>
+          </div>
           {creating && (
-            <>
+            <div className="ga-new">
               <label>
-                Trip title
+                Trip name
                 <input
+                  aria-label="Trip title"
                   value={title}
                   maxLength={140}
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </label>
+              <p className="ga-description">
+                Choose the trip’s globe location.
+              </p>
               <TripMapPicker value={location} onChange={setLocation} />
-            </>
+            </div>
           )}
-          <label>
-            Place
-            <select
-              aria-label="Place"
-              value={placeId}
-              disabled={busy}
-              onChange={(e) => setPlaceId(e.target.value)}
-            >
-              <option value="">+ Add a place below</option>
-              {trip?.websitePlaces?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {!placeId && (
-            <label>
-              New place name
-              <input
-                placeholder="The lake, the temple, the campsite…"
-                value={placeName}
-                maxLength={54}
-                onChange={(e) => setPlaceName(e.target.value)}
-              />
-            </label>
-          )}
-          <label className="pg-consent">
-            <input
-              type="checkbox"
-              checked={consent}
-              disabled={busy}
-              onChange={(e) => setConsent(e.target.checked)}
-            />{" "}
-            I approve uploading these originals to public storage. Original
-            filenames and EXIF/location metadata may be readable. This does not
-            publish the trip’s website journal.
-          </label>
-          <div className="pg-action-row">
-            <button disabled={busy} onClick={() => void save(false)}>
-              {busy ? "Saving…" : "Save selections only"}
-            </button>
-            <button
-              className="pg-primary"
-              disabled={busy || !consent}
-              onClick={() => void save(true)}
-            >
-              {busy ? "Preparing queue…" : "Save & upload originals"}
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          <p className="pg-muted">
-            Files are encrypted on the phone before upload. Recovery must be
-            configured and verified in Cloud Storage. These files are not added
-            to the website publishing queue.
-          </p>
           <button
-            className="pg-primary"
-            disabled={busy}
-            onClick={() => void save(true)}
+            className="ga-next pg-primary"
+            disabled={!canContinue}
+            onClick={() => setStep(2)}
           >
-            {busy ? "Preparing queue…" : "Upload encrypted originals"}
+            Choose a place
+            <ArrowRight size={17} />
           </button>
         </>
       )}
-      <p className="pg-muted">
-        Uploads use the existing background queue and duplicate detection.{" "}
-        <Link href="/secret/studio">Creator Studio</Link> handles the final
-        website review, publishing and trip cover.
-      </p>
+      {step === 2 && (
+        <>
+          <h3 className="ga-title">
+            Where were
+            <br />
+            these taken?
+          </h3>
+          <p className="ga-description">
+            Pick a place in {creating ? title : trip?.title}.
+          </p>
+          <div className="ga-choices">
+            {!creating &&
+              trip?.websitePlaces?.map((p) => (
+                <button
+                  key={p.id}
+                  aria-pressed={placeId === p.id}
+                  onClick={() => {
+                    setPlaceId(p.id);
+                    setPlaceName("");
+                  }}
+                >
+                  <MapPin size={20} />
+                  <span>{p.name}</span>
+                  {placeId === p.id && <Check size={17} />}
+                </button>
+              ))}
+          </div>
+          <label className="ga-place-label">
+            Or add a new place
+            <input
+              aria-label="New place name"
+              placeholder="The lake, the campsite…"
+              value={placeName}
+              maxLength={54}
+              onChange={(e) => {
+                setPlaceName(e.target.value);
+                setPlaceId("");
+              }}
+            />
+          </label>
+          <button
+            className="ga-next pg-primary"
+            disabled={!canPlace}
+            onClick={() => setStep(3)}
+          >
+            Review selection
+            <ArrowRight size={17} />
+          </button>
+        </>
+      )}
+      {step === 3 && (
+        <>
+          <h3 className="ga-title">
+            {slot === "private" ? "A safe second copy." : "Ready to collect."}
+          </h3>
+          <div className="ga-preview">
+            {media.slice(0, 4).map((m) => (
+              <div key={m.id}>
+                <GalleryThumbnail asset={deviceAsset(m, [])} />
+              </div>
+            ))}
+          </div>
+          <p className="ga-summary">
+            {media.length} original {media.length === 1 ? "file" : "files"}
+            {slot === "public" && (
+              <>
+                {" "}
+                · {creating ? title : trip?.title}
+                <br />
+                <MapPin size={13} />{" "}
+                {placeId
+                  ? trip?.websitePlaces?.find((p) => p.id === placeId)?.name
+                  : placeName}
+              </>
+            )}
+          </p>
+          {slot === "public" ? (
+            <>
+              <div
+                className="ga-delivery"
+                role="group"
+                aria-label="Upload choice"
+              >
+                <button
+                  aria-pressed={!uploadChoice}
+                  disabled={busy}
+                  onClick={() => setUploadChoice(false)}
+                >
+                  <strong>Keep on my phone</strong>
+                  <small>Organize now. No upload.</small>
+                </button>
+                <button
+                  aria-pressed={uploadChoice}
+                  disabled={busy}
+                  onClick={() => setUploadChoice(true)}
+                >
+                  <strong>Upload a public copy</strong>
+                  <small>Also queue originals in public storage.</small>
+                </button>
+              </div>
+              {uploadChoice && (
+                <label className="pg-consent">
+                  <input
+                    type="checkbox"
+                    checked={consent}
+                    disabled={busy}
+                    onChange={(e) => setConsent(e.target.checked)}
+                  />
+                  I approve uploading these originals to public storage. Their
+                  EXIF/location metadata may be readable. The trip journal is
+                  published separately.
+                </label>
+              )}
+              <button
+                className="ga-next pg-primary"
+                disabled={busy || (uploadChoice && !consent)}
+                onClick={() => void save(uploadChoice)}
+              >
+                {busy
+                  ? "Saving…"
+                  : uploadChoice
+                    ? "Upload & add to trip"
+                    : "Add to trip"}
+                <Check size={18} />
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="ga-description">
+                Encrypted on your phone before upload. Your verified recovery
+                kit is required. This does not publish or organize the files
+                into a trip.
+              </p>
+              <button
+                className="ga-next pg-primary"
+                disabled={busy}
+                onClick={() => void save(true)}
+              >
+                {busy ? "Preparing backup…" : "Back up originals"}
+                <LockKeyhole size={18} />
+              </button>
+              <Link className="ga-help" href="/secret/gallery/library#backup">
+                Set up private backup ↗
+              </Link>
+            </>
+          )}
+        </>
+      )}
       {error && (
         <p role="alert" className="pg-error">
           {error}

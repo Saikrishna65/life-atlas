@@ -1,0 +1,253 @@
+.ga-wizard.world-modal {
+  width: calc(100vw - 28px);
+  max-width: 540px !important;
+  background: #fff;
+  color: #182322;
+  padding: 28px;
+  border-radius: 26px;
+}
+.ga-wizard .world-modal-header {
+  padding-bottom: 18px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #edf0e8;
+}
+.ga-wizard .world-modal-header h2 {
+  font-size: 18px;
+  letter-spacing: -0.4px;
+}
+.ga-step-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #91a08f;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+}
+.ga-title {
+  font-size: 38px;
+  line-height: 1.07;
+  letter-spacing: -1.6px;
+  font-weight: 500;
+  margin: 25px 0 15px;
+}
+.ga-description {
+  font-size: 12px;
+  line-height: 1.9;
+  color: #849080;
+  margin: 12px 0 24px;
+}
+.ga-wizard .ga-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  color: #849080;
+  padding: 16px 0 0;
+  min-height: 30px;
+  font-size: 11px;
+}
+.ga-wizard .ga-intent {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 19px;
+  padding: 23px 18px;
+  background: #f6f8f1;
+  color: #263b2e;
+  border: 1px solid #e6ecdf;
+  border-radius: 17px;
+  margin: 12px 0;
+}
+.ga-intent > svg:first-child {
+  color: #7d9a6f;
+  flex-shrink: 0;
+}
+.ga-intent span {
+  flex: 1;
+  display: grid;
+  gap: 8px;
+}
+.ga-intent strong {
+  font-size: 15px;
+  font-weight: 550;
+}
+.ga-intent small {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #8a9783;
+  font-weight: 400;
+}
+.ga-wizard .ga-next {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  background: #243c2d;
+  color: #fff;
+  border: 0;
+  border-radius: 14px;
+  min-height: 50px;
+  font-size: 13px;
+  margin-top: 24px;
+}
+.ga-wizard .ga-next:disabled {
+  opacity: 0.4;
+}
+.ga-choices {
+  display: grid;
+  gap: 8px;
+  margin: 20px 0;
+}
+.ga-wizard .ga-choices > button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 17px;
+  text-align: left;
+  border: 1px solid #e1e8dc;
+  border-radius: 12px;
+  background: white;
+  color: #3e5341;
+  font-size: 13px;
+}
+.ga-choices > button > span {
+  flex: 1;
+}
+.ga-choices svg {
+  color: #7e9871;
+}
+.ga-wizard .ga-choices > button[aria-pressed="true"] {
+  background: #edf4e6;
+  border-color: #96ae84;
+}
+.ga-new label,
+.ga-place-label {
+  display: grid;
+  gap: 9px;
+  font-size: 12px;
+  color: #71816a;
+}
+.ga-wizard input:not([type="checkbox"]) {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #e1e8dc;
+  border-radius: 12px;
+  background: #f8faf5;
+  color: #243c2d;
+  padding: 12px;
+  font-size: 14px;
+}
+.ga-preview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin-top: 24px;
+}
+.ga-preview > div {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 9px;
+  background: #f0f5e9;
+}
+.ga-preview .pg-thumbnail {
+  position: absolute;
+  inset: 0;
+}
+.ga-summary {
+  font-size: 12px;
+  color: #74876c;
+  line-height: 2;
+  margin: 17px 0;
+}
+.ga-summary svg {
+  display: inline;
+  vertical-align: middle;
+}
+.ga-delivery {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin: 23px 0;
+}
+.ga-wizard .ga-delivery > button {
+  display: grid;
+  gap: 9px;
+  align-content: start;
+  text-align: left;
+  padding: 17px 13px;
+  border: 1px solid #e1e8dc;
+  background: white;
+  color: #40533b;
+  border-radius: 13px;
+}
+.ga-wizard .ga-delivery > button[aria-pressed="true"] {
+  background: #edf4e6;
+  border-color: #91aa7b;
+}
+.ga-delivery strong {
+  font-size: 12px;
+  font-weight: 550;
+}
+.ga-delivery small {
+  font-size: 10px;
+  line-height: 1.7;
+  color: #8a9b81;
+  font-weight: 400;
+}
+.ga-help {
+  display: block;
+  text-align: center;
+  margin: 20px 0 0;
+  font-size: 11px;
+  color: #84947a;
+}
+.ga-wizard .pg-consent {
+  font-size: 11px;
+  color: #75886d;
+  line-height: 1.8;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.ga-wizard .pg-consent input {
+  margin-top: 4px;
+  flex-shrink: 0;
+  accent-color: #486b33;
+}
+.ga-wizard :is(button, input):focus-visible {
+  outline: 2px solid #6e8a54;
+  outline-offset: 3px;
+}
+@media (max-width: 700px) {
+  .ga-wizard.world-modal {
+    padding: 24px 18px;
+    border-radius: 23px;
+  }
+  .ga-title {
+    font-size: 34px;
+    margin-top: 23px;
+  }
+  .ga-wizard .ga-intent {
+    padding: 20px 15px;
+    gap: 15px;
+  }
+  .ga-intent strong {
+    font-size: 14px;
+  }
+  .ga-intent small {
+    font-size: 10px;
+  }
+  .ga-wizard .ga-next {
+    min-height: 50px;
+  }
+  .ga-wizard .world-modal-header .world-icon {
+    width: 36px;
+    height: 36px;
+  }
+}

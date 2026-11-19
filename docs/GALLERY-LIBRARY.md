@@ -1,6 +1,6 @@
-# Atlas photo library — 1.8.0
+# Atlas photo library — 2.0.0
 
-Open **Private Atlas → Photo & video gallery → Library tools** (settings icon).
+Open **Private Atlas → Photo & video gallery → Backup**. Choose the relevant tool from the backup workspace.
 The native route is `/secret/gallery/library`. These tools do not change the
 public website's hero, globe, trip journal, or publishing approval workflow.
 
@@ -13,7 +13,7 @@ public website's hero, globe, trip journal, or publishing approval workflow.
    Android's selected-photos permission still works for manual Gallery browsing;
    unattended backup requires full access. Original metadata access is requested
    when enabling backup so encrypted originals retain their original bytes.
-4. In Library tools → Backup choose albums, photos/videos, network, charging,
+4. In Backup → Manage private backup choose albums, photos/videos, network, charging,
    existing-file policy, and optional short video previews. Check approval and
    save with native device authentication. Defaults: disabled, unmetered only,
    original photos/videos, previews disabled.

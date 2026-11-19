@@ -1,9 +1,9 @@
-Atlas 1.8.1 — verified stable signing
+Atlas 2.0.0 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 28.
+3. Open the matching APK and choose Update. This build uses version code 29.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -151,3 +151,13 @@ Gallery redesign (1.8.1): Photo-first collection, direct album browsing, explici
 Select / Done mode, thumb-reachable selection actions, journey chooser, and
 unified Places and Backup tools. Search, filters, cloud-copy checks, encrypted
 backup and publishing retain their existing behavior. Install as an update.
+
+Gallery workspace (2.0.0) replaces the four-tab dashboard with Photos, Organize,
+and Backup. Photos opens directly into the collection; search and view options
+are opened only when needed. Organize contains device albums, journeys and Places.
+Backup contains private-library, public-file, transfer, trash and import actions.
+
+Select photos → Add or back up → Add to a trip → choose trip → choose place
+→ review. Keep on my phone is the default; public upload is a separate approved
+choice. Back up privately skips trip/place questions and never publishes files.
+Private backup configuration and recovery are available under Backup.

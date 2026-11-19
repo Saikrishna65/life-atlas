@@ -17,8 +17,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   X,
-  MapPin,
-  Settings,
   Trash2,
 } from "lucide-react";
 import {
@@ -67,6 +65,9 @@ import GalleryAssign from "./GalleryAssign";
 import { useGalleryLayout } from "./useGalleryLayout";
 import "./gallery.css";
 import "./photos.css";
+import GalleryCollections from "./GalleryCollections";
+import GalleryStorageHome from "./GalleryStorageHome";
+import "./gallery-workspace.css";
 const GalleryPlaces = dynamic(() => import("./GalleryPlaces"), { ssr: false });
 const GalleryTripControls = dynamic(() => import("./GalleryTripControls"), {
   ssr: false,
@@ -129,7 +130,13 @@ export default function PhotoGallery() {
     [websiteControls, setWebsiteControls] = useState(false),
     [online, setOnline] = useState(true),
     [filtersOpen, setFiltersOpen] = useState(false),
-    [selectionMode, setSelectionMode] = useState(false);
+    [selectionMode, setSelectionMode] = useState(false),
+    [workspace, setWorkspace] = useState<"photos" | "organize" | "backup">(
+      "photos",
+    ),
+    [collectionOpen, setCollectionOpen] = useState(false),
+    [searchOpen, setSearchOpen] = useState(false);
+  const browsing = workspace === "photos" || collectionOpen;
   const grid = useRef<HTMLDivElement>(null),
     sentinel = useRef<HTMLDivElement>(null),
     deviceGeneration = useRef(0),
@@ -454,6 +461,8 @@ export default function PhotoGallery() {
     dateTo,
   ]);
   const activeFilters =
+    (kind !== "all" ? 1 : 0) +
+    (favoritesOnly ? 1 : 0) +
     (status !== "all" ? 1 : 0) +
     (order !== "newest" ? 1 : 0) +
     (album ? 1 : 0) +
@@ -463,7 +472,7 @@ export default function PhotoGallery() {
     columns,
     grid,
     order === "newest" || order === "oldest",
-    view + String(filtersOpen),
+    view + String(filtersOpen) + workspace + String(collectionOpen),
   );
   const chosen = selected.flatMap((id) => {
       const record = selectionMedia[id] || items.find((m) => m.id === id);
@@ -500,6 +509,8 @@ export default function PhotoGallery() {
     requestDevice,
     cursor,
     layout.ready,
+    browsing,
+    workspace,
   ]);
   useEffect(() => {
     const node = grid.current;
@@ -537,7 +548,7 @@ export default function PhotoGallery() {
       node.removeEventListener("touchstart", begin);
       node.removeEventListener("touchmove", move);
     };
-  }, [access.status, supported, view, maxColumns]);
+  }, [access.status, supported, view, maxColumns, browsing, workspace]);
   const closeViewer = useCallback(() => {
     opening.current++;
     setViewer("");
@@ -706,751 +717,759 @@ export default function PhotoGallery() {
     <main
       className={`private-gallery${view === "places" ? " has-place-organizer" : ""}`}
     >
-      <header className="pg-top">
-        <div className="pg-brand">
-          <Link href="/secret" aria-label="Back to Private Atlas">
+      <header className="gw-header">
+        <div className="gw-heading">
+          {!collectionOpen && (
+            <Link
+              href="/secret"
+              className="gw-back"
+              aria-label="Back to Private Atlas"
+            >
+              <ArrowLeft size={20} />
+            </Link>
+          )}
+          <button
+            hidden={!collectionOpen}
+            className="gw-back"
+            aria-label={
+              collectionOpen ? "Back to collections" : "Back to Private Atlas"
+            }
+            onClick={() => {
+              if (collectionOpen) {
+                window.scrollTo(0, 0);
+                setCollectionOpen(false);
+                setView("device");
+                setTripFilter("");
+                setPlaceFilter("");
+                setAlbum("");
+                setSelected([]);
+                setSelectionMode(false);
+                setQuery("");
+                setSearchOpen(false);
+                setKind("all");
+                setStatus("all");
+                setFavoritesOnly(false);
+                setDateFrom("");
+                setDateTo("");
+              }
+            }}
+          >
             <ArrowLeft size={20} />
-          </Link>
-          <Aperture size={29} strokeWidth={1.8} />
-          <span>
-            <strong>Gallery</strong>
-            <small>Life Atlas</small>
-          </span>
+          </button>
+          <h1>
+            {collectionOpen
+              ? view === "places"
+                ? "Places"
+                : view === "cloud"
+                  ? "Public cloud"
+                  : tripFilter
+                    ? trips.find((t) => t.id === tripFilter)?.title || "Trip"
+                    : album || "Collection"
+              : workspace === "photos"
+                ? "Photos"
+                : workspace === "organize"
+                  ? "Organize"
+                  : "Backup"}
+          </h1>
         </div>
-        <label className="pg-search">
-          <Search size={16} />
+        {browsing && view !== "places" && (
+          <div className="gw-header-actions">
+            <button
+              aria-label="Search photos"
+              disabled={view !== "cloud" && access.status === "denied"}
+              aria-expanded={searchOpen}
+              onClick={() => setSearchOpen(!searchOpen)}
+            >
+              <Search size={21} />
+            </button>
+            <button
+              aria-label="Gallery filters"
+              disabled={view !== "cloud" && access.status === "denied"}
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen(true)}
+            >
+              <SlidersHorizontal size={20} />
+              {activeFilters > 0 && <b>{activeFilters}</b>}
+            </button>
+            {view !== "cloud" && (
+              <button
+                className="gw-select"
+                disabled={!assets.length}
+                aria-pressed={selectionMode}
+                onClick={() => {
+                  setSelectionMode(!selectionMode);
+                  setSelected([]);
+                }}
+              >
+                {selectionMode ? "Done" : "Select"}
+              </button>
+            )}
+          </div>
+        )}
+      </header>
+      {searchOpen && browsing && (
+        <label className="gw-search">
+          <Search size={19} />
           <input
-            aria-label="Search gallery"
+            autoFocus
             type="search"
-            placeholder="Find a photo or video…"
+            aria-label="Search gallery"
+            placeholder="Search filenames…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-        </label>
-        <div className="pg-header-actions">
-          <Link
-            href="/secret/gallery/library"
-            aria-label="Library backup and recovery"
-            className="pg-library-link"
-          >
-            <Settings size={18} />
-            <span>Backup & tools</span>
-          </Link>
           <button
-            aria-label="Open transfer queue"
-            onClick={() => setDrawer(true)}
+            aria-label="Close search"
+            onClick={() => {
+              setSearchOpen(false);
+              setQuery("");
+            }}
           >
-            <CloudUpload size={21} />
-            {pending.length > 0 && <b>{pending.length}</b>}
+            <X size={18} />
           </button>
-          <Link
-            href="/secret/studio"
-            aria-label="Open Creator Studio"
-            className="pg-studio-link"
+        </label>
+      )}
+      <nav className="gw-navigation" aria-label="Gallery views">
+        {(["photos", "organize", "backup"] as const).map((section) => (
+          <button
+            key={section}
+            aria-label={
+              section === "photos"
+                ? "On my phone"
+                : section === "organize"
+                  ? "Organize collections"
+                  : "Backup and cloud"
+            }
+            aria-current={workspace === section ? "page" : undefined}
+            onClick={() => {
+              window.scrollTo(0, 0);
+              setWorkspace(section);
+              setKind("all");
+              setStatus("all");
+              setFavoritesOnly(false);
+              setDateFrom("");
+              setDateTo("");
+              setCollectionOpen(false);
+              setView("device");
+              setTripFilter("");
+              setPlaceFilter("");
+              setAlbum("");
+              setQuery("");
+              setSearchOpen(false);
+              setSelected([]);
+              setSelectionMode(false);
+              setError("");
+            }}
           >
-            <span>Studio</span>
-            <ArrowLeft size={17} style={{ transform: "rotate(135deg)" }} />
-          </Link>
-        </div>
-      </header>
-      <div className="pg-toolbar">
-        <nav aria-label="Gallery views">
-          {(["device", "cloud", "trips", "places"] as const).map((v) => (
-            <button
-              key={v}
-              aria-pressed={view === v}
-              aria-label={
-                v === "device"
-                  ? "On my phone"
-                  : v === "cloud"
-                    ? "In the cloud"
-                    : v === "places"
-                      ? "Places organizer"
-                      : "Trips & places"
-              }
-              onClick={() => {
-                setView(v);
-                setSelected([]);
-                setSelectionMode(false);
-                if (v !== "trips") {
-                  setTripFilter("");
-                  setPlaceFilter("");
-                }
-                setError("");
-              }}
-            >
-              {v === "device" ? (
-                <ImageIcon size={17} />
-              ) : v === "cloud" ? (
-                <Cloud size={17} />
-              ) : v === "places" ? (
-                <MapPin size={20} />
-              ) : (
-                <Aperture size={20} />
-              )}{" "}
-              {v === "device"
-                ? "Photos"
-                : v === "cloud"
-                  ? "Cloud"
-                  : v === "places"
-                    ? "Places"
-                    : "Trips"}
-            </button>
-          ))}
-        </nav>
-        <div className="pg-rail-footer">
-          <Link href="/secret/studio">Creator Studio ↗</Link>
-          <small>Originals stay original.</small>
-        </div>
-        <button className="pg-rail-transfers" onClick={() => setDrawer(true)}>
-          <CloudUpload size={17} /> Transfers{" "}
-          {pending.length > 0 && <b>{pending.length}</b>}
-        </button>
-      </div>
-      <section className="pg-page-heading">
-        <div>
-          <h1>
-            {view === "device"
-              ? "Your photos."
-              : view === "cloud"
-                ? "Cloud library"
-                : view === "trips"
-                  ? "Trips & albums"
-                  : "Places"}
-          </h1>
-          <p>
-            {view === "device"
-              ? "The everyday. The unforgettable. All here."
-              : view === "cloud"
-                ? "Browse your public and encrypted private originals."
-                : view === "trips"
-                  ? "Collected by journey. Organized by place."
-                  : "Find familiar places in your photo library."}
-          </p>
-        </div>
-        <div className="pg-heading-actions">
-          {view !== "places" && view !== "cloud" && (
-            <button
-              className="pg-select-mode"
-              aria-pressed={selectionMode}
-              onClick={() => {
-                setSelectionMode(!selectionMode);
-                setSelected([]);
-              }}
-            >
-              <Check size={17} />
-              {selectionMode ? "Done" : "Select"}
-            </button>
-          )}
-          {view !== "places" && (
-            <button
-              aria-label="Gallery filters"
-              aria-expanded={filtersOpen}
-              onClick={() => setFiltersOpen((v) => !v)}
-            >
-              <SlidersHorizontal size={18} />
-              <span>Filters{activeFilters ? ` · ${activeFilters}` : ""}</span>
-            </button>
-          )}
-        </div>
-      </section>
-      {!supported ? (
-        <section className="pg-permission">
-          <ShieldCheck size={34} />
-          <h2>My gallery lives on my phone.</h2>
-          <p>
-            Open Gallery in the Android app to browse accessible device photos,
-            check cloud copies and upload originals. A browser cannot enumerate
-            the phone’s media library.
-          </p>
-          <Link href="/secret/studio">Open Creator Studio</Link>
-        </section>
-      ) : (
-        <>
-          <div
-            className={`pg-access ${access.status === "full" && online ? "is-ready" : ""}`}
-          >
+            {section === "photos" ? (
+              <ImageIcon size={22} />
+            ) : section === "organize" ? (
+              <Aperture size={22} />
+            ) : (
+              <Cloud size={22} />
+            )}
             <span>
-              <span className={`pg-dot ${online ? "" : "is-offline"}`} />
-              {!online
-                ? "Offline · local originals remain available"
-                : access.status === "full"
-                  ? "Full photo & video access"
-                  : access.status === "limited"
-                    ? "Limited access · showing what Android allows"
-                    : "Photo & video access needed"}
+              {section === "photos"
+                ? "Photos"
+                : section === "organize"
+                  ? "Organize"
+                  : "Backup"}
             </span>
-            <div>
-              {access.status !== "full" && (
-                <button disabled={busy} onClick={() => void permission()}>
-                  {access.status === "limited"
-                    ? "Choose more photos"
-                    : "Allow photo & video access"}
-                </button>
-              )}
-              <button
-                hidden={!filtersOpen}
-                onClick={() =>
-                  void systemAction(() => R2.openGallerySettings())
-                }
-              >
-                Permissions
-              </button>
-              <button
-                aria-label="Refresh gallery"
-                onClick={() => {
-                  setRevision((v) => v + 1);
-                  void R2.getConfigurationSummary()
-                    .then(setSummary)
-                    .catch(() => {});
-                  if (view === "cloud") void requestCloud("");
-                }}
-              >
-                <RefreshCw size={16} />
-              </button>
-            </div>
-          </div>
-          {view === "places" ? (
-            <GalleryPlaces search={query} onSearch={setQuery} />
-          ) : view !== "cloud" && access.status === "denied" ? (
+          </button>
+        ))}
+      </nav>
+      {workspace === "organize" && !collectionOpen && (
+        <GalleryCollections
+          albums={albums}
+          items={items}
+          trips={trips}
+          onAlbum={(name) => {
+            window.scrollTo(0, 0);
+            setAlbum(name);
+            setView("device");
+            setCollectionOpen(true);
+          }}
+          onTrip={(id) => {
+            window.scrollTo(0, 0);
+            setTripFilter(id);
+            setView("trips");
+            setCollectionOpen(true);
+          }}
+          onPlaces={() => {
+            window.scrollTo(0, 0);
+            setView("places");
+            setCollectionOpen(true);
+          }}
+        />
+      )}
+      {workspace === "backup" && !collectionOpen && (
+        <GalleryStorageHome
+          summary={summary}
+          pending={pending.length}
+          onPublic={() => {
+            window.scrollTo(0, 0);
+            setView("cloud");
+            setSlot("public");
+            setCollectionOpen(true);
+          }}
+          onTransfers={() => setDrawer(true)}
+        />
+      )}
+      {browsing && (
+        <>
+          {!supported ? (
             <section className="pg-permission">
-              <ImageIcon size={36} />
-              <h2>Let my memories in.</h2>
+              <ShieldCheck size={34} />
+              <h2>My gallery lives on my phone.</h2>
               <p>
-                Grant full access for all accessible photos and videos, or
-                choose specific media. Nothing uploads just because it appears
-                here.
+                Open Gallery in the Android app to browse accessible device
+                photos, check cloud copies and upload originals. A browser
+                cannot enumerate the phone’s media library.
               </p>
-              <button
-                className="pg-primary"
-                disabled={busy}
-                onClick={() => void permission()}
-              >
-                Choose photo access
-              </button>
+              <Link href="/secret/studio">Open Creator Studio</Link>
             </section>
           ) : (
             <>
-              {view === "cloud" && (
-                <div
-                  className="pg-cloud-tabs"
-                  aria-label="Cloud storage visibility"
-                >
-                  <button
-                    aria-pressed={slot === "public"}
-                    onClick={() => setSlot("public")}
-                  >
-                    <Cloud size={15} /> Public originals
-                  </button>
-                  <button
-                    aria-pressed={slot === "private"}
-                    onClick={() => setSlot("private")}
-                  >
-                    <ShieldCheck size={15} /> Encrypted private
-                  </button>
+              <div
+                className={`pg-access ${access.status === "full" && online ? "is-ready" : ""}`}
+                hidden={access.status === "full" && online}
+              >
+                <span>
+                  <span className={`pg-dot ${online ? "" : "is-offline"}`} />
+                  {!online
+                    ? "Offline · local originals remain available"
+                    : access.status === "full"
+                      ? "Full photo & video access"
+                      : access.status === "limited"
+                        ? "Limited access · showing what Android allows"
+                        : "Photo & video access needed"}
+                </span>
+                <div>
+                  {access.status !== "full" && (
+                    <button disabled={busy} onClick={() => void permission()}>
+                      {access.status === "limited"
+                        ? "Choose more photos"
+                        : "Allow photo & video access"}
+                    </button>
+                  )}
                 </div>
-              )}
-              {view === "trips" && (
-                <nav className="pg-journeys" aria-label="Your journeys">
-                  {trips.length ? (
-                    trips.map((trip) => (
+              </div>
+              {view === "places" ? (
+                <GalleryPlaces search={query} onSearch={setQuery} />
+              ) : view !== "cloud" && access.status === "denied" ? (
+                <section className="pg-permission">
+                  <ImageIcon size={36} />
+                  <h2>Let my memories in.</h2>
+                  <p>
+                    Grant full access for all accessible photos and videos, or
+                    choose specific media. Nothing uploads just because it
+                    appears here.
+                  </p>
+                  <button
+                    className="pg-primary"
+                    disabled={busy}
+                    onClick={() => void permission()}
+                  >
+                    Choose photo access
+                  </button>
+                </section>
+              ) : (
+                <>
+                  {view === "cloud" && (
+                    <div
+                      className="pg-cloud-tabs"
+                      aria-label="Cloud storage visibility"
+                    >
                       <button
-                        key={trip.id}
-                        aria-pressed={tripFilter === trip.id}
-                        onClick={() => {
-                          setTripFilter(trip.id);
+                        aria-pressed={slot === "public"}
+                        onClick={() => setSlot("public")}
+                      >
+                        <Cloud size={15} /> Public originals
+                      </button>
+                      <button
+                        aria-pressed={slot === "private"}
+                        onClick={() => setSlot("private")}
+                      >
+                        <ShieldCheck size={15} /> Encrypted private
+                      </button>
+                    </div>
+                  )}
+                  {filtersOpen && (
+                    <Modal
+                      title="View options"
+                      onClose={() => setFiltersOpen(false)}
+                      className="pg-dialog gw-options"
+                    >
+                      {" "}
+                      <div className="pg-quick-filters">
+                        <button
+                          aria-pressed={kind === "all"}
+                          onClick={() => setKind("all")}
+                        >
+                          All
+                        </button>
+                        <button
+                          aria-pressed={kind === "photo"}
+                          onClick={() => setKind("photo")}
+                        >
+                          <ImageIcon size={15} /> Photos
+                        </button>
+                        <button
+                          aria-pressed={kind === "video"}
+                          onClick={() => setKind("video")}
+                        >
+                          <Film size={15} /> Videos
+                        </button>
+                        <button
+                          aria-pressed={favoritesOnly}
+                          onClick={() => setFavoritesOnly((v) => !v)}
+                        >
+                          <Heart size={15} /> Favorites
+                        </button>
+                      </div>
+                      <div className="pg-filters">
+                        <select
+                          aria-label="Media type"
+                          value={kind}
+                          onChange={(e) => setKind(e.target.value)}
+                        >
+                          <option value="all">Photos & videos</option>
+                          <option value="photo">Photos</option>
+                          <option value="video">Videos</option>
+                        </select>
+                        <select
+                          aria-label="Cloud status"
+                          value={status}
+                          onChange={(e) =>
+                            setStatus(e.target.value as StatusFilter)
+                          }
+                        >
+                          <option value="all">All statuses</option>
+                          <option value="unchecked">Not checked</option>
+                          <option value="not-found">No known upload</option>
+                          <option value="cloud">Cloud copies</option>
+                          <option value="pending">Pending uploads</option>
+                          <option value="failed">Needs attention</option>
+                          <option value="published">Website published</option>
+                        </select>
+                        <select
+                          aria-label="Sort gallery"
+                          value={order}
+                          onChange={(e) => setOrder(e.target.value)}
+                        >
+                          <option value="newest">Newest first</option>
+                          <option value="oldest">Oldest first</option>
+                          <option value="largest">
+                            Largest · loaded media
+                          </option>
+                          <option value="name">Name · loaded media</option>
+                        </select>
+                        {view === "cloud" ? (
+                          <select
+                            aria-label="Cloud bucket"
+                            value={slot}
+                            onChange={(e) =>
+                              setSlot(e.target.value as BucketSlot)
+                            }
+                          >
+                            <option value="public">Public bucket</option>
+                            <option value="private">
+                              Encrypted private bucket
+                            </option>
+                          </select>
+                        ) : (
+                          <select
+                            aria-label="Device album"
+                            value={album}
+                            onChange={(e) => setAlbum(e.target.value)}
+                          >
+                            <option value="">All device albums</option>
+                            {albums.map((a) => (
+                              <option key={a.name} value={a.name}>
+                                {a.name}
+                                {a.count ? ` (${a.count})` : ""}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <label className="pg-date-filter">
+                          From
+                          <input
+                            type="date"
+                            aria-label="Gallery start date"
+                            value={dateFrom}
+                            onChange={(e) => setDateFrom(e.target.value)}
+                          />
+                        </label>
+                        <label className="pg-date-filter">
+                          To
+                          <input
+                            type="date"
+                            aria-label="Gallery end date"
+                            value={dateTo}
+                            min={dateFrom || undefined}
+                            onChange={(e) => setDateTo(e.target.value)}
+                          />
+                        </label>
+                        <button
+                          aria-pressed={favoritesOnly}
+                          aria-label="Show favorites"
+                          onClick={() => setFavoritesOnly((v) => !v)}
+                        >
+                          <Heart size={17} />
+                        </button>
+                        <label className="pg-density">
+                          <SlidersHorizontal size={16} />
+                          <input
+                            aria-label="Gallery density"
+                            type="range"
+                            min={2}
+                            max={maxColumns}
+                            value={columns}
+                            onChange={(e) => {
+                              setColumns(+e.target.value);
+                              void saveGalleryPreference(
+                                "photos-density",
+                                +e.target.value,
+                              );
+                            }}
+                          />
+                        </label>
+                      </div>
+                      <div className="gw-options-utilities">
+                        {" "}
+                        <button
+                          onClick={() =>
+                            void systemAction(() => R2.openGallerySettings())
+                          }
+                        >
+                          Permissions
+                        </button>
+                        <button
+                          aria-label="Refresh gallery"
+                          onClick={() => {
+                            setRevision((v) => v + 1);
+                            void R2.getConfigurationSummary()
+                              .then(setSummary)
+                              .catch(() => {});
+                            if (view === "cloud") void requestCloud("");
+                          }}
+                        >
+                          <RefreshCw size={16} />
+                        </button>
+                      </div>
+                      <div className="gw-options-actions">
+                        <button
+                          onClick={() => {
+                            setKind("all");
+                            setStatus("all");
+                            setOrder("newest");
+                            setAlbum("");
+                            setFavoritesOnly(false);
+                            setDateFrom("");
+                            setDateTo("");
+                          }}
+                        >
+                          Reset filters
+                        </button>
+                        <button
+                          className="pg-primary"
+                          onClick={() => setFiltersOpen(false)}
+                        >
+                          Show photos
+                        </button>
+                      </div>
+                    </Modal>
+                  )}
+                  {(view === "trips" || tripFilter) && (
+                    <div className="pg-trip-filter">
+                      <select
+                        aria-label="Filter by trip"
+                        value={tripFilter}
+                        onChange={(e) => {
+                          setTripFilter(e.target.value);
                           setPlaceFilter("");
                         }}
                       >
-                        <MapPin size={20} />
-                        <span>
-                          {trip.title}
-                          <small>
-                            {trip.websitePlaces?.length || 0} places
-                          </small>
-                        </span>
-                        <ArrowLeft
-                          size={17}
-                          style={{ transform: "rotate(180deg)" }}
-                        />
-                      </button>
-                    ))
-                  ) : (
-                    <p>
-                      No journeys yet.{" "}
-                      <Link href="/secret/studio">
-                        Create your first trip in Studio ↗
-                      </Link>
-                    </p>
+                        <option value="">All assigned trips</option>
+                        {trips.map((t) => (
+                          <option value={t.id} key={t.id}>
+                            {t.title}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        aria-label="Filter by place"
+                        value={placeFilter}
+                        onChange={(e) => setPlaceFilter(e.target.value)}
+                      >
+                        <option value="">All places</option>
+                        {trips
+                          .find((t) => t.id === tripFilter)
+                          ?.websitePlaces?.map((p) => (
+                            <option value={p.id} key={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
                   )}
-                </nav>
-              )}
-              <div className="pg-quick-filters">
-                <button
-                  aria-pressed={kind === "all"}
-                  onClick={() => setKind("all")}
-                >
-                  All
-                </button>
-                <button
-                  aria-pressed={kind === "photo"}
-                  onClick={() => setKind("photo")}
-                >
-                  <ImageIcon size={15} /> Photos
-                </button>
-                <button
-                  aria-pressed={kind === "video"}
-                  onClick={() => setKind("video")}
-                >
-                  <Film size={15} /> Videos
-                </button>
-                <button
-                  aria-pressed={favoritesOnly}
-                  onClick={() => setFavoritesOnly((v) => !v)}
-                >
-                  <Heart size={15} /> Favorites
-                </button>
-              </div>
-              {view === "device" && albums.length > 0 && (
-                <nav className="pg-album-strip" aria-label="Device albums">
-                  <button aria-pressed={!album} onClick={() => setAlbum("")}>
-                    <Aperture size={18} />
-                    <span>
-                      Everything<small>All albums</small>
-                    </span>
-                  </button>
-                  {albums.map((a) => (
-                    <button
-                      key={a.name}
-                      aria-pressed={album === a.name}
-                      onClick={() => setAlbum(album === a.name ? "" : a.name)}
-                    >
-                      <ImageIcon size={18} />
-                      <span>
-                        {a.name}
-                        <small>
-                          {a.count ? `${a.count} items` : "Device album"}
-                        </small>
-                      </span>
-                    </button>
-                  ))}
-                </nav>
-              )}
-              <div className="pg-filters" hidden={!filtersOpen}>
-                <select
-                  aria-label="Media type"
-                  value={kind}
-                  onChange={(e) => setKind(e.target.value)}
-                >
-                  <option value="all">Photos & videos</option>
-                  <option value="photo">Photos</option>
-                  <option value="video">Videos</option>
-                </select>
-                <select
-                  aria-label="Cloud status"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as StatusFilter)}
-                >
-                  <option value="all">All statuses</option>
-                  <option value="unchecked">Not checked</option>
-                  <option value="not-found">No known upload</option>
-                  <option value="cloud">Cloud copies</option>
-                  <option value="pending">Pending uploads</option>
-                  <option value="failed">Needs attention</option>
-                  <option value="published">Website published</option>
-                </select>
-                <select
-                  aria-label="Sort gallery"
-                  value={order}
-                  onChange={(e) => setOrder(e.target.value)}
-                >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="largest">Largest · loaded media</option>
-                  <option value="name">Name · loaded media</option>
-                </select>
-                {view === "cloud" ? (
-                  <select
-                    aria-label="Cloud bucket"
-                    value={slot}
-                    onChange={(e) => setSlot(e.target.value as BucketSlot)}
-                  >
-                    <option value="public">Public bucket</option>
-                    <option value="private">Encrypted private bucket</option>
-                  </select>
-                ) : (
-                  <select
-                    aria-label="Device album"
-                    value={album}
-                    onChange={(e) => setAlbum(e.target.value)}
-                  >
-                    <option value="">All device albums</option>
-                    {albums.map((a) => (
-                      <option key={a.name} value={a.name}>
-                        {a.name}
-                        {a.count ? ` (${a.count})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <label className="pg-date-filter">
-                  From
-                  <input
-                    type="date"
-                    aria-label="Gallery start date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                  />
-                </label>
-                <label className="pg-date-filter">
-                  To
-                  <input
-                    type="date"
-                    aria-label="Gallery end date"
-                    value={dateTo}
-                    min={dateFrom || undefined}
-                    onChange={(e) => setDateTo(e.target.value)}
-                  />
-                </label>
-                <button
-                  aria-pressed={favoritesOnly}
-                  aria-label="Show favorites"
-                  onClick={() => setFavoritesOnly((v) => !v)}
-                >
-                  <Heart size={17} />
-                </button>
-                <label className="pg-density">
-                  <SlidersHorizontal size={16} />
-                  <input
-                    aria-label="Gallery density"
-                    type="range"
-                    min={2}
-                    max={maxColumns}
-                    value={columns}
-                    onChange={(e) => {
-                      setColumns(+e.target.value);
-                      void saveGalleryPreference(
-                        "photos-density",
-                        +e.target.value,
-                      );
-                    }}
-                  />
-                </label>
-              </div>
-              {(view === "trips" || tripFilter) && (
-                <div className="pg-trip-filter">
-                  <select
-                    aria-label="Filter by trip"
-                    value={tripFilter}
-                    onChange={(e) => {
-                      setTripFilter(e.target.value);
-                      setPlaceFilter("");
-                    }}
-                  >
-                    <option value="">All assigned trips</option>
-                    {trips.map((t) => (
-                      <option value={t.id} key={t.id}>
-                        {t.title}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="Filter by place"
-                    value={placeFilter}
-                    onChange={(e) => setPlaceFilter(e.target.value)}
-                  >
-                    <option value="">All places</option>
-                    {trips
-                      .find((t) => t.id === tripFilter)
-                      ?.websitePlaces?.map((p) => (
-                        <option value={p.id} key={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              )}
-              {view === "trips" && tripFilter && (
-                <div className="pg-website-wrap">
-                  <button
-                    className="pg-website-toggle"
-                    aria-expanded={websiteControls}
-                    onClick={() => setWebsiteControls((v) => !v)}
-                  >
-                    {websiteControls ? "Hide" : "Open"} this trip’s website &
-                    cover controls
-                  </button>
-                  {websiteControls &&
-                    trips.find((t) => t.id === tripFilter) && (
-                      <GalleryTripControls
-                        trip={trips.find((t) => t.id === tripFilter)!}
-                      />
-                    )}
-                </div>
-              )}
-              <div className="pg-count">
-                <span>
-                  {assets.length} loaded{" "}
-                  {view === "cloud" ? "cloud files" : "moments"}{" "}
-                  {loading ? "· Loading…" : ""}
-                  {cached ? " · Cached cloud listing" : ""}
-                </span>
-                <div>
-                  <button onClick={() => setView("trips")}>
-                    Browse by journey
-                  </button>
-                  {view !== "cloud" && (
-                    <button
-                      onClick={() => {
-                        setSelectionMedia((old) => ({
-                          ...old,
-                          ...Object.fromEntries(
-                            assets.flatMap((a) =>
-                              a.device ? [[a.id, a.device]] : [],
-                            ),
-                          ),
-                        }));
-                        setSelected(
-                          assets
-                            .filter((a) => a.device)
-                            .slice(0, 100)
-                            .map((a) => a.id),
-                        );
-                      }}
-                    >
-                      Select loaded · max 100
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div
-                ref={grid}
-                className="pg-grid"
-                data-density={columns}
-                style={{ height: layout.height }}
-              >
-                {layout.headers.map((day) => (
-                  <div
-                    className="pg-date-heading"
-                    key={day.key}
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      top: day.y,
-                      height: 40,
-                    }}
-                  >
-                    <h2>{day.label}</h2>
-                    {view !== "cloud" && (
+                  {view === "trips" && tripFilter && (
+                    <div className="pg-website-wrap">
                       <button
-                        aria-label={`Select photos from ${day.label}`}
-                        aria-pressed={
-                          day.indices.length > 0 &&
-                          day.indices.every((i) =>
-                            selected.includes(assets[i].id),
-                          )
-                        }
-                        onClick={() => {
-                          const dayAssets = day.indices
-                            .map((i) => assets[i])
-                            .filter((a) => a.device)
-                            .slice(0, 100);
-                          setSelectionMedia((old) => ({
-                            ...old,
-                            ...Object.fromEntries(
-                              dayAssets.map((a) => [a.id, a.device!]),
-                            ),
-                          }));
-                          const ids = dayAssets.map((a) => a.id),
-                            all = ids.every((id) => selected.includes(id));
-                          const next = all
-                            ? selected.filter((id) => !ids.includes(id))
-                            : [...new Set([...selected, ...ids])];
-                          if (next.length > 100)
-                            setNotice(
-                              "Select up to 100 files per batch. Your existing selection is kept.",
-                            );
-                          setSelected(next.slice(0, 100));
+                        className="pg-website-toggle"
+                        aria-expanded={websiteControls}
+                        onClick={() => setWebsiteControls((v) => !v)}
+                      >
+                        {websiteControls ? "Hide" : "Open"} this trip’s website
+                        & cover controls
+                      </button>
+                      {websiteControls &&
+                        trips.find((t) => t.id === tripFilter) && (
+                          <GalleryTripControls
+                            trip={trips.find((t) => t.id === tripFilter)!}
+                          />
+                        )}
+                    </div>
+                  )}
+                  <div className="pg-count">
+                    <span>
+                      {assets.length} loaded{" "}
+                      {view === "cloud" ? "cloud files" : "moments"}{" "}
+                      {loading ? "· Loading…" : ""}
+                      {cached ? " · Cached cloud listing" : ""}
+                    </span>
+                  </div>
+                  <div
+                    ref={grid}
+                    className="pg-grid"
+                    data-density={columns}
+                    style={{ height: layout.height }}
+                  >
+                    {layout.headers.map((day) => (
+                      <div
+                        className="pg-date-heading"
+                        key={day.key}
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          top: day.y,
+                          height: 40,
                         }}
                       >
-                        <Check size={15} />
+                        <h2>{day.label}</h2>
+                        {view !== "cloud" && (
+                          <button
+                            aria-label={`Select photos from ${day.label}`}
+                            aria-pressed={
+                              day.indices.length > 0 &&
+                              day.indices.every((i) =>
+                                selected.includes(assets[i].id),
+                              )
+                            }
+                            onClick={() => {
+                              const dayAssets = day.indices
+                                .map((i) => assets[i])
+                                .filter((a) => a.device)
+                                .slice(0, 100);
+                              setSelectionMedia((old) => ({
+                                ...old,
+                                ...Object.fromEntries(
+                                  dayAssets.map((a) => [a.id, a.device!]),
+                                ),
+                              }));
+                              const ids = dayAssets.map((a) => a.id),
+                                all = ids.every((id) => selected.includes(id));
+                              const next = all
+                                ? selected.filter((id) => !ids.includes(id))
+                                : [...new Set([...selected, ...ids])];
+                              if (next.length > 100)
+                                setNotice(
+                                  "Select up to 100 files per batch. Your existing selection is kept.",
+                                );
+                              setSelected(next.slice(0, 100));
+                            }}
+                          >
+                            <Check size={15} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {layout.visible.map((position) => {
+                      const asset = assets[position.index];
+                      return (
+                        <article
+                          key={asset.id}
+                          className={`pg-tile ${selected.includes(asset.id) ? "is-selected" : ""} ${selected.length || selectionMode ? "in-selection-mode" : ""}`}
+                          style={{
+                            position: "absolute",
+                            left: position.x,
+                            top: position.y,
+                            width: position.width,
+                            height: position.height,
+                          }}
+                        >
+                          <button
+                            className="pg-open"
+                            aria-label={`Open ${asset.name}`}
+                            onContextMenu={(e) => {
+                              if (asset.device) e.preventDefault();
+                            }}
+                            onPointerDown={(e) => {
+                              if (e.pointerType !== "touch" || !asset.device)
+                                return;
+                              if (hold.current.timer)
+                                clearTimeout(hold.current.timer);
+                              if (!e.isPrimary) return;
+                              hold.current = {
+                                x: e.clientX,
+                                y: e.clientY,
+                                handled: false,
+                                timer: setTimeout(() => {
+                                  hold.current.handled = true;
+                                  toggle(asset.id);
+                                }, 500),
+                              };
+                            }}
+                            onPointerMove={(e) => {
+                              if (
+                                Math.hypot(
+                                  e.clientX - hold.current.x,
+                                  e.clientY - hold.current.y,
+                                ) > 12 &&
+                                hold.current.timer
+                              )
+                                clearTimeout(hold.current.timer);
+                            }}
+                            onPointerUp={() => {
+                              if (hold.current.timer)
+                                clearTimeout(hold.current.timer);
+                            }}
+                            onPointerCancel={() => {
+                              if (hold.current.timer)
+                                clearTimeout(hold.current.timer);
+                            }}
+                            onClick={(event) => {
+                              if (hold.current.handled) {
+                                hold.current.handled = false;
+                                return;
+                              }
+                              if (
+                                (selected.length || selectionMode) &&
+                                asset.device
+                              ) {
+                                toggle(asset.id, event.shiftKey);
+                                return;
+                              }
+                              void openAsset(asset);
+                            }}
+                          >
+                            <GalleryThumbnail
+                              key={
+                                asset.device
+                                  ? `${asset.id}|${mediaStamp(asset.device)}`
+                                  : asset.thumbnail || asset.id
+                              }
+                              asset={asset}
+                            />
+                          </button>
+                          <div className="pg-tile-top">
+                            {asset.device && (
+                              <button
+                                className="pg-select"
+                                aria-label={`Select ${asset.name}`}
+                                aria-pressed={selected.includes(asset.id)}
+                                onClick={(e) => toggle(asset.id, e.shiftKey)}
+                              >
+                                {selected.includes(asset.id) ? (
+                                  <Check size={16} />
+                                ) : (
+                                  <span />
+                                )}
+                              </button>
+                            )}
+                            <span className="pg-kind">
+                              {asset.kind === "video" ? (
+                                <Film size={13} />
+                              ) : asset.slot === "private" ? (
+                                <ShieldCheck size={13} />
+                              ) : null}
+                              {asset.kind === "video" && asset.device?.duration
+                                ? `${Math.floor(asset.device.duration / 60000)}:${String(Math.floor(asset.device.duration / 1000) % 60).padStart(2, "0")}`
+                                : ""}
+                            </span>
+                            <button
+                              className="pg-favorite"
+                              aria-pressed={favorites.includes(asset.id)}
+                              aria-label={`Favorite ${asset.name}`}
+                              onClick={() => void favorite(asset.id)}
+                            >
+                              <Heart
+                                size={16}
+                                fill={
+                                  favorites.includes(asset.id)
+                                    ? "currentColor"
+                                    : "none"
+                                }
+                              />
+                            </button>
+                          </div>
+                          <div className="pg-tile-bottom">
+                            <span>{statusLabel(asset, trips)}</span>
+                            <button
+                              aria-label={`Details for ${asset.name}`}
+                              onClick={() => setDetail(asset)}
+                            >
+                              <Info size={16} />
+                            </button>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                  {!assets.length && !loading && (
+                    <div className="pg-empty">
+                      <Aperture size={38} strokeWidth={1} />
+                      <h2>
+                        {view === "trips"
+                          ? "A place for every memory."
+                          : "Nothing in this view yet."}
+                      </h2>
+                      <p>
+                        {view === "trips"
+                          ? "Select phone photos and add them to a trip and place."
+                          : "Try another filter, check permissions or refresh the listing."}
+                      </p>
+                      {view === "cloud" && cloudLoaded && (
+                        <Link href="/secret/control-room">
+                          Configure Cloud Storage ↗
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                  <div ref={sentinel} className="pg-more">
+                    {more && (
+                      <button
+                        disabled={loading}
+                        onClick={() =>
+                          view === "cloud"
+                            ? void requestCloud(cloudCursor, true)
+                            : void requestDevice(cursor, true)
+                        }
+                      >
+                        {loading ? "Loading more…" : "Load next page"}
                       </button>
                     )}
                   </div>
-                ))}
-                {layout.visible.map((position) => {
-                  const asset = assets[position.index];
-                  return (
-                    <article
-                      key={asset.id}
-                      className={`pg-tile ${selected.includes(asset.id) ? "is-selected" : ""} ${selected.length || selectionMode ? "in-selection-mode" : ""}`}
-                      style={{
-                        position: "absolute",
-                        left: position.x,
-                        top: position.y,
-                        width: position.width,
-                        height: position.height,
-                      }}
-                    >
-                      <button
-                        className="pg-open"
-                        aria-label={`Open ${asset.name}`}
-                        onContextMenu={(e) => {
-                          if (asset.device) e.preventDefault();
-                        }}
-                        onPointerDown={(e) => {
-                          if (e.pointerType !== "touch" || !asset.device)
-                            return;
-                          if (hold.current.timer)
-                            clearTimeout(hold.current.timer);
-                          if (!e.isPrimary) return;
-                          hold.current = {
-                            x: e.clientX,
-                            y: e.clientY,
-                            handled: false,
-                            timer: setTimeout(() => {
-                              hold.current.handled = true;
-                              toggle(asset.id);
-                            }, 500),
-                          };
-                        }}
-                        onPointerMove={(e) => {
-                          if (
-                            Math.hypot(
-                              e.clientX - hold.current.x,
-                              e.clientY - hold.current.y,
-                            ) > 12 &&
-                            hold.current.timer
-                          )
-                            clearTimeout(hold.current.timer);
-                        }}
-                        onPointerUp={() => {
-                          if (hold.current.timer)
-                            clearTimeout(hold.current.timer);
-                        }}
-                        onPointerCancel={() => {
-                          if (hold.current.timer)
-                            clearTimeout(hold.current.timer);
-                        }}
-                        onClick={(event) => {
-                          if (hold.current.handled) {
-                            hold.current.handled = false;
-                            return;
-                          }
-                          if (
-                            (selected.length || selectionMode) &&
-                            asset.device
-                          ) {
-                            toggle(asset.id, event.shiftKey);
-                            return;
-                          }
-                          void openAsset(asset);
-                        }}
-                      >
-                        <GalleryThumbnail
-                          key={
-                            asset.device
-                              ? `${asset.id}|${mediaStamp(asset.device)}`
-                              : asset.thumbnail || asset.id
-                          }
-                          asset={asset}
-                        />
-                      </button>
-                      <div className="pg-tile-top">
-                        {asset.device && (
-                          <button
-                            className="pg-select"
-                            aria-label={`Select ${asset.name}`}
-                            aria-pressed={selected.includes(asset.id)}
-                            onClick={(e) => toggle(asset.id, e.shiftKey)}
-                          >
-                            {selected.includes(asset.id) ? (
-                              <Check size={16} />
-                            ) : (
-                              <span />
-                            )}
-                          </button>
-                        )}
-                        <span className="pg-kind">
-                          {asset.kind === "video" ? (
-                            <Film size={13} />
-                          ) : asset.slot === "private" ? (
-                            <ShieldCheck size={13} />
-                          ) : null}
-                          {asset.kind === "video" && asset.device?.duration
-                            ? `${Math.floor(asset.device.duration / 60000)}:${String(Math.floor(asset.device.duration / 1000) % 60).padStart(2, "0")}`
-                            : ""}
-                        </span>
-                        <button
-                          className="pg-favorite"
-                          aria-pressed={favorites.includes(asset.id)}
-                          aria-label={`Favorite ${asset.name}`}
-                          onClick={() => void favorite(asset.id)}
-                        >
-                          <Heart
-                            size={16}
-                            fill={
-                              favorites.includes(asset.id)
-                                ? "currentColor"
-                                : "none"
-                            }
-                          />
-                        </button>
-                      </div>
-                      <div className="pg-tile-bottom">
-                        <span>{statusLabel(asset, trips)}</span>
-                        <button
-                          aria-label={`Details for ${asset.name}`}
-                          onClick={() => setDetail(asset)}
-                        >
-                          <Info size={16} />
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-              {!assets.length && !loading && (
-                <div className="pg-empty">
-                  <Aperture size={38} strokeWidth={1} />
-                  <h2>
-                    {view === "trips"
-                      ? "A place for every memory."
-                      : "Nothing in this view yet."}
-                  </h2>
-                  <p>
-                    {view === "trips"
-                      ? "Select phone photos and add them to a trip and place."
-                      : "Try another filter, check permissions or refresh the listing."}
+                  <p className="pg-footnote" hidden={!filtersOpen}>
+                    Cloud checks compare exact file content with this
+                    installation’s known uploads. Unchecked files are never
+                    labelled “not uploaded.” Filters apply to loaded results;
+                    more pages load as you scroll.
                   </p>
-                  {view === "cloud" && cloudLoaded && (
-                    <Link href="/secret/control-room">
-                      Configure Cloud Storage ↗
-                    </Link>
-                  )}
-                </div>
+                </>
               )}
-              <div ref={sentinel} className="pg-more">
-                {more && (
-                  <button
-                    disabled={loading}
-                    onClick={() =>
-                      view === "cloud"
-                        ? void requestCloud(cloudCursor, true)
-                        : void requestDevice(cursor, true)
-                    }
-                  >
-                    {loading ? "Loading more…" : "Load next page"}
-                  </button>
-                )}
-              </div>
-              <p className="pg-footnote">
-                Cloud checks compare exact file content with this installation’s
-                known uploads. Unchecked files are never labelled “not
-                uploaded.” Filters apply to loaded results; more pages load as
-                you scroll.
-              </p>
             </>
           )}
         </>
@@ -1520,7 +1539,7 @@ export default function PhotoGallery() {
             <Trash2 size={16} />
           </button>
           <button disabled={busy} onClick={() => setAssigning(true)}>
-            <CloudUpload size={17} /> Add to trip / upload
+            <CloudUpload size={17} /> Add or back up
           </button>
           <button disabled={busy || !online} onClick={() => void checkCloud()}>
             {busy ? "Working…" : "Check cloud"}
