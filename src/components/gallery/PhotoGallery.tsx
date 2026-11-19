@@ -542,9 +542,11 @@ export default function PhotoGallery() {
         setNotice(
           `Checking known cloud copies · ${i + 1}–${Math.min(i + 30, chosen.length)} of ${chosen.length}`,
         );
-        const result = await R2.checkDeviceCloud({
-          ids: chosen.slice(i, i + 30).map((m) => m.id),
-        });
+        const result = await systemAction(() =>
+          R2.checkDeviceCloud({
+            ids: chosen.slice(i, i + 30).map((m) => m.id),
+          }),
+        );
         setItems((old) =>
           old.map((item) => {
             const checked = result.items.find((c) => c.id === item.id);

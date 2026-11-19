@@ -1,4 +1,4 @@
-# Private photo and video Gallery — Atlas 1.5.0
+# Private photo and video Gallery — Atlas 1.5.1
 
 ## Open and use
 
@@ -91,3 +91,5 @@ An encrypted shared library index for cross-device reconciliation; opt-in on-dev
 semantic search and smart albums; EXIF capture-date/map timelines; independently
 recoverable Wi-Fi/charging album backups; and optional public video proxies plus
 non-destructive edits while retaining encrypted/private originals.
+
+Exact original uploads and checksum checks request Android original-media metadata access (ACCESS_MEDIA_LOCATION). This is not live location tracking. Permission denial leaves browsing available; uploads are not silently redacted.

@@ -18,10 +18,12 @@ export async function prepareGalleryTrip(
   if (!media.length || media.length > 100)
     throw Error("Select between 1 and 100 files per batch.");
   // Check capacity before adding any group; native selected originals remain untouched on failure.
-  const { files } = await R2.registerDeviceMedia({
-    ids: media.map((m) => m.id),
-    versions: Object.fromEntries(media.map((m) => [m.id, mediaStamp(m)])),
-  });
+  const { files } = await systemAction(() =>
+    R2.registerDeviceMedia({
+      ids: media.map((m) => m.id),
+      versions: Object.fromEntries(media.map((m) => [m.id, mediaStamp(m)])),
+    }),
+  );
   const target = trip.websitePlaces.find((p) => p.id === placeId)!;
   const newFiles = files.filter(
     (f) => !target.files.some((old) => old.id === f.id),
@@ -98,10 +100,12 @@ export async function uploadGalleryTrip(
   return result.transferIds;
 }
 export async function uploadGalleryPrivate(media: DeviceMedia[]) {
-  const { files } = await R2.registerDeviceMedia({
-    ids: media.map((m) => m.id),
-    versions: Object.fromEntries(media.map((m) => [m.id, mediaStamp(m)])),
-  });
+  const { files } = await systemAction(() =>
+    R2.registerDeviceMedia({
+      ids: media.map((m) => m.id),
+      versions: Object.fromEntries(media.map((m) => [m.id, mediaStamp(m)])),
+    }),
+  );
   return systemAction(() =>
     R2.queueGalleryUploads({
       slot: "private",

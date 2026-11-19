@@ -13,7 +13,7 @@ export function verifyUpdate(certs, badging, expectedPackage, freshInstallCertif
     throw new Error('Signing certificate does not match the published app. APK must not be offered as an update.');
   }
   const identity = badging.match(/^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'/m);
-  if (!identity || identity[1] !== expectedPackage || Number(identity[2]) <= 21) {
+  if (!identity || identity[1] !== expectedPackage || Number(identity[2]) <= 22) {
     throw new Error('Wrong package or non-increasing version code.');
   }
   return {packageId: identity[1], versionCode: Number(identity[2]), versionName: identity[3], certificateSha256: signers[0][1], compatibleWithPublishedVersion: signers[0][1] === publishedCertificate ? '1.4.14' : null, installMode: freshInstallCertificate ? 'fresh-install' : 'update'};

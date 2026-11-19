@@ -35,6 +35,9 @@ import org.json.*;
           alias = "galleryLimited",
           strings = {"android.permission.READ_MEDIA_VISUAL_USER_SELECTED"}),
       @Permission(
+          alias = "galleryOriginal",
+          strings = {"android.permission.ACCESS_MEDIA_LOCATION"}),
+      @Permission(
           alias = "galleryLegacy",
           strings = {"android.permission.READ_EXTERNAL_STORAGE"})
     })
@@ -262,6 +265,17 @@ public class R2StoragePlugin extends Plugin {
 
   @PluginMethod
   public void registerDeviceMedia(PluginCall call) {
+    try {
+      guard();
+    } catch (Exception e) {
+      fail(call, e);
+      return;
+    }
+    if (Build.VERSION.SDK_INT >= 29
+        && getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      requestPermissionForAlias("galleryOriginal", call, "galleryOriginalRegistration");
+      return;
+    }
     work(
         call,
         () ->
@@ -275,12 +289,41 @@ public class R2StoragePlugin extends Plugin {
 
   @PluginMethod
   public void checkDeviceCloud(PluginCall call) {
+    try {
+      guard();
+    } catch (Exception e) {
+      fail(call, e);
+      return;
+    }
+    if (Build.VERSION.SDK_INT >= 29
+        && getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      requestPermissionForAlias("galleryOriginal", call, "galleryOriginalCheck");
+      return;
+    }
     work(
         call,
         () ->
             call.resolve(
                 new JSObject()
                     .put("items", new R2DeviceGallery(getContext()).check(call.getArray("ids")))));
+  }
+
+  @PermissionCallback
+  private void galleryOriginalRegistration(PluginCall call) {
+    if (getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      call.reject("ORIGINAL_MEDIA_ACCESS_REQUIRED", "ORIGINAL_MEDIA_ACCESS_REQUIRED");
+      return;
+    }
+    registerDeviceMedia(call);
+  }
+
+  @PermissionCallback
+  private void galleryOriginalCheck(PluginCall call) {
+    if (getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      call.reject("ORIGINAL_MEDIA_ACCESS_REQUIRED", "ORIGINAL_MEDIA_ACCESS_REQUIRED");
+      return;
+    }
+    checkDeviceCloud(call);
   }
 
   @PluginMethod

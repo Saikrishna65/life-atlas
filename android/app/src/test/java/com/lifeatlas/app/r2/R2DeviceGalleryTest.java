@@ -89,10 +89,22 @@ public class R2DeviceGalleryTest {
     try (FileOutputStream out = new FileOutputStream(provider.original)) {
       out.write("unchanged bytes".getBytes());
     }
-    provider.attachInfo(RuntimeEnvironment.getApplication(), new android.content.pm.ProviderInfo());
+    android.content.pm.ProviderInfo info = new android.content.pm.ProviderInfo();
+    info.authority = "media";
+    info.exported = true;
+    provider.attachInfo(RuntimeEnvironment.getApplication(), info);
     ShadowContentResolver.registerProviderInternal("media", provider);
     repo = R2TripQueueTest.repository();
     gallery = new R2DeviceGallery(RuntimeEnvironment.getApplication(), repo);
+  }
+
+  @Test
+  @Config(sdk = 29)
+  public void modernGalleryRequiresOriginalUnredactedMedia() {
+    Uri original = R2DeviceGallery.originalUri("image:external_primary:42");
+    assertTrue(android.provider.MediaStore.getRequireOriginal(original));
+    assertEquals("media", original.getAuthority());
+    assertEquals("content", original.getScheme());
   }
 
   @Test

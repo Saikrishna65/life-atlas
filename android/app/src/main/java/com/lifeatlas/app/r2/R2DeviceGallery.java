@@ -48,6 +48,11 @@ final class R2DeviceGallery {
     return ContentUris.withAppendedId(collection, mediaNumber(id));
   }
 
+  static Uri originalUri(String id) {
+    Uri value = uri(id);
+    return Build.VERSION.SDK_INT >= 29 ? MediaStore.setRequireOriginal(value) : value;
+  }
+
   static String stamp(JSONObject item) {
     return item.optLong("size")
         + ":"
@@ -57,7 +62,8 @@ final class R2DeviceGallery {
 
   static String selectionId(JSONObject item) {
     return UUID.nameUUIDFromBytes(
-            (item.optString("id") + ":" + stamp(item)).getBytes(StandardCharsets.UTF_8))
+            ("original-v1:" + item.optString("id") + ":" + stamp(item))
+                .getBytes(StandardCharsets.UTF_8))
         .toString();
   }
 
@@ -312,7 +318,7 @@ final class R2DeviceGallery {
         throw new R2Exception("SOURCE_CHANGED");
       // MediaStore runtime access is durable across process death, subject to user revocation.
       try (InputStream input =
-          context.getContentResolver().openInputStream(uri(media.getString("id")))) {
+          context.getContentResolver().openInputStream(originalUri(media.getString("id")))) {
         if (input == null) throw new R2Exception("SOURCE_UNAVAILABLE");
       }
       JSONObject record =
@@ -325,7 +331,7 @@ final class R2DeviceGallery {
               .put("galleryId", media.getString("id"))
               .put("sourceStamp", stamp(media));
       result.put(new JSONObject(record.toString()));
-      records.put(record.put("uri", media.getString("uri")));
+      records.put(record.put("uri", originalUri(media.getString("id")).toString()));
     }
     repository.store.edit(
         state -> {
@@ -349,7 +355,7 @@ final class R2DeviceGallery {
       JSONObject media = one(ids.getString(i));
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
       try (InputStream in =
-          context.getContentResolver().openInputStream(uri(media.getString("id")))) {
+          context.getContentResolver().openInputStream(originalUri(media.getString("id")))) {
         if (in == null) throw new R2Exception("SOURCE_UNAVAILABLE");
         byte[] buffer = new byte[65536];
         int n;
