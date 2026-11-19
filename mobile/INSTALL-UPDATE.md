@@ -1,9 +1,9 @@
-Atlas 1.4.12 — verified stable signing
+Atlas 1.4.13 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 14.
+3. Open the matching APK and choose Update. This build uses version code 20.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -96,3 +96,9 @@ its current approved upload has no active Android job. No expiry was reintroduce
 The exact cause of the reported phone stoppage was not available during implementation.
 This build adds actionable status and narrow recovery rather than claiming a specific
 on-device cause. Physical-phone and live-bucket testing are still required.
+
+Trip covers: Creator Studio → Past trips → select a journey → Cover frame.
+Choose an uploaded photo or video, preview desktop/mobile framing, then tap
+Update website cover. For new unpublished media, publish the trip first.
+A cover change does not re-upload files or alter routes, place groups or galleries.
+The redesigned Studio includes a searchable journey rail and direct editing steps.

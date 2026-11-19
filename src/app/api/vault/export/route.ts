@@ -1,3 +1,5 @@
+import {readPublishedTripCover,updatePublishedTripCover} from "@/lib/studio/trip-cover-server";
+import {chooseTripCover,readTripCover,routeWithTripCover,tripCoverCandidates,tripCoverImage,TripCoverError} from "@/lib/public-trips/cover";
 import {mergeTripPublication} from "@/lib/studio/publication";
 import {ensureWebsiteSchema} from "@/lib/studio/server";
 import {allowAtlasMutation} from "@/lib/mobileRequest";
@@ -6,11 +8,25 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+export async function GET(request:Request){
+ const slug=new URL(request.url).searchParams.get('coverFor');
+ if(!slug||slug.length>180)return NextResponse.json({error:'Choose a published trip.'},{status:400});
+ try{const result=await readPublishedTripCover(slug);return result?NextResponse.json(result,{headers:{'Cache-Control':'no-store'}}):NextResponse.json({error:'This trip is not published yet.'},{status:404});}
+ catch{return NextResponse.json({error:'Published media is temporarily unavailable.'},{status:503});}
+}
+
 export async function POST(request: Request) {
   if(!allowAtlasMutation(request,"x-atlas-publish"))return NextResponse.json({error:"Publish through your Atlas app."},{status:403});
   try {
     if(Number(request.headers.get("content-length")||0)>3*1024*1024)return NextResponse.json({error:"Upload large originals to R2 first."},{status:413});
     const body = await request.json();
+    if(body.action==='trip-cover'){
+      if(typeof body.existingSlug!=='string'||!body.existingSlug||body.existingSlug.length>180)return NextResponse.json({error:'Choose a published trip.'},{status:400});
+      const result=await updatePublishedTripCover(body.existingSlug,body.heroMediaId);
+      if(!result)return NextResponse.json({error:'This trip is not published yet.'},{status:404});
+      try{revalidatePath('/');revalidatePath('/trips');revalidatePath(`/trips/${body.existingSlug}`);}catch{}
+      return NextResponse.json({success:true,...result});
+    }
     const {
       title,
       destination="",
@@ -18,6 +34,7 @@ export async function POST(request: Request) {
       endDate,
       description,
       coverImage,
+      heroMediaId,
       duration,
       places = [],
       memories = [],
@@ -70,13 +87,14 @@ export async function POST(request: Request) {
       .replace(/(^-|-$)+/g, "") || "vault-expedition";
 
     let slug = existingSlug || rawSlug;
+    await db.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`website-trip:${slug}`},0))`;
     let existingTrip = null;
 
     if (existingSlug) {
-      existingTrip = await db.trip.findUnique({ where: { slug: existingSlug } });
+      existingTrip = await db.trip.findUnique({ where: { slug: existingSlug },include:{photos:{select:{id:true,url:true}}} });
     }
     if (!existingTrip && !existingSlug) {
-      existingTrip = await db.trip.findUnique({ where: { slug: rawSlug } });
+      existingTrip = await db.trip.findUnique({ where: { slug: rawSlug },include:{photos:{select:{id:true,url:true}}} });
       if (existingTrip) {
         slug = rawSlug;
       }
@@ -96,10 +114,18 @@ export async function POST(request: Request) {
 
     const priorRoute=existingTrip?.routeData && typeof existingTrip.routeData==='object'&&!Array.isArray(existingTrip.routeData)?existingTrip.routeData:{};
     const nextRoute=routeData&&typeof routeData==='object'&&!Array.isArray(routeData)?routeData:preserveExistingRoute?priorRoute:{};
-    const storedRoute={...nextRoute} as Record<string,unknown>;
+    let storedRoute={...nextRoute} as Record<string,unknown>;
     if((preserveExistingMedia||appendExistingMedia) && "publication" in priorRoute)storedRoute.publication=priorRoute.publication;
     if(!preserveExistingMedia&&!appendExistingMedia)delete storedRoute.publication;
-    if(publicMedia.length)storedRoute.publication={media:mergeTripPublication((priorRoute as {publication?:{media?:unknown[]}}).publication?.media,publicMedia,appendExistingMedia)};
+    if(publicMedia.length)storedRoute.publication={...(priorRoute as {publication?:Record<string,unknown>}).publication,media:mergeTripPublication((priorRoute as {publication?:{media?:unknown[]}}).publication?.media,publicMedia,appendExistingMedia)};
+    let chosenCoverImage=coverImage;
+    const candidates=tripCoverCandidates(storedRoute,preserveExistingMedia||appendExistingMedia?existingTrip?.photos||[]:[]);
+    const previousCover=readTripCover(storedRoute);
+    if(heroMediaId!==undefined||previousCover){
+      const chosen=heroMediaId!==undefined?chooseTripCover(candidates,heroMediaId):candidates.find(item=>item.id===previousCover?.id)||null;
+      storedRoute=routeWithTripCover(storedRoute,chosen);
+      chosenCoverImage=tripCoverImage(chosen,existingTrip?.coverImage||coverImage||null,candidates);
+    }
     const retainedTotals={distance:existingTrip?.totalDistanceKm??null,ascent:existingTrip?.elevationGainMeters??null,altitude:existingTrip?.maxElevationMeters??null};
     let trip;
     if (existingTrip) {
@@ -113,7 +139,7 @@ export async function POST(request: Request) {
           endDate: endObj,
           duration: durationStr,
           description: fullDescription,
-          coverImage: coverImage || existingTrip.coverImage,
+          coverImage: chosenCoverImage || existingTrip.coverImage,
           totalDistanceKm: typeof totalDistanceKm === "number" ? totalDistanceKm : (totalDistanceKm ? parseFloat(totalDistanceKm) : preserveExistingRoute ? retainedTotals.distance : null),
           elevationGainMeters: typeof elevationGainMeters === "number" ? elevationGainMeters : (elevationGainMeters ? parseFloat(elevationGainMeters) : preserveExistingRoute ? retainedTotals.ascent : null),
           maxElevationMeters: typeof maxElevationMeters === "number" ? maxElevationMeters : (maxElevationMeters ? parseFloat(maxElevationMeters) : preserveExistingRoute ? retainedTotals.altitude : null),
@@ -139,7 +165,7 @@ export async function POST(request: Request) {
           endDate: endObj,
           duration: durationStr,
           description: fullDescription,
-          coverImage: coverImage || null,
+          coverImage: chosenCoverImage || null,
           totalDistanceKm: typeof totalDistanceKm === "number" ? totalDistanceKm : (totalDistanceKm ? parseFloat(totalDistanceKm) : preserveExistingRoute ? retainedTotals.distance : null),
           elevationGainMeters: typeof elevationGainMeters === "number" ? elevationGainMeters : (elevationGainMeters ? parseFloat(elevationGainMeters) : preserveExistingRoute ? retainedTotals.ascent : null),
           maxElevationMeters: typeof maxElevationMeters === "number" ? maxElevationMeters : (maxElevationMeters ? parseFloat(maxElevationMeters) : preserveExistingRoute ? retainedTotals.altitude : null),
@@ -316,6 +342,7 @@ export async function POST(request: Request) {
       message: `Expedition successfully published to Life Atlas Public Journal!`,
     });
   } catch (err: unknown) {
+    if(err instanceof TripCoverError)return NextResponse.json({error:err.message},{status:400});
     if(err instanceof RangeError&&err.message==='PUBLIC_MEDIA_LIMIT')return NextResponse.json({error:'This trip supports up to 250 public photos and videos.'},{status:400});
     console.error("Public Journal Export Error:", err);
     const msg = err instanceof Error ? err.message : "Internal database error";

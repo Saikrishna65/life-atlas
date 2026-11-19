@@ -63,7 +63,7 @@ export default function TripDetailExperience({ trip }: { trip: TripDetailData })
   const chapter = (section: "route" | "itinerary" | "photo-journal") => String(1 + (section !== "route" && hasRoute ? 1 : 0) + (section === "photo-journal" && trip.days.length ? 1 : 0)).padStart(2, "0");
   const cover = trip.cover || media.find(item => item.kind === "photo")?.url || "";
   const summary = [trip.duration.trim(), trip.stops.length ? `${trip.stops.length} ${trip.sample ? "sample stops" : "published stops"}` : "", media.length ? `${media.length} frames & films` : ""].filter(Boolean);
-  const coverFilm = media.find(item => !trip.media.some(local => local.id === item.id) && item.kind === "video")?.url || trip.coverFilm;
+  const coverFilm = trip.coverKind==="photo"?undefined:trip.coverFilm || media.find(item => !trip.media.some(local => local.id === item.id) && item.kind === "video")?.url;
   const go = (id: string) => {
     const target = root.current?.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
     if (!target) return;

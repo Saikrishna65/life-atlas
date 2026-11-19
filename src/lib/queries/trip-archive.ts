@@ -1,3 +1,4 @@
+import {readTripCover} from "../public-trips/cover";
 import prisma from "../prisma";
 import type { TripArchiveEntry } from "../public-trips/archive";
 
@@ -8,13 +9,13 @@ export async function getTripArchive(slugs?:string[],source=prisma): Promise<Tri
       ...(slugs?{where:{slug:{in:slugs}}}:{}),
       orderBy: [{ startDate: "desc" }, { id: "asc" }],
       select: { id: true, slug: true, title: true, destination: true, startDate: true,
-        duration: true, coverImage: true,
+        duration: true, coverImage: true,routeData:true,
         tripPlaces: { orderBy: [{ visitDate: "asc" }, { id: "asc" }], select: { place: { select: { name: true, country: true } } } },
         _count: { select: { photos: true, tripDays: true } },
       },
     });
     if (trips.length) return [...trips].sort((a,b)=>slugs?slugs.indexOf(a.slug)-slugs.indexOf(b.slug):0).map(trip => ({
-      id: trip.id, slug: trip.slug, title: trip.title, image: trip.coverImage || "",
+      id: trip.id, slug: trip.slug, title: trip.title, image: (readTripCover(trip.routeData)?.kind==="photo"?readTripCover(trip.routeData)?.url:readTripCover(trip.routeData)?.poster) || trip.coverImage || "",
       places: trip.tripPlaces.length ? trip.tripPlaces.map(({ place }) => place.name) : [trip.destination],
       country: [...new Set(trip.tripPlaces.map(({ place }) => place.country))].join(" / ") || "Other places",
       duration: trip.duration || (trip._count.tripDays ? `${trip._count.tripDays} days` : "Travel journal"),

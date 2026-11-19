@@ -1,4 +1,5 @@
 import prisma from "../prisma";
+import {readTripCover} from "../public-trips/cover";
 import {publishedTripMedia} from "../public-trips/detail";
 import type { HeroGalleryPhoto, HeroTrip } from "@/lib/public-trips/types";
 
@@ -12,14 +13,16 @@ export async function getLatestHeroTrips(slugs?:string[],source=prisma): Promise
       select: { id: true, slug: true, title: true, coverImage: true,routeData:true,photos:{take:1,select:{url:true}} },
     });
     if (trips.length)
-      return [...trips].sort((a,b)=>slugs?slugs.indexOf(a.slug)-slugs.indexOf(b.slug):0).map((trip) => ({
+      return [...trips].sort((a,b)=>slugs?slugs.indexOf(a.slug)-slugs.indexOf(b.slug):0).map((trip) => {
+        const cover=readTripCover(trip.routeData),media=publishedTripMedia(trip.routeData);
+        return ({
         id: trip.id,
         slug: trip.slug,
         title: trip.title,
-        image: publishedTripMedia(trip.routeData).find(item=>item.url===trip.coverImage)?.poster || trip.coverImage || trip.photos[0]?.url || publishedTripMedia(trip.routeData).find(item=>item.kind==="photo")?.poster || publishedTripMedia(trip.routeData).find(item=>item.kind==="photo")?.url || "",
+        image: (cover?.kind==="photo"?cover.url:cover?.poster) || media.find(item=>item.url===trip.coverImage)?.poster || trip.coverImage || trip.photos[0]?.url || media.find(item=>item.kind==="photo")?.poster || media.find(item=>item.kind==="photo")?.url || "",
         sample: false,
-        video:publishedTripMedia(trip.routeData).find(item=>item.kind==="video")?.url,
-      }));
+        video:cover?cover.kind==="video"?cover.url:undefined:media.find(item=>item.kind==="video")?.url,
+      });});
   } catch {
     /* The public homepage also works without a configured public database. */
   }

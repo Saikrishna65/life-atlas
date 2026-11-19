@@ -115,6 +115,8 @@ export interface TripWebsitePlace {
   publishedMedia:import('../r2/types').PublishedMedia[];
 }
 export interface TripRecord {
+  /** Public media ID only. Undefined keeps the current cover; null restores automatic selection. */
+  websiteHeroMediaId?:string|null;
   websiteLocation?:WebsiteMapLocation;
   websitePlaces?:TripWebsitePlace[];
   finance?: import("../finance/trips/policy").TripFinanceSettings;

@@ -1,3 +1,4 @@
+import {readTripCover} from "./cover";
 import { publishedRoute, validPoint, type RoutePoint, type RouteStop } from "./route";
 
 export interface DetailMedia {
@@ -11,7 +12,7 @@ export interface DetailDay {
 }
 export interface TripDetailData {
   id: string; slug: string; title: string; region: string; overview: string;
-  cover: string; coverFilm?: string; sample: boolean; date?: string;
+  cover: string; coverFilm?: string; coverKind?:"photo"|"video"; sample: boolean; date?: string;
   duration: string; paths: RoutePoint[][]; stops: RouteStop[];
   metrics: { label: string; value: string; unit: string }[];
   days: DetailDay[]; media: DetailMedia[];
@@ -36,6 +37,7 @@ export interface PublicTripInput {
 export function publicTripDetail(trip: PublicTripInput, next?: { slug: string; title: string; coverImage: string | null } | null): TripDetailData {
   const route = publishedRoute(trip.routeData);
   const publicMedia=publishedTripMedia(trip.routeData);
+  const chosenCover=readTripCover(trip.routeData);
   const metrics: TripDetailData["metrics"] = [];
   const nonnegative = (value: number | null) => value !== null && Number.isFinite(value) && value >= 0 ? value : null;
   const distance = nonnegative(trip.totalDistanceKm) ?? route.distance;
@@ -52,7 +54,7 @@ export function publicTripDetail(trip: PublicTripInput, next?: { slug: string; t
   if (route.elapsed !== null) metrics.push({ label: "Elapsed time", value: formatJourneyDuration(route.elapsed), unit: "" });
   return {
     id: trip.id, slug: trip.slug, title: trip.title, region: trip.destination, overview: trip.description?.trim() || "",
-    cover: trip.coverImage || trip.photos.find(photo => photo.url)?.url || "", coverFilm:publicMedia.find(item=>item.kind==="video")?.url, sample: false, date: trip.startDate?.toISOString(),
+    cover: chosenCover?.kind==="photo"?chosenCover.url:chosenCover?.poster||trip.coverImage || trip.photos.find(photo => photo.url)?.url || "", coverKind:chosenCover?.kind, coverFilm:chosenCover?chosenCover.kind==="video"?chosenCover.url:undefined:publicMedia.find(item=>item.kind==="video")?.url, sample: false, date: trip.startDate?.toISOString(),
     duration: trip.duration?.trim() || "", paths: route.paths,
     stops: [...trip.tripPlaces].sort((a,b) => (a.visitDate?.getTime() ?? Infinity) - (b.visitDate?.getTime() ?? Infinity)).flatMap(({ place }) => validPoint(place) ? [{ id: place.id, name: place.name, latitude: place.latitude, longitude: place.longitude, description: place.description }] : []),
     metrics,

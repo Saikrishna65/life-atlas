@@ -28,6 +28,7 @@ export function websitePayload(trip:TripRecord,memories:TripMemoryRecord[],days:
   const photoCover=selected.flatMap(memory=>memory.images?.length?memory.images:memory.imageDataUrl?[memory.imageDataUrl]:[])[0] || media.find(item=>item.kind==='photo')?.url;
   return {tripId:trip.id,title,destination:trip.destination.trim(),startDate:date||undefined,endDate:trip.endDate||undefined,
     description:options.description?.trim()||undefined,coverImage:photoCover,existingSlug:websiteSlug(trip),
+    ...(trip.websiteHeroMediaId!==undefined?{heroMediaId:trip.websiteHeroMediaId}:{}),
     preserveExistingRoute:true,
     appendExistingMedia:options.appendExistingMedia===true,
     preserveExistingMedia:selected.length===0&&media.length===0,
