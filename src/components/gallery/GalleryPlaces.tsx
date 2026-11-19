@@ -54,7 +54,13 @@ const ReviewMap = dynamic(() => import("./PlaceReviewMap"), {
     <div className="gp-map-placeholder">Opening location review…</div>
   ),
 });
-export default function GalleryPlaces() {
+export default function GalleryPlaces({
+  search,
+  onSearch,
+}: { search?: string; onSearch?: (value: string) => void } = {}) {
+  const [localQuery, setLocalQuery] = useState("");
+  const query = search ?? localQuery,
+    setQuery = onSearch ?? setLocalQuery;
   const { trips } = useTripVault();
   const [summary, setSummary] = useState<StorageSummary>();
   const [privatePreview, setPrivatePreview] = useState<{
@@ -79,7 +85,6 @@ export default function GalleryPlaces() {
     [visit, setVisit] = useState(""),
     [visitName, setVisitName] = useState(""),
     [mergeTarget, setMergeTarget] = useState(""),
-    [query, setQuery] = useState(""),
     [page, setPage] = useState(1),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(""),
@@ -320,13 +325,8 @@ export default function GalleryPlaces() {
     <section className="gallery-places" aria-label="Places organizer">
       <header className="gp-heading">
         <div>
-          <span className="pg-eyebrow">THE PLACES IN MY FRAMES</span>
-          <h2>
-            A place.
-            <br />
-            <em>A thousand little moments.</em>
-          </h2>
-          <p>Saved GPS suggests the collection. I decide what belongs.</p>
+          <h2>Organize by location</h2>
+          <p>Review nearby photos, name your places, and add them to a trip.</p>
         </div>
         <div className="gp-tools">
           <button
@@ -1157,6 +1157,7 @@ export default function GalleryPlaces() {
         <TripMediaViewer
           items={viewerItems}
           selected={viewer}
+          variant="library"
           onSelect={setViewer}
           onClose={closeViewer}
         />

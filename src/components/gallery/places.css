@@ -477,3 +477,374 @@
   max-width: 100%;
   overflow-wrap: anywhere;
 }
+
+/* Places shares the photo library's light workspace and compact controls. */
+.gallery-places {
+  background: #fff;
+  color: #27364c;
+  padding: 4px 0 40px;
+  border-radius: 0;
+  margin-top: 0;
+  isolation: isolate;
+}
+.gallery-places h2,
+.gallery-places h3 {
+  color: #27364c;
+}
+.gp-heading {
+  margin: 8px 0 23px;
+  gap: 22px;
+  align-items: center;
+}
+.gp-heading h2 {
+  font:
+    550 21px/1.3 system-ui,
+    sans-serif;
+  letter-spacing: -0.4px;
+  margin: 0 0 7px;
+}
+.gp-heading h2 em {
+  font: inherit;
+  color: inherit;
+}
+.gp-heading p {
+  color: #778497;
+  font-size: 12px;
+  margin: 0;
+}
+.gp-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+  justify-content: flex-end;
+}
+.gallery-places button {
+  color: #354861;
+  background: #fff;
+  border-color: #dfe6ef;
+  border-radius: 8px;
+  font-size: 12px;
+  min-height: 36px;
+  padding: 8px 11px;
+}
+.gallery-places button:hover {
+  background: #f0f4fa;
+}
+.gallery-places .pg-primary {
+  background: #315fad;
+  color: #fff;
+}
+.gp-overview {
+  border-color: #e4e9f1;
+  color: #748195;
+  font-size: 11px;
+  padding: 14px 0;
+  gap: 12px 24px;
+}
+.gp-modes {
+  gap: 7px;
+  margin: 18px 0;
+}
+.gp-modes [aria-pressed="true"] {
+  color: #315fad;
+  background: #eaf0fc;
+  border-color: #dce6fa;
+}
+.gp-layout {
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 24px;
+}
+.gp-index {
+  border-right: 1px solid #e4e9f1;
+  padding-right: 18px;
+}
+.gp-index label,
+.gp-review label {
+  color: #65758b;
+  font-size: 11px;
+}
+.gp-index strong {
+  font-size: 17px;
+  font-weight: 550;
+  color: #385475;
+}
+.gp-index input[type="range"] {
+  accent-color: #315fad;
+}
+.gallery-places .pg-muted {
+  color: #7b8796;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.gallery-places .gp-place-link {
+  border-color: #e8ecf2;
+  padding: 13px 8px;
+  color: #40526b;
+  border-radius: 10px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+.gallery-places .gp-place-link[aria-pressed="true"] {
+  background: #edf3fd;
+  color: #315fad;
+}
+.gp-place-link small {
+  color: #8a95a4;
+  font-size: 10px;
+}
+.gallery-places input:not([type="range"]),
+.gallery-places select {
+  color: #31465f;
+  background: #fff;
+  border: 1px solid #dde5ef;
+  border-radius: 8px;
+  font-size: 12px;
+  min-height: 36px;
+  padding: 8px 10px;
+}
+.gp-map {
+  border-color: #e0e6ef;
+  height: 330px;
+  border-radius: 12px;
+  margin-bottom: 58px;
+}
+.gp-map p {
+  color: #7f8da0;
+  font-size: 10px;
+}
+.gp-edit-head {
+  gap: 8px;
+}
+.gp-coordinates {
+  gap: 8px;
+}
+.gp-trip-tools {
+  background: #f8fafd;
+  border-color: #e3e9f2;
+  border-radius: 12px;
+  padding: 14px;
+  gap: 10px;
+}
+.gp-bulk {
+  background: #eef4fe;
+  border-color: #d7e3f8;
+  padding: 10px;
+  gap: 7px;
+}
+.gp-photo-grid {
+  gap: 12px 6px;
+}
+.gp-photo-grid article {
+  border-radius: 6px;
+  padding: 2px;
+}
+.gp-photo-grid article.is-selected {
+  background: #eaf0fc;
+  border-color: #91b0e3;
+}
+.gallery-places .gp-photo {
+  background: #eff3f8;
+  border-radius: 5px;
+}
+.gallery-places .gp-pick {
+  background: #315fadbd;
+  color: #fff;
+  border: 0;
+  width: 26px;
+  height: 26px;
+  min-height: 26px;
+  top: 8px;
+  right: 8px;
+}
+.gp-photo-grid article > div {
+  font-size: 10px;
+  color: #4f647f;
+}
+.gp-photo-grid article small {
+  color: #8a97a7;
+  font-size: 9px;
+}
+.gp-detached,
+.gp-empty {
+  color: #8b97a7;
+}
+.gp-progress {
+  background: #eaf1ff;
+  color: #31547f;
+  box-shadow: 0 5px 18px #24456c12;
+  top: 85px;
+}
+.gp-progress button {
+  border-color: #cbdaf0;
+  color: #31547f;
+  background: transparent;
+}
+.gp-recovery {
+  background: #f8fafd;
+  border: 1px solid #e0e7f2;
+  padding: 20px;
+  border-radius: 14px;
+}
+.gp-recovery h3 {
+  font-size: 19px;
+  margin-bottom: 10px;
+}
+.gp-recovery p {
+  color: #75859b;
+  font-size: 11px;
+}
+.gp-snapshot {
+  border-color: #e2e8f1;
+  color: #6e8097;
+}
+.gp-new-trip {
+  border-color: #e0e7f1;
+}
+.gallery-places .pg-notice {
+  background: #eaf1ff;
+  color: #345b91;
+  position: static;
+  width: 100%;
+  max-width: 100%;
+  font-size: 11px;
+  box-shadow: none;
+  margin: 15px 0;
+}
+.gallery-places .pg-error {
+  color: #a84a43;
+  background: #fff3f1;
+  border-color: #efd4cf;
+}
+.gp-media-toolbar span {
+  color: #8a97a7;
+}
+.has-place-organizer .pg-page-heading {
+  margin-bottom: 6px;
+}
+.has-place-organizer .gp-heading .pg-eyebrow {
+  display: none;
+}
+@media (max-width: 1000px) {
+  .gp-layout {
+    grid-template-columns: 170px minmax(0, 1fr);
+    gap: 16px;
+  }
+  .gp-heading {
+    display: block;
+  }
+  .gp-tools {
+    margin-top: 16px;
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 700px) {
+  .gallery-places {
+    padding: 0 0 35px;
+    margin-top: 0;
+    background: #fff;
+    border-radius: 0;
+  }
+  .gp-heading {
+    margin: 4px 0 18px;
+  }
+  .gp-heading h2 {
+    font-size: 18px;
+  }
+  .gp-heading p {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .gp-tools {
+    display: flex;
+    margin-top: 13px;
+    gap: 6px;
+  }
+  .gallery-places button {
+    font-size: 11px;
+    min-height: 34px;
+    padding: 7px 9px;
+  }
+  .gp-layout {
+    display: block;
+  }
+  .gp-index {
+    max-height: 230px;
+    border: 1px solid #e5ebf4;
+    border-radius: 12px;
+    padding: 13px;
+    margin-bottom: 20px;
+    background: #fafcff;
+    overflow: auto;
+  }
+  .gp-index label {
+    font-size: 10px;
+  }
+  .gp-index .pg-muted {
+    font-size: 10px;
+    margin-block: 8px;
+  }
+  .gp-index strong {
+    font-size: 16px;
+  }
+  .gp-map {
+    height: 250px;
+    margin-bottom: 65px;
+  }
+  .gp-progress {
+    top: 122px;
+    font-size: 11px;
+    padding: 10px;
+  }
+  .gp-modes {
+    margin-block: 14px;
+  }
+  .gp-modes button {
+    font-size: 10px;
+    min-height: 32px;
+  }
+  .gp-photo-grid {
+    gap: 12px 5px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .gp-photo-grid article > div {
+    font-size: 9px;
+  }
+  .gp-photo-grid article small {
+    font-size: 8px;
+  }
+  .gallery-places .gp-pick {
+    height: 22px;
+    width: 22px;
+    min-height: 22px;
+    right: 6px;
+    top: 6px;
+  }
+  .gp-overview {
+    font-size: 10px;
+    gap: 10px 15px;
+  }
+  .gp-recovery {
+    padding: 15px;
+  }
+  .gp-recovery h3 {
+    font-size: 17px;
+  }
+  .gp-coordinates label {
+    min-width: 100px;
+  }
+  .gp-trip-tools {
+    padding: 12px;
+  }
+  .gp-photo-grid article > button:last-child:not(.gp-pick):not(.gp-photo) {
+    font-size: 9px;
+    padding: 4px 6px;
+  }
+  .gp-actions {
+    gap: 7px;
+  }
+  .gp-media-toolbar {
+    gap: 7px;
+    margin-top: 20px;
+  }
+}

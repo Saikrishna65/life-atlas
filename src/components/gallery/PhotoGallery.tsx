@@ -17,6 +17,8 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   X,
+  MapPin,
+  MoreHorizontal,
 } from "lucide-react";
 import {
   R2,
@@ -63,6 +65,7 @@ import GalleryThumbnail from "./GalleryThumbnail";
 import GalleryAssign from "./GalleryAssign";
 import { useGalleryLayout } from "./useGalleryLayout";
 import "./gallery.css";
+import "./photos.css";
 const GalleryPlaces = dynamic(() => import("./GalleryPlaces"), { ssr: false });
 const GalleryTripControls = dynamic(() => import("./GalleryTripControls"), {
   ssr: false,
@@ -122,7 +125,8 @@ export default function PhotoGallery() {
     ),
     [drawer, setDrawer] = useState(false),
     [websiteControls, setWebsiteControls] = useState(false),
-    [online, setOnline] = useState(true);
+    [online, setOnline] = useState(true),
+    [filtersOpen, setFiltersOpen] = useState(false);
   const grid = useRef<HTMLDivElement>(null),
     sentinel = useRef<HTMLDivElement>(null),
     deviceGeneration = useRef(0),
@@ -161,7 +165,10 @@ export default function PhotoGallery() {
         if (alive) setFavorites(v);
       })
       .catch(() => {});
-    void readGalleryPreference<number>("columns", 3)
+    void readGalleryPreference<number>(
+      "photos-density",
+      window.innerWidth < 701 ? 3 : 5,
+    )
       .then((v) => {
         if (alive) setColumns(Math.max(2, Math.min(6, v)));
       })
@@ -279,7 +286,7 @@ export default function PhotoGallery() {
     [supported, access.status, query, kind, album, order],
   );
   useEffect(() => {
-    if (view === "cloud") return;
+    if (view === "cloud" || view === "places") return;
     const generation = deviceGeneration;
     const timer = setTimeout(() => void requestDevice(""), 250);
     return () => {
@@ -432,7 +439,18 @@ export default function PhotoGallery() {
     dateFrom,
     dateTo,
   ]);
-  const layout = useGalleryLayout(assets, columns, grid);
+  const activeFilters =
+    (status !== "all" ? 1 : 0) +
+    (order !== "newest" ? 1 : 0) +
+    (album ? 1 : 0) +
+    (dateFrom || dateTo ? 1 : 0);
+  const layout = useGalleryLayout(
+    assets,
+    columns,
+    grid,
+    order === "newest" || order === "oldest",
+    view + String(filtersOpen),
+  );
   const chosen = selected.flatMap((id) => {
       const record = selectionMedia[id] || items.find((m) => m.id === id);
       return record ? [record] : [];
@@ -484,7 +502,7 @@ export default function PhotoGallery() {
             2,
             Math.min(6, c + (distance > start ? -1 : 1)),
           );
-          void saveGalleryPreference("columns", next);
+          void saveGalleryPreference("photos-density", next);
           return next;
         });
         start = distance;
@@ -666,35 +684,58 @@ export default function PhotoGallery() {
       className={`private-gallery${view === "places" ? " has-place-organizer" : ""}`}
     >
       <header className="pg-top">
-        <Link href="/secret">
-          <ArrowLeft size={17} /> Private Atlas
-        </Link>
-        <span>
-          <Aperture size={19} /> LIFE ATLAS / GALLERY
-        </span>
-        <Link href="/secret/studio">Creator Studio ↗</Link>
+        <div className="pg-brand">
+          <Link href="/secret" aria-label="Back to Private Atlas">
+            <ArrowLeft size={20} />
+          </Link>
+          <Aperture size={29} strokeWidth={1.8} />
+          <span>
+            Atlas <strong>Photos</strong>
+          </span>
+        </div>
+        <label className="pg-search">
+          <Search size={16} />
+          <input
+            aria-label="Search gallery"
+            type="search"
+            placeholder="Search filenames"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
+        <div className="pg-header-actions">
+          <button
+            aria-label="Open transfer queue"
+            onClick={() => setDrawer(true)}
+          >
+            <CloudUpload size={21} />
+            {pending.length > 0 && <b>{pending.length}</b>}
+          </button>
+          <Link
+            href="/secret/studio"
+            aria-label="Open Creator Studio"
+            className="pg-studio-link"
+          >
+            <span>Studio</span>
+            <ArrowLeft size={17} style={{ transform: "rotate(135deg)" }} />
+          </Link>
+        </div>
       </header>
-      <section className="pg-intro">
-        <div>
-          <span className="pg-eyebrow">MY VISUAL ATLAS</span>
-          <h1>
-            Every frame.
-            <br />
-            <em>A little more me.</em>
-          </h1>
-          <p>My phone. My cloud. My journeys, together.</p>
-        </div>
-        <div className="pg-orbit" aria-hidden="true">
-          <Aperture size={120} strokeWidth={0.65} />
-          <span>COLLECTED, NOT FORGOTTEN.</span>
-        </div>
-      </section>
       <div className="pg-toolbar">
         <nav aria-label="Gallery views">
           {(["device", "cloud", "trips", "places"] as const).map((v) => (
             <button
               key={v}
               aria-pressed={view === v}
+              aria-label={
+                v === "device"
+                  ? "On my phone"
+                  : v === "cloud"
+                    ? "In the cloud"
+                    : v === "places"
+                      ? "Places organizer"
+                      : "Trips & places"
+              }
               onClick={() => {
                 setView(v);
                 setSelected([]);
@@ -709,24 +750,62 @@ export default function PhotoGallery() {
                 <ImageIcon size={17} />
               ) : v === "cloud" ? (
                 <Cloud size={17} />
+              ) : v === "places" ? (
+                <MapPin size={20} />
               ) : (
-                <Aperture size={17} />
+                <Aperture size={20} />
               )}{" "}
               {v === "device"
-                ? "On my phone"
+                ? "Photos"
                 : v === "cloud"
-                  ? "In the cloud"
+                  ? "Cloud"
                   : v === "places"
-                    ? "Places organizer"
-                    : "Trips & places"}
+                    ? "Places"
+                    : "Trips"}
             </button>
           ))}
         </nav>
-        <button onClick={() => setDrawer(true)}>
+        <div className="pg-rail-footer">
+          <Link href="/secret/studio">Creator Studio ↗</Link>
+          <small>Originals stay original.</small>
+        </div>
+        <button className="pg-rail-transfers" onClick={() => setDrawer(true)}>
           <CloudUpload size={17} /> Transfers{" "}
           {pending.length > 0 && <b>{pending.length}</b>}
         </button>
       </div>
+      <section className="pg-page-heading">
+        <div>
+          <h1>
+            {view === "device"
+              ? "Photos"
+              : view === "cloud"
+                ? "Cloud library"
+                : view === "trips"
+                  ? "Trips & albums"
+                  : "Places"}
+          </h1>
+          <p>
+            {view === "device"
+              ? "Your photos and videos, all together."
+              : view === "cloud"
+                ? "Browse your public and encrypted private originals."
+                : view === "trips"
+                  ? "Collected by journey. Organized by place."
+                  : "Find familiar places in your photo library."}
+          </p>
+        </div>
+        {view !== "places" && (
+          <button
+            aria-label="Gallery filters"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((v) => !v)}
+          >
+            <SlidersHorizontal size={18} />
+            <span>Filters{activeFilters ? ` · ${activeFilters}` : ""}</span>
+          </button>
+        )}
+      </section>
       {!supported ? (
         <section className="pg-permission">
           <ShieldCheck size={34} />
@@ -781,7 +860,7 @@ export default function PhotoGallery() {
             </div>
           </div>
           {view === "places" ? (
-            <GalleryPlaces />
+            <GalleryPlaces search={query} onSearch={setQuery} />
           ) : view !== "cloud" && access.status === "denied" ? (
             <section className="pg-permission">
               <ImageIcon size={36} />
@@ -801,17 +880,58 @@ export default function PhotoGallery() {
             </section>
           ) : (
             <>
-              <div className="pg-filters">
-                <label className="pg-search">
-                  <Search size={16} />
-                  <input
-                    aria-label="Search gallery"
-                    type="search"
-                    placeholder="Find a filename…"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                  />
-                </label>
+              {view === "cloud" && (
+                <div
+                  className="pg-cloud-tabs"
+                  aria-label="Cloud storage visibility"
+                >
+                  <button
+                    aria-pressed={slot === "public"}
+                    onClick={() => setSlot("public")}
+                  >
+                    <Cloud size={15} /> Public originals
+                  </button>
+                  <button
+                    aria-pressed={slot === "private"}
+                    onClick={() => setSlot("private")}
+                  >
+                    <ShieldCheck size={15} /> Encrypted private
+                  </button>
+                </div>
+              )}
+              <div className="pg-quick-filters">
+                <button
+                  aria-pressed={kind === "all"}
+                  onClick={() => setKind("all")}
+                >
+                  All
+                </button>
+                <button
+                  aria-pressed={kind === "photo"}
+                  onClick={() => setKind("photo")}
+                >
+                  <ImageIcon size={15} /> Photos
+                </button>
+                <button
+                  aria-pressed={kind === "video"}
+                  onClick={() => setKind("video")}
+                >
+                  <Film size={15} /> Videos
+                </button>
+                <button
+                  aria-pressed={favoritesOnly}
+                  onClick={() => setFavoritesOnly((v) => !v)}
+                >
+                  <Heart size={15} /> Favorites
+                </button>
+                <button
+                  aria-pressed={filtersOpen}
+                  onClick={() => setFiltersOpen((v) => !v)}
+                >
+                  <MoreHorizontal size={18} /> More
+                </button>
+              </div>
+              <div className="pg-filters" hidden={!filtersOpen}>
                 <select
                   aria-label="Media type"
                   value={kind}
@@ -904,7 +1024,10 @@ export default function PhotoGallery() {
                     value={columns}
                     onChange={(e) => {
                       setColumns(+e.target.value);
-                      void saveGalleryPreference("columns", +e.target.value);
+                      void saveGalleryPreference(
+                        "photos-density",
+                        +e.target.value,
+                      );
                     }}
                   />
                 </label>
@@ -1001,12 +1124,62 @@ export default function PhotoGallery() {
                 data-density={columns}
                 style={{ height: layout.height }}
               >
+                {layout.headers.map((day) => (
+                  <div
+                    className="pg-date-heading"
+                    key={day.key}
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      top: day.y,
+                      height: 40,
+                    }}
+                  >
+                    <h2>{day.label}</h2>
+                    {view !== "cloud" && (
+                      <button
+                        aria-label={`Select photos from ${day.label}`}
+                        aria-pressed={
+                          day.indices.length > 0 &&
+                          day.indices.every((i) =>
+                            selected.includes(assets[i].id),
+                          )
+                        }
+                        onClick={() => {
+                          const dayAssets = day.indices
+                            .map((i) => assets[i])
+                            .filter((a) => a.device)
+                            .slice(0, 100);
+                          setSelectionMedia((old) => ({
+                            ...old,
+                            ...Object.fromEntries(
+                              dayAssets.map((a) => [a.id, a.device!]),
+                            ),
+                          }));
+                          const ids = dayAssets.map((a) => a.id),
+                            all = ids.every((id) => selected.includes(id));
+                          const next = all
+                            ? selected.filter((id) => !ids.includes(id))
+                            : [...new Set([...selected, ...ids])];
+                          if (next.length > 100)
+                            setNotice(
+                              "Select up to 100 files per batch. Your existing selection is kept.",
+                            );
+                          setSelected(next.slice(0, 100));
+                        }}
+                      >
+                        <Check size={15} />
+                      </button>
+                    )}
+                  </div>
+                ))}
                 {layout.visible.map((position) => {
                   const asset = assets[position.index];
                   return (
                     <article
                       key={asset.id}
-                      className={`pg-tile ${selected.includes(asset.id) ? "is-selected" : ""}`}
+                      className={`pg-tile ${selected.includes(asset.id) ? "is-selected" : ""} ${selected.length ? "in-selection-mode" : ""}`}
                       style={{
                         position: "absolute",
                         left: position.x,
@@ -1055,9 +1228,13 @@ export default function PhotoGallery() {
                           if (hold.current.timer)
                             clearTimeout(hold.current.timer);
                         }}
-                        onClick={() => {
+                        onClick={(event) => {
                           if (hold.current.handled) {
                             hold.current.handled = false;
+                            return;
+                          }
+                          if (selected.length && asset.device) {
+                            toggle(asset.id, event.shiftKey);
                             return;
                           }
                           void openAsset(asset);
@@ -1190,6 +1367,21 @@ export default function PhotoGallery() {
       {selected.length > 0 && (
         <aside className="pg-selection" aria-label="Selected media actions">
           <strong>{selected.length} selected</strong>
+          {selected.length === 1 && chosen[0] && (
+            <button
+              onClick={() =>
+                setDetail(
+                  assets.find((a) => a.id === selected[0]) ||
+                    deviceAsset(
+                      chosen[0],
+                      currentBucketTransfers(jobs, summary),
+                    ),
+                )
+              }
+            >
+              Details
+            </button>
+          )}
           <button disabled={busy} onClick={() => setAssigning(true)}>
             <CloudUpload size={17} /> Add to trip / upload
           </button>
@@ -1219,6 +1411,11 @@ export default function PhotoGallery() {
       {viewer && viewerAssets.some((a) => a.id === viewer) && (
         <TripMediaViewer
           selected={viewer}
+          variant="library"
+          onDetails={(id) => {
+            closeViewer();
+            setDetail(assets.find((a) => a.id === id));
+          }}
           onSelect={setViewer}
           onClose={closeViewer}
           items={viewerAssets.map((a) => ({
@@ -1297,6 +1494,15 @@ export default function PhotoGallery() {
             </p>
           ))}
           <div className="pg-action-row">
+            <button
+              aria-pressed={favorites.includes(detail.id)}
+              onClick={() => void favorite(detail.id)}
+            >
+              <Heart size={16} />
+              {favorites.includes(detail.id)
+                ? "Remove favorite"
+                : "Add to favorites"}
+            </button>
             <button
               onClick={() => {
                 setDetail(undefined);

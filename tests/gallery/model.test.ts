@@ -262,7 +262,7 @@ test("bucket changes never reuse another bucket’s status or cached object iden
   assert.equal(current.transfer, undefined);
   assert.notEqual(current.name, job.name);
 });
-test("masonry layout stays deterministic and bounded for thousands of media records", async () => {
+test("photo-row layout stays deterministic and bounded for thousands of media records", async () => {
   const { galleryLayout } = await import("../../src/lib/gallery/layout");
   const assets = Array.from({ length: 5000 }, (_, i) => ({
     ...deviceAsset(media, []),

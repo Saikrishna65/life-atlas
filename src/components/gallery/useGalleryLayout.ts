@@ -6,8 +6,10 @@ export function useGalleryLayout(
   items: GalleryAsset[],
   columns: number,
   root: RefObject<HTMLDivElement | null>,
+  groupDates = true,
+  contextKey = "device",
 ) {
-  const [width, setWidth] = useState(900),
+  const [width, setWidth] = useState(0),
     [viewport, setViewport] = useState({ top: 0, height: 1000 });
   useEffect(() => {
     const node = root.current;
@@ -42,10 +44,13 @@ export function useGalleryLayout(
       window.removeEventListener("resize", scroll);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [root, items.length]);
+  }, [root, items.length, contextKey]);
   const layout = useMemo(
-    () => galleryLayout(items, width, columns, width < 650 ? 6 : 10),
-    [items, width, columns],
+    () =>
+      width > 0
+        ? galleryLayout(items, width, columns, width < 650 ? 3 : 4, groupDates)
+        : { placements: [], headers: [], height: 0 },
+    [items, width, columns, groupDates],
   );
   const visible =
     items.length <= 160
@@ -55,5 +60,14 @@ export function useGalleryLayout(
             p.y + p.height >= viewport.top - 600 &&
             p.y <= viewport.top + viewport.height + 600,
         );
-  return { height: layout.height, visible };
+  return {
+    height: layout.height,
+    visible,
+    headers: layout.headers.filter(
+      (h) =>
+        items.length <= 160 ||
+        (h.y + 44 >= viewport.top - 600 &&
+          h.y <= viewport.top + viewport.height + 600),
+    ),
+  };
 }
