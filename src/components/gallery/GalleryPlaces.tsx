@@ -433,12 +433,12 @@ export default function GalleryPlaces({
                     () => cancel.current,
                   );
                   setNotice(
-                    `Encrypted catalog saved as a new snapshot (${result.size.toLocaleString()} bytes). ${result.unmatched ? `${result.unmatched} unavailable originals need manual reconnection; their place records are saved. ` : ""}Keep your recovery kit independently safe.`,
+                    `Places backed up (${result.size.toLocaleString()} bytes). ${result.unmatched ? `${result.unmatched} unavailable originals need manual reconnection; their place records are saved. ` : ""}Keep your recovery kit independently safe.`,
                   );
                 })
               }
             >
-              <CloudUpload size={16} /> Save encrypted snapshot
+              <CloudUpload size={16} /> Back up my places
             </button>
             <button
               disabled={busy}
@@ -456,7 +456,7 @@ export default function GalleryPlaces({
                 })
               }
             >
-              <Download size={16} /> Find cloud snapshots
+              <Download size={16} /> Find my backups
             </button>
             <button
               disabled={busy}
@@ -481,15 +481,15 @@ export default function GalleryPlaces({
                 })
               }
             >
-              Reconnect restored photos
+              Find these photos on my phone
             </button>
           </div>
           <p className="pg-muted">
             After reinstalling: restore the same private encryption key using
-            its recovery kit, find a snapshot, merge it, then reconnect photos.
-            Matching uses a keyed exact-file fingerprint, including photos
-            without GPS. Originals copied with altered bytes need manual
-            reassignment.
+            its recovery kit, find a backup, restore it, then find the photos on
+            your phone. Atlas checks the original file contents to match photos,
+            including photos without GPS. Originals copied with altered bytes
+            need manual reassignment.
           </p>
           {backups.map((b) => (
             <div className="gp-snapshot" key={b.key}>
@@ -509,12 +509,12 @@ export default function GalleryPlaces({
                       return;
                     setLibrary(await restorePlaces(b.key));
                     setNotice(
-                      "Snapshot merged. Reconnect restored photos to attach available originals on this phone.",
+                      "Places restored. Find these photos on my phone to attach available originals on this phone.",
                     );
                   })
                 }
               >
-                Merge snapshot
+                Restore this backup
               </button>
             </div>
           ))}
@@ -537,7 +537,7 @@ export default function GalleryPlaces({
                 })
               }
             >
-              Older snapshots
+              Older backups
             </button>
           )}
         </section>
@@ -756,7 +756,7 @@ export default function GalleryPlaces({
                   <label>
                     Public trip-map pin
                     <select
-                      aria-label="Public pin precision"
+                      aria-label="Shared location accuracy"
                       value={precision}
                       disabled={busy}
                       onChange={(e) =>
@@ -790,7 +790,7 @@ export default function GalleryPlaces({
                     <label>
                       Visit
                       <select
-                        aria-label="Place visit"
+                        aria-label="Visit"
                         value={visit}
                         disabled={busy}
                         onChange={(e) => {
@@ -940,7 +940,7 @@ export default function GalleryPlaces({
                     <label>
                       Merge into
                       <select
-                        aria-label="Merge target"
+                        aria-label="Combine with place"
                         value={mergeTarget}
                         disabled={busy}
                         onChange={(e) => setMergeTarget(e.target.value)}
