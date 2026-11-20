@@ -46,6 +46,8 @@ public class R2StoragePlugin extends Plugin {
     void run() throws Exception;
   }
 
+  private final java.util.concurrent.atomic.AtomicLong gallerySearchGeneration =
+      new java.util.concurrent.atomic.AtomicLong();
   private boolean authenticating = false;
   private final R2PublicationSession publicationSession = new R2PublicationSession();
   private Task pendingAuth;
@@ -252,6 +254,7 @@ public class R2StoragePlugin extends Plugin {
 
   @PluginMethod
   public void searchGalleryIntelligence(PluginCall call) {
+    final long generation = gallerySearchGeneration.incrementAndGet();
     work(
         call,
         () -> {
@@ -264,7 +267,8 @@ public class R2StoragePlugin extends Plugin {
                           call.getString("query", ""),
                           call.getString("album", ""),
                           call.getString("kind", "all"),
-                          call.getInt("offset", 0))));
+                          call.getInt("offset", 0),
+                          () -> generation != gallerySearchGeneration.get())));
         });
   }
 
@@ -2118,6 +2122,7 @@ public class R2StoragePlugin extends Plugin {
 
   @Override
   protected void handleOnPause() {
+    gallerySearchGeneration.incrementAndGet();
     galleryForeground = false;
     librarySession = "";
     R2LibraryPreviews.clear(getContext());

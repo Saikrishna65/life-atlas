@@ -1,4 +1,7 @@
 const messages: Record<string, string> = {
+  SEARCH_CANCELLED: "Search was interrupted. Search again to continue.",
+  SEARCH_NOT_CONFIGURED: "Enable smart search in Gallery’s search settings first.",
+  SEARCH_MODEL_NOT_READY: "The visual search model is not ready. Check search settings, or use filename search.",
   LIBRARY_UNLOCK_REQUIRED:"Unlock the cloud library again. Its private viewing session ends when the app goes into the background.",
   LIBRARY_ITEM_NOT_FOUND:"This library record is not available. Restore the cloud index or refresh the list.",
   LIBRARY_ITEM_IN_TRASH:"This file is in cloud trash. Restore it there before uploading it again. Automatic backup respects cloud deletions.",

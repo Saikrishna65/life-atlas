@@ -46,10 +46,16 @@ export default function GalleryIntelligencePanel({
           if (!alive) return;
           setStatus(v);
         })
-        .catch(() => {
+        .catch((error: unknown) => {
+          const code =
+            error && typeof error === "object" && "code" in error
+              ? String(error.code)
+              : "";
           if (alive)
             setError(
-              "Smart search needs the next Android app update. Your gallery still works as usual.",
+              code === "UNIMPLEMENTED"
+                ? "Smart search needs the next Android app update. Your gallery still works as usual."
+                : "Smart search storage couldn’t be opened. Your photos are unchanged. Close and reopen search settings to try again.",
             );
         });
     };
@@ -102,7 +108,11 @@ export default function GalleryIntelligencePanel({
         </p>
       </div>
       <div role="status" className="gi-status">
-        {status ? intelligenceStateText(status) : "Checking smart search…"}
+        {status
+          ? intelligenceStateText(status)
+          : error
+            ? "Smart search unavailable"
+            : "Checking smart search…"}
         {status && (
           <small>
             {status.indexed.toLocaleString()} photos analyzed

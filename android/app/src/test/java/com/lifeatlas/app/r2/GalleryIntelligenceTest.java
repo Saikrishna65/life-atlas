@@ -155,6 +155,12 @@ public class GalleryIntelligenceTest {
     }
     GalleryIntelligence service =
         new GalleryIntelligence(RuntimeEnvironment.getApplication(), fixture.repo.store);
+    try {
+      service.search("train delhi", "", "all", 0, () -> true);
+      fail("A superseded search must stop before opening models or reading photo rows");
+    } catch (R2Exception expected) {
+      assertEquals("SEARCH_CANCELLED", expected.code);
+    }
     JSONArray result = service.search("train delhi", "", "all", 0).getJSONArray("items");
     assertEquals(1, result.length());
     assertFalse(result.getJSONObject(0).has("text"));

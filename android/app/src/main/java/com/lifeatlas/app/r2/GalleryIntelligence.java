@@ -198,12 +198,29 @@ final class GalleryIntelligence {
   }
 
   JSONObject search(String query, String album, String kind, int offset) throws Exception {
+    return search(query, album, kind, offset, () -> false);
+  }
+
+  JSONObject search(
+      String query,
+      String album,
+      String kind,
+      int offset,
+      java.util.function.BooleanSupplier cancelled)
+      throws Exception {
+    if (cancelled.getAsBoolean()) throw new R2Exception("SEARCH_CANCELLED");
     if (query == null
         || query.trim().isEmpty()
         || query.length() > 200
         || offset < 0
         || offset > 10000
         || album.length() > 200) throw new R2Exception("INVALID_SELECTION");
+    if (offset == 10000)
+      return new JSONObject()
+          .put("items", new JSONArray())
+          .put("cursor", "")
+          .put("complete", true)
+          .put("limitReached", true);
     JSONObject config = settings();
     Set<String> allowed = new HashSet<>();
     JSONArray approvedAlbums = config.optJSONArray("albums");
@@ -213,6 +230,7 @@ final class GalleryIntelligence {
     float[] vector = null;
     if (config.optBoolean("visual") && !kind.equals("video") && GalleryClip.ready(context))
       synchronized (GalleryClip.LOCK) {
+        if (cancelled.getAsBoolean()) throw new R2Exception("SEARCH_CANCELLED");
         try (GalleryClip clip = new GalleryClip(context)) {
           vector = clip.query(query);
         }
@@ -228,6 +246,7 @@ final class GalleryIntelligence {
     try (GallerySearchStore db = new GallerySearchStore(secure);
         Cursor cursor = db.rows()) {
       while (cursor.moveToNext()) {
+        if (cancelled.getAsBoolean()) throw new R2Exception("SEARCH_CANCELLED");
         JSONObject row = db.read(cursor.getString(0), cursor.getBlob(1)),
             media = row.getJSONObject("media");
         if (!album.isEmpty() && !album.equals(media.optString("album"))) continue;
@@ -260,7 +279,7 @@ final class GalleryIntelligence {
     R2DeviceGallery gallery = new R2DeviceGallery(context);
     int consumed = offset;
     for (int i = offset; i < sorted.size(); i++) {
-      if (items.length() == 80) break;
+      if (items.length() == 80 || i == 10000) break;
       Hit hit = sorted.get(i);
       consumed = i + 1;
       try {
