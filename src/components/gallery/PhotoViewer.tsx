@@ -26,7 +26,7 @@ export default function PhotoViewer({
   selected: string;
   onSelect: (id: string) => void;
   onClose: () => void;
-  onDetails: (id: string) => void;
+  onDetails?: (id: string) => void;
   onDelete?: (id: string) => Promise<void>;
 }) {
   const index = items.findIndex((i) => i.id === selected),
@@ -79,9 +79,16 @@ export default function PhotoViewer({
         <span>
           {index + 1} / {items.length}
         </span>
-        <button onClick={() => onDetails(selected)} aria-label="Photo details">
-          <Info />
-        </button>
+        {onDetails ? (
+          <button
+            onClick={() => onDetails(selected)}
+            aria-label="Photo details"
+          >
+            <Info />
+          </button>
+        ) : (
+          <span />
+        )}
       </div>
       <div
         className="pv-picture journal-viewer-stage"

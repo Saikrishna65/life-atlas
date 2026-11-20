@@ -44,7 +44,7 @@ import {
 import { deviceAsset } from "@/lib/gallery/model";
 import { useTripVault } from "@/lib/vault/useTripVault";
 import GalleryThumbnail from "./GalleryThumbnail";
-import TripMediaViewer from "@/components/media/TripMediaViewer";
+import PhotoViewer from "./PhotoViewer";
 import { gallerySource } from "@/lib/gallery/actions";
 import type { StorageSummary, CloudObject } from "@/lib/r2/types";
 import "./places.css";
@@ -1154,10 +1154,29 @@ export default function GalleryPlaces({
         </div>
       </div>
       {viewer && viewerItems.some((m) => m.id === viewer) && (
-        <TripMediaViewer
+        <PhotoViewer
           items={viewerItems}
           selected={viewer}
-          variant="library"
+          onDelete={
+            visible.find((m) => m.id === viewer)?.device
+              ? async (id) => {
+                  const media = visible.find((m) => m.id === id);
+                  if (!media?.device) return;
+                  const result = await systemAction(() =>
+                    R2.trashDeviceMedia({
+                      ids: [media.device!.id],
+                      trashed: true,
+                    }),
+                  );
+                  if (result.approved) {
+                    closeViewer();
+                    setNotice(
+                      "Moved to phone trash. Your saved place and cloud copies are kept.",
+                    );
+                  }
+                }
+              : undefined
+          }
           onSelect={setViewer}
           onClose={closeViewer}
         />
