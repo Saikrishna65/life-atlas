@@ -1,10 +1,12 @@
 const messages: Record<string, string> = {
   PEOPLE_CONSENT_REQUIRED: "Confirm private face analysis before enabling people grouping.",
+  PEOPLE_MODEL_DOWNLOAD_FAILED: "The people models could not download. Check your connection, then resume analysis in Gallery settings.",
+  PEOPLE_MODEL_INVALID: "The people-model download did not pass verification. Resume analysis to download a clean copy; your photos are unchanged.",
   PEOPLE_MODEL_NOT_READY: "The people models aren’t ready yet. Open analysis settings to finish their download.",
   GALLERY_COLLECTION_CHANGED: "This collection changed while you were reviewing it. Close the review and refresh; your saved choices and originals are unchanged.",
   INVALID_PERSON_NAME: "Enter a name up to 80 characters long.",
   SEARCH_CANCELLED: "Search was interrupted. Search again to continue.",
-  SEARCH_NOT_CONFIGURED: "Enable smart search in Gallery’s search settings first.",
+  SEARCH_NOT_CONFIGURED: "Enable photo analysis in Gallery settings first.",
   SEARCH_MODEL_NOT_READY: "The visual search model is not ready. Check search settings, or use filename search.",
   LIBRARY_UNLOCK_REQUIRED:"Unlock the cloud library again. Its private viewing session ends when the app goes into the background.",
   LIBRARY_ITEM_NOT_FOUND:"This library record is not available. Restore the cloud index or refresh the list.",
