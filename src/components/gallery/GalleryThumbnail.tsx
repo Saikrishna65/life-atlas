@@ -8,7 +8,7 @@ import { gallerySource } from "@/lib/gallery/actions";
 // Native thumbnails only, bounded concurrency. No full originals fetched by the grid.
 let active = 0;
 const waiting: (() => void)[] = [];
-async function thumbnail(id: string, stillNeeded: () => boolean) {
+export async function thumbnail(id: string, stillNeeded: () => boolean) {
   await new Promise<void>((resolve) => {
     if (active < 4) {
       active++;

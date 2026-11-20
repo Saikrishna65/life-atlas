@@ -2,6 +2,8 @@
 export interface GalleryIntelligenceSettings {
   ocr: boolean;
   visual: boolean;
+  similar?: boolean;
+  people?: boolean;
   chargingOnly: boolean;
   wifiOnly: boolean;
   /** Empty means every album the phone permission allows. */
@@ -24,10 +26,16 @@ export interface GalleryIntelligenceStatus extends GalleryIntelligenceSettings {
   updatedAt: number;
   modelReady: boolean;
   modelBytes: number;
+  peopleModelReady?: boolean;
+  peopleModelBytes?: number;
+  downloadTarget?: "people" | "visual";
+  waitReason?: "heat" | "battery-saver" | "";
 }
 export const defaultIntelligenceSettings: GalleryIntelligenceSettings = {
   ocr: true,
   visual: false,
+  similar: true,
+  people: false,
   chargingOnly: true,
   wifiOnly: true,
   albums: [],
@@ -39,11 +47,17 @@ export function intelligenceStateText(
     case "off":
       return "Not enabled";
     case "waiting":
+      if (status.waitReason === "heat")
+        return "Taking a break while your phone cools down";
+      if (status.waitReason === "battery-saver")
+        return "Paused while Battery Saver is on";
       return status.chargingOnly
         ? "Waiting for charging and enough battery"
         : "Waiting for enough battery and storage";
     case "downloading":
-      return "Downloading visual search model";
+      return status.downloadTarget === "people"
+        ? "Downloading the small people-grouping models"
+        : "Downloading visual search model";
     case "indexing":
       return "Analyzing photos on this phone";
     case "ready":

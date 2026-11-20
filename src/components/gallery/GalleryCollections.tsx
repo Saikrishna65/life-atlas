@@ -1,5 +1,12 @@
 "use client";
-import { ArrowUpRight, MapPin, Mountain } from "lucide-react";
+import {
+  ArrowUpRight,
+  MapPin,
+  Mountain,
+  Images,
+  Users,
+  Heart,
+} from "lucide-react";
 import Link from "next/link";
 import AlbumCover from "./AlbumCover";
 
@@ -12,6 +19,7 @@ export default function GalleryCollections({
   onAlbum,
   onTrip,
   onPlaces,
+  onSmart,
 }: {
   albums: { name: string; count?: number }[];
   items: DeviceMedia[];
@@ -19,10 +27,28 @@ export default function GalleryCollections({
   onAlbum: (name: string) => void;
   onTrip: (id: string) => void;
   onPlaces: () => void;
+  onSmart: (mode: import("@/lib/gallery/collections").CollectionKind) => void;
 }) {
   return (
     <section className="gc-home" aria-label="Organize your library">
       <p className="gc-plain-intro">Your albums, trips and places.</p>
+      <div className="gsmart-shortcuts" aria-label="Smart collections">
+        <button onClick={() => onSmart("similar")}>
+          <Images />
+          <strong>Similar photos</strong>
+          <small>Find your favorite shot</small>
+        </button>
+        <button onClick={() => onSmart("people")}>
+          <Users />
+          <strong>People</strong>
+          <small>Names you confirm</small>
+        </button>
+        <button onClick={() => onSmart("memories")}>
+          <Heart />
+          <strong>Albums & memories</strong>
+          <small>A little look back</small>
+        </button>
+      </div>
       <button
         className="gc-location"
         onClick={onPlaces}

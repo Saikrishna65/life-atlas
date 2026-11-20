@@ -28,12 +28,38 @@ public final class GalleryIntelligenceWorker extends Worker {
     }
   }
 
+  private boolean deferForDevice(GalleryIntelligence service, String epoch) throws Exception {
+    android.os.PowerManager power =
+        (android.os.PowerManager) getApplicationContext().getSystemService(Context.POWER_SERVICE);
+    String reason =
+        power != null && power.isPowerSaveMode()
+            ? "battery-saver"
+            : (Build.VERSION.SDK_INT >= 29
+                    && power != null
+                    && power.getCurrentThermalStatus()
+                        >= android.os.PowerManager.THERMAL_STATUS_SEVERE
+                ? "heat"
+                : "");
+    if (reason.isEmpty()) return false;
+    service.change(
+        epoch,
+        v -> {
+          try {
+            v.put("state", "waiting").put("waitReason", reason);
+          } catch (JSONException e) {
+            throw new IllegalStateException(e);
+          }
+        });
+    return true;
+  }
+
   static Bitmap decode(Context c, String id) throws Exception {
     if (Build.VERSION.SDK_INT >= 28)
       return ImageDecoder.decodeBitmap(
           ImageDecoder.createSource(c.getContentResolver(), R2DeviceGallery.uri(id)),
           (decoder, info, source) -> {
             decoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE);
+            decoder.setTargetColorSpace(ColorSpace.get(ColorSpace.Named.SRGB));
             int width = info.getSize().getWidth(), height = info.getSize().getHeight();
             double scale = Math.min(1, 1600d / Math.max(width, height));
             decoder.setTargetSize(
@@ -47,6 +73,7 @@ public final class GalleryIntelligenceWorker extends Worker {
     if (bounds.outWidth < 1 || bounds.outHeight < 1) throw new IOException("SOURCE_UNAVAILABLE");
     BitmapFactory.Options options = new BitmapFactory.Options();
     options.inSampleSize = 1;
+    options.inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB);
     while (Math.max(bounds.outWidth, bounds.outHeight) / options.inSampleSize > 1600)
       options.inSampleSize *= 2;
     Bitmap bitmap;
@@ -75,14 +102,31 @@ public final class GalleryIntelligenceWorker extends Worker {
     return row != null
         && R2DeviceGallery.stamp(media).equals(row.optString("stamp"))
         && (!config.optBoolean("ocr") || GalleryIntelligence.hasCurrentOcr(row))
-        && (!config.optBoolean("visual") || row.optBoolean("visualDone"));
+        && (!config.optBoolean("visual") || row.optBoolean("visualDone"))
+        && (!config.optBoolean("similar")
+            || (row.optJSONObject("quality") != null
+                && GalleryPhotoQuality.VERSION.equals(
+                    row.optJSONObject("quality").optString("version"))))
+        && (!config.optBoolean("people")
+            || GalleryFaceModels.VERSION.equals(row.optString("faceVersion")));
   }
 
   private static JSONObject metadata(JSONObject media) throws Exception {
     JSONObject out = new JSONObject();
     for (String k :
-        List.of("id", "name", "album", "size", "modifiedAt", "capturedAt", "generation"))
-      if (media.has(k)) out.put(k, media.get(k));
+        List.of(
+            "id",
+            "name",
+            "album",
+            "size",
+            "modifiedAt",
+            "capturedAt",
+            "generation",
+            "addedAt",
+            "width",
+            "height",
+            "kind",
+            "mimeType")) if (media.has(k)) out.put(k, media.get(k));
     return out;
   }
 
@@ -94,6 +138,7 @@ public final class GalleryIntelligenceWorker extends Worker {
     if (epoch == null || stopped(service, epoch)) return Result.success();
     try {
       JSONObject config = service.settings();
+      if (deferForDevice(service, epoch)) return Result.retry();
       // Periodic work only queues a serialized scan; it never competes with an active batch.
       if (getInputData().getBoolean("rescan", false)) {
         synchronized (GalleryIntelligence.STATE_LOCK) {
@@ -118,7 +163,7 @@ public final class GalleryIntelligenceWorker extends Worker {
             epoch,
             v -> {
               try {
-                v.put("state", "downloading").put("error", "");
+                v.put("state", "downloading").put("downloadTarget", "visual").put("error", "");
               } catch (JSONException e) {
                 throw new IllegalStateException(e);
               }
@@ -146,12 +191,30 @@ public final class GalleryIntelligenceWorker extends Worker {
         }
         return Result.success();
       }
+      if (config.optBoolean("people") && !GalleryFaceModels.ready(getApplicationContext())) {
+        service.change(
+            epoch,
+            v -> {
+              try {
+                v.put("state", "downloading").put("downloadTarget", "people").put("error", "");
+              } catch (JSONException e) {
+                throw new IllegalStateException(e);
+              }
+            });
+        synchronized (GalleryClip.LOCK) {
+          GalleryFaceModels.ensure(getApplicationContext(), () -> stopped(service, epoch));
+        }
+        synchronized (GalleryIntelligence.STATE_LOCK) {
+          if (!stopped(service, epoch)) service.enqueue(service.settings());
+        }
+        return Result.success();
+      }
       if (stopped(service, epoch)) return Result.success();
       service.change(
           epoch,
           v -> {
             try {
-              v.put("state", "indexing").put("error", "");
+              v.put("state", "indexing").put("waitReason", "").put("error", "");
             } catch (JSONException e) {
               throw new IllegalStateException(e);
             }
@@ -162,10 +225,15 @@ public final class GalleryIntelligenceWorker extends Worker {
       Set<String> albums = new HashSet<>();
       for (int i = 0; i < allowed.length(); i++) albums.add(allowed.getString(i));
       try (GallerySearchStore db = new GallerySearchStore(service.secure);
-          TextRecognizer latin = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
-          GalleryClip clip = new GalleryClip(getApplicationContext())) {
+          TextRecognizer latin =
+              config.optBoolean("ocr")
+                  ? TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                  : null;
+          GalleryClip clip = new GalleryClip(getApplicationContext());
+          GalleryFaceModels faces = new GalleryFaceModels(getApplicationContext())) {
         for (int i = 0; i < photos.length(); i++) {
           if (stopped(service, epoch)) return Result.success();
+          if (deferForDevice(service, epoch)) return Result.retry();
           JSONObject media = photos.getJSONObject(i);
           if (!albums.isEmpty() && !albums.contains(media.optString("album"))) continue;
           String id = media.getString("id"), stamp = R2DeviceGallery.stamp(media);
@@ -178,6 +246,12 @@ public final class GalleryIntelligenceWorker extends Worker {
             bitmap = decode(getApplicationContext(), id);
             if (row == null || !stamp.equals(row.optString("stamp")))
               row = new JSONObject().put("media", metadata(media)).put("stamp", stamp);
+            row.put("media", metadata(media));
+            if (config.optBoolean("similar")
+                && (row.optJSONObject("quality") == null
+                    || !GalleryPhotoQuality.VERSION.equals(
+                        row.optJSONObject("quality").optString("version"))))
+              row.put("quality", GalleryPhotoQuality.analyze(bitmap, media));
             if (config.optBoolean("ocr") && !GalleryIntelligence.hasCurrentOcr(row)) {
               InputImage image = InputImage.fromBitmap(bitmap, 0);
               pending = latin.process(image);
@@ -199,6 +273,13 @@ public final class GalleryIntelligenceWorker extends Worker {
                   .put("model", GalleryClip.REVISION);
               Arrays.fill(vector, 0);
             }
+            if (config.optBoolean("people")
+                && !GalleryFaceModels.VERSION.equals(row.optString("faceVersion"))) {
+              synchronized (GalleryClip.LOCK) {
+                row.put("faces", faces.analyze(bitmap, media, () -> stopped(service, epoch)))
+                    .put("faceVersion", GalleryFaceModels.VERSION);
+              }
+            }
             // Ignore bytes changed or removed during analysis and do not commit after pause/clear.
             synchronized (GalleryIntelligence.STATE_LOCK) {
               if (stopped(service, epoch)) return Result.success();
@@ -211,6 +292,15 @@ public final class GalleryIntelligenceWorker extends Worker {
             throw e;
           } catch (Exception e) {
             failed = true;
+            // Keep successful lightweight/OCR work if a later optional model failed.
+            try {
+              synchronized (GalleryIntelligence.STATE_LOCK) {
+                if (row != null
+                    && !stopped(service, epoch)
+                    && stamp.equals(R2DeviceGallery.stamp(gallery.one(id)))) db.put(row);
+              }
+            } catch (Exception ignored) {
+            }
           } finally {
             if (bitmap != null) {
               Bitmap owned = bitmap;

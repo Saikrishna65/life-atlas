@@ -39,3 +39,29 @@ test("waiting and failures explain what actually prevents indexing", () => {
     /index is kept/,
   );
 });
+
+test("battery saver, heat and the small people download explain real waiting states", () => {
+  assert.match(
+    intelligenceStateText({ ...status, state: "waiting", waitReason: "heat" }),
+    /cools/,
+  );
+  assert.match(
+    intelligenceStateText({
+      ...status,
+      state: "waiting",
+      waitReason: "battery-saver",
+    }),
+    /Battery Saver/,
+  );
+  assert.match(
+    intelligenceStateText({
+      ...status,
+      state: "downloading",
+      downloadTarget: "people",
+    }),
+    /people-grouping/,
+  );
+  assert.equal(defaultIntelligenceSettings.people, false);
+  assert.equal(defaultIntelligenceSettings.chargingOnly, true);
+  assert.equal(defaultIntelligenceSettings.visual, false);
+});

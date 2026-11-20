@@ -1,0 +1,468 @@
+.gsmart {
+  padding: 12px clamp(16px, 4vw, 48px) 80px;
+  max-width: 1300px;
+  margin: 0 auto;
+  color: #213e33;
+}
+.gsmart-intro {
+  max-width: 620px;
+  padding: 12px 0 24px;
+}
+.gsmart-intro > span {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  background: #e2ebe1;
+  color: #35674f;
+}
+.gsmart-intro h2 {
+  font-size: clamp(30px, 5vw, 48px);
+  letter-spacing: -0.055em;
+  line-height: 1.08;
+  margin: 16px 0 12px;
+  font-weight: 500;
+}
+.gsmart-intro p,
+.gsmart-dialog > p,
+.gsmart-dialog .world-modal-inner > p {
+  color: #627369;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.gsmart-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.private-gallery .gsmart button:not(.gsmart-card):not(.gsmart-photo),
+.gsmart-dialog .world-modal-inner > button,
+.gsmart-dialog .gsmart-name button,
+.gsmart-dialog .gsmart-review button,
+.gsmart-dialog .gsmart-paging button {
+  min-height: 42px;
+  padding: 9px 15px;
+  border: 1px solid #cad7ca;
+  border-radius: 24px;
+  background: transparent;
+  color: #254b39;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.private-gallery .gsmart button:disabled,
+.gsmart-dialog button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.gsmart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 26px 18px;
+}
+.gsmart-grid > article {
+  min-width: 0;
+}
+.private-gallery .gsmart-card {
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+  display: block;
+  cursor: pointer;
+}
+.gsmart-cover {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 4/3;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #e2e9df;
+  color: #7d9183;
+}
+.gsmart-cover > svg {
+  width: 30px;
+  height: 30px;
+}
+.gsmart-cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gsmart-card-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 13px 2px;
+}
+.gsmart-card-caption strong {
+  font-size: 19px;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+}
+.gsmart-card-caption small,
+.gsmart-card-caption > span {
+  font-size: 12px;
+  color: #68796d;
+  line-height: 1.5;
+}
+.gsmart-grid.is-people {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 24px;
+}
+.gsmart-grid.is-people .gsmart-cover {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  max-width: 140px;
+  margin: 0 auto;
+}
+.gsmart-grid.is-people .gsmart-card {
+  text-align: center;
+}
+.gsmart-grid.is-people .gsmart-card-caption strong {
+  font-size: 16px;
+}
+.gsmart-hide {
+  font-size: 12px !important;
+  min-height: 36px !important;
+  padding: 5px 10px !important;
+}
+.gsmart-empty {
+  padding: 35px 22px;
+  background: #e9efe6;
+  border-radius: 22px;
+  max-width: 640px;
+  margin-bottom: 25px;
+}
+.gsmart-empty h3 {
+  font-size: 25px;
+  letter-spacing: -0.03em;
+  margin: 0 0 10px;
+  font-weight: 500;
+}
+.gsmart-empty p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #617566;
+}
+.gsmart-error {
+  color: #9c3c31 !important;
+}
+.gsmart-notice {
+  color: #35674f;
+  line-height: 1.6;
+  font-size: 14px;
+}
+.gsmart-hint {
+  color: #6b796a;
+  font-size: 13px;
+}
+.gsmart-dialog.world-modal {
+  width: min(850px, 94vw);
+  max-height: 92dvh;
+}
+.gsmart-dialog .world-modal-inner > h2 {
+  font-size: clamp(25px, 5vw, 38px);
+  letter-spacing: -0.04em;
+}
+.gsmart-name {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  margin: 20px 0;
+}
+.gsmart-name > label {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.gsmart-name input,
+.gsmart-face-menu select {
+  width: 100%;
+  min-height: 44px;
+  background: #fff;
+  border: 1px solid #c9d6c9;
+  color: #244333;
+  border-radius: 12px;
+  padding: 10px;
+  font: inherit;
+}
+.gsmart-name input:focus-visible {
+  outline: 2px solid #66875f;
+  outline-offset: 2px;
+}
+.gsmart-dialog .gsmart-primary,
+.gsmart-dialog .gsmart-pick[aria-pressed="true"] {
+  color: #fff !important;
+  background: #2c5b48 !important;
+  border-color: #2c5b48 !important;
+}
+.gsmart-view-all {
+  margin-bottom: 18px;
+}
+.gsmart-review {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px 12px;
+  margin: 15px 0 22px;
+}
+.gsmart-review > article {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+.gsmart-dialog .gsmart-photo {
+  border: 0;
+  padding: 0;
+  width: 100%;
+  display: block;
+  background: none;
+  border-radius: 16px;
+  cursor: pointer;
+}
+.gsmart-review .gsmart-cover {
+  border-radius: 13px;
+  aspect-ratio: 1;
+}
+.gsmart-review .gsmart-pick {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px;
+  font-size: 12px;
+}
+.gsmart-review .gsmart-separate {
+  border: 0 !important;
+  font-size: 11px !important;
+  line-height: 1.4;
+  min-height: 36px !important;
+  padding: 6px 2px !important;
+}
+.gsmart-suggested {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #567649;
+  padding-top: 8px;
+}
+.gsmart-face-menu {
+  font-size: 11px;
+  display: grid;
+  gap: 6px;
+  padding-top: 10px;
+  color: #627768;
+}
+.gsmart-paging {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 20px 0;
+}
+.gsmart .is-memory .gsmart-cover {
+  aspect-ratio: 4/5;
+}
+.gsmart-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 8px 0 28px;
+}
+.private-gallery .gsmart-shortcuts button {
+  border: 1px solid #d6dfd2;
+  border-radius: 18px;
+  min-height: 120px;
+  text-align: left;
+  padding: 17px;
+  background: #edf1e8;
+  color: #254b39;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  cursor: pointer;
+}
+.gsmart-shortcuts strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+.gsmart-shortcuts small {
+  font-size: 12px;
+  color: #647765;
+  line-height: 1.5;
+}
+.gsmart-shortcuts svg {
+  width: 22px;
+  height: 22px;
+}
+.gsmart-dialog button:focus-visible,
+.private-gallery .gsmart button:focus-visible,
+.gsmart-shortcuts button:focus-visible {
+  outline: 2px solid #709069;
+  outline-offset: 3px;
+}
+.gi-consent {
+  padding: 16px !important;
+  margin: 4px 0 18px;
+  background: #edf2e8;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+@media (max-width: 700px) {
+  .gsmart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 12px;
+  }
+  .gsmart-grid.is-people {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px 14px;
+  }
+  .gsmart-grid.is-people .gsmart-cover {
+    max-width: 100px;
+  }
+  .gsmart-card-caption strong {
+    font-size: 16px;
+  }
+  .gsmart-grid.is-people .gsmart-card-caption strong {
+    font-size: 14px;
+  }
+  .gsmart-review {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gsmart-name {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .gsmart-name > label {
+    width: 100%;
+  }
+  .gsmart-shortcuts {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .private-gallery .gsmart-shortcuts button {
+    min-height: 90px;
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    gap: 6px 12px;
+    align-items: center;
+  }
+  .gsmart-shortcuts small {
+    grid-column: 2;
+  }
+  .gsmart-shortcuts svg {
+    grid-row: 1/3;
+  }
+  .gsmart-paging button {
+    font-size: 12px !important;
+    padding: 8px 10px !important;
+  }
+  .gsmart-dialog .world-modal-inner {
+    padding: 20px;
+  }
+  .gsmart-tools {
+    gap: 6px;
+  }
+  .gsmart-intro {
+    padding-top: 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .gsmart-card .gsmart-cover {
+    transition: transform 0.2s ease;
+  }
+  .gsmart-card:hover .gsmart-cover {
+    transform: translateY(-3px);
+  }
+}
+
+.gsmart-shortcuts strong,
+.gsmart-shortcuts small {
+  display: block;
+}
+.gsmart-shortcuts small {
+  font-size: 12px;
+  color: #6b7c6c;
+  line-height: 1.5;
+}
+.gsmart-shortcuts svg {
+  margin-bottom: 12px;
+  width: 22px;
+  height: 22px;
+}
+.gsmart-shortcuts strong {
+  margin-bottom: 5px;
+  font-size: 15px;
+}
+.gi-consent {
+  background: #e6eee3;
+  padding: 14px !important;
+  border-radius: 14px;
+}
+@media (max-width: 700px) {
+  .gsmart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 12px;
+  }
+  .gsmart-grid.is-people {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px 12px;
+  }
+  .gsmart-grid.is-people .gsmart-cover {
+    max-width: 100px;
+  }
+  .gsmart-card-caption strong {
+    font-size: 16px;
+  }
+  .gsmart-intro {
+    padding-top: 4px;
+  }
+  .gsmart-name {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .gsmart-review {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gsmart-dialog .world-modal-inner {
+    padding: 20px;
+  }
+  .gsmart-shortcuts {
+    gap: 8px;
+  }
+  .private-gallery .gsmart-shortcuts button {
+    padding: 12px;
+    min-height: 112px;
+  }
+  .gsmart-shortcuts strong {
+    font-size: 13px;
+  }
+  .gsmart-shortcuts small {
+    font-size: 11px;
+  }
+}
+@media (max-width: 360px) {
+  .gsmart-shortcuts {
+    grid-template-columns: 1fr;
+  }
+  .private-gallery .gsmart-shortcuts button {
+    min-height: 80px;
+  }
+  .gsmart-grid.is-people {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Brain,
   ScanText,
@@ -8,6 +8,8 @@ import {
   Play,
   RefreshCw,
   Trash2,
+  Images,
+  Users,
 } from "lucide-react";
 import { R2 } from "@/lib/r2/native";
 import { Modal } from "@/components/world/primitives";
@@ -23,10 +25,12 @@ export default function GalleryIntelligencePanel({
   albums,
   onClose,
   onChange,
+  initialFeature,
 }: {
   albums: { name: string; count: number }[];
   onClose: () => void;
   onChange: (status: GalleryIntelligenceStatus) => void;
+  initialFeature?: "similar" | "people";
 }) {
   const [status, setStatus] = useState<GalleryIntelligenceStatus>();
   const [settings, setSettings] = useState<GalleryIntelligenceSettings>(
@@ -37,6 +41,8 @@ export default function GalleryIntelligencePanel({
     [error, setError] = useState("");
   const [clear, setClear] = useState(false);
   const [limitAlbums, setLimitAlbums] = useState(false);
+  const [peopleConsent, setPeopleConsent] = useState(false);
+  const initialized = useRef(false);
   useEffect(() => {
     let alive = true;
     const refresh = () => {
@@ -45,6 +51,20 @@ export default function GalleryIntelligencePanel({
         .then((v) => {
           if (!alive) return;
           setStatus(v);
+          if (initialFeature && !initialized.current) {
+            initialized.current = true;
+            setSettings({
+              ocr: v.state === "off" ? false : v.ocr,
+              visual: v.visual,
+              similar: !!v.similar || initialFeature === "similar",
+              people: !!v.people || initialFeature === "people",
+              chargingOnly: v.chargingOnly,
+              wifiOnly: v.wifiOnly,
+              albums: v.albums,
+            });
+            setLimitAlbums(!!v.albums.length);
+            setEditing(true);
+          }
         })
         .catch((error: unknown) => {
           const code =
@@ -65,7 +85,7 @@ export default function GalleryIntelligencePanel({
       alive = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [initialFeature]);
   const run = async (
     action: "start" | "pause" | "resume" | "scan" | "clear",
   ) => {
@@ -77,12 +97,14 @@ export default function GalleryIntelligencePanel({
           ? await R2.configureGalleryIntelligence({
               ...settings,
               approved: true,
+              peopleApproved: peopleConsent,
             })
           : await R2.controlGalleryIntelligence({ action });
       setStatus(value);
       onChange(value);
       setEditing(false);
       setClear(false);
+      setPeopleConsent(false);
     } catch {
       setError(
         "Couldn’t update smart search. Check photo access and try again. Your originals are unchanged.",
@@ -142,8 +164,8 @@ export default function GalleryIntelligencePanel({
             <span>
               <strong>Words in photos</strong>
               <small>
-                Tickets, signs, screenshots and receipts. English text;
-                works offline.
+                Tickets, signs, screenshots and receipts. English text; works
+                offline.
               </small>
             </span>
           </label>
@@ -168,6 +190,64 @@ export default function GalleryIntelligencePanel({
               </small>
             </span>
           </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={!!settings.similar}
+              onChange={(e) =>
+                setSettings((v) => ({ ...v, similar: e.target.checked }))
+              }
+            />
+            <Images />
+            <span>
+              <strong>Similar photos & suggested picks</strong>
+              <small>
+                Small fingerprints compare nearby shots. Clarity, lighting and
+                resolution help suggest a pick. No extra download and no
+                automatic deletion.
+              </small>
+            </span>
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={!!settings.people}
+              onChange={(e) => {
+                setSettings((v) => ({ ...v, people: e.target.checked }));
+                setPeopleConsent(false);
+              }}
+            />
+            <Users />
+            <span>
+              <strong>People, named by you</strong>
+              <small>
+                Suggest face groups privately on this phone. You review matches
+                and confirm names.{" "}
+                {status?.peopleModelReady
+                  ? "Small models already downloaded."
+                  : "A separate, small 10.1 MB download."}
+              </small>
+            </span>
+          </label>
+          {settings.people && !status?.people && (
+            <label className="gi-consent">
+              <input
+                type="checkbox"
+                checked={peopleConsent}
+                onChange={(e) => setPeopleConsent(e.target.checked)}
+              />
+              <span>
+                I agree to analyze faces in my selected photos on this phone.
+                Face data and names stay private.
+              </span>
+            </label>
+          )}
+          {!settings.people && status?.people && (
+            <p>
+              Saving with people grouping turned off removes its face data,
+              names and downloaded models. Originals stay untouched.
+            </p>
+          )}
           <details>
             <summary>Photos and battery preferences</summary>
             <label>
@@ -180,7 +260,7 @@ export default function GalleryIntelligencePanel({
               />
               <span>Analyze only while charging</span>
             </label>
-            {settings.visual && (
+            {(settings.visual || settings.people) && (
               <label>
                 <input
                   type="checkbox"
@@ -233,9 +313,9 @@ export default function GalleryIntelligencePanel({
           </details>
           <p className="gi-privacy">
             Enabling this creates an encrypted, rebuildable search index on your
-            phone. Photos and search queries are never sent to a server. The
-            optional model comes from Hugging Face; that download uses internet.
-            Videos and cloud-only files are not analyzed yet.
+            phone. Photos and search queries are never sent to a server.
+            Optional model downloads use internet. Videos and cloud-only files
+            are not analyzed yet.
           </p>
           {limitAlbums && !settings.albums.length && (
             <p role="status">
@@ -245,7 +325,11 @@ export default function GalleryIntelligencePanel({
           <button
             className="gi-primary"
             disabled={
-              (!settings.ocr && !settings.visual) ||
+              (!settings.ocr &&
+                !settings.visual &&
+                !settings.similar &&
+                !settings.people) ||
+              (!!settings.people && !status?.people && !peopleConsent) ||
               (limitAlbums && !settings.albums.length)
             }
             onClick={() => void run("start")}
@@ -253,7 +337,11 @@ export default function GalleryIntelligencePanel({
             {busy
               ? "Starting…"
               : editing
-                ? "Save preferences & rebuild"
+                ? status?.state === "off" && initialFeature === "people"
+                  ? "Enable people grouping"
+                  : status?.state === "off" && initialFeature === "similar"
+                    ? "Find similar photos"
+                    : "Save preferences"
                 : "Enable smart search"}
           </button>
           {editing && <button onClick={() => setEditing(false)}>Cancel</button>}
@@ -285,6 +373,8 @@ export default function GalleryIntelligencePanel({
                 setSettings({
                   ocr: status.ocr,
                   visual: status.visual,
+                  similar: !!status.similar,
+                  people: !!status.people,
                   chargingOnly: status.chargingOnly,
                   wifiOnly: status.wifiOnly,
                   albums: status.albums,
@@ -307,16 +397,17 @@ export default function GalleryIntelligencePanel({
                 onClick={() => setClear(true)}
               >
                 <Trash2 />
-                Remove smart search data
+                Remove analysis data
               </button>
             ) : (
               <div className="gi-confirm">
                 <p>
-                  Remove the local search index and visual model? Your photos,
-                  trips and cloud copies will stay.
+                  Remove local search and similarity analysis, saved picks, face
+                  groups and names, and downloaded models? Your photos, trips
+                  and cloud copies will stay.
                 </p>
                 <button disabled={busy} onClick={() => void run("clear")}>
-                  Remove search data
+                  Remove analysis data
                 </button>
                 <button disabled={busy} onClick={() => setClear(false)}>
                   Keep it

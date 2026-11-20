@@ -35,8 +35,25 @@ final class GalleryIntelligence {
   }
 
   JSONObject settings() throws Exception {
-    JSONObject v = secure.snapshot().optJSONObject(KEY);
-    return v == null ? new JSONObject() : v;
+    synchronized (STATE_LOCK) {
+      try (GallerySearchStore db = new GallerySearchStore(secure)) {
+        JSONObject saved = db.choice("analysis-settings");
+        if (saved.length() > 0) return saved;
+        JSONObject legacy = secure.snapshot().optJSONObject(KEY);
+        if (legacy == null) return new JSONObject();
+        db.choice("analysis-settings", legacy);
+        secure.edit(root -> root.remove(KEY));
+        return legacy;
+      }
+    }
+  }
+
+  void writeSettings(JSONObject value) throws Exception {
+    synchronized (STATE_LOCK) {
+      try (GallerySearchStore db = new GallerySearchStore(secure)) {
+        db.choice("analysis-settings", value);
+      }
+    }
   }
 
   boolean active(String epoch) throws Exception {
@@ -46,11 +63,11 @@ final class GalleryIntelligence {
 
   void change(String epoch, java.util.function.Consumer<JSONObject> mutation) throws Exception {
     synchronized (STATE_LOCK) {
-      secure.edit(
-          root -> {
-            JSONObject v = root.optJSONObject(KEY);
-            if (v != null && epoch.equals(v.optString("epoch"))) mutation.accept(v);
-          });
+      JSONObject value = settings();
+      if (epoch.equals(value.optString("epoch"))) {
+        mutation.accept(value);
+        writeSettings(value);
+      }
     }
   }
 
@@ -64,6 +81,12 @@ final class GalleryIntelligence {
         .put("enabled", v.optBoolean("enabled"))
         .put("ocr", v.optBoolean("ocr", true))
         .put("visual", v.optBoolean("visual"))
+        .put("similar", v.optBoolean("similar"))
+        .put("people", v.optBoolean("people"))
+        .put("peopleModelReady", GalleryFaceModels.ready(context))
+        .put("peopleModelBytes", GalleryFaceModels.BYTES)
+        .put("downloadTarget", v.optString("downloadTarget", "visual"))
+        .put("waitReason", v.optString("waitReason"))
         .put("chargingOnly", v.optBoolean("chargingOnly", true))
         .put("wifiOnly", v.optBoolean("wifiOnly", true))
         .put(
@@ -78,15 +101,25 @@ final class GalleryIntelligence {
         .put("modelBytes", GalleryClip.DOWNLOAD_BYTES);
   }
 
+  static void validatePeopleConsent(JSONObject input, JSONObject previous) throws Exception {
+    if (input.optBoolean("people")
+        && !previous.optBoolean("people")
+        && !input.optBoolean("peopleApproved")) throw new R2Exception("PEOPLE_CONSENT_REQUIRED");
+  }
+
   JSONObject configure(JSONObject input) throws Exception {
     JSONArray albums = input.optJSONArray("albums");
     if (albums == null
         || albums.length() > 500
-        || (!input.optBoolean("ocr") && !input.optBoolean("visual")))
-      throw new R2Exception("INVALID_SELECTION");
+        || (!input.optBoolean("ocr")
+            && !input.optBoolean("visual")
+            && !input.optBoolean("similar")
+            && !input.optBoolean("people"))) throw new R2Exception("INVALID_SELECTION");
     for (int i = 0; i < albums.length(); i++)
       if (albums.getString(i).length() > 200) throw new R2Exception("INVALID_SELECTION");
     synchronized (STATE_LOCK) {
+      JSONObject previous = settings();
+      validatePeopleConsent(input, previous);
       String epoch = UUID.randomUUID().toString();
       JSONObject v =
           new JSONObject()
@@ -94,6 +127,8 @@ final class GalleryIntelligence {
               .put("epoch", epoch)
               .put("ocr", input.optBoolean("ocr"))
               .put("visual", input.optBoolean("visual"))
+              .put("similar", input.optBoolean("similar"))
+              .put("people", input.optBoolean("people"))
               .put("chargingOnly", input.optBoolean("chargingOnly", true))
               .put("wifiOnly", input.optBoolean("wifiOnly", true))
               .put("albums", albums)
@@ -102,14 +137,20 @@ final class GalleryIntelligence {
               .put("scanned", 0)
               .put("failed", 0)
               .put("updatedAt", System.currentTimeMillis());
-      secure.edit(root -> root.put(KEY, v));
+      writeSettings(v);
       WorkManager.getInstance(context).cancelAllWorkByTag(WORK);
       try (GallerySearchStore db = new GallerySearchStore(secure)) {
-        db.clear();
+        if (!Objects.toString(previous.optJSONArray("albums"), "[]").equals(albums.toString()))
+          db.clear();
+        if (previous.optBoolean("people") && !v.optBoolean("people")) GalleryPeople.forget(db);
       }
       enqueue(v);
       schedule(v);
     }
+    if (!input.optBoolean("people"))
+      synchronized (GalleryClip.LOCK) {
+        GalleryFaceModels.remove(context);
+      }
     return status();
   }
 
@@ -122,13 +163,15 @@ final class GalleryIntelligence {
         v.put("enabled", false)
             .put("state", action.equals("clear") ? "off" : "paused")
             .put("epoch", UUID.randomUUID().toString());
-        secure.edit(root -> root.put(KEY, v));
+        writeSettings(v);
         WorkManager.getInstance(context).cancelAllWorkByTag(WORK);
         if (action.equals("clear")) {
           try (GallerySearchStore db = new GallerySearchStore(secure)) {
             db.clear();
+            db.choice("people", new JSONObject());
+            db.choice("similar", new JSONObject());
           }
-          secure.edit(root -> root.remove(KEY));
+          writeSettings(new JSONObject().put("state", "off"));
         }
       } else {
         if (!v.has("epoch")) throw new R2Exception("SEARCH_NOT_CONFIGURED");
@@ -139,7 +182,7 @@ final class GalleryIntelligence {
         WorkManager.getInstance(context).cancelAllWorkByTag(WORK);
         if (action.equals("scan") || v.optString("cursor").isEmpty())
           v.put("cursor", "").put("scanned", 0).put("failed", 0);
-        secure.edit(root -> root.put(KEY, v));
+        writeSettings(v);
         enqueue(v);
         schedule(v);
       }
@@ -149,6 +192,7 @@ final class GalleryIntelligence {
     if (action.equals("clear"))
       synchronized (GalleryClip.LOCK) {
         GalleryClip.remove(context);
+        GalleryFaceModels.remove(context);
       }
     return status();
   }
@@ -165,12 +209,17 @@ final class GalleryIntelligence {
     return b.build();
   }
 
+  boolean needsDownload(JSONObject v) {
+    return (v.optBoolean("visual") && !GalleryClip.ready(context))
+        || (v.optBoolean("people") && !GalleryFaceModels.ready(context));
+  }
+
   void enqueue(JSONObject v) {
     OneTimeWorkRequest request =
         new OneTimeWorkRequest.Builder(GalleryIntelligenceWorker.class)
             .setInputData(new Data.Builder().putString("epoch", v.optString("epoch")).build())
             .addTag(WORK)
-            .setConstraints(constraints(v, v.optBoolean("visual") && !GalleryClip.ready(context)))
+            .setConstraints(constraints(v, needsDownload(v)))
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build();
     WorkManager.getInstance(context)
@@ -187,7 +236,7 @@ final class GalleryIntelligence {
                     .putString("epoch", v.optString("epoch"))
                     .build())
             .addTag(WORK)
-            .setConstraints(constraints(v, v.optBoolean("visual") && !GalleryClip.ready(context)))
+            .setConstraints(constraints(v, needsDownload(v)))
             .build();
     WorkManager.getInstance(context)
         .enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.UPDATE, request);
@@ -252,10 +301,11 @@ final class GalleryIntelligence {
             Comparator.comparingDouble(Hit::rank)
                 .thenComparing(Hit::id, Comparator.reverseOrder()));
     try (GallerySearchStore db = new GallerySearchStore(secure);
-        Cursor cursor = db.rows()) {
+        Cursor cursor = db.searchRows()) {
       while (cursor.moveToNext()) {
         if (cancelled.getAsBoolean()) throw new R2Exception("SEARCH_CANCELLED");
-        JSONObject row = db.read(cursor.getString(0), cursor.getBlob(1)),
+        JSONObject
+            row = db.readSearch(cursor.getString(0), cursor.getBlob(1), cursor.getInt(2) == 1),
             media = row.getJSONObject("media");
         if (!album.isEmpty() && !album.equals(media.optString("album"))) continue;
         if (!allowed.isEmpty() && !allowed.contains(media.optString("album"))) continue;

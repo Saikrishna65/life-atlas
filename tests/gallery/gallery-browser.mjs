@@ -11,6 +11,13 @@ const mocks={
  '@/components/studio/TripMapPicker':`import React from 'react';export default function Picker({onChange}){return <button onClick={()=>onChange({latitude:30.1,longitude:79.1})}>Set mock map pin</button>}`,
 };
 const fixture=`window.media=${JSON.stringify(media)};window.media[94].album='Archive';window.calls={thumbs:[],register:[],public:[],private:[],releases:[],checks:[]};window.jobs=[];window.picks={};window.permission='limited';window.intelligence={enabled:false,ocr:true,visual:false,chargingOnly:true,wifiOnly:true,albums:[],state:'off',indexed:0,scanned:0,failed:0,error:'',updatedAt:0,modelReady:false,modelBytes:153621508};window.galleryNative={
+ getGalleryCollections:async({kind})=>{
+  const ready=kind==='memories'||!!window.intelligence[kind];const groups=kind==='similar'?(window.dismissedSimilar?[]:[{id:'similar-set',kind:'similar',title:'2 similar photos',subtitle:'Review the suggested pick',count:2,coverId:window.savedPick||window.media[1].id,bestId:window.media[1].id,pickedId:window.savedPick||''}]):kind==='people'?[{id:'person-group',kind:'people',title:window.personName||'Name this person',subtitle:window.personName?'Name confirmed by you':'Suggested group · please review',confirmed:!!window.personName,count:window.faceExcluded?1:2,coverId:window.media[0].id,faceId:'face-1'}]:[{id:'this-month',kind:'album',title:'This month',subtitle:'Automatically collected',count:3,coverId:window.media[0].id},...(!window.hiddenMemory?[{id:'memory:2025-11-20',kind:'memory',title:'This day in 2025',subtitle:'From your camera dates',count:2,coverId:window.media[1].id}]:[])];
+  return {collections:ready?groups:[],cursor:'',complete:true,partial:false,needsAnalysis:!ready,analysisState:window.intelligence.state,hiddenMemories:window.hiddenMemory?1:0};},
+ getGalleryCollectionMedia:async({kind,key,cursor})=>{window.calls.curated={kind,key,cursor};return {items:window.media.filter(m=>m.kind==='photo').slice(0,kind==='memories'?3:2),cursor:'',complete:true,bestId:window.media[1].id,pickedId:window.savedPick||''}},
+ getGalleryPeopleFaces:async()=>({faces:[{id:'face-1',mediaId:window.media[0].id},...(!window.faceExcluded?[{id:'face-2',mediaId:window.media[1].id}]:[])],media:window.media.slice(0,2),people:window.personName?[{id:'person-group',name:window.personName}]:[],cursor:'',complete:true}),
+ getGalleryFaceThumbnail:async()=>({thumbnail:'/thumb/face.webp'}),
+ editGalleryCollection:async input=>{(window.calls.collectionEdits||=[]).push(input);if(input.action==='pick')window.savedPick=input.mediaId;if(input.action==='name-person')window.personName=input.name;if(input.action==='exclude-face'||input.action==='separate-face')window.faceExcluded=true;if(input.action==='hide-memory')window.hiddenMemory=true;if(input.action==='restore-memories')window.hiddenMemory=false;if(input.action==='dismiss-similar')window.dismissedSimilar=true;if(input.action==='reset-similar'){window.savedPick='';window.dismissedSimilar=false;}if(input.action==='forget-people'){window.personName='';window.faceExcluded=false;Object.assign(window.intelligence,{people:false,peopleModelReady:false});}},
  getGalleryIntelligence:async()=>structuredClone(window.intelligence),
  configureGalleryIntelligence:async input=>{window.calls.intelligence=input;Object.assign(window.intelligence,input,{enabled:true,state:'waiting'});return structuredClone(window.intelligence)},
  controlGalleryIntelligence:async({action})=>{window.calls.intelligenceAction=action;if(action==='clear')Object.assign(window.intelligence,{enabled:false,state:'off',indexed:0});else Object.assign(window.intelligence,{enabled:action!=='pause',state:action==='pause'?'paused':'waiting'});return structuredClone(window.intelligence)},
@@ -30,7 +37,7 @@ const fixture=`window.media=${JSON.stringify(media)};window.media[94].album='Arc
 };`;
 const entry=`import React from 'react';import {createRoot} from 'react-dom/client';import Gallery from './src/components/gallery/PhotoGallery';import {savePastTrip} from './src/lib/studio/store';import {addTripPlace} from './src/lib/studio/trip-places';import {getAllTrips} from './src/lib/vault/storage';async function start(){if(!(await getAllTrips()).length){const a=await savePastTrip({title:'The Himalayan journal',destination:'Uttarakhand',startDate:'',endDate:'',mapLocation:{latitude:30,longitude:79}});await addTripPlace(a.id,'The lake');}window.trips=getAllTrips;createRoot(document.getElementById('root')).render(<Gallery/>);}start();`;
 const bundle=await build({stdin:{contents:entry,resolveDir:process.cwd(),loader:'tsx'},write:false,bundle:true,format:'iife',jsx:'automatic',loader:{'.css':'empty'},define:{'process.env':'{"NODE_ENV":"production"}'},plugins:[{name:'gallery-fixture',setup(b){b.onResolve({filter:/.*/},args=>{const name=args.path==='@/lib/r2/native'||(args.path==='../r2/native'&&args.importer.includes('/lib/gallery/'))?'native':args.path.includes('tripWidgetSync')?'widget':args.path;return mocks[name]?{path:name,namespace:'fixture'}:undefined;});b.onLoad({filter:/.*/,namespace:'fixture'},a=>({contents:mocks[a.path],loader:'tsx',resolveDir:process.cwd()}));}}]});
-const css=(await Promise.all(['src/components/trip-vault/trip-vault.css','src/components/studio/creator-studio.css','src/components/gallery/gallery.css','src/components/gallery/photos.css','src/components/gallery/gallery-workspace.css','src/components/gallery/gallery-intelligence.css','src/components/gallery/gallery-wizard.css','src/components/gallery/photo-viewer.css','src/components/media/journal-viewer.css'].map(p=>readFile(p,'utf8')))).join('\n');
+const css=(await Promise.all(['src/components/trip-vault/trip-vault.css','src/components/studio/creator-studio.css','src/components/gallery/gallery.css','src/components/gallery/photos.css','src/components/gallery/gallery-workspace.css','src/components/gallery/gallery-intelligence.css','src/components/gallery/smart-collections.css','src/components/gallery/gallery-wizard.css','src/components/gallery/photo-viewer.css','src/components/media/journal-viewer.css'].map(p=>readFile(p,'utf8')))).join('\n');
 let publicMedia=[];const server=createServer(async(req,res)=>{const path=new URL(req.url,'http://local').pathname;if(path==='/film.mp4'){res.setHeader('content-type','video/mp4');res.setHeader('accept-ranges','bytes');if(req.headers.range){const [,a,b]=req.headers.range.match(/bytes=(\d+)-(\d*)/)||[];const start=Number(a||0),end=Math.min(Number(b||film.length-1),film.length-1);res.writeHead(206,{'content-range':`bytes ${start}-${end}/${film.length}`,'content-length':end-start+1});res.end(film.subarray(start,end+1));}else res.end(film);return;}if(path.startsWith('/full/')||path.startsWith('/thumb/')||path.startsWith('/galleries/')){res.setHeader('content-type','image/webp');res.end(photo);return;}if(path.startsWith('/api/vault/export')){res.setHeader('content-type','application/json');if(req.method==='POST'){let body='';for await(const part of req)body+=part;publicMedia=JSON.parse(body).publicMedia||publicMedia;res.end(JSON.stringify({success:true,slug:'himalayan-journal',publicUrl:'/trips/himalayan-journal'}));}else res.end(JSON.stringify({media:publicMedia}));return;}res.setHeader('content-type','text/html');res.end(`<html><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{--font-sans:Arial}body{margin:0;font-family:Arial;background:#e8ede4}*{box-sizing:border-box}.sr-only{position:absolute;clip:rect(0,0,0,0)}${css}</style><div id="root"></div><script>${fixture}</script><script>${bundle.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></html>`);});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`;let browser;
 try{
@@ -41,6 +48,61 @@ try{
  assert.ok((await page.locator('.pg-grid').boundingBox()).y<250,'Photos start near the top');
  await page.getByRole('button',{name:'Choose more photos',exact:true}).click();await page.waitForFunction(()=>window.permission==='full');await page.locator('.pg-tile').nth(39).waitFor();
 
+
+ // Collections use real UI flows with native fixtures; none of these choices may upload or delete a phone file.
+ await page.getByRole('button',{name:'Organize collections',exact:true}).click();
+ await page.locator('.gsmart-shortcuts').getByRole('button',{name:/Similar photos/}).click();
+ await page.getByRole('button',{name:'Find similar photos',exact:true}).click();
+ let analysis=page.getByRole('dialog',{name:'Find more in your photos'});
+ await analysis.getByRole('button',{name:'Find similar photos',exact:true}).click();
+ await analysis.getByRole('button',{name:'Close dialog',exact:true}).click();
+ await page.getByRole('button',{name:'Open 2 similar photos',exact:true}).click();
+ let comparison=page.getByRole('dialog',{name:'Compare similar photos'});
+ await comparison.getByRole('button',{name:'Choose this photo',exact:true}).first().click();
+ await comparison.getByRole('button',{name:'Your pick',exact:true}).waitFor();
+ assert.equal(await page.evaluate(()=>window.savedPick),media[0].id);
+ await comparison.getByRole('button',{name:'Inspect Frame 001.jpg',exact:true}).click();
+ await page.getByRole('dialog',{name:'Photo viewer'}).getByRole('button',{name:'Back to photos',exact:true}).click();
+ await comparison.getByRole('button',{name:'Close dialog',exact:true}).click();
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:'work/qa-gallery-v3/similar-photos-mobile.png'});
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ await page.getByRole('button',{name:'Back to Organize',exact:true}).click();
+ await page.locator('.gsmart-shortcuts').getByRole('button',{name:/People/}).click();
+ await page.getByRole('button',{name:'Set up people grouping',exact:true}).click();
+ analysis=page.getByRole('dialog',{name:'Find more in your photos'});
+ const enablePeople=analysis.getByRole('button',{name:'Save preferences',exact:true});
+ assert.ok(await enablePeople.isDisabled());
+ await analysis.getByRole('checkbox',{name:/I agree to analyze faces/}).check();
+ await enablePeople.click();assert.equal((await page.evaluate(()=>window.calls.intelligence)).peopleApproved,true);
+ await analysis.getByRole('button',{name:'Close dialog',exact:true}).click();
+ await page.getByRole('button',{name:'Open Name this person',exact:true}).click();
+ let person=page.getByRole('dialog',{name:'Review this person'});
+ await person.getByRole('textbox',{name:'Person name',exact:true}).fill('My friend');
+ await person.getByRole('button',{name:'Confirm name & group',exact:true}).click();
+ await page.getByRole('button',{name:'Open My friend',exact:true}).click();person=page.getByRole('dialog',{name:'Review this person'});
+ await person.getByRole('combobox',{name:'Change group for face 2',exact:true}).selectOption('exclude');
+ await page.getByRole('button',{name:'Open My friend',exact:true}).waitFor();
+ await page.screenshot({path:'work/qa-gallery-v3/people-mobile.png'});
+ await page.getByRole('button',{name:'Forget people data',exact:true}).click();
+ await page.getByRole('dialog',{name:'Forget people data?'}).getByRole('button',{name:'Forget people data',exact:true}).click();
+ await page.getByRole('button',{name:'Set up people grouping',exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.intelligence.people),false);
+ await page.getByRole('button',{name:'Back to Organize',exact:true}).click();
+ await page.locator('.gsmart-shortcuts').getByRole('button',{name:/Albums & memories/}).click();
+ await page.getByRole('button',{name:'Open This month',exact:true}).click();
+ await page.waitForFunction(()=>document.querySelectorAll('.pg-tile').length===3);
+ assert.equal((await page.evaluate(()=>window.calls.curated)).key,'this-month');
+ assert.equal(await page.getByRole('button',{name:'Search photos',exact:true}).count(),0);
+ await page.getByRole('button',{name:'Open Frame 001.jpg',exact:true}).click();await page.getByRole('button',{name:'Back to photos',exact:true}).click();
+ await page.getByRole('button',{name:'Back to collections',exact:true}).click();
+ await page.getByRole('button',{name:'Hide this memory',exact:true}).click();
+ assert.equal(await page.getByRole('button',{name:'Open This day in 2025',exact:true}).count(),0);
+ await page.getByRole('button',{name:'Show hidden memories',exact:true}).click();
+ await page.getByRole('button',{name:'Open This day in 2025',exact:true}).waitFor();
+ await page.screenshot({path:'work/qa-gallery-v3/memories-mobile.png'});
+ assert.equal((await page.evaluate(()=>window.calls.public)).length,0);assert.equal((await page.evaluate(()=>window.calls.private)).length,0);assert.equal(await page.evaluate(()=>window.calls.trash),undefined);
+ await page.getByRole('button',{name:'On my phone',exact:true}).click();
+ await page.evaluate(()=>Object.assign(window.intelligence,{state:'off',enabled:false,people:false,similar:false,indexed:0}));
+ await page.setViewportSize({width:1440,height:1000});
  // Smart search is opt in, with explicit model size, album scope, pause/resume and a reversible clear.
  await page.getByRole('button',{name:'Backup and cloud',exact:true}).click();
  await page.getByRole('button',{name:/Smart photo search/}).click();
@@ -73,9 +135,9 @@ try{
  await page.waitForFunction(()=>document.querySelectorAll('.pg-tile').length===3);
  assert.equal((await page.evaluate(()=>window.calls.smartSearch)).album,'');
  await page.getByRole('button',{name:'Search settings',exact:true}).click();smartDialog=page.getByRole('dialog',{name:'Find more in your photos'});
- await smartDialog.getByRole('button',{name:'Remove smart search data',exact:true}).click();
+ await smartDialog.getByRole('button',{name:'Remove analysis data',exact:true}).click();
  assert.notEqual((await page.evaluate(()=>window.calls.intelligenceAction)),'clear');
- await smartDialog.getByRole('button',{name:'Remove search data',exact:true}).click();
+ await smartDialog.getByRole('button',{name:'Remove analysis data',exact:true}).click();
  await smartDialog.getByRole('button',{name:'Enable smart search',exact:true}).waitFor();assert.equal((await page.evaluate(()=>window.media)).length,95);
  await smartDialog.getByRole('button',{name:'Close dialog',exact:true}).click();
  await page.getByRole('button',{name:'Close search',exact:true}).click();
@@ -102,5 +164,5 @@ try{
  await page.getByRole('button',{name:'Backup and cloud',exact:true}).click();await page.screenshot({path:'work/qa-gallery-v3/backup-mobile.png',fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  await page.evaluate(()=>{window.jobs.forEach(j=>{j.status='queued';j.verified=false});});await page.getByRole('button',{name:'Transfers',exact:false}).click();page.once('dialog',d=>d.accept());await page.getByRole('dialog').getByRole('button',{name:'Cancel transfer'}).first().click();await page.waitForFunction(()=>window.jobs.some(j=>j.status==='cancelled'));await page.keyboard.press('Escape');
  await page.getByRole('button',{name:'On my phone',exact:true}).click();const previousFiles=(await page.evaluate(()=>window.trips()))[0].websitePlaces[0].files.length;await page.locator('.pg-open').first().click();page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Delete',exact:true}).click();await page.waitForFunction(()=>window.calls.trash?.trashed===true);assert.equal((await page.evaluate(()=>window.trips()))[0].websitePlaces[0].files.length,previousFiles);await page.getByRole('button',{name:'On my phone',exact:true}).click();await page.evaluate(()=>{window.media=Array.from({length:2000},(_,i)=>({...window.media[i%95],id:'image:external:'+(i+1),name:'Large library '+i+'.jpg',kind:'photo',mimeType:'image/jpeg',modifiedAt:2000+i,uri:'/full/'+i+'.webp'}));});assert.equal(await page.getByRole('button',{name:'Gallery filters',exact:true}).count(),0);await page.getByRole('button',{name:'Search photos',exact:true}).click();await page.getByRole('button',{name:'View options',exact:true}).click();await page.getByRole('button',{name:'Refresh gallery',exact:true}).click();await page.getByRole('button',{name:'Show photos',exact:true}).click();for(let i=0;i<7;i++){await page.evaluate(()=>window.scrollTo(0,document.body.scrollHeight));await page.waitForTimeout(180);}const loaded=Number((await page.locator('.pg-count').innerText()).match(/(\d+) loaded/)[1]);assert.ok(loaded>=200);assert.ok(await page.locator('.pg-tile').count()<100);assert.deepEqual(errors,[]);
- console.log('PASS: three task workspaces; no old dashboard chrome; photo-first viewport; album/trip navigation; select mode; guided local/public/private workflows; explicit upload consent; website publication; private preview cleanup; search/video controls; mobile layouts; cancellation; bounded 2,000-item library. Smart search settings, explicit model consent, album scope, pause/resume, ranked search integration and safe removal. Native fixtures only; no cloud or device claims.');
+ console.log('PASS: three task workspaces; no old dashboard chrome; photo-first viewport; album/trip navigation; select mode; guided local/public/private workflows; explicit upload consent; website publication; private preview cleanup; search/video controls; mobile layouts; cancellation; bounded 2,000-item library. Similar-photo picks, original inspection, explicit face-analysis consent, confirmed names, face correction/forgetting, metadata albums and memory hide/restore. Smart search settings, explicit model consent, album scope, pause/resume, ranked search integration and safe removal. Native fixtures only; no cloud or device claims.');
 }finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}

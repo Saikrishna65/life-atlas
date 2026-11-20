@@ -1,4 +1,8 @@
 const messages: Record<string, string> = {
+  PEOPLE_CONSENT_REQUIRED: "Confirm private face analysis before enabling people grouping.",
+  PEOPLE_MODEL_NOT_READY: "The people models aren’t ready yet. Open analysis settings to finish their download.",
+  GALLERY_COLLECTION_CHANGED: "This collection changed while you were reviewing it. Close the review and refresh; your saved choices and originals are unchanged.",
+  INVALID_PERSON_NAME: "Enter a name up to 80 characters long.",
   SEARCH_CANCELLED: "Search was interrupted. Search again to continue.",
   SEARCH_NOT_CONFIGURED: "Enable smart search in Gallery’s search settings first.",
   SEARCH_MODEL_NOT_READY: "The visual search model is not ready. Check search settings, or use filename search.",

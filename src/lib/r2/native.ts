@@ -13,8 +13,13 @@ import type {
   Transfer,
 } from "./types";
 interface R2Plugin {
+  getGalleryCollections(input:{kind:import('../gallery/collections').CollectionKind;cursor:string}):Promise<import('../gallery/collections').CollectionPage>;
+  getGalleryCollectionMedia(input:{kind:import('../gallery/collections').CollectionKind;key:string;cursor:string}):Promise<import('../gallery/collections').CollectionMediaPage>;
+  getGalleryPeopleFaces(input:{key:string;cursor:string}):Promise<import('../gallery/collections').PeopleFacePage>;
+  getGalleryFaceThumbnail(input:{faceId:string}):Promise<{thumbnail:string}>;
+  editGalleryCollection(input:import('../gallery/collections').CollectionEdit):Promise<void>;
   getGalleryIntelligence():Promise<import('../gallery/intelligence').GalleryIntelligenceStatus>;
-  configureGalleryIntelligence(input:import('../gallery/intelligence').GalleryIntelligenceSettings & {approved:true}):Promise<import('../gallery/intelligence').GalleryIntelligenceStatus>;
+  configureGalleryIntelligence(input:import('../gallery/intelligence').GalleryIntelligenceSettings & {approved:true;peopleApproved?:boolean}):Promise<import('../gallery/intelligence').GalleryIntelligenceStatus>;
   controlGalleryIntelligence(input:{action:'pause'|'resume'|'scan'|'clear'}):Promise<import('../gallery/intelligence').GalleryIntelligenceStatus>;
   searchGalleryIntelligence(input:{query:string;album:string;kind:string;offset:number}):Promise<import('../gallery/types').DevicePage>;
   getDeviceTrash(input:{cursor:string}):Promise<{items:{id:string;name:string;mimeType:string;size:number;expiresAt:number}[];cursor:string;complete:boolean}>;

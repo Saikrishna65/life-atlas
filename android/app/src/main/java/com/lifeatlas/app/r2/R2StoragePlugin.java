@@ -227,6 +227,67 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void getGalleryCollections(PluginCall call) {
+    work(
+        call,
+        () -> {
+          if (galleryAccess().getString("status").equals("denied"))
+            throw new R2Exception("GALLERY_PERMISSION_REQUIRED");
+          call.resolve(
+              js(
+                  new GalleryCollections(getContext())
+                      .list(call.getString("kind", ""), call.getString("cursor", ""))));
+        });
+  }
+
+  @PluginMethod
+  public void getGalleryCollectionMedia(PluginCall call) {
+    work(
+        call,
+        () -> {
+          if (galleryAccess().getString("status").equals("denied"))
+            throw new R2Exception("GALLERY_PERMISSION_REQUIRED");
+          call.resolve(
+              js(
+                  new GalleryCollections(getContext())
+                      .media(
+                          call.getString("kind", ""),
+                          call.getString("key", ""),
+                          call.getString("cursor", ""))));
+        });
+  }
+
+  @PluginMethod
+  public void getGalleryPeopleFaces(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(
+                js(
+                    new GalleryCollections(getContext())
+                        .facePage(call.getString("key", ""), call.getString("cursor", "")))));
+  }
+
+  @PluginMethod
+  public void getGalleryFaceThumbnail(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(
+                js(new GalleryCollections(getContext()).thumbnail(call.getString("faceId", "")))));
+  }
+
+  @PluginMethod
+  public void editGalleryCollection(PluginCall call) {
+    work(
+        call,
+        () -> {
+          new GalleryCollections(getContext()).edit(call.getData());
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
   public void getGalleryIntelligence(PluginCall call) {
     work(call, () -> call.resolve(js(new GalleryIntelligence(getContext()).status())));
   }

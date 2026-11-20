@@ -123,8 +123,34 @@ final class R2DeviceGallery {
 
   JSONObject list(String cursor, String query, String kind, String album, String order)
       throws Exception {
+    return list(cursor, query, kind, album, order, "", List.of(), false);
+  }
+
+  JSONObject smartPage(String cursor, GallerySmartAlbums.Filter filter) throws Exception {
+    return list(
+        cursor,
+        "",
+        "all",
+        "",
+        "newest",
+        filter.sql,
+        filter.args,
+        filter.sql.startsWith("datetaken"));
+  }
+
+  private JSONObject list(
+      String cursor,
+      String query,
+      String kind,
+      String album,
+      String order,
+      String extra,
+      List<String> extraArgs,
+      boolean captureOrder)
+      throws Exception {
     String selection = "media_type IN (1,3)";
-    List<String> args = new ArrayList<>();
+    if (!extra.isEmpty()) selection += " AND (" + extra + ")";
+    List<String> args = new ArrayList<>(extraArgs);
     if (Build.VERSION.SDK_INT >= 29) selection += " AND is_pending=0";
     if (Build.VERSION.SDK_INT >= 30) selection += " AND is_trashed=0";
     if (kind.equals("photo") || kind.equals("video"))
@@ -139,6 +165,7 @@ final class R2DeviceGallery {
       selection += " AND bucket_display_name=?";
       args.add(album);
     }
+    String dateColumn = captureOrder ? "datetaken" : "date_added";
     boolean ascending = order.equals("oldest");
     String comparison = ascending ? ">" : "<";
     if (!cursor.isEmpty()) {
@@ -146,12 +173,20 @@ final class R2DeviceGallery {
         throw new IllegalArgumentException("INVALID_SELECTION");
       String[] parts = cursor.split(":");
       selection +=
-          " AND (date_added " + comparison + " ? OR (date_added=? AND _id " + comparison + " ?)";
+          " AND ("
+              + dateColumn
+              + " "
+              + comparison
+              + " ? OR ("
+              + dateColumn
+              + "=? AND _id "
+              + comparison
+              + " ?)";
       args.add(parts[0]);
       args.add(parts[0]);
       args.add(parts[1]);
       if (Build.VERSION.SDK_INT >= 29) {
-        selection += " OR (date_added=? AND _id=? AND volume_name " + comparison + " ?)";
+        selection += " OR (" + dateColumn + "=? AND _id=? AND volume_name " + comparison + " ?)";
         args.add(parts[0]);
         args.add(parts[1]);
         args.add(parts[2]);
@@ -164,7 +199,7 @@ final class R2DeviceGallery {
         ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, args.toArray(new String[0]));
     options.putString(
         ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
-        "date_added " + (ascending ? "ASC" : "DESC") + ", _id " + (ascending ? "ASC" : "DESC"));
+        dateColumn + " " + (ascending ? "ASC" : "DESC") + ", _id " + (ascending ? "ASC" : "DESC"));
     if (Build.VERSION.SDK_INT >= 29)
       options.putString(
           ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
@@ -213,7 +248,7 @@ final class R2DeviceGallery {
         }
         items.put(entry);
         next =
-            number(c, "date_added")
+            number(c, dateColumn)
                 + ":"
                 + number(c, "_id")
                 + ":"
@@ -224,6 +259,45 @@ final class R2DeviceGallery {
         .put("items", items)
         .put("cursor", more ? next : "")
         .put("complete", !more);
+  }
+
+  Map<String, String> accessibleVersions(Set<String> wanted) throws Exception {
+    Map<String, String> values = new HashMap<>();
+    if (wanted.isEmpty()) return values;
+    List<String> columns = new ArrayList<>(List.of("_id", "_size", "date_modified"));
+    if (Build.VERSION.SDK_INT >= 29) columns.add("volume_name");
+    if (Build.VERSION.SDK_INT >= 30) columns.add("generation_modified");
+    String where =
+        "media_type=1"
+            + (Build.VERSION.SDK_INT >= 29 ? " AND is_pending=0" : "")
+            + (Build.VERSION.SDK_INT >= 30 ? " AND is_trashed=0" : "");
+    try (Cursor c =
+        context
+            .getContentResolver()
+            .query(
+                MediaStore.Files.getContentUri("external"),
+                columns.toArray(new String[0]),
+                where,
+                null,
+                null)) {
+      while (c != null && c.moveToNext()) {
+        String id =
+            "image:"
+                + (Build.VERSION.SDK_INT >= 29 ? string(c, "volume_name") : "external")
+                + ":"
+                + number(c, "_id");
+        if (wanted.contains(id))
+          values.put(
+              id,
+              number(c, "_size")
+                  + ":"
+                  + (number(c, "date_modified") * 1000)
+                  + (number(c, "generation_modified") > 0
+                      ? ":" + number(c, "generation_modified")
+                      : ""));
+      }
+    }
+    return values;
   }
 
   JSONArray albums() throws Exception {

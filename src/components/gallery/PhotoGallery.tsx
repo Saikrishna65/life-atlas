@@ -69,6 +69,15 @@ import GalleryCollections from "./GalleryCollections";
 import GalleryStorageHome from "./GalleryStorageHome";
 import "./gallery-workspace.css";
 import "./gallery-intelligence.css";
+import type {
+  CollectionKind,
+  SmartCollection,
+} from "@/lib/gallery/collections";
+import "./smart-collections.css";
+const GallerySmartCollections = dynamic(
+  () => import("./GallerySmartCollections"),
+  { ssr: false },
+);
 import type { GalleryIntelligenceStatus } from "@/lib/gallery/intelligence";
 const GalleryIntelligencePanel = dynamic(
   () => import("./GalleryIntelligencePanel"),
@@ -88,9 +97,9 @@ export default function PhotoGallery() {
   const supported = nativeR2Available(),
     { trips } = useTripVault();
   const [access, setAccess] = useState(initialAccess),
-    [view, setView] = useState<"device" | "cloud" | "trips" | "places">(
-      "device",
-    ),
+    [view, setView] = useState<
+      "device" | "cloud" | "trips" | "places" | "curated"
+    >("device"),
     [items, setItems] = useState<DeviceMedia[]>([]),
     [cursor, setCursor] = useState(""),
     [hasMore, setHasMore] = useState(false),
@@ -144,6 +153,9 @@ export default function PhotoGallery() {
     [searchOpen, setSearchOpen] = useState(false);
   const [intelligence, setIntelligence] = useState<GalleryIntelligenceStatus>();
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [smartMode, setSmartMode] = useState<CollectionKind>();
+  const [curated, setCurated] = useState<SmartCollection>();
+  const [analysisGoal, setAnalysisGoal] = useState<"similar" | "people">();
   const [searchMode, setSearchMode] = useState<"files" | "smart">("files");
   useEffect(() => {
     if (!supported) return;
@@ -303,20 +315,32 @@ export default function PhotoGallery() {
       try {
         const smart =
           searchMode === "smart" && !!query.trim() && kind !== "video";
-        const page = smart
-          ? await R2.searchGalleryIntelligence({
-              query,
-              album,
-              kind,
-              offset: next ? Number(next) : 0,
-            })
-          : await R2.listDeviceMedia({
-              cursor: next,
-              query,
-              kind,
-              album,
-              order: order === "oldest" ? "oldest" : "newest",
-            });
+        const page =
+          view === "curated" && curated
+            ? await R2.getGalleryCollectionMedia({
+                kind:
+                  curated.kind === "similar"
+                    ? "similar"
+                    : curated.kind === "people"
+                      ? "people"
+                      : "memories",
+                key: curated.id,
+                cursor: next,
+              })
+            : smart
+              ? await R2.searchGalleryIntelligence({
+                  query,
+                  album,
+                  kind,
+                  offset: next ? Number(next) : 0,
+                })
+              : await R2.listDeviceMedia({
+                  cursor: next,
+                  query,
+                  kind,
+                  album,
+                  order: order === "oldest" ? "oldest" : "newest",
+                });
         if (generation !== deviceGeneration.current) return;
         setItems((old) =>
           append
@@ -335,7 +359,17 @@ export default function PhotoGallery() {
         if (generation === deviceGeneration.current) setLoading(false);
       }
     },
-    [supported, access.status, query, kind, album, order, searchMode],
+    [
+      supported,
+      access.status,
+      query,
+      kind,
+      album,
+      order,
+      searchMode,
+      view,
+      curated,
+    ],
   );
   useEffect(() => {
     if (view === "cloud" || view === "places") return;
@@ -416,9 +450,12 @@ export default function PhotoGallery() {
     }
     return items.map((m) => {
       const job = latest.get(`${m.id}|${mediaStamp(m)}`);
-      return deviceAsset(m, job ? [job] : []);
+      const asset = deviceAsset(m, job ? [job] : []);
+      return view === "curated" && m.capturedAt && m.capturedAt > 0
+        ? { ...asset, date: m.capturedAt }
+        : asset;
     });
-  }, [items, jobs, summary]);
+  }, [items, jobs, summary, view]);
   const cloudAssets = useMemo(
     () =>
       objects.map((o) =>
@@ -757,7 +794,7 @@ export default function PhotoGallery() {
     >
       <header className="gw-header">
         <div className="gw-heading">
-          {!collectionOpen && (
+          {!collectionOpen && !smartMode && (
             <Link
               href="/secret"
               className="gw-back"
@@ -767,13 +804,22 @@ export default function PhotoGallery() {
             </Link>
           )}
           <button
-            hidden={!collectionOpen}
+            hidden={!collectionOpen && !smartMode}
             className="gw-back"
             aria-label={
-              collectionOpen ? "Back to collections" : "Back to Private Atlas"
+              collectionOpen
+                ? "Back to collections"
+                : smartMode
+                  ? "Back to Organize"
+                  : "Back to Private Atlas"
             }
             onClick={() => {
+              if (smartMode && !collectionOpen) {
+                setSmartMode(undefined);
+                return;
+              }
               if (collectionOpen) {
+                setCurated(undefined);
                 window.scrollTo(0, 0);
                 setCollectionOpen(false);
                 setView("device");
@@ -796,30 +842,40 @@ export default function PhotoGallery() {
           </button>
           <h1>
             {collectionOpen
-              ? view === "places"
-                ? "Places"
-                : view === "cloud"
-                  ? "Public cloud"
-                  : tripFilter
-                    ? trips.find((t) => t.id === tripFilter)?.title || "Trip"
-                    : album || "Collection"
+              ? view === "curated"
+                ? curated?.title || "Collection"
+                : view === "places"
+                  ? "Places"
+                  : view === "cloud"
+                    ? "Public cloud"
+                    : tripFilter
+                      ? trips.find((t) => t.id === tripFilter)?.title || "Trip"
+                      : album || "Collection"
               : workspace === "photos"
                 ? "Photos"
                 : workspace === "organize"
-                  ? "Organize"
+                  ? smartMode === "similar"
+                    ? "Similar photos"
+                    : smartMode === "people"
+                      ? "People"
+                      : smartMode === "memories"
+                        ? "Albums & memories"
+                        : "Organize"
                   : "Backup"}
           </h1>
         </div>
         {browsing && view !== "places" && (
           <div className="gw-header-actions">
-            <button
-              aria-label="Search photos"
-              disabled={view !== "cloud" && access.status === "denied"}
-              aria-expanded={searchOpen}
-              onClick={() => setSearchOpen(!searchOpen)}
-            >
-              <Search size={21} />
-            </button>
+            {view !== "curated" && (
+              <button
+                aria-label="Search photos"
+                disabled={view !== "cloud" && access.status === "denied"}
+                aria-expanded={searchOpen}
+                onClick={() => setSearchOpen(!searchOpen)}
+              >
+                <Search size={21} />
+              </button>
+            )}
             {view !== "cloud" && (
               <button
                 className="gw-select"
@@ -839,6 +895,7 @@ export default function PhotoGallery() {
       {intelligenceOpen && (
         <GalleryIntelligencePanel
           albums={allAlbums}
+          initialFeature={analysisGoal}
           onChange={(value) => {
             setIntelligence(value);
             if (!value.indexed) setSearchMode("files");
@@ -893,7 +950,11 @@ export default function PhotoGallery() {
           <button
             aria-pressed={searchMode === "smart"}
             onClick={() => {
-              if (!intelligence?.indexed) setIntelligenceOpen(true);
+              if (
+                !intelligence?.indexed ||
+                !(intelligence.ocr || intelligence.visual)
+              )
+                setIntelligenceOpen(true);
               else setSearchMode("smart");
             }}
           >
@@ -926,6 +987,9 @@ export default function PhotoGallery() {
             onClick={() => {
               window.scrollTo(0, 0);
               setWorkspace(section);
+              setSmartMode(undefined);
+              setCurated(undefined);
+              setAnalysisGoal(undefined);
               setKind("all");
               setStatus("all");
               setFavoritesOnly(false);
@@ -960,11 +1024,17 @@ export default function PhotoGallery() {
           </button>
         ))}
       </nav>
-      {workspace === "organize" && !collectionOpen && (
+      {workspace === "organize" && !collectionOpen && !smartMode && (
         <GalleryCollections
           albums={albums}
           items={items}
           trips={trips}
+          onSmart={(mode) => {
+            window.scrollTo(0, 0);
+            setSmartMode(mode);
+            setSelected([]);
+            setSelectionMode(false);
+          }}
           onAlbum={(name) => {
             window.scrollTo(0, 0);
             setAlbum(name);
@@ -984,11 +1054,50 @@ export default function PhotoGallery() {
           }}
         />
       )}
+      {workspace === "organize" && !collectionOpen && smartMode && (
+        <GallerySmartCollections
+          mode={smartMode}
+          revision={revision}
+          onSettings={(feature) => {
+            setAnalysisGoal(feature);
+            setIntelligenceOpen(true);
+          }}
+          onChanged={() => setRevision((value) => value + 1)}
+          onOpen={(collection) => {
+            deviceGeneration.current++;
+            window.scrollTo(0, 0);
+            setCurated(collection);
+            setView("curated");
+            setCollectionOpen(true);
+            setItems([]);
+            setHasMore(false);
+            setCursor("");
+            setKind("all");
+            setStatus("all");
+            setQuery("");
+            setSearchOpen(false);
+            setFiltersOpen(false);
+            setSearchMode("files");
+            setFavoritesOnly(false);
+            setDateFrom("");
+            setDateTo("");
+            setTripFilter("");
+            setPlaceFilter("");
+            setAlbum("");
+            setSelected([]);
+            setSelectionMode(false);
+            setOrder("newest");
+          }}
+        />
+      )}
       {workspace === "backup" && !collectionOpen && (
         <GalleryStorageHome
           summary={summary}
           pending={pending.length}
-          onSmartSearch={() => setIntelligenceOpen(true)}
+          onSmartSearch={() => {
+            setAnalysisGoal(undefined);
+            setIntelligenceOpen(true);
+          }}
           onPublic={() => {
             window.scrollTo(0, 0);
             setView("cloud");
