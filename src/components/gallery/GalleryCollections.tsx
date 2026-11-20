@@ -1,8 +1,8 @@
 "use client";
-import { ArrowUpRight, Folder, MapPin, Mountain } from "lucide-react";
+import { ArrowUpRight, MapPin, Mountain } from "lucide-react";
 import Link from "next/link";
-import GalleryThumbnail from "./GalleryThumbnail";
-import { deviceAsset } from "@/lib/gallery/model";
+import AlbumCover from "./AlbumCover";
+
 import type { DeviceMedia } from "@/lib/gallery/types";
 import type { TripRecord } from "@/lib/vault/types";
 export default function GalleryCollections({
@@ -22,18 +22,7 @@ export default function GalleryCollections({
 }) {
   return (
     <section className="gc-home" aria-label="Organize your library">
-      <div className="gc-intro">
-        <span>MAKE ROOM FOR THE MEMORIES</span>
-        <h1>
-          A place for
-          <br />
-          every moment.
-        </h1>
-        <p>
-          Start with an album, collect a journey, or bring nearby photos
-          together.
-        </p>
-      </div>
+      <p className="gc-plain-intro">Your albums, trips and places.</p>
       <button
         className="gc-location"
         onClick={onPlaces}
@@ -45,9 +34,8 @@ export default function GalleryCollections({
           <i />
         </span>
         <span>
-          <small>LOCATION COLLECTIONS</small>
-          <strong>Find your places</strong>
-          <p>Group nearby photos. Give them a name. Add them to a trip.</p>
+          <strong>Places</strong>
+          <p>See photos grouped by where you took them.</p>
         </span>
         <ArrowUpRight />
       </button>
@@ -64,13 +52,7 @@ export default function GalleryCollections({
               onClick={() => onAlbum(a.name)}
               aria-label={`Open album ${a.name}`}
             >
-              <div className="gc-cover">
-                {photo ? (
-                  <GalleryThumbnail asset={deviceAsset(photo, [])} />
-                ) : (
-                  <Folder size={40} />
-                )}
-              </div>
+              <AlbumCover name={a.name} initial={photo} />
               <strong>{a.name}</strong>
               <small>
                 {a.count ? `${a.count} photos & videos` : "Open album"}

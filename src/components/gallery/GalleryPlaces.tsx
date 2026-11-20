@@ -325,8 +325,8 @@ export default function GalleryPlaces({
     <section className="gallery-places" aria-label="Places organizer">
       <header className="gp-heading">
         <div>
-          <h2>Organize by location</h2>
-          <p>Review nearby photos, name your places, and add them to a trip.</p>
+          <h2>Places</h2>
+          <p>Find photos taken near each other, then name the place.</p>
         </div>
         <div className="gp-tools">
           <button
@@ -354,9 +354,7 @@ export default function GalleryPlaces({
             }
           >
             <ScanLine size={17} />{" "}
-            {library.media.length
-              ? "Scan new / changed photos"
-              : "Find places in my photos"}
+            {library.media.length ? "Find new photos" : "Group photos by place"}
           </button>
           <button
             disabled={busy}
@@ -378,7 +376,7 @@ export default function GalleryPlaces({
             aria-expanded={showBackup}
             onClick={() => setShowBackup(!showBackup)}
           >
-            <CloudUpload size={16} /> Recovery & cloud catalog
+            <CloudUpload size={16} /> Back up places
           </button>
         </div>
       </header>
@@ -570,7 +568,7 @@ export default function GalleryPlaces({
             {m === "suggestions"
               ? `Suggested (${suggestions.length})`
               : m === "saved"
-                ? "Confirmed places"
+                ? "Saved places"
                 : m === "all"
                   ? "All scanned media"
                   : "Unassigned"}
@@ -1112,7 +1110,9 @@ export default function GalleryPlaces({
                   <span>{m.name}</span>
                   <small>
                     {m.gps
-                      ? m.gpsSource==='takeout'?'Imported location':"Camera GPS"
+                      ? m.gpsSource === "takeout"
+                        ? "Imported location"
+                        : "Camera GPS"
                       : assigned.has(m.id)
                         ? "Manually assigned · no GPS"
                         : "No readable GPS"}{" "}

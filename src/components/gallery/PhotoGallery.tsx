@@ -58,7 +58,7 @@ import { useTripVault, notifyVaultChange } from "@/lib/vault/useTripVault";
 import { patchTripFields } from "@/lib/vault/storage";
 import { readTripCoverLibrary } from "@/lib/studio/trip-cover";
 import { transferScheduleText } from "@/lib/r2/transfer-status";
-import TripMediaViewer from "@/components/media/TripMediaViewer";
+import PhotoViewer from "./PhotoViewer";
 import { Modal } from "@/components/world/primitives";
 import GalleryThumbnail from "./GalleryThumbnail";
 import GalleryAssign from "./GalleryAssign";
@@ -1537,6 +1537,7 @@ export default function PhotoGallery() {
             aria-label="Move phone files to trash"
           >
             <Trash2 size={16} />
+            <span>Delete</span>
           </button>
           <button disabled={busy} onClick={() => setAssigning(true)}>
             <CloudUpload size={17} /> Add or back up
@@ -1571,9 +1572,30 @@ export default function PhotoGallery() {
         />
       )}
       {viewer && viewerAssets.some((a) => a.id === viewer) && (
-        <TripMediaViewer
+        <PhotoViewer
           selected={viewer}
-          variant="library"
+          onDelete={
+            assets.find((a) => a.id === viewer)?.device
+              ? async (id) => {
+                  const asset = assets.find((a) => a.id === id);
+                  if (!asset?.device) return;
+                  const result = await systemAction(() =>
+                    R2.trashDeviceMedia({
+                      ids: [asset.device!.id],
+                      trashed: true,
+                    }),
+                  );
+                  if (result.approved) {
+                    closeViewer();
+                    setSelected([]);
+                    setRevision((n) => n + 1);
+                    setNotice(
+                      "Moved to phone trash. Open Backup → Trash & restore to restore it.",
+                    );
+                  }
+                }
+              : undefined
+          }
           onDetails={(id) => {
             closeViewer();
             setDetail(assets.find((a) => a.id === id));
