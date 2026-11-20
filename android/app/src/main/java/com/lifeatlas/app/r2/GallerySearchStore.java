@@ -19,7 +19,11 @@ final class GallerySearchStore implements AutoCloseable {
         SQLiteDatabase.openOrCreateDatabase(
             new File(secure.directory(), "gallery-search.db"), null);
     db.execSQL("CREATE TABLE IF NOT EXISTS photos (token TEXT PRIMARY KEY, payload BLOB NOT NULL)");
-    db.execSQL("PRAGMA secure_delete=ON");
+    // This PRAGMA returns a row, so Android requires the query API even when setting it.
+    try (Cursor setting = db.rawQuery("PRAGMA secure_delete=ON", null)) {
+      if (!setting.moveToFirst() || setting.getInt(0) != 1)
+        throw new IllegalStateException("LOCAL_STORAGE_UNAVAILABLE");
+    }
   }
 
   static String token(String id) throws Exception {
