@@ -31,7 +31,7 @@ for path,size,sha in MODELS:
  print(path,[(i.name,i.shape,i.type) for i in s.get_inputs()],[(o.name,o.shape) for o in s.get_outputs()])
  sessions.append(s)
 # Exercise detector on a real upstream demo, without identifying anyone.
-url=f"https://raw.githubusercontent.com/opencv/opencv_zoo/{REV}/models/face_recognition_sface/example_outputs/demo.jpg"
+url=f"https://github.com/opencv/opencv_zoo/raw/{REV}/models/face_recognition_sface/example_outputs/demo.jpg"
 image=Image.open(BytesIO(urllib.request.urlopen(url).read())).convert('RGB')
 image.thumbnail((640,640))
 canvas=np.zeros((640,640,3),dtype=np.float32);canvas[:image.height,:image.width]=np.asarray(image)[:,:,::-1]
