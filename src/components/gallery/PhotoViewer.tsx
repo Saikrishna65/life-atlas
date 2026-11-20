@@ -12,6 +12,7 @@ import {
 import { Modal } from "@/components/world/primitives";
 import type { DetailMedia } from "@/lib/public-trips/detail";
 import JournalVideo from "@/components/media/JournalVideo";
+import "@/components/media/journal-viewer.css";
 import "./photo-viewer.css";
 export default function PhotoViewer({
   items,
