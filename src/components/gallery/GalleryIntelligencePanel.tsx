@@ -142,7 +142,7 @@ export default function GalleryIntelligencePanel({
             <span>
               <strong>Words in photos</strong>
               <small>
-                Tickets, signs, screenshots and receipts. English and Hindi;
+                Tickets, signs, screenshots and receipts. English text;
                 works offline.
               </small>
             </span>

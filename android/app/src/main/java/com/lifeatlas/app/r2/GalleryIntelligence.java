@@ -10,6 +10,14 @@ import org.json.*;
 
 /** Search approval is independent of storage credentials, publishing approval and cloud backup. */
 final class GalleryIntelligence {
+  static final String OCR_VERSION = "latin-v1";
+
+  static boolean hasCurrentOcr(JSONObject row) {
+    return row != null
+        && row.optBoolean("ocrDone")
+        && OCR_VERSION.equals(row.optString("ocrVersion"));
+  }
+
   static final Object STATE_LOCK = new Object();
   static final String WORK = "atlas-gallery-search",
       PERIODIC = WORK + "-periodic",
@@ -258,7 +266,7 @@ final class GalleryIntelligence {
                     + " "
                     + media.optString("album")
                     + " "
-                    + (config.optBoolean("ocr") ? row.optString("text") : ""),
+                    + (config.optBoolean("ocr") && hasCurrentOcr(row) ? row.optString("text") : ""),
                 terms);
         double score = text ? 2 : 0;
         JSONArray embedding = row.optJSONArray("embedding");

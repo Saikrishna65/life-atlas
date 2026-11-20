@@ -68,8 +68,16 @@ public class GalleryIntelligenceTest {
   public void modifiedOriginalsAndChangedAnalysisOptionsInvalidateIndex() throws Exception {
     JSONObject photo = media(), config = new JSONObject().put("ocr", true).put("visual", false);
     JSONObject row =
-        new JSONObject().put("stamp", R2DeviceGallery.stamp(photo)).put("ocrDone", true);
+        new JSONObject()
+            .put("stamp", R2DeviceGallery.stamp(photo))
+            .put("ocrDone", true)
+            .put("ocrVersion", GalleryIntelligence.OCR_VERSION);
     assertTrue(GalleryIntelligenceWorker.current(row, photo, config));
+    row.remove("ocrVersion");
+    assertFalse(
+        "Old bilingual OCR needs a fresh English-only scan",
+        GalleryIntelligenceWorker.current(row, photo, config));
+    row.put("ocrVersion", GalleryIntelligence.OCR_VERSION);
     photo.put("generation", 3);
     assertFalse(GalleryIntelligenceWorker.current(row, photo, config));
     photo.put("generation", 2);
@@ -164,7 +172,8 @@ public class GalleryIntelligenceTest {
               .put("media", media)
               .put("stamp", R2DeviceGallery.stamp(media))
               .put("text", "Train ticket Delhi")
-              .put("ocrDone", true));
+              .put("ocrDone", true)
+              .put("ocrVersion", GalleryIntelligence.OCR_VERSION));
     }
     GalleryIntelligence service =
         new GalleryIntelligence(RuntimeEnvironment.getApplication(), fixture.repo.store);
@@ -178,6 +187,17 @@ public class GalleryIntelligenceTest {
     assertEquals(1, result.length());
     assertFalse(result.getJSONObject(0).has("text"));
     assertFalse(result.getJSONObject(0).has("embedding"));
+    try (GallerySearchStore db = new GallerySearchStore(fixture.repo.store)) {
+      JSONObject old = db.get("image:external:42");
+      old.remove("ocrVersion");
+      db.put(old);
+      assertEquals(
+          "Previous bilingual text must not be searched",
+          0,
+          service.search("train delhi", "", "all", 0).getJSONArray("items").length());
+      old.put("ocrVersion", GalleryIntelligence.OCR_VERSION);
+      db.put(old);
+    }
     assertEquals(
         0, service.search("train delhi", "Another album", "all", 0).getJSONArray("items").length());
     assertEquals(0, service.search("train delhi", "", "video", 0).getJSONArray("items").length());

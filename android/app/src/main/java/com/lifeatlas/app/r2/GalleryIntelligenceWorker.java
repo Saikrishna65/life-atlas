@@ -8,7 +8,6 @@ import androidx.work.*;
 import com.google.android.gms.tasks.Tasks;
 import com.google.mlkit.vision.common.InputImage;
 import com.google.mlkit.vision.text.*;
-import com.google.mlkit.vision.text.devanagari.DevanagariTextRecognizerOptions;
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import java.io.*;
 import java.util.*;
@@ -75,7 +74,7 @@ public final class GalleryIntelligenceWorker extends Worker {
   static boolean current(JSONObject row, JSONObject media, JSONObject config) {
     return row != null
         && R2DeviceGallery.stamp(media).equals(row.optString("stamp"))
-        && (!config.optBoolean("ocr") || row.optBoolean("ocrDone"))
+        && (!config.optBoolean("ocr") || GalleryIntelligence.hasCurrentOcr(row))
         && (!config.optBoolean("visual") || row.optBoolean("visualDone"));
   }
 
@@ -164,8 +163,6 @@ public final class GalleryIntelligenceWorker extends Worker {
       for (int i = 0; i < allowed.length(); i++) albums.add(allowed.getString(i));
       try (GallerySearchStore db = new GallerySearchStore(service.secure);
           TextRecognizer latin = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS);
-          TextRecognizer devanagari =
-              TextRecognition.getClient(new DevanagariTextRecognizerOptions.Builder().build());
           GalleryClip clip = new GalleryClip(getApplicationContext())) {
         for (int i = 0; i < photos.length(); i++) {
           if (stopped(service, epoch)) return Result.success();
@@ -181,15 +178,13 @@ public final class GalleryIntelligenceWorker extends Worker {
             bitmap = decode(getApplicationContext(), id);
             if (row == null || !stamp.equals(row.optString("stamp")))
               row = new JSONObject().put("media", metadata(media)).put("stamp", stamp);
-            if (config.optBoolean("ocr") && !row.optBoolean("ocrDone")) {
+            if (config.optBoolean("ocr") && !GalleryIntelligence.hasCurrentOcr(row)) {
               InputImage image = InputImage.fromBitmap(bitmap, 0);
               pending = latin.process(image);
-              String english = Tasks.await(pending, 45, TimeUnit.SECONDS).getText();
-              pending = devanagari.process(image);
-              String hindi = Tasks.await(pending, 45, TimeUnit.SECONDS).getText();
-              String text = english + "\n" + hindi;
+              String text = Tasks.await(pending, 45, TimeUnit.SECONDS).getText();
               row.put("text", text.substring(0, Math.min(24000, text.length())))
-                  .put("ocrDone", true);
+                  .put("ocrDone", true)
+                  .put("ocrVersion", GalleryIntelligence.OCR_VERSION);
             }
             if (config.optBoolean("visual") && !row.optBoolean("visualDone")) {
               float[] vector;
