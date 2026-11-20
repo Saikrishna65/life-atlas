@@ -133,19 +133,29 @@ export default function PhotoViewer({
             }));
           } else if (p.length === 1 && transform.scale > 1) {
             const r = e.currentTarget.getBoundingClientRect();
+            const img = e.currentTarget.querySelector("img");
+            const boundX = Math.max(
+              0,
+              ((img?.clientWidth || r.width) * transform.scale - r.width) / 2,
+            );
+            const boundY = Math.max(
+              0,
+              ((img?.clientHeight || r.height) * transform.scale - r.height) /
+                2,
+            );
             setTransform((old) => ({
               ...old,
               x: Math.max(
-                -r.width,
+                -boundX,
                 Math.min(
-                  r.width,
+                  boundX,
                   start.current.panX + e.clientX - start.current.x,
                 ),
               ),
               y: Math.max(
-                -r.height,
+                -boundY,
                 Math.min(
-                  r.height,
+                  boundY,
                   start.current.panY + e.clientY - start.current.y,
                 ),
               ),
