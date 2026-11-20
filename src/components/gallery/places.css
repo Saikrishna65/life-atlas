@@ -969,3 +969,124 @@
     font-size: 11px;
   }
 }
+.private-gallery .gp-distance {
+  border-bottom: 1px solid #e2e8df;
+  margin: 0 0 16px;
+  padding: 0 0 12px;
+}
+.gp-distance summary {
+  font-size: 11px;
+  color: #7b8976;
+  cursor: pointer;
+  padding: 10px 0;
+}
+.private-gallery .gp-index {
+  padding: 18px;
+  background: #fff;
+  border: 0;
+}
+.private-gallery .gp-place-link {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 10px;
+  margin: 0 0 10px;
+  border: 1px solid #e5eae2;
+  background: #fff;
+  min-height: 88px;
+  border-radius: 15px;
+}
+.private-gallery .gp-place-link[aria-pressed="true"] {
+  background: #eff5e9;
+  border-color: #9caf8c;
+}
+.gp-group-cover {
+  width: 90px;
+  height: 68px;
+  position: relative;
+  overflow: hidden;
+  background: #f0f4ec;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.gp-group-cover .pg-thumbnail {
+  position: absolute;
+  inset: 0;
+}
+.private-gallery .gp-place-link span {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.private-gallery .gp-place-link small {
+  font-size: 10px;
+  color: #86927c;
+}
+.private-gallery .gp-overview {
+  background: none;
+  padding: 6px 0;
+  margin: 0 0 15px;
+  color: #8b9684;
+  font-size: 10px;
+}
+.private-gallery .gp-modes {
+  gap: 7px;
+  padding-bottom: 14px;
+}
+.private-gallery .gp-modes button {
+  font-size: 11px;
+  border-radius: 20px;
+  min-height: 37px;
+}
+.private-gallery .gp-layout {
+  grid-template-columns: minmax(250px, 330px) minmax(0, 1fr);
+}
+.private-gallery .gp-review {
+  background: #fafbf8;
+  border: 1px solid #e7ece1;
+  border-radius: 18px;
+  padding: 22px;
+}
+@media (max-width: 850px) {
+  .private-gallery .gp-layout {
+    grid-template-columns: 1fr;
+  }
+  .private-gallery .gp-index {
+    padding: 0;
+  }
+  .private-gallery .gp-review {
+    padding: 16px;
+  }
+  .private-gallery .gp-modes {
+    overflow: auto;
+    flex-wrap: nowrap;
+  }
+  .private-gallery .gp-modes button {
+    white-space: nowrap;
+  }
+}
+.gp-review-back {
+  display: none !important;
+}
+@media (max-width: 850px) {
+  .gp-layout.has-place .gp-index {
+    display: none;
+  }
+  .gp-layout:not(.has-place) .gp-review {
+    display: none;
+  }
+  .private-gallery .gp-review-back {
+    display: inline-flex !important;
+    border: 0;
+    background: none;
+    padding: 6px 0 16px;
+    color: #6a7f60;
+    font-size: 12px;
+  }
+  .private-gallery .gp-place-link {
+    width: 100%;
+  }
+}

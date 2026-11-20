@@ -1,17 +1,15 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
-  ArrowRight,
-  Info,
-  Trash2,
-  X,
-  Plus,
-  Minus,
-} from "lucide-react";
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { ArrowLeft, Info, Trash2, X } from "lucide-react";
 import { Modal } from "@/components/world/primitives";
 import type { DetailMedia } from "@/lib/public-trips/detail";
-import JournalVideo from "@/components/media/JournalVideo";
+import ViewerVideo from "./ViewerVideo";
 import "@/components/media/journal-viewer.css";
 import "./photo-viewer.css";
 export default function PhotoViewer({
@@ -19,21 +17,41 @@ export default function PhotoViewer({
   selected,
   onSelect,
   onClose,
-  onDetails,
+  details,
   onDelete,
 }: {
   items: DetailMedia[];
   selected: string;
   onSelect: (id: string) => void;
   onClose: () => void;
-  onDetails?: (id: string) => void;
+  details?: (id: string) => ReactNode;
   onDelete?: (id: string) => Promise<void>;
 }) {
   const index = items.findIndex((i) => i.id === selected),
     item = items[index];
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 }),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [chrome, setChrome] = useState(true),
+    [info, setInfo] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const activity = useCallback(() => {
+    setChrome(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      if (!document.activeElement?.matches(":focus-visible")) setChrome(false);
+    }, 2800);
+  }, []);
+  useEffect(() => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      if (!document.activeElement?.matches(":focus-visible")) setChrome(false);
+    }, 2800);
+    return () => clearTimeout(timer.current);
+  }, [selected]);
+  useEffect(() => {
+    if (info || busy) clearTimeout(timer.current);
+  }, [info, busy]);
   const points = useRef(new Map<number, { x: number; y: number }>()),
     start = useRef({
       distance: 0,
@@ -48,14 +66,19 @@ export default function PhotoViewer({
   const move = (n: number) => {
     if (items.length > 1) {
       setTransform({ scale: 1, x: 0, y: 0 });
+      setInfo(false);
+      activity();
       onSelect(items[(index + n + items.length) % items.length].id);
     }
   };
   useEffect(() => {
     points.current.clear();
+    start.current.multi = false;
   }, [selected]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
+      if (info || (e.target as HTMLElement)?.closest("input,textarea,select"))
+        return;
       if (e.key === "ArrowRight") {
         e.preventDefault();
         move(1);
@@ -71,27 +94,77 @@ export default function PhotoViewer({
   if (!item) return null;
   const zoom = (scale: number) => setTransform({ scale, x: 0, y: 0 });
   return (
-    <Modal title="Photo viewer" className="pv-viewer" onClose={onClose}>
-      <div className="pv-top">
-        <button onClick={onClose} aria-label="Close photo">
-          <X />
+    <Modal
+      title="Photo viewer"
+      className="pv-viewer"
+      onClose={() => {
+        if (info) {
+          setInfo(false);
+          activity();
+        } else onClose();
+      }}
+    >
+      <div
+        className={`pv-top ${chrome || info || busy ? "" : "is-hidden"}`}
+        inert={!chrome && !info && !busy}
+        onClick={activity}
+        onKeyDown={activity}
+      >
+        <button onClick={onClose} aria-label="Back to photos">
+          <ArrowLeft />
         </button>
         <span>
           {index + 1} / {items.length}
         </span>
-        {onDetails ? (
+        <div className="pv-top-actions">
+          {onDelete && (
+            <button
+              disabled={busy}
+              aria-label="Delete"
+              onClick={async () => {
+                if (
+                  !confirm(
+                    "Move this file to your phone’s trash? Cloud copies and trip records will stay unchanged.",
+                  )
+                )
+                  return;
+                setBusy(true);
+                try {
+                  await onDelete(selected);
+                } catch {
+                  setError(
+                    "Could not move this file to trash. Please try again.",
+                  );
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <Trash2 size={21} />
+            </button>
+          )}
           <button
-            onClick={() => onDetails(selected)}
             aria-label="Photo details"
+            aria-expanded={info}
+            onClick={() => {
+              setInfo(!info);
+              if (info) activity();
+            }}
           >
-            <Info />
+            <Info size={21} />
           </button>
-        ) : (
-          <span />
-        )}
+        </div>
       </div>
       <div
         className="pv-picture journal-viewer-stage"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("button,input")) return;
+          if (start.current.multi) return;
+          if (Math.abs(e.clientX - start.current.x) > 12 && points.current.size)
+            return;
+          if (chrome) setChrome(false);
+          else activity();
+        }}
         onDoubleClick={() => zoom(transform.scale > 1 ? 1 : 2.5)}
         onPointerDown={(e) => {
           if (item.kind === "video") return;
@@ -195,11 +268,12 @@ export default function PhotoViewer({
         }}
       >
         {item.kind === "video" ? (
-          <JournalVideo
+          <ViewerVideo
             key={item.id}
             src={item.url}
             poster={item.poster}
-            label="Video"
+            show={chrome && !info}
+            onActivity={activity}
           />
         ) : (
           <>
@@ -218,65 +292,51 @@ export default function PhotoViewer({
         )}
       </div>
       {error && <p role="alert">{error}</p>}
-      <div className="pv-actions">
-        <button
-          aria-label="Previous photo"
-          disabled={items.length < 2}
-          onClick={() => move(-1)}
+      {info && (
+        <div
+          className="pv-info-backdrop"
+          onClick={() => {
+            setInfo(false);
+            activity();
+          }}
         >
-          <ArrowLeft />
-        </button>
-        {item.kind === "photo" && (
-          <>
-            <button
-              aria-label="Zoom out"
-              onClick={() => zoom(Math.max(1, transform.scale - 0.5))}
-            >
-              <Minus />
-            </button>
-            <button
-              aria-label="Zoom in"
-              onClick={() => zoom(Math.min(5, transform.scale + 0.5))}
-            >
-              <Plus />
-            </button>
-          </>
-        )}
-        {onDelete && (
-          <button
-            className="pv-delete"
-            disabled={busy}
-            onClick={async () => {
-              if (
-                !confirm(
-                  "Move this file to your phone’s trash? Cloud copies and trip records will stay unchanged.",
-                )
-              )
-                return;
-              setBusy(true);
-              try {
-                await onDelete(selected);
-              } catch {
-                setError(
-                  "Could not move this file to trash. Please try again.",
-                );
-              } finally {
-                setBusy(false);
-              }
-            }}
+          <section
+            className="pv-info-panel"
+            role="region"
+            aria-label="Photo information"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Trash2 size={20} />
-            <span>{busy ? "Moving…" : "Delete"}</span>
-          </button>
-        )}
-        <button
-          aria-label="Next photo"
-          disabled={items.length < 2}
-          onClick={() => move(1)}
-        >
-          <ArrowRight />
-        </button>
-      </div>
+            <header>
+              <h2>Details</h2>
+              <button
+                aria-label="Close information"
+                onClick={() => {
+                  setInfo(false);
+                  activity();
+                }}
+              >
+                <X size={20} />
+              </button>
+            </header>
+            {details ? (
+              details(selected)
+            ) : (
+              <dl>
+                <dt>Place</dt>
+                <dd>{item.place}</dd>
+                <dt>Type</dt>
+                <dd>{item.kind === "video" ? "Video" : "Photo"}</dd>
+                {item.caption && (
+                  <>
+                    <dt>Name</dt>
+                    <dd>{item.caption}</dd>
+                  </>
+                )}
+              </dl>
+            )}
+          </section>
+        </div>
+      )}
     </Modal>
   );
 }

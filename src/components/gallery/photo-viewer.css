@@ -158,3 +158,200 @@
   font-size: 11px;
   padding: 12px;
 }
+/* Full-viewport media; chrome overlays it without consuming image height. */
+.pv-viewer .pv-picture {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  width: 100%;
+  flex: none;
+}
+.pv-viewer .pv-picture > img {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.pv-top {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 8;
+  background: linear-gradient(#000a, transparent);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+  min-height: 76px;
+}
+.pv-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pv-top.is-hidden,
+.pv-video-controls.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px);
+}
+.pv-video {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pv-video > video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.pv-video-controls {
+  position: absolute;
+  top: calc(72px + env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #141414d9;
+  border-radius: 14px;
+  z-index: 7;
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+  touch-action: auto;
+}
+.pv-video-controls span {
+  font-size: 11px;
+  white-space: nowrap;
+}
+.pv-video-controls input {
+  flex: 1;
+  width: 0;
+  min-width: 30px;
+  accent-color: #fff;
+  min-height: 38px;
+}
+.pv-video-controls button {
+  flex-shrink: 0;
+  min-width: 38px;
+}
+.pv-loading {
+  position: absolute;
+  inset: 45% 15% auto;
+  text-align: center;
+  color: white;
+  font-size: 13px;
+  z-index: 4;
+}
+.pv-info-backdrop {
+  position: absolute;
+  inset: 0;
+  background: #0006;
+  z-index: 15;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.pv-info-panel {
+  width: min(480px, 100%);
+  max-height: 80dvh;
+  overflow: auto;
+  background: #fff;
+  color: #182322;
+  border-radius: 22px;
+  padding: 24px;
+  box-sizing: border-box;
+  box-shadow: 0 20px 70px #0005;
+}
+.pv-info-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.pv-info-panel h2 {
+  font-size: 21px;
+  letter-spacing: -0.5px;
+  font-weight: 550;
+  margin: 0;
+}
+.pv-info-panel button {
+  color: #182322;
+  background: #f3f5ef;
+}
+.pv-info-panel dl {
+  margin: 0;
+}
+.pv-info-panel dt {
+  font-size: 11px;
+  color: #7c877d;
+  margin: 20px 0 5px;
+}
+.pv-info-panel dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.pv-viewer > .world-modal-inner > [role="alert"] {
+  position: absolute;
+  bottom: 20px;
+  left: 15px;
+  right: 15px;
+  z-index: 10;
+  background: #252525;
+  padding: 14px;
+  border-radius: 12px;
+}
+.pg-dialog.world-modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(640px, calc(100vw - 28px));
+  max-height: 85dvh;
+  box-sizing: border-box;
+}
+.pg-dialog .pg-details dd {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.pg-dialog .pg-details > div {
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .pv-top {
+    padding-inline: 10px;
+  }
+  .pv-top span {
+    font-size: 11px;
+  }
+  .pv-info-backdrop {
+    padding: 14px;
+  }
+  .pv-info-panel {
+    padding: 22px 20px;
+    max-height: 76dvh;
+    border-radius: 20px;
+  }
+  .pv-video-controls {
+    gap: 4px;
+    left: 8px;
+    right: 8px;
+    padding: 6px;
+  }
+  .pv-video-controls button {
+    min-width: 34px;
+    min-height: 40px;
+  }
+  .pv-video-controls span {
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv-top,
+  .pv-video-controls {
+    transition: none;
+  }
+}

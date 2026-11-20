@@ -548,9 +548,6 @@ export default function GalleryPlaces({
         <span>
           {library.media.filter((m) => !assigned.has(m.id)).length} unassigned
         </span>
-        <span>
-          {library.media.filter((m) => !m.gps).length} without readable GPS
-        </span>
       </div>
       <nav className="gp-modes" aria-label="Place collections">
         {(["suggestions", "saved", "unassigned", "all"] as const).map((m) => (
@@ -560,13 +557,15 @@ export default function GalleryPlaces({
             disabled={busy}
             onClick={() => {
               setMode(m);
+              setActive("");
+              setDraftMembers([]);
               setSelected([]);
               setPage(1);
               setVisit("");
             }}
           >
             {m === "suggestions"
-              ? `Suggested (${suggestions.length})`
+              ? `New places (${suggestions.length})`
               : m === "saved"
                 ? "Saved places"
                 : m === "all"
@@ -575,31 +574,35 @@ export default function GalleryPlaces({
           </button>
         ))}
       </nav>
-      <div className="gp-layout">
+      <div
+        className={`gp-layout ${active || draftMembers.length || mode === "all" || mode === "unassigned" ? "has-place" : ""}`}
+      >
         <aside className="gp-index">
-          <label>
-            Grouping radius <strong>{radius} m</strong>
-            <input
-              aria-label="Grouping radius"
-              type="range"
-              min={25}
-              max={5000}
-              step={25}
-              value={radius}
-              disabled={busy}
-              onChange={(e) => {
-                setRadius(Number(e.target.value));
-                if (mode === "suggestions") {
-                  setActive("");
-                  setDraftMembers([]);
-                }
-              }}
-            />
-          </label>
-          <p className="pg-muted">
-            Each suggestion stays within this radius of its first GPS point.
-            Photos never become an invented travel route.
-          </p>
+          <details className="gp-distance">
+            <summary>Adjust nearby photos</summary>{" "}
+            <label>
+              Distance between photos <strong>{radius} m</strong>
+              <input
+                aria-label="Distance between photos"
+                type="range"
+                min={25}
+                max={5000}
+                step={25}
+                value={radius}
+                disabled={busy}
+                onChange={(e) => {
+                  setRadius(Number(e.target.value));
+                  if (mode === "suggestions") {
+                    setActive("");
+                    setDraftMembers([]);
+                  }
+                }}
+              />
+            </label>
+            <p className="pg-muted">
+              Use a smaller distance to split a large area into smaller places.
+            </p>
+          </details>
           {mode === "suggestions"
             ? suggestions.map((s, i) => (
                 <button
@@ -616,16 +619,25 @@ export default function GalleryPlaces({
                       );
                   }}
                 >
-                  <MapPin size={18} />
+                  <div className="gp-group-cover">
+                    {(() => {
+                      const first = library.media.find(
+                        (m) => s.members.includes(m.id) && m.device,
+                      );
+                      return first?.device ? (
+                        <GalleryThumbnail
+                          asset={deviceAsset(first.device, [])}
+                        />
+                      ) : (
+                        <MapPin size={24} />
+                      );
+                    })()}
+                  </div>
                   <span>
                     {s.nearPlaceId
                       ? `More near ${library.places.find((p) => p.id === s.nearPlaceId)?.name}`
-                      : `Suggested place ${i + 1}`}
-                    <small>
-                      {s.members.length} photos & videos ·{" "}
-                      {s.anchor.latitude.toFixed(3)},{" "}
-                      {s.anchor.longitude.toFixed(3)}
-                    </small>
+                      : `Nearby photos ${i + 1}`}
+                    <small>{s.members.length} photos & videos</small>
                   </span>
                 </button>
               ))
@@ -640,7 +652,20 @@ export default function GalleryPlaces({
                     showPlace(p.id);
                   }}
                 >
-                  <MapPin size={18} />
+                  <div className="gp-group-cover">
+                    {(() => {
+                      const first = library.media.find(
+                        (m) => p.members.includes(m.id) && m.device,
+                      );
+                      return first?.device ? (
+                        <GalleryThumbnail
+                          asset={deviceAsset(first.device, [])}
+                        />
+                      ) : (
+                        <MapPin size={24} />
+                      );
+                    })()}
+                  </div>
                   <span>
                     {p.name}
                     <small>
@@ -658,6 +683,17 @@ export default function GalleryPlaces({
           )}
         </aside>
         <div className="gp-review">
+          <button
+            className="gp-review-back"
+            onClick={() => {
+              setActive("");
+              if (mode === "all" || mode === "unassigned") setMode("saved");
+              setDraftMembers([]);
+              setSelected([]);
+            }}
+          >
+            ← All places
+          </button>
           {(saved || suggestion || draftMembers.length > 0) &&
             mode !== "all" &&
             mode !== "unassigned" && (

@@ -460,13 +460,6 @@ export default function PhotoGallery() {
     dateFrom,
     dateTo,
   ]);
-  const activeFilters =
-    (kind !== "all" ? 1 : 0) +
-    (favoritesOnly ? 1 : 0) +
-    (status !== "all" ? 1 : 0) +
-    (order !== "newest" ? 1 : 0) +
-    (album ? 1 : 0) +
-    (dateFrom || dateTo ? 1 : 0);
   const layout = useGalleryLayout(
     assets,
     columns,
@@ -782,15 +775,6 @@ export default function PhotoGallery() {
             >
               <Search size={21} />
             </button>
-            <button
-              aria-label="Gallery filters"
-              disabled={view !== "cloud" && access.status === "denied"}
-              aria-expanded={filtersOpen}
-              onClick={() => setFiltersOpen(true)}
-            >
-              <SlidersHorizontal size={20} />
-              {activeFilters > 0 && <b>{activeFilters}</b>}
-            </button>
             {view !== "cloud" && (
               <button
                 className="gw-select"
@@ -810,6 +794,12 @@ export default function PhotoGallery() {
       {searchOpen && browsing && (
         <label className="gw-search">
           <Search size={19} />
+          <button
+            aria-label="View options"
+            onClick={() => setFiltersOpen(true)}
+          >
+            <SlidersHorizontal size={18} />
+          </button>
           <input
             autoFocus
             type="search"
@@ -1596,9 +1586,34 @@ export default function PhotoGallery() {
                 }
               : undefined
           }
-          onDetails={(id) => {
-            closeViewer();
-            setDetail(assets.find((a) => a.id === id));
+          details={(id) => {
+            const a = assets.find((v) => v.id === id);
+            return a ? (
+              <dl>
+                <dt>Name</dt>
+                <dd>{a.name}</dd>
+                <dt>Size</dt>
+                <dd>{bytes(a.size)}</dd>
+                {a.device && (
+                  <>
+                    <dt>Album</dt>
+                    <dd>{a.device.album || "Photos"}</dd>
+                    <dt>Dimensions</dt>
+                    <dd>
+                      {a.device.width} × {a.device.height}
+                    </dd>
+                  </>
+                )}
+                <dt>Date</dt>
+                <dd>
+                  {Number.isFinite(a.date)
+                    ? new Date(a.date).toLocaleString()
+                    : "Unknown"}
+                </dd>
+                <dt>Storage</dt>
+                <dd>{statusLabel(a, trips)}</dd>
+              </dl>
+            ) : null;
           }}
           onSelect={setViewer}
           onClose={closeViewer}
