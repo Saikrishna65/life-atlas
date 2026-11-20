@@ -225,6 +225,50 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void getGalleryIntelligence(PluginCall call) {
+    work(call, () -> call.resolve(js(new GalleryIntelligence(getContext()).status())));
+  }
+
+  @PluginMethod
+  public void configureGalleryIntelligence(PluginCall call) {
+    work(
+        call,
+        () -> {
+          if (!call.getBoolean("approved", false)) throw new R2Exception("INVALID_SELECTION");
+          if (!galleryAccess().getBoolean("images"))
+            throw new R2Exception("GALLERY_PERMISSION_REQUIRED");
+          call.resolve(js(new GalleryIntelligence(getContext()).configure(call.getData())));
+        });
+  }
+
+  @PluginMethod
+  public void controlGalleryIntelligence(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(
+                js(new GalleryIntelligence(getContext()).control(call.getString("action", "")))));
+  }
+
+  @PluginMethod
+  public void searchGalleryIntelligence(PluginCall call) {
+    work(
+        call,
+        () -> {
+          if (!galleryAccess().getBoolean("images"))
+            throw new R2Exception("GALLERY_PERMISSION_REQUIRED");
+          call.resolve(
+              js(
+                  new GalleryIntelligence(getContext())
+                      .search(
+                          call.getString("query", ""),
+                          call.getString("album", ""),
+                          call.getString("kind", "all"),
+                          call.getInt("offset", 0))));
+        });
+  }
+
+  @PluginMethod
   public void listDeviceMedia(PluginCall call) {
     work(
         call,

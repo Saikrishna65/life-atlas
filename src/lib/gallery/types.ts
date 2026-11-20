@@ -12,6 +12,8 @@ export interface DeviceMedia {
   mimeType: string;
   size: number;
   addedAt: number;
+  /** Camera capture time when MediaStore supplies it, in milliseconds. */
+  capturedAt?: number;
   modifiedAt: number;
   generation?: number;
   width: number;

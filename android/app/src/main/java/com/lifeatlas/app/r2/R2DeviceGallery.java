@@ -88,6 +88,7 @@ final class R2DeviceGallery {
         .put("mimeType", string(c, "mime_type"))
         .put("size", number(c, "_size"))
         .put("addedAt", number(c, "date_added") * 1000)
+        .put("capturedAt", number(c, "datetaken"))
         .put("modifiedAt", number(c, "date_modified") * 1000)
         .put("generation", number(c, "generation_modified"))
         .put("width", number(c, "width"))
@@ -107,6 +108,7 @@ final class R2DeviceGallery {
                 "mime_type",
                 "_size",
                 "date_added",
+                "datetaken",
                 "date_modified",
                 "width",
                 "height",
@@ -258,6 +260,8 @@ final class R2DeviceGallery {
                 MediaStore.Files.getContentUri("external"),
                 projection(),
                 "_id=? AND media_type=?"
+                    + (Build.VERSION.SDK_INT >= 29 ? " AND is_pending=0" : "")
+                    + (Build.VERSION.SDK_INT >= 30 ? " AND is_trashed=0" : "")
                     + (Build.VERSION.SDK_INT >= 29 ? " AND volume_name=?" : ""),
                 Build.VERSION.SDK_INT >= 29
                     ? new String[] {

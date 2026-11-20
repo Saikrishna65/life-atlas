@@ -1,0 +1,40 @@
+name: Gallery intelligence checks (no APK)
+on:
+  push:
+    branches: ['verify/gallery-intelligence-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Check and bundle the WebView (no APK packaging)
+        run: |
+          npm ci
+          npx prisma generate
+          npx tsc --noEmit
+          node --import tsx --test tests/gallery/*.test.ts tests/studio/*.test.ts tests/r2/*.test.ts
+          npm run build:mobile
+          npx cap sync android
+      - name: Compile and run native tests only
+        run: |
+          sdkmanager 'platforms;android-34' 'build-tools;34.0.0'
+          bash android/gradlew -p android --no-daemon --max-workers=2 :app:testDebugUnitTest :app:testPreviewUnitTest
+      - name: Save native test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gallery-intelligence-test-reports
+          path: android/app/build/reports/tests/

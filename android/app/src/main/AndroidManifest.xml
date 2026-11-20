@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- These libraries are reached only through the Android 26+ gallery bridge/worker.
+         Keep the rest of Atlas available on its existing minSdk; gate ML Kit's startup provider too. -->
+    <uses-sdk tools:overrideLibrary="ai.onnxruntime" />
     <application
         android:allowBackup="false"
         android:fullBackupContent="@xml/backup_rules"
@@ -11,6 +14,9 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <provider android:name="com.google.mlkit.common.internal.MlKitInitProvider"
+            android:enabled="@bool/atlas_gallery_intelligence_available"
+            tools:replace="android:enabled" />
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
             android:name=".MainActivity"

@@ -8,6 +8,7 @@ import {
   Trash2,
   Download,
   Upload,
+  Sparkles,
 } from "lucide-react";
 import type { StorageSummary } from "@/lib/r2/types";
 export default function GalleryStorageHome({
@@ -15,11 +16,13 @@ export default function GalleryStorageHome({
   pending,
   onPublic,
   onTransfers,
+  onSmartSearch,
 }: {
   summary?: StorageSummary;
   pending: number;
   onPublic: () => void;
   onTransfers: () => void;
+  onSmartSearch: () => void;
 }) {
   return (
     <section className="gs-home" aria-label="Backup and cloud">
@@ -51,6 +54,14 @@ export default function GalleryStorageHome({
         </div>
       </Link>
       <div className="gs-actions">
+        <button onClick={onSmartSearch}>
+          <Sparkles />
+          <span>
+            <strong>Smart photo search</strong>
+            <small>Find scenes and words, privately on your phone</small>
+          </span>
+          <ArrowUpRight />
+        </button>
         <Link href="/secret/gallery/library#library">
           <LockKeyhole />
           <span>

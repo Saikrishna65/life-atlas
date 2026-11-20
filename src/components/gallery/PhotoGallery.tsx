@@ -68,6 +68,12 @@ import "./photos.css";
 import GalleryCollections from "./GalleryCollections";
 import GalleryStorageHome from "./GalleryStorageHome";
 import "./gallery-workspace.css";
+import "./gallery-intelligence.css";
+import type { GalleryIntelligenceStatus } from "@/lib/gallery/intelligence";
+const GalleryIntelligencePanel = dynamic(
+  () => import("./GalleryIntelligencePanel"),
+  { ssr: false },
+);
 const GalleryPlaces = dynamic(() => import("./GalleryPlaces"), { ssr: false });
 const GalleryTripControls = dynamic(() => import("./GalleryTripControls"), {
   ssr: false,
@@ -136,6 +142,22 @@ export default function PhotoGallery() {
     ),
     [collectionOpen, setCollectionOpen] = useState(false),
     [searchOpen, setSearchOpen] = useState(false);
+  const [intelligence, setIntelligence] = useState<GalleryIntelligenceStatus>();
+  const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [searchMode, setSearchMode] = useState<"files" | "smart">("files");
+  useEffect(() => {
+    if (!supported) return;
+    let alive = true;
+    void Promise.resolve()
+      .then(() => R2.getGalleryIntelligence())
+      .then((value) => {
+        if (alive) setIntelligence(value);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [supported, revision]);
   const browsing = workspace === "photos" || collectionOpen;
   const grid = useRef<HTMLDivElement>(null),
     sentinel = useRef<HTMLDivElement>(null),
@@ -279,13 +301,22 @@ export default function PhotoGallery() {
       const generation = ++deviceGeneration.current;
       setLoading(true);
       try {
-        const page = await R2.listDeviceMedia({
-          cursor: next,
-          query,
-          kind,
-          album,
-          order: order === "oldest" ? "oldest" : "newest",
-        });
+        const smart =
+          searchMode === "smart" && !!query.trim() && kind !== "video";
+        const page = smart
+          ? await R2.searchGalleryIntelligence({
+              query,
+              album,
+              kind,
+              offset: next ? Number(next) : 0,
+            })
+          : await R2.listDeviceMedia({
+              cursor: next,
+              query,
+              kind,
+              album,
+              order: order === "oldest" ? "oldest" : "newest",
+            });
         if (generation !== deviceGeneration.current) return;
         setItems((old) =>
           append
@@ -304,7 +335,7 @@ export default function PhotoGallery() {
         if (generation === deviceGeneration.current) setLoading(false);
       }
     },
-    [supported, access.status, query, kind, album, order],
+    [supported, access.status, query, kind, album, order, searchMode],
   );
   useEffect(() => {
     if (view === "cloud" || view === "places") return;
@@ -433,6 +464,13 @@ export default function PhotoGallery() {
       }
       return true;
     });
+    if (
+      view !== "cloud" &&
+      searchMode === "smart" &&
+      query.trim() &&
+      kind !== "video"
+    )
+      return result;
     return order === "largest"
       ? [...result].sort((a, b) => b.size - a.size)
       : order === "name"
@@ -459,12 +497,19 @@ export default function PhotoGallery() {
     order,
     dateFrom,
     dateTo,
+    searchMode,
   ]);
   const layout = useGalleryLayout(
     assets,
     columns,
     grid,
-    order === "newest" || order === "oldest",
+    (order === "newest" || order === "oldest") &&
+      !(
+        view !== "cloud" &&
+        searchMode === "smart" &&
+        query.trim() &&
+        kind !== "video"
+      ),
     view + String(filtersOpen) + workspace + String(collectionOpen),
   );
   const chosen = selected.flatMap((id) => {
@@ -791,6 +836,20 @@ export default function PhotoGallery() {
           </div>
         )}
       </header>
+      {intelligenceOpen && (
+        <GalleryIntelligencePanel
+          albums={allAlbums}
+          onChange={(value) => {
+            setIntelligence(value);
+            if (!value.indexed) setSearchMode("files");
+            setRevision((r) => r + 1);
+          }}
+          onClose={() => {
+            setIntelligenceOpen(false);
+            setRevision((r) => r + 1);
+          }}
+        />
+      )}
       {searchOpen && browsing && (
         <label className="gw-search">
           <Search size={19} />
@@ -804,7 +863,11 @@ export default function PhotoGallery() {
             autoFocus
             type="search"
             aria-label="Search gallery"
-            placeholder="Search filenames…"
+            placeholder={
+              searchMode === "smart" && kind !== "video"
+                ? "Describe a photo or find words inside…"
+                : "Search filenames…"
+            }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -818,6 +881,35 @@ export default function PhotoGallery() {
             <X size={18} />
           </button>
         </label>
+      )}
+      {searchOpen && browsing && view !== "cloud" && (
+        <div className="gi-search-mode" aria-label="Search type">
+          <button
+            aria-pressed={searchMode === "files"}
+            onClick={() => setSearchMode("files")}
+          >
+            Filenames
+          </button>
+          <button
+            aria-pressed={searchMode === "smart"}
+            onClick={() => {
+              if (!intelligence?.indexed) setIntelligenceOpen(true);
+              else setSearchMode("smart");
+            }}
+          >
+            Smart search
+          </button>
+          <button onClick={() => setIntelligenceOpen(true)}>
+            Search settings
+          </button>
+          {searchMode === "smart" && (
+            <small>
+              {kind === "video"
+                ? "Videos use filename search. Photo analysis is available for photos only."
+                : `Searching ${intelligence?.indexed.toLocaleString() || 0} analyzed photos${intelligence?.visual ? " by scene and text" : " by text"}. Switch to filenames to search files not analyzed yet. Results are ranked by relevance.`}
+            </small>
+          )}
+        </div>
       )}
       <nav className="gw-navigation" aria-label="Gallery views">
         {(["photos", "organize", "backup"] as const).map((section) => (
@@ -896,6 +988,7 @@ export default function PhotoGallery() {
         <GalleryStorageHome
           summary={summary}
           pending={pending.length}
+          onSmartSearch={() => setIntelligenceOpen(true)}
           onPublic={() => {
             window.scrollTo(0, 0);
             setView("cloud");
