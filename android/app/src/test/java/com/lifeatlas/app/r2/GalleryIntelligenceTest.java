@@ -16,6 +16,7 @@ import org.robolectric.annotation.*;
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 28)
 @GraphicsMode(GraphicsMode.Mode.LEGACY)
+@SQLiteMode(SQLiteMode.Mode.LEGACY)
 public class GalleryIntelligenceTest {
   @Test
   public void tokenizerMatchesOpenAiReferenceIncludingUnicodeAndWhitespace() throws Exception {
