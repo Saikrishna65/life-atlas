@@ -1,9 +1,9 @@
-Atlas 2.0.1 — verified stable signing
+Atlas 2.0.2 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 30.
+3. Open the matching APK and choose Update. This build uses version code 31.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -165,3 +165,17 @@ Private backup configuration and recovery are available under Backup.
 2.0.1: Private Gallery has an edge-to-edge viewer with pinch zoom, panning,
 double-tap and visible Delete. Phone deletion uses Android trash; cloud copies
 and trip records are retained. Album covers load independently of the first page.
+
+
+2.0.2: Gallery → Organize adds Similar photos, optional People grouping, and
+Albums & memories. Similar-photo analysis needs no model download. People
+requires explicit consent and a separate 10.1 MB model download. Names and
+corrections remain local and encrypted; AI-index cloud recovery is not included.
+English OCR and optional description search are also included. Charging-only
+analysis defaults on. Battery Saver or high heat defers analysis.
+
+Suggested first test: plug in the phone, select a small camera album in analysis
+settings, enable Similar photos and leave People/description search off. Review
+suggested picks, then test People separately with consent and Wi-Fi. Test
+pause/resume and Forget people. Originals must remain unchanged. For detailed
+coverage and limitations, see docs/gallery/smart-collections.md.
