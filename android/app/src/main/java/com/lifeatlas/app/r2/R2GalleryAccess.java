@@ -3,6 +3,10 @@ package com.lifeatlas.app.r2;
 import org.json.JSONObject;
 
 final class R2GalleryAccess {
+  static boolean canAnalyze(JSONObject access) {
+    return access.optBoolean("images") || access.optBoolean("limited");
+  }
+
   static JSONObject describe(
       int sdk, boolean legacy, boolean images, boolean videos, boolean selected) throws Exception {
     boolean imageAccess = sdk >= 33 ? images : legacy,

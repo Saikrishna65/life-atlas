@@ -237,7 +237,7 @@ public class R2StoragePlugin extends Plugin {
         call,
         () -> {
           if (!call.getBoolean("approved", false)) throw new R2Exception("INVALID_SELECTION");
-          if (!galleryAccess().getBoolean("images"))
+          if (!R2GalleryAccess.canAnalyze(galleryAccess()))
             throw new R2Exception("GALLERY_PERMISSION_REQUIRED");
           call.resolve(js(new GalleryIntelligence(getContext()).configure(call.getData())));
         });
@@ -258,7 +258,7 @@ public class R2StoragePlugin extends Plugin {
     work(
         call,
         () -> {
-          if (!galleryAccess().getBoolean("images"))
+          if (!R2GalleryAccess.canAnalyze(galleryAccess()))
             throw new R2Exception("GALLERY_PERMISSION_REQUIRED");
           call.resolve(
               js(

@@ -19,6 +19,18 @@ import org.robolectric.annotation.*;
 @SQLiteMode(SQLiteMode.Mode.LEGACY)
 public class GalleryIntelligenceTest {
   @Test
+  public void selectedPhotoPermissionCanAnalyzeOnlyWhatMediaStoreExposes() throws Exception {
+    JSONObject selected = R2GalleryAccess.describe(34, false, false, false, true);
+    assertFalse(selected.getBoolean("images"));
+    assertTrue(R2GalleryAccess.canAnalyze(selected));
+    assertFalse(
+        R2GalleryAccess.canAnalyze(R2GalleryAccess.describe(34, false, false, true, false)));
+    assertFalse(
+        R2GalleryAccess.canAnalyze(R2GalleryAccess.describe(34, false, false, false, false)));
+    assertTrue(R2GalleryAccess.canAnalyze(R2GalleryAccess.describe(28, true, false, false, false)));
+  }
+
+  @Test
   public void tokenizerMatchesOpenAiReferenceIncludingUnicodeAndWhitespace() throws Exception {
     GalleryClipTokenizer t =
         new GalleryClipTokenizer(

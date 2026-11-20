@@ -132,7 +132,18 @@ public final class GalleryIntelligenceWorker extends Worker {
         }
         // The next page needs no network constraint once the models are installed.
         synchronized (GalleryIntelligence.STATE_LOCK) {
-          if (!stopped(service, epoch)) service.enqueue(service.settings());
+          if (!stopped(service, epoch)) {
+            service.change(
+                epoch,
+                v -> {
+                  try {
+                    v.put("state", "waiting");
+                  } catch (JSONException e) {
+                    throw new IllegalStateException(e);
+                  }
+                });
+            service.enqueue(service.settings());
+          }
         }
         return Result.success();
       }
@@ -164,6 +175,7 @@ public final class GalleryIntelligenceWorker extends Worker {
           JSONObject row = db.get(id);
           if (current(row, media, config)) continue;
           Bitmap bitmap = null;
+          com.google.android.gms.tasks.Task<Text> pending = null;
           boolean failed = false;
           try {
             bitmap = decode(getApplicationContext(), id);
@@ -171,8 +183,10 @@ public final class GalleryIntelligenceWorker extends Worker {
               row = new JSONObject().put("media", metadata(media)).put("stamp", stamp);
             if (config.optBoolean("ocr") && !row.optBoolean("ocrDone")) {
               InputImage image = InputImage.fromBitmap(bitmap, 0);
-              String english = Tasks.await(latin.process(image), 45, TimeUnit.SECONDS).getText();
-              String hindi = Tasks.await(devanagari.process(image), 45, TimeUnit.SECONDS).getText();
+              pending = latin.process(image);
+              String english = Tasks.await(pending, 45, TimeUnit.SECONDS).getText();
+              pending = devanagari.process(image);
+              String hindi = Tasks.await(pending, 45, TimeUnit.SECONDS).getText();
               String text = english + "\n" + hindi;
               row.put("text", text.substring(0, Math.min(24000, text.length())))
                   .put("ocrDone", true);
@@ -195,12 +209,20 @@ public final class GalleryIntelligenceWorker extends Worker {
               if (stopped(service, epoch)) return Result.success();
               if (stamp.equals(R2DeviceGallery.stamp(gallery.one(id)))) db.put(row);
             }
-          } catch (SecurityException e) {
+          } catch (SecurityException
+              | java.util.concurrent.TimeoutException
+              | InterruptedException e) {
+            // Stop this batch rather than accumulating recognizers still holding input bitmaps.
             throw e;
           } catch (Exception e) {
             failed = true;
           } finally {
-            if (bitmap != null) bitmap.recycle();
+            if (bitmap != null) {
+              Bitmap owned = bitmap;
+              if (pending != null && !pending.isComplete())
+                pending.addOnCompleteListener(Runnable::run, done -> owned.recycle());
+              else owned.recycle();
+            }
           }
           final boolean didFail = failed;
           service.change(
