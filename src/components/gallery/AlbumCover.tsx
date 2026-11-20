@@ -41,10 +41,11 @@ export default function AlbumCover({
       io.disconnect();
     };
   }, [initial, name]);
+  const cover = initial ?? photo;
   return (
     <div ref={root} className="gc-cover">
-      {photo ? (
-        <GalleryThumbnail asset={deviceAsset(photo, [])} />
+      {cover ? (
+        <GalleryThumbnail asset={deviceAsset(cover, [])} />
       ) : (
         <ImageIcon size={30} />
       )}
