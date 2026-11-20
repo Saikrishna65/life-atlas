@@ -46,10 +46,11 @@ final class GalleryCollections {
               new GalleryIndexedPhotos(
                   context, db, config, kind.equals("similar"), kind.equals("people"));
           partial = index.partial;
-          summaries =
-              kind.equals("similar")
-                  ? new GallerySimilar(index, db.choice("similar")).summaries()
-                  : new GalleryPeople(index, db.choice("people")).summaries();
+          if (kind.equals("similar")) {
+            GallerySimilar similar = new GallerySimilar(index, db.choice("similar"));
+            partial |= similar.partial;
+            summaries = similar.summaries();
+          } else summaries = new GalleryPeople(index, db.choice("people")).summaries();
         }
       } else throw new R2Exception("INVALID_SELECTION");
       offset(cursor);

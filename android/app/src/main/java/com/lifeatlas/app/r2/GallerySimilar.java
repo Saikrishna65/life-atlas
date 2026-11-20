@@ -29,7 +29,7 @@ final class GallerySimilar {
   final boolean partial;
 
   GallerySimilar(GalleryIndexedPhotos index, JSONObject choices) throws Exception {
-    partial = index.partial;
+    boolean bounded = index.partial;
     Set<String> excluded = new HashSet<>();
     JSONArray ignore = choices.optJSONArray("excluded");
     if (ignore != null) for (int i = 0; i < ignore.length(); i++) excluded.add(ignore.getString(i));
@@ -56,6 +56,7 @@ final class GallerySimilar {
         for (Map.Entry<Integer, Node> e : n.children.entrySet())
           if (e.getKey() >= d - 10 && e.getKey() <= d + 10) stack.push(e.getValue());
       }
+      if (!stack.isEmpty()) bounded = true;
       if (selected != null) {
         selected.photos.add(p);
         selected.date = Math.max(selected.date, p.time);
@@ -66,7 +67,14 @@ final class GallerySimilar {
         if (root == null) root = node;
         else {
           Node parent = root;
+          int depth = 0;
           while (true) {
+            // Identical hashes with conflicting color/aspect evidence must not create an
+            // unbounded collision chain. Skip uncertain matches rather than blocking the UI.
+            if (++depth > 2048) {
+              bounded = true;
+              break;
+            }
             int distance =
                 GalleryPhotoQuality.distance(p.quality, parent.group.photos.get(0).quality);
             Node child = parent.children.get(distance);
@@ -111,6 +119,7 @@ final class GallerySimilar {
       groups.add(g);
     }
     groups.sort(Comparator.comparingLong((Group g) -> -g.date).thenComparing(g -> g.key));
+    partial = bounded;
   }
 
   Group group(String key) throws Exception {
