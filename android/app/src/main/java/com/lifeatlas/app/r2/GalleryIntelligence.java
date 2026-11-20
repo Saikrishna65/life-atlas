@@ -189,7 +189,7 @@ final class GalleryIntelligence {
     return Arrays.stream(q.toLowerCase(Locale.ROOT).trim().split("\\s+"))
         .filter(s -> !s.isEmpty())
         .limit(30)
-        .toList();
+        .collect(java.util.stream.Collectors.toList());
   }
 
   static boolean textMatch(String text, List<String> terms) {
