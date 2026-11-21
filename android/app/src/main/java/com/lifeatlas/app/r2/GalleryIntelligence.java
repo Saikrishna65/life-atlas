@@ -261,6 +261,19 @@ final class GalleryIntelligence {
   }
 
   boolean refreshMediaIfChanged() throws Exception {
+    JSONObject preferences = settings();
+    if (preferences.optBoolean("enabled")) {
+      boolean waiting = false;
+      for (WorkInfo work :
+          WorkManager.getInstance(context)
+              .getWorkInfosForUniqueWork("atlas-gallery-media-watch")
+              .get(3, TimeUnit.SECONDS))
+        if (!work.getState().isFinished()) {
+          waiting = true;
+          break;
+        }
+      if (!waiting) watch(preferences);
+    }
     StringBuilder token = new StringBuilder();
     boolean limited =
         android.os.Build.VERSION.SDK_INT >= 34
