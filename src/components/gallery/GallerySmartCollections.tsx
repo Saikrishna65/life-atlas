@@ -466,7 +466,7 @@ export default function GallerySmartCollections({
           >
             <button
               className="gsmart-card"
-              aria-label={`Open ${collection.title}`}
+              aria-label={`${peopleSelecting ? "Select" : "Open"} ${collection.title}`}
               aria-pressed={
                 peopleSelecting
                   ? peopleSelection.includes(collection.id)
@@ -699,7 +699,7 @@ export default function GallerySmartCollections({
                 <article key={face.id}>
                   <button
                     className="gsmart-photo"
-                    aria-label="Inspect original photo for this face"
+                    aria-label="Open photo"
                     onClick={() => setViewer(face.mediaId)}
                   >
                     <GalleryCollectionCover faceId={face.id} />

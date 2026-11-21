@@ -229,6 +229,17 @@ final class GalleryCollections {
         try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
           JSONObject undo = db.choice("people-undo");
           if (!undo.optBoolean("saved")) throw new R2Exception("NOTHING_TO_UNDO");
+          JSONObject restored = undo.optJSONObject("row");
+          if (restored != null) {
+            JSONObject media = gallery.one(restored.getJSONObject("media").getString("id"));
+            if (!R2DeviceGallery.stamp(media).equals(restored.optString("stamp")))
+              throw new R2Exception("SOURCE_CHANGED");
+            JSONObject live = db.get(media.getString("id"));
+            if (live == null) live = restored;
+            live.put("faces", restored.getJSONArray("faces"))
+                .put("faceVersion", restored.getString("faceVersion"));
+            db.put(live);
+          }
           db.choice("people", undo.getJSONObject("choices"));
           db.forgetChoices("people-undo");
         }
@@ -315,6 +326,9 @@ final class GalleryCollections {
         if (action.equals("exclude-face")) {
           String faceId = input.getString("faceId");
           JSONObject row = db.byToken(faceId.substring(0, 64));
+          JSONObject undo = db.choice("people-undo");
+          undo.put("row", new JSONObject(row.toString()));
+          db.choice("people-undo", undo);
           JSONArray kept = new JSONArray(), faces = row.getJSONArray("faces");
           for (int i = 0; i < faces.length(); i++)
             if (!faceId.equals(faces.getJSONObject(i).getString("id"))) kept.put(faces.get(i));

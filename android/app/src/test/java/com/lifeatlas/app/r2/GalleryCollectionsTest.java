@@ -198,6 +198,11 @@ public class GalleryCollectionsTest {
     }
     assertEquals(
         1, api.list("people", "").getJSONArray("collections").getJSONObject(0).getInt("count"));
+    api.edit(new JSONObject().put("action", "undo-people"));
+    assertEquals(
+        2, api.list("people", "").getJSONArray("collections").getJSONObject(0).getInt("count"));
+    assertTrue(
+        api.thumbnail(firstFace).getString("thumbnail").startsWith("data:image/jpeg;base64,"));
   }
 
   @Test

@@ -348,6 +348,10 @@ export default function PhotoViewer({
               inert={offset !== 0}
               style={{
                 transform: `translate3d(calc(${offset * 100}% + ${drag}px),0,0)`,
+                backgroundImage:
+                  media.poster && transform.scale === 1
+                    ? `url(${JSON.stringify(media.poster)})`
+                    : undefined,
               }}
             >
               {offset === 0 && media.kind === "video" ? (
@@ -363,6 +367,7 @@ export default function PhotoViewer({
               ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
+                  key={`${media.id}:${offset}`}
                   src={offset === 0 ? media.url : media.poster || media.url}
                   alt={offset === 0 ? media.caption || "Photo" : ""}
                   draggable={false}
