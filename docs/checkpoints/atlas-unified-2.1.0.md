@@ -70,3 +70,26 @@ check Wi-Fi preferences, Later and Android's install-permission handoff when a
 newer signed version exists. No personal cloud operations are run by build tests.
 A same-version release should not be offered as an update. Full update installation
 requires a later version and physical-device verification.
+
+## Completed release verification
+
+- Full TypeScript suite: 487 passed; updater/signing checks: 7 passed.
+- TypeScript, scoped updater lint, production Next build and mobile bundle passed.
+- AI encrypted-storage mobile smoke, Gallery normal-motion/2,000-item library,
+  Places, private Library and updater UI Chromium flows passed. Native/network
+  responses in browser harnesses are synthetic; no physical-device claim.
+- Signed workflow `44895608792` passed debug and preview native tests, both APK
+  assemblies, package/version guards and signature/update verification.
+- Release source: `ed9ef42abfd488590511938d949ea1acc73dcefa`.
+- Downloaded `atlas.apk`: 73,494,296 bytes; package `com.lifeatlas.app.next`, label
+  `Atlas`, version 2.1.0 / code 35. APK SHA-256:
+  `4c5636c045ffc3f01487c165a69d1aac076bac10f94fb27a1024a1ee12e4a9fd`.
+- Published update catalog byte count and digest match the downloaded APK.
+- APK signing certificate matches the existing stable installation certificate:
+  `2f19571f9d6a4a3b4c7250397b7618f04e047beeeaa0023713e2a6c0a745af7d`.
+- Local Java/Kotlin app and test compilation passed. Local Robolectric execution
+  could not download its Android framework through the workspace proxy; full
+  native tests passed on the signed GitHub Actions runner instead.
+- No phone installation, WhatsApp handoff, native voice/wake-word survival,
+  Android installer permission or future-version in-app upgrade was physically
+  tested. Those remain owner device checks after this manual installation.
