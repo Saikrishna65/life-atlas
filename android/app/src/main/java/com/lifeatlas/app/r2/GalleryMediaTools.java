@@ -23,8 +23,8 @@ final class GalleryMediaTools {
           edits = db.choice("edits");
       JSONObject result =
           new JSONObject()
-              .put("position", positions == null ? 0 : positions.optDouble(key))
-              .put("cover", covers == null ? 0 : covers.optDouble(key));
+              .put("position", positions == null ? 0 : positions.optDouble(key, 0))
+              .put("cover", covers == null ? 0 : covers.optDouble(key, 0));
       JSONObject edit = edits.optJSONObject(key);
       if (edit != null) {
         String original = edit.optString("originalKey");
