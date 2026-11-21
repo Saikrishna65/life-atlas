@@ -87,7 +87,8 @@ final class GallerySearchStore implements AutoCloseable {
         thinFaces.put(
             new JSONObject()
                 .put("id", face.optString("id"))
-                .put("embedding", face.optJSONArray("embedding")));
+                .put("embedding", face.optJSONArray("embedding"))
+                .put("quality", face.optDouble("quality", 1)));
       }
     if (thinFaces.length() > 0)
       summary.put("faces", thinFaces).put("faceVersion", row.optString("faceVersion"));
@@ -157,8 +158,17 @@ final class GallerySearchStore implements AutoCloseable {
     }
   }
 
-  JSONObject choice(String id) throws Exception {
-    String key = token(id);
+  // SQLite CursorWindow cannot hold multi-megabyte recovery records. Keep large notes as
+  // immutable ciphertext files, with a tiny authenticated pointer committed last in SQLite.
+  private File noteFile(String key, String version) throws Exception {
+    if (!version.matches("[a-f0-9-]{36}")) throw new R2Exception("INVALID_GALLERY_RECOVERY");
+    File directory = new File(secure.directory(), "gallery-notes");
+    if (!directory.isDirectory() && !directory.mkdirs())
+      throw new IOException("LOCAL_STORAGE_UNAVAILABLE");
+    return new File(directory, key + "-" + version);
+  }
+
+  private JSONObject storedChoice(String key) throws Exception {
     try (Cursor c = db.rawQuery("SELECT payload FROM choices WHERE token=?", new String[] {key})) {
       if (!c.moveToFirst()) return new JSONObject();
       byte[] plain = secure.unseal("gallery-choices-v1:" + key, c.getBlob(0));
@@ -170,20 +180,59 @@ final class GallerySearchStore implements AutoCloseable {
     }
   }
 
-  void choice(String id, JSONObject data) throws Exception {
+  JSONObject choice(String id) throws Exception {
     String key = token(id);
-    byte[] plain = data.toString().getBytes(StandardCharsets.UTF_8);
-    ContentValues v = new ContentValues();
-    v.put("token", key);
+    JSONObject value = storedChoice(key);
+    String version = value.optString("_atlasEncryptedNote");
+    if (version.isEmpty()) return value;
+    File file = noteFile(key, version);
+    if (file.length() > 32L * 1024 * 1024 + 4096) throw new IOException("INVALID_GALLERY_RECOVERY");
+    byte[] plain =
+        secure.unseal(
+            "gallery-large-choice-v1:" + key + ":" + version,
+            java.nio.file.Files.readAllBytes(file.toPath()));
     try {
-      v.put("payload", secure.seal("gallery-choices-v1:" + key, plain));
+      return new JSONObject(new String(plain, StandardCharsets.UTF_8));
     } finally {
       java.util.Arrays.fill(plain, (byte) 0);
     }
-    if (db.insertWithOnConflict("choices", null, v, SQLiteDatabase.CONFLICT_REPLACE) < 0)
-      throw new IOException("LOCAL_STORAGE_UNAVAILABLE");
-    if (java.util.Set.of("people", "similar", "memories", "media-preferences").contains(id))
-      invalidate();
+  }
+
+  void choice(String id, JSONObject data) throws Exception {
+    String key = token(id), previous = storedChoice(key).optString("_atlasEncryptedNote");
+    byte[] plain = data.toString().getBytes(StandardCharsets.UTF_8);
+    File pending = null;
+    ContentValues v = new ContentValues();
+    v.put("token", key);
+    try {
+      if (plain.length > 32 * 1024 * 1024) throw new IOException("INVALID_GALLERY_RECOVERY");
+      if (plain.length > 512 * 1024) {
+        String version = java.util.UUID.randomUUID().toString();
+        pending = noteFile(key, version);
+        byte[] encrypted = secure.seal("gallery-large-choice-v1:" + key + ":" + version, plain);
+        try (FileOutputStream out = new FileOutputStream(pending)) {
+          out.write(encrypted);
+          out.getFD().sync();
+        }
+        byte[] pointer =
+            new JSONObject()
+                .put("_atlasEncryptedNote", version)
+                .toString()
+                .getBytes(StandardCharsets.UTF_8);
+        v.put("payload", secure.seal("gallery-choices-v1:" + key, pointer));
+      } else v.put("payload", secure.seal("gallery-choices-v1:" + key, plain));
+      if (db.insertWithOnConflict("choices", null, v, SQLiteDatabase.CONFLICT_REPLACE) < 0)
+        throw new IOException("LOCAL_STORAGE_UNAVAILABLE");
+    } catch (Exception e) {
+      if (pending != null) pending.delete();
+      throw e;
+    } finally {
+      java.util.Arrays.fill(plain, (byte) 0);
+    }
+    if (!previous.isEmpty()) noteFile(key, previous).delete();
+    if (java.util.Set.of("people", "similar", "memories", "media-preferences", "albums")
+            .contains(id)
+        || id.startsWith("album:")) invalidate();
   }
 
   JSONObject cache(String kind, String key) throws Exception {
@@ -268,6 +317,15 @@ final class GallerySearchStore implements AutoCloseable {
                     .put("complete", start + 80 >= faces.length()));
           }
       }
+      cachePut(
+          kind,
+          "matches",
+          new JSONObject()
+              .put(
+                  "matches",
+                  snapshot.optJSONArray("matches") == null
+                      ? new JSONArray()
+                      : snapshot.getJSONArray("matches")));
       JSONObject info = new JSONObject();
       for (String field : java.util.List.of("revision", "scope", "partial", "needsAnalysis"))
         info.put(field, snapshot.get(field));
@@ -290,11 +348,15 @@ final class GallerySearchStore implements AutoCloseable {
   }
 
   void forgetChoices(String id) throws Exception {
-    db.delete("choices", "token=?", new String[] {token(id)});
+    String key = token(id), previous = storedChoice(key).optString("_atlasEncryptedNote");
+    db.delete("choices", "token=?", new String[] {key});
+    if (!previous.isEmpty()) noteFile(key, previous).delete();
   }
 
   void forgetAllChoices() {
     db.delete("choices", null, null);
+    File[] files = new File(secure.directory(), "gallery-notes").listFiles();
+    if (files != null) for (File file : files) file.delete();
   }
 
   Cursor rows() {

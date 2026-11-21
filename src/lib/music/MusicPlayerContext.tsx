@@ -10,11 +10,7 @@ import React, {
   useCallback,
   ReactNode,
 } from "react";
-import {
-  MusicTrack,
-  PlaybackState,
-  RepeatMode,
-} from "./types";
+import { MusicTrack, PlaybackState, RepeatMode } from "./types";
 import {
   getTrack,
   saveTrack,
@@ -33,7 +29,7 @@ interface MusicPlayerContextValue extends PlaybackState {
   playTrack: (
     track: MusicTrack,
     newQueue?: MusicTrack[],
-    context?: PlaybackState["sourceContext"]
+    context?: PlaybackState["sourceContext"],
   ) => Promise<void>;
   togglePlayPause: () => void;
   pause: () => void;
@@ -72,7 +68,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [queue, setQueue] = useState<MusicTrack[]>([]);
   const [queueIndex, setQueueIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [sourceContext, setSourceContext] = useState<PlaybackState["sourceContext"]>(undefined);
+  const [sourceContext, setSourceContext] =
+    useState<PlaybackState["sourceContext"]>(undefined);
   const [isNowPlayingOpen, setIsNowPlayingOpen] = useState(false);
 
   // Live refs so background & lock-screen callbacks always read fresh state without stale closures
@@ -119,15 +116,28 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   }, [isPlaying]);
 
   const pushNativeState = useCallback(
-    (override?: Partial<{ track: MusicTrack | null; playing: boolean; posSec: number; durSec: number; rate: number }>) => {
-      const track = override && "track" in override ? override.track : currentTrackRef.current;
+    (
+      override?: Partial<{
+        track: MusicTrack | null;
+        playing: boolean;
+        posSec: number;
+        durSec: number;
+        rate: number;
+      }>,
+    ) => {
+      const track =
+        override && "track" in override
+          ? override.track
+          : currentTrackRef.current;
       if (!track) return;
       const audio = audioRef.current;
       const playing = override?.playing ?? isPlayingRef.current;
       const posSec = override?.posSec ?? (audio ? audio.currentTime : 0);
       const rawDur =
         override?.durSec ??
-        ((audio && Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : durationRef.current) ||
+        ((audio && Number.isFinite(audio.duration) && audio.duration > 0
+          ? audio.duration
+          : durationRef.current) ||
           track.duration ||
           0);
       const rate = override?.rate ?? playbackRateRef.current;
@@ -144,7 +154,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         playbackRate: rate,
       });
     },
-    []
+    [],
   );
 
   // Initialize Audio element once (never recreate on currentTrack change!)
@@ -168,7 +178,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       }
 
       // Periodically sync position with native Android MediaSession every 5s while playing
-      if (activeTrack && !audio.paused && Date.now() - lastNativePositionSyncRef.current > 5000) {
+      if (
+        activeTrack &&
+        !audio.paused &&
+        Date.now() - lastNativePositionSyncRef.current > 5000
+      ) {
         pushNativeState({ playing: true, posSec: audio.currentTime });
       }
     };
@@ -181,7 +195,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         const activeTrack = currentTrackRef.current;
         if (activeTrack) {
           pushNativeState({ durSec: audio.duration });
-          if ((!activeTrack.duration || activeTrack.duration === 0) && roundedDuration > 0) {
+          if (
+            (!activeTrack.duration || activeTrack.duration === 0) &&
+            roundedDuration > 0
+          ) {
             const updatedTrack = { ...activeTrack, duration: roundedDuration };
             currentTrackRef.current = updatedTrack;
             setCurrentTrack(updatedTrack);
@@ -224,7 +241,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       isPlayingRef.current = false;
       setIsPlaying(false);
       pushNativeState({ playing: false });
-      setError("Unable to play track. File may be unavailable or network offline.");
+      setError(
+        "This audio could not play. The file may be unavailable, or this phone may not support its codec. The imported original is kept.",
+      );
     };
 
     audio.addEventListener("timeupdate", handleTimeUpdate);
@@ -248,46 +267,50 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     };
   }, [pushNativeState]);
 
-  const downloadTrack = useCallback(async (track: MusicTrack): Promise<void> => {
-    const downloadSrc = track.audioUrl || track.streamUrl || `/api/music/stream/${track.id}`;
-    if (!downloadSrc) return;
+  const downloadTrack = useCallback(
+    async (track: MusicTrack): Promise<void> => {
+      const downloadSrc =
+        track.audioUrl || track.streamUrl || `/api/music/stream/${track.id}`;
+      if (!downloadSrc) return;
 
-    try {
-      track.downloadStatus = "DOWNLOADING";
-      track.downloadProgress = 15;
-      await saveTrack(track);
+      try {
+        track.downloadStatus = "DOWNLOADING";
+        track.downloadProgress = 15;
+        await saveTrack(track);
 
-      const response = await fetch(downloadSrc);
-      if (!response.ok) throw new Error("Audio download failed");
+        const response = await fetch(downloadSrc);
+        if (!response.ok) throw new Error("Audio download failed");
 
-      const blob = await response.blob();
-      track.audioBlob = blob;
-      track.source = "DOWNLOADED";
-      track.size = blob.size;
-      track.downloadStatus = "DOWNLOADED";
-      track.downloadProgress = 100;
+        const blob = await response.blob();
+        track.audioBlob = blob;
+        track.source = "DOWNLOADED";
+        track.size = blob.size;
+        track.downloadStatus = "DOWNLOADED";
+        track.downloadProgress = 100;
 
-      await saveTrack(track);
+        await saveTrack(track);
 
-      if (currentTrackRef.current?.id === track.id) {
-        setCurrentTrack({ ...track });
+        if (currentTrackRef.current?.id === track.id) {
+          setCurrentTrack({ ...track });
+        }
+        setQueue((prev) =>
+          prev.map((t) => (t.id === track.id ? { ...track } : t)),
+        );
+      } catch {
+        track.downloadStatus = "FAILED";
+        await saveTrack(track);
+        setError("Download failed. Verify internet connection.");
       }
-      setQueue((prev) =>
-        prev.map((t) => (t.id === track.id ? { ...track } : t))
-      );
-    } catch {
-      track.downloadStatus = "FAILED";
-      await saveTrack(track);
-      setError("Download failed. Verify internet connection.");
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Core Play Track Function
   const playTrack = useCallback(
     async (
       track: MusicTrack,
       newQueue?: MusicTrack[],
-      context?: PlaybackState["sourceContext"]
+      context?: PlaybackState["sourceContext"],
     ) => {
       const audio = audioRef.current;
       if (!audio) return;
@@ -388,7 +411,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
               : track.duration) || 0,
         });
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Playback blocked or failed";
+        const message =
+          err instanceof Error ? err.message : "Playback blocked or failed";
         console.warn("Audio play error:", message);
         isPlayingRef.current = false;
         setIsPlaying(false);
@@ -396,7 +420,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         setError("Playback paused or interrupted. Tap to resume.");
       }
     },
-    [downloadTrack, pushNativeState]
+    [downloadTrack, pushNativeState],
   );
 
   // Next Track Logic (reads live refs so lock-screen & background auto-advance never use stale closures)
@@ -545,7 +569,11 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   // Update Web MediaSession API (for desktop / Chrome browsers)
   useEffect(() => {
-    if (typeof navigator === "undefined" || !("mediaSession" in navigator) || !currentTrack) {
+    if (
+      typeof navigator === "undefined" ||
+      !("mediaSession" in navigator) ||
+      !currentTrack
+    ) {
       return;
     }
 
@@ -583,7 +611,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
 
   // Setup Web MediaSession action handlers
   useEffect(() => {
-    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator))
+      return;
 
     navigator.mediaSession.setActionHandler("play", () => {
       audioRef.current?.play().catch(() => {});
@@ -623,7 +652,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       if (audioRef.current) {
         const nextPos = Math.min(
           audioRef.current.currentTime + skipTime,
-          audioRef.current.duration || 0
+          audioRef.current.duration || 0,
         );
         audioRef.current.currentTime = nextPos;
         pushNativeState({ posSec: nextPos });
@@ -691,7 +720,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const toggleShuffle = () => {
     setIsShuffle((prev) => !prev);
     if (!isShuffle && queue.length > 1) {
-      const remaining = [...queue.slice(queueIndex + 1)].sort(() => Math.random() - 0.5);
+      const remaining = [...queue.slice(queueIndex + 1)].sort(
+        () => Math.random() - 0.5,
+      );
       const newQueue = [...queue.slice(0, queueIndex + 1), ...remaining];
       queueRef.current = newQueue;
       setQueue(newQueue);
@@ -769,7 +800,9 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       setCurrentTrack((prev) => (prev ? { ...prev, isFavorite: isFav } : null));
     }
     setQueue((prev) => {
-      const next = prev.map((t) => (t.id === trackId ? { ...t, isFavorite: isFav } : t));
+      const next = prev.map((t) =>
+        t.id === trackId ? { ...t, isFavorite: isFav } : t,
+      );
       queueRef.current = next;
       return next;
     });

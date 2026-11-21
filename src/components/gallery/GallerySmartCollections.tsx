@@ -25,6 +25,7 @@ import type {
 import { Modal } from "@/components/world/primitives";
 import GalleryCollectionCover from "./GalleryCollectionCover";
 import { cachedThumbnail } from "./GalleryThumbnail";
+import GalleryAlbumPicker from "./GalleryAlbumPicker";
 import PhotoViewer from "./PhotoViewer";
 import "./smart-collections.css";
 
@@ -71,6 +72,9 @@ export default function GallerySmartCollections({
     },
     70,
   );
+  const [showMatches, setShowMatches] = useState(false),
+    [matchNames, setMatchNames] = useState<Record<string, string>>({});
+  const [newAlbum, setNewAlbum] = useState(false);
   const [mergeTarget, setMergeTarget] = useState("");
   useGalleryBack(
     !!selected,
@@ -147,7 +151,7 @@ export default function GallerySmartCollections({
   }, [page?.cursor, loading, load]);
   const selectedKey = selected?.id;
   useEffect(() => {
-    if (!selectedKey || mode === "memories") return;
+    if (!selectedKey || mode === "memories" || mode === "albums") return;
     let alive = true;
     queueMicrotask(() => {
       if (!alive) return;
@@ -231,7 +235,7 @@ export default function GallerySmartCollections({
     }
   };
   const open = (collection: SmartCollection) => {
-    if (mode === "memories") {
+    if (mode === "memories" || mode === "albums") {
       onOpen(collection);
       return;
     }
@@ -248,6 +252,7 @@ export default function GallerySmartCollections({
     similar: "Similar photos",
     people: "People",
     memories: "Albums & memories",
+    albums: "My albums",
   };
   return (
     <section
@@ -276,7 +281,9 @@ export default function GallerySmartCollections({
             ? "Review nearby shots, keep your favorite pick and leave the rest of your library untouched."
             : mode === "people"
               ? "Suggested face groups can be mistaken. Review the photos and confirm names yourself. Nothing is shared publicly."
-              : "Albums gather themselves from your camera dates and media types. Anniversaries appear when there is a real dated memory to revisit."}
+              : mode === "albums"
+                ? "Albums you create. Your originals stay in their folders."
+                : "Albums gather themselves from your camera dates and media types. Anniversaries appear when there is a real dated memory to revisit."}
         </p>
       </div>
       <div className="gsmart-tools">
@@ -284,7 +291,7 @@ export default function GallerySmartCollections({
           <RefreshCw size={16} />
           Refresh
         </button>
-        {mode !== "memories" && (
+        {(mode === "similar" || mode === "people") && (
           <button onClick={() => onSettings(mode)}>
             <Settings2 size={16} />
             Analysis settings
@@ -354,18 +361,22 @@ export default function GallerySmartCollections({
       {!loading && page && !page.needsAnalysis && !collections.length && (
         <div className="gsmart-empty">
           <h3>
-            {mode === "memories"
-              ? "Your next look back will be here."
-              : "Nothing to review yet."}
+            {mode === "albums"
+              ? "Make it yours."
+              : mode === "memories"
+                ? "Your next look back will be here."
+                : "Nothing to review yet."}
           </h3>
           <p>
-            {mode === "memories"
-              ? "Photos with saved camera dates will appear in dated albums. Videos and screenshot albums appear when available."
-              : mode === "people"
-                ? "Clear, larger faces work best. Let analysis finish, then refresh. Small or unclear faces may not be grouped."
-                : "Let photo analysis finish, then refresh. These suggestions are deliberately conservative."}
+            {mode === "albums"
+              ? "Create an album, then add photos or videos from your phone. Originals stay in their folders."
+              : mode === "memories"
+                ? "Photos with saved camera dates will appear in dated albums. Videos and screenshot albums appear when available."
+                : mode === "people"
+                  ? "Clear, larger faces work best. Let analysis finish, then refresh. Small or unclear faces may not be grouped."
+                  : "Let photo analysis finish, then refresh. These suggestions are deliberately conservative."}
           </p>
-          {mode !== "memories" && (
+          {(mode === "similar" || mode === "people") && (
             <button onClick={() => onSettings(mode)}>Check analysis</button>
           )}
         </div>
@@ -458,6 +469,104 @@ export default function GallerySmartCollections({
           )}
         </div>
       )}
+      {mode === "people" && !!page?.matches?.length && (
+        <div className="gsmart-matches">
+          <button
+            onClick={() => setShowMatches((v) => !v)}
+            aria-expanded={showMatches}
+          >
+            Review possible matches · {page.matches.length}
+          </button>
+          {showMatches &&
+            page.matches.map((pair, pairIndex) => (
+              <article key={pair.id}>
+                <h3>Could these be the same person?</h3>
+                <div className="gsmart-match-pair">
+                  <div>
+                    <GalleryCollectionCover faceId={pair.leftFace} />
+                    <span>{pair.leftName}</span>
+                  </div>
+                  <div>
+                    <GalleryCollectionCover faceId={pair.rightFace} />
+                    <span>{pair.rightName}</span>
+                  </div>
+                </div>
+                <label>
+                  Confirm a name
+                  <input
+                    aria-label={`Name for match ${pairIndex + 1}`}
+                    value={
+                      matchNames[pair.id] ??
+                      (pair.leftName !== "Unnamed person"
+                        ? pair.leftName
+                        : pair.rightName !== "Unnamed person"
+                          ? pair.rightName
+                          : "")
+                    }
+                    onChange={(e) =>
+                      setMatchNames((v) => ({
+                        ...v,
+                        [pair.id]: e.target.value,
+                      }))
+                    }
+                    maxLength={80}
+                  />
+                </label>
+                <button
+                  disabled={
+                    busy ||
+                    !(
+                      matchNames[pair.id] ??
+                      (pair.leftName !== "Unnamed person"
+                        ? pair.leftName
+                        : pair.rightName !== "Unnamed person"
+                          ? pair.rightName
+                          : "")
+                    ).trim()
+                  }
+                  onClick={() =>
+                    void act({
+                      action: "confirm-people-pair",
+                      keys: [pair.left, pair.right],
+                      name:
+                        matchNames[pair.id] ??
+                        (pair.leftName !== "Unnamed person"
+                          ? pair.leftName
+                          : pair.rightName),
+                    })
+                  }
+                >
+                  Same person · merge
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    void act({ action: "reject-people-match", key: pair.id })
+                  }
+                >
+                  Different people
+                </button>
+              </article>
+            ))}
+          <p>
+            These are suggestions. Nothing merges without your confirmation.
+          </p>
+        </div>
+      )}
+      {mode === "albums" && (
+        <button onClick={() => setNewAlbum(true)}>Create album</button>
+      )}
+      {newAlbum && (
+        <GalleryAlbumPicker
+          ids={[]}
+          onClose={() => setNewAlbum(false)}
+          onSaved={() => {
+            setNewAlbum(false);
+            pages.delete("albums");
+            setEpoch((v) => v + 1);
+          }}
+        />
+      )}
       <div className={`gsmart-grid${mode === "people" ? " is-people" : ""}`}>
         {collections.map((collection) => (
           <article
@@ -506,6 +615,83 @@ export default function GallerySmartCollections({
                 <span>{collection.subtitle}</span>
               </span>
             </button>
+            {mode === "albums" && (
+              <div className="gsmart-album-controls">
+                <button
+                  aria-label={`Rename ${collection.title}`}
+                  onClick={() => {
+                    const name = prompt("Album name", collection.title);
+                    if (name?.trim())
+                      void R2.editGalleryAlbum({
+                        action: "rename",
+                        id: collection.id,
+                        name,
+                      })
+                        .then(() => {
+                          pages.delete(mode);
+                          setEpoch((v) => v + 1);
+                        })
+                        .catch((e) => setError(storageError(e)));
+                  }}
+                >
+                  Rename
+                </button>
+                <button
+                  aria-label={`Move ${collection.title} earlier`}
+                  onClick={() =>
+                    void R2.editGalleryAlbum({
+                      action: "move",
+                      id: collection.id,
+                      direction: -1,
+                    })
+                      .then(() => {
+                        pages.delete(mode);
+                        setEpoch((v) => v + 1);
+                      })
+                      .catch((e) => setError(storageError(e)))
+                  }
+                >
+                  ↑
+                </button>
+                <button
+                  aria-label={`Move ${collection.title} later`}
+                  onClick={() =>
+                    void R2.editGalleryAlbum({
+                      action: "move",
+                      id: collection.id,
+                      direction: 1,
+                    })
+                      .then(() => {
+                        pages.delete(mode);
+                        setEpoch((v) => v + 1);
+                      })
+                      .catch((e) => setError(storageError(e)))
+                  }
+                >
+                  ↓
+                </button>
+                <button
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Delete this album? Your photos and videos remain.",
+                      )
+                    )
+                      void R2.editGalleryAlbum({
+                        action: "delete",
+                        id: collection.id,
+                      })
+                        .then(() => {
+                          pages.delete(mode);
+                          setEpoch((v) => v + 1);
+                        })
+                        .catch((e) => setError(storageError(e)));
+                  }}
+                >
+                  Delete album
+                </button>
+              </div>
+            )}
             {collection.kind === "memory" && (
               <button
                 className="gsmart-hide"

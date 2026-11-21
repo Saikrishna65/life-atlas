@@ -576,3 +576,85 @@
   aspect-ratio: 1;
   border-radius: 50%;
 }
+
+.gsmart-album-name {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0;
+  font-size: 14px;
+}
+.gsmart-album-name input {
+  border: 1px solid #d1dfd5;
+  border-radius: 12px;
+  padding: 14px;
+  color: #182f25;
+  background: white;
+}
+.gsmart-album-choices {
+  display: grid;
+  gap: 8px;
+  max-height: 40vh;
+  overflow: auto;
+}
+.gsmart-album-choices button {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  background: #f3f7f1;
+  border-radius: 12px;
+  text-align: left;
+}
+.gsmart-album-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+.gsmart-album-controls button {
+  padding: 6px 8px !important;
+  min-height: 36px !important;
+  font-size: 11px !important;
+}
+
+.gsmart-matches {
+  margin: 20px 0;
+}
+.gsmart-matches article {
+  padding: 20px;
+  border: 1px solid #d9e3da;
+  border-radius: 18px;
+  margin-top: 12px;
+  max-width: 480px;
+}
+.gsmart-match-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin: 20px 0;
+}
+.gsmart-match-pair .gsmart-cover {
+  display: block;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+}
+.gsmart-match-pair span {
+  display: block;
+  text-align: center;
+  font-size: 13px;
+  margin-top: 9px;
+}
+.gsmart-matches label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+  margin: 14px 0;
+}
+.gsmart-matches input {
+  padding: 12px;
+  border: 1px solid #d1ddd1;
+  border-radius: 10px;
+}

@@ -7,11 +7,15 @@ export default function ViewerVideo({
   poster,
   show,
   onActivity,
+  onResumeTime,
+  onPosition,
 }: {
   src: string;
   poster?: string;
   show: boolean;
   onActivity: () => void;
+  onResumeTime?: () => number;
+  onPosition?: (seconds: number) => void;
 }) {
   const video = useRef<HTMLVideoElement>(null),
     [playing, setPlaying] = useState(false),
@@ -41,8 +45,16 @@ export default function ViewerVideo({
         onPlaying={() => setWaiting(false)}
         onWaiting={() => setWaiting(true)}
         onCanPlay={() => setWaiting(false)}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => {
+          setDuration(e.currentTarget.duration);
+          const initialTime = onResumeTime?.() || 0;
+          if (initialTime > 0 && initialTime < e.currentTarget.duration)
+            e.currentTarget.currentTime = initialTime;
+        }}
+        onTimeUpdate={(e) => {
+          setTime(e.currentTarget.currentTime);
+          onPosition?.(e.currentTarget.currentTime);
+        }}
         onError={() => {
           setFailed(true);
           setWaiting(false);

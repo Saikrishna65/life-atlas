@@ -1,9 +1,9 @@
-Atlas 2.0.3 — verified stable signing
+Atlas 2.0.4 — Atlas Photos and original-quality viewing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 32.
+3. Open the matching APK and choose Update. This build uses version code 33.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -202,3 +202,74 @@ bucket; Forget people removes local data, not older cloud recovery snapshots.
 Test on a small album first. Check swipe/pinch/video controls, each Back layer,
 merge/undo, pause/resume, and offline browsing. Live R2 recovery and real phone
 battery/heat remain device checks; build tests use synthetic data only.
+
+
+Atlas Photos 2.0.4
+------------------
+A second Atlas Photos launcher icon opens Gallery inside the same installed app.
+It shares existing photos, permissions, vaults, local database and protected shell.
+It is not another package. Your Atlas Next icon and data stay in place.
+
+Photos open directly from originals; neighbouring photos keep the same original
+image elements while swiping, so returning does not restart a thumbnail-to-original
+swap. Large grids use sharper, bounded 960-pixel cached derivatives (94% JPEG),
+not every full-resolution original. Originals and original uploads are unchanged.
+The native cache is capped at 96 MiB / 800 files; only three thumbnail requests
+run concurrently. Original decoding speed and very large image memory use still
+depend on the device and its WebView.
+
+Viewer gestures: swipe sideways to navigate photos/videos, down to close, up for
+actions, pinch/pan to inspect, double tap to zoom/reset, tap to toggle controls.
+A short hold while zoomed temporarily magnifies detail. Info and Delete now live
+in the bottom toolbar with Share, Favourite and More. Video controls sit above
+that toolbar; recently opened videos remember their position for this viewer session.
+
+Share one or up to 100 selected device files through Android's share sheet without
+putting originals into JavaScript memory. Edit a copy opens an installed compatible
+photo editor, then saves its result in Pictures/Atlas Edits; the camera original is
+never writable by the editor. This build does not bundle a photo/video editor.
+Use as offers Android's installed wallpaper/contact-photo handlers where available.
+Original shares may include location metadata. Protected cloud shares create an
+explicitly shared cache copy; unused shares are cleaned on subsequent sharing.
+
+My albums are virtual: select files, choose Album, create one or add to an existing
+album. Collections > My albums lets you rename, reorder or delete albums. Inside
+an album, select a cover or remove members. Deleting an album does not delete files.
+Long hold starts selection; drag across photos in selection mode to select more.
+Pinch the grid to change density. Photos remain browsable offline.
+
+Search recognises saved trip/place names, photos/videos, favourites, English month
+and year, ISO dates, this/last month and this/last year. Tap the suggested Search
+filters to apply; view options lets you change/reset them. Unknown names are not
+geocoded or guessed. Scene/text search still needs the existing optional analysis.
+
+People: existing names/face IDs are retained. Small quality checks score existing
+face crops and prefer clear, diverse named references without another model. Review
+possible matches shows uncertain duplicate groups. Confirm a name to merge, or
+choose Different people; decisions are saved locally. No uncertain named match is
+merged automatically. Aliases preserve merges when older metadata is restored.
+Names, face corrections, favourites and custom albums participate in the existing
+opt-in encrypted private metadata recovery. An independently verified recovery kit
+is required. Backup is optional; do not reset the cloud to use this update.
+Large recovery notes use immutable encrypted files to avoid SQLite CursorWindow
+limits; all photo choices and indexes remain encrypted in no-backup app storage.
+
+Free up phone space is manual and limited to 10 selected files per verification.
+Each file must match an active, verified encrypted private original with the
+current recovery key. Atlas reads and authenticates the entire cloud original,
+checks its checksum and size, rechecks the local source, then asks Android to move
+the phone copy to trash. A public copy alone never qualifies. Keep the recovery kit.
+Large videos require a full download for verification and can take time/data.
+
+Music import accepts common, lossless, legacy and specialist audio extensions.
+Use Browse all files if the Android document provider hides a format. Multiple
+selection is supported; exact byte duplicates are skipped, not different recordings
+with matching titles. The original bytes are retained. Playback depends on the
+phone's decoder; DRM-protected, DSD and tracker formats may import but not play.
+
+Test on a phone: install the matching package as an update, open Atlas Photos,
+try photos and videos, all swipe directions, pinch, system Back, share, favourite,
+albums and editing a copy. Verify named people and rejected suggestions after
+reopening. Test private metadata restore only with a recovery kit you have verified.
+The automated suite uses synthetic media and cloud transports; it does not validate
+physical-device gestures, camera codecs, installed editors or OEM launchers.

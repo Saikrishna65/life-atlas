@@ -5,11 +5,11 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.lifeatlas.app"
-        manifestPlaceholders = [atlasAppLabel: "Atlas Vault"]
+        manifestPlaceholders = [atlasAppLabel: "Atlas Vault", atlasGalleryLabel:"Atlas Photos"]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 32
-        versionName "2.0.3"
+        versionCode 33
+        versionName "2.0.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -36,7 +36,7 @@ android {
             applicationIdSuffix ".next"
             versionNameSuffix "-preview"
             matchingFallbacks = ["debug"]
-            manifestPlaceholders = [atlasAppLabel: "Atlas Next"]
+            manifestPlaceholders = [atlasAppLabel: "Atlas Next", atlasGalleryLabel:"Atlas Photos Next"]
         }
         release {
             signingConfig signingConfigs.debug

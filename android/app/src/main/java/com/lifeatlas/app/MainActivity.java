@@ -148,6 +148,14 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
+        // A second launcher opens Photos inside this same package and protected app shell.
+        if (Intent.ACTION_MAIN.equals(action) && intent.getComponent() != null
+            && "com.lifeatlas.app.GalleryLauncher".equals(intent.getComponent().getClassName())) {
+            pendingTargetRoute = "/secret/gallery";
+            dispatchPendingRoute();
+            return;
+        }
+
         // Check if intent was triggered by Trip Vault Home Screen Widget
         if ("com.lifeatlas.app.ACTION_OPEN_TRIP_VAULT".equals(action)
             || (intent.hasExtra("target_route") && intent.getStringExtra("target_route") != null && intent.getStringExtra("target_route").startsWith("/secret/vault"))) {

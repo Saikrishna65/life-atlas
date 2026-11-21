@@ -11,7 +11,8 @@ import org.json.*;
 /** Private, immutable recovery sidecars. Originals and public catalogs are never written. */
 final class GalleryRecovery {
   static final int LIMIT = 16 * 1024 * 1024;
-  static final List<String> CHOICES = List.of("people", "similar", "memories", "media-preferences");
+  static final List<String> CHOICES =
+      List.of("people", "similar", "memories", "media-preferences", "albums");
 
   static String prefix(byte[] keys) {
     return "encrypted/catalog/gallery-ai/" + R2Crypto.keyId(keys) + "/";
@@ -223,7 +224,8 @@ final class GalleryRecovery {
       }
       JSONObject choices = new JSONObject();
       synchronized (GalleryIntelligence.STATE_LOCK) {
-        for (String name : CHOICES) choices.put(name, db.choice(name));
+        for (String name : CHOICES)
+          choices.put(name, name.equals("albums") ? GalleryAlbums.export(db) : db.choice(name));
       }
       try (Cursor rows = db.rows()) {
         while (rows.moveToNext()) {
@@ -487,7 +489,24 @@ final class GalleryRecovery {
   static JSONObject project(String name, JSONObject value, Map<String, String> map)
       throws Exception {
     JSONObject out = remap(value, map);
-    if (name.equals("people")) {
+    if (name.equals("albums")) {
+      JSONObject all = value.optJSONObject("items"), safe = new JSONObject();
+      if (all != null)
+        for (String id : keys(all)) {
+          JSONObject album = all.getJSONObject(id),
+              copy = new JSONObject(album.toString()),
+              members = album.optJSONObject("members"),
+              kept = new JSONObject();
+          if (members != null)
+            for (String key : keys(members)) if (map.containsKey(key)) kept.put(map.get(key), true);
+          copy.put("members", kept);
+          if (map.containsKey(album.optString("cover")))
+            copy.put("cover", map.get(album.getString("cover")));
+          else copy.put("cover", "");
+          safe.put(id, copy);
+        }
+      out.put("items", safe);
+    } else if (name.equals("people")) {
       for (String field : List.of("assignments", "covers")) {
         JSONObject source = value.optJSONObject(field), kept = new JSONObject();
         if (source != null)
@@ -507,6 +526,17 @@ final class GalleryRecovery {
             if (map.containsKey(source.getString(i))) kept.put(map.get(source.getString(i)));
         out.put(field, kept);
       }
+      JSONObject rejected = out.optJSONObject("notSame"), restoredRejected = new JSONObject();
+      if (rejected != null)
+        for (String key : keys(rejected)) {
+          JSONObject pair = rejected.optJSONObject(key);
+          if (pair != null
+              && !pair.optString("left").isEmpty()
+              && !pair.optString("right").isEmpty())
+            restoredRejected.put(
+                GalleryPeople.pair(pair.getString("left"), pair.getString("right")), pair);
+        }
+      out.put("notSame", restoredRejected);
     } else if (name.equals("media-preferences")) {
       JSONArray source = value.optJSONArray("favorites"), kept = new JSONArray();
       if (source != null)
@@ -690,6 +720,10 @@ final class GalleryRecovery {
                       ? new JSONObject()
                       : choices.getJSONObject(name),
                   map);
+          if (name.equals("albums")) {
+            GalleryAlbums.restore(db, recovered);
+            continue;
+          }
           JSONObject current = db.choice(name);
           if (name.equals("media-preferences")) {
             Set<String> applied = GalleryPeople.set(manifest.optJSONArray("appliedFavorites"));

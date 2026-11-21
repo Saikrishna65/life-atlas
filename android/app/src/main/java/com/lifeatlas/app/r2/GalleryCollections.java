@@ -51,7 +51,7 @@ final class GalleryCollections {
   }
 
   JSONObject snapshot(String kind, GallerySearchStore db, JSONObject config) throws Exception {
-    if (!Set.of("similar", "people", "memories").contains(kind))
+    if (!Set.of("similar", "people", "memories", "albums").contains(kind))
       throw new R2Exception("INVALID_SELECTION");
     long revision = db.revision();
     String scope =
@@ -66,8 +66,15 @@ final class GalleryCollections {
       return cached;
     List<JSONObject> summaries;
     JSONObject groups = new JSONObject();
+    JSONArray matches = new JSONArray();
     boolean partial = false, needs = false;
-    if (kind.equals("memories"))
+    if (kind.equals("albums")) {
+      JSONObject data = GalleryAlbums.snapshot(context, db);
+      summaries = new ArrayList<>();
+      JSONArray cards = data.getJSONArray("collections");
+      for (int i = 0; i < cards.length(); i++) summaries.add(cards.getJSONObject(i));
+      groups = data.getJSONObject("groups");
+    } else if (kind.equals("memories"))
       summaries =
           GallerySmartAlbums.summaries(
               context, db, System.currentTimeMillis(), TimeZone.getDefault());
@@ -93,6 +100,7 @@ final class GalleryCollections {
       } else {
         GalleryPeople people = new GalleryPeople(index, db.choice("people"));
         summaries = people.summaries();
+        matches = new JSONArray(people.suggestions());
         JSONArray names = new JSONArray();
         for (GalleryPeople.Group g : people.groups)
           if (g.confirmed && names.length() < 2000)
@@ -117,7 +125,8 @@ final class GalleryCollections {
             .put("collections", new JSONArray(summaries))
             .put("groups", groups)
             .put("partial", partial)
-            .put("needsAnalysis", needs);
+            .put("needsAnalysis", needs)
+            .put("matches", matches);
     db.saveCollections(kind, result);
     result.remove("collections");
     result.remove("groups");
@@ -138,7 +147,8 @@ final class GalleryCollections {
           cursor,
           GallerySmartAlbums.filter(key, System.currentTimeMillis(), TimeZone.getDefault()));
     JSONObject config = service.settings();
-    if (!Set.of("people", "similar").contains(kind) || !config.optBoolean(kind))
+    if (!Set.of("people", "similar", "albums").contains(kind)
+        || !kind.equals("albums") && !config.optBoolean(kind))
       throw new R2Exception("SEARCH_NOT_CONFIGURED");
     try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
       snapshot(kind, db, config);
@@ -298,7 +308,39 @@ final class GalleryCollections {
         db.choice(
             "people-undo",
             new JSONObject().put("saved", true).put("choices", new JSONObject(choices.toString())));
-        if (action.equals("merge-people-many")) {
+        if (action.equals("confirm-people-pair")) {
+          JSONArray keys = input.optJSONArray("keys");
+          if (keys == null || keys.length() != 2 || keys.getString(0).equals(keys.getString(1)))
+            throw new R2Exception("INVALID_SELECTION");
+          String target = input.optString("personId");
+          GalleryPeople.Group first = people.group(keys.getString(0)),
+              second = people.group(keys.getString(1));
+          if (!target.isEmpty()
+              && !(first.confirmed && target.equals(first.id))
+              && !(second.confirmed && target.equals(second.id)))
+            throw new R2Exception("INVALID_SELECTION");
+          String name = GalleryPeople.name(input.optString("name"));
+          if (target.isEmpty())
+            target =
+                first.confirmed
+                    ? first.id
+                    : second.confirmed ? second.id : UUID.randomUUID().toString();
+          JSONObject names = choices.optJSONObject("people");
+          if (names == null) {
+            names = new JSONObject();
+            choices.put("people", names);
+          }
+          names.put(target, name);
+          JSONObject assignments = choices.optJSONObject("assignments");
+          if (assignments == null) {
+            assignments = new JSONObject();
+            choices.put("assignments", assignments);
+          }
+          for (GalleryIndexedPhotos.Face f : first.faces) assignments.put(f.id, target);
+          for (GalleryIndexedPhotos.Face f : second.faces) assignments.put(f.id, target);
+          if (first.confirmed) GalleryPeople.alias(choices, first.id, target);
+          if (second.confirmed) GalleryPeople.alias(choices, second.id, target);
+        } else if (action.equals("merge-people-many")) {
           JSONArray keys = input.optJSONArray("keys");
           String target = input.optString("personId");
           if (keys == null

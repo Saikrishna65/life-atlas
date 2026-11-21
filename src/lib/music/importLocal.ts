@@ -1,7 +1,9 @@
 /**
  * Imports audio files picked from the device into the Music Vault.
- * Bytes are copied into memory first so Android content:// handles can't expire.
+ * Persist file-backed Blobs in IndexedDB without a second whole-file JavaScript copy.
  */
+import { audioMime } from "./formats";
+import { equalAudioBytes } from "./originals";
 import { parseAudioFile } from "./metadataParser";
 import { saveTrack, getAllTracks } from "./storage";
 import { uploadTrackToCloud } from "./cloudSync";
@@ -15,7 +17,7 @@ export interface ImportSummary {
 
 export async function importAudioFiles(
   files: File[],
-  onProgress?: (done: number, total: number, name: string) => void
+  onProgress?: (done: number, total: number, name: string) => void,
 ): Promise<ImportSummary> {
   const existing = await getAllTracks();
   const summary: ImportSummary = { imported: 0, duplicates: 0, failed: [] };
@@ -24,17 +26,25 @@ export async function importAudioFiles(
     const file = files[i];
     onProgress?.(i, files.length, file.name);
     try {
-      const buffer = await file.arrayBuffer();
-      const mimeType = file.type || "audio/mpeg";
-      const blob = new Blob([buffer], { type: mimeType });
+      const mimeType = audioMime(file);
+      if (!mimeType)
+        throw new Error(
+          "Not a recognised audio format. Choose an audio file, not a playlist or document.",
+        );
+      const blob = file.slice(0, file.size, mimeType);
       const parsed = await parseAudioFile(file);
 
-      const isDuplicate = existing.some(
-        (t) =>
-          (t.title.toLowerCase() === parsed.title.toLowerCase() &&
-            t.artist.toLowerCase() === parsed.artist.toLowerCase()) ||
-          (t.fileName === file.name && t.size === blob.size)
-      );
+      // Names/tags aren't identities: lossless editions and different recordings can share them.
+      let isDuplicate = false;
+      for (const candidate of existing) {
+        if (
+          candidate.audioBlob?.size === blob.size &&
+          (await equalAudioBytes(candidate.audioBlob, blob))
+        ) {
+          isDuplicate = true;
+          break;
+        }
+      }
       if (isDuplicate) {
         summary.duplicates++;
         continue;
@@ -65,10 +75,11 @@ export async function importAudioFiles(
       // Best-effort cloud backup; never blocks or fails the import.
       uploadTrackToCloud(track, blob).catch(() => {});
     } catch (e) {
-      summary.failed.push(`${file.name}: ${e instanceof Error ? e.message : "failed"}`);
+      summary.failed.push(
+        `${file.name}: ${e instanceof Error ? e.message : "failed"}`,
+      );
     }
   }
   onProgress?.(files.length, files.length, "");
   return summary;
 }
-

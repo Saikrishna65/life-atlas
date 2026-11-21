@@ -43,9 +43,19 @@ final class GalleryPeople {
   final boolean partial;
   final Set<String> hidden;
   final JSONObject covers;
+  final JSONObject notSame;
+  final JSONObject aliases;
 
   GalleryPeople(GalleryIndexedPhotos index, JSONObject choices) throws Exception {
     partial = index.partial;
+    aliases =
+        choices.optJSONObject("aliases") == null
+            ? new JSONObject()
+            : choices.getJSONObject("aliases");
+    notSame =
+        choices.optJSONObject("notSame") == null
+            ? new JSONObject()
+            : choices.getJSONObject("notSame");
     hidden = set(choices.optJSONArray("hidden"));
     covers =
         choices.optJSONObject("covers") == null
@@ -67,7 +77,7 @@ final class GalleryPeople {
     Map<String, Group> named = new LinkedHashMap<>();
     if (assignments != null)
       for (GalleryIndexedPhotos.Face f : all) {
-        String person = assignments.optString(f.id);
+        String person = resolve(assignments.optString(f.id));
         if (person.isEmpty() || people == null || !people.has(person)) continue;
         Group g = named.get(person);
         if (g == null) {
@@ -81,12 +91,14 @@ final class GalleryPeople {
     groups.addAll(named.values());
     for (Group g : named.values()) {
       List<GalleryIndexedPhotos.Face> references = new ArrayList<>();
-      if (!g.faces.isEmpty()) references.add(g.faces.get(0));
+      if (!g.faces.isEmpty())
+        references.add(
+            g.faces.stream().max(Comparator.comparingDouble(f -> f.quality)).orElseThrow());
       while (references.size() < Math.min(8, g.faces.size())) {
         GalleryIndexedPhotos.Face chosen = null;
         double distance = -1;
         for (GalleryIndexedPhotos.Face f : g.faces) {
-          if (references.contains(f)) continue;
+          if (references.contains(f) || f.quality < .15) continue;
           double nearest = -1;
           for (GalleryIndexedPhotos.Face r : references)
             nearest = Math.max(nearest, cosine(f.vector, r.vector));
@@ -101,7 +113,7 @@ final class GalleryPeople {
       for (GalleryIndexedPhotos.Face f : references) add(f, g);
     }
     for (GalleryIndexedPhotos.Face f : all) {
-      if (assignments != null && named.containsKey(assignments.optString(f.id))) continue;
+      if (assignments != null && named.containsKey(resolve(assignments.optString(f.id)))) continue;
       if (separated.contains(f.id)) {
         Group solo = new Group("candidate:" + f.id);
         solo.add(f);
@@ -149,6 +161,22 @@ final class GalleryPeople {
                 g -> g.confirmed ? g.name.toLowerCase(Locale.ROOT) : "", Comparator.naturalOrder())
             .thenComparing(Comparator.comparingInt((Group g) -> g.photos.size()).reversed())
             .thenComparing(g -> g.id));
+  }
+
+  String resolve(String id) {
+    Set<String> seen = new HashSet<>();
+    while (aliases.has(id) && seen.add(id) && seen.size() < 32) id = aliases.optString(id);
+    return id;
+  }
+
+  static void alias(JSONObject choices, String from, String target) throws Exception {
+    if (from.equals(target)) return;
+    JSONObject links = choices.optJSONObject("aliases");
+    if (links == null) {
+      links = new JSONObject();
+      choices.put("aliases", links);
+    }
+    links.put(from, target);
   }
 
   static Set<String> set(JSONArray array) throws Exception {
@@ -234,6 +262,56 @@ final class GalleryPeople {
     return rows;
   }
 
+  static String pair(String a, String b) throws Exception {
+    List<String> keys = new ArrayList<>(List.of(a, b));
+    Collections.sort(keys);
+    return GallerySearchStore.token(String.join("\n", keys));
+  }
+
+  List<JSONObject> suggestions() throws Exception {
+    Map<String, JSONObject> proposals = new HashMap<>();
+    for (Group g : groups) {
+      if (hidden.contains(g.id)) continue;
+      List<GalleryIndexedPhotos.Face> references = new ArrayList<>(g.faces);
+      references.sort(Comparator.comparingDouble((GalleryIndexedPhotos.Face f) -> -f.quality));
+      for (int i = 0; i < Math.min(2, references.size()); i++) {
+        GalleryIndexedPhotos.Face f = references.get(i);
+        if (f.quality < .15) continue;
+        for (Anchor anchor : candidates(f)) {
+          Group other = anchor.group;
+          if (other == g
+              || hidden.contains(other.id)
+              || other.logical().equals(g.logical())
+              || other.photos.stream().anyMatch(g.photos::contains)) continue;
+          double score = cosine(f.vector, anchor.face.vector);
+          if (score < (g.confirmed && other.confirmed ? .72 : .52)) continue;
+          String key = pair(g.id, other.id);
+          if (notSame.has(key)) continue;
+          JSONObject old = proposals.get(key);
+          if (old != null && old.optDouble("score") >= score) continue;
+          proposals.put(
+              key,
+              new JSONObject()
+                  .put("id", key)
+                  .put("left", g.id)
+                  .put("right", other.id)
+                  .put("leftName", g.confirmed ? g.name : "Unnamed person")
+                  .put("rightName", other.confirmed ? other.name : "Unnamed person")
+                  .put("leftFace", f.id)
+                  .put("rightFace", anchor.face.id)
+                  .put("score", score));
+        }
+      }
+    }
+    List<JSONObject> out = new ArrayList<>(proposals.values());
+    out.sort(
+        Comparator.comparingDouble((JSONObject r) -> -r.optDouble("score"))
+            .thenComparing(r -> r.optString("id")));
+    if (out.size() > 20) out = new ArrayList<>(out.subList(0, 20));
+    for (JSONObject r : out) r.remove("score");
+    return out;
+  }
+
   static String name(String value) throws Exception {
     String v = value == null ? "" : value.trim().replaceAll("[\\p{Cntrl}]", " ");
     if (v.isEmpty() || v.length() > 80) throw new R2Exception("INVALID_PERSON_NAME");
@@ -252,6 +330,24 @@ final class GalleryPeople {
     if (assignments == null) {
       assignments = new JSONObject();
       choices.put("assignments", assignments);
+    }
+    if (action.equals("reject-people-match")) {
+      JSONObject selected =
+          suggestions().stream()
+              .filter(p -> p.optString("id").equals(key))
+              .findFirst()
+              .orElseThrow(() -> new R2Exception("GALLERY_COLLECTION_CHANGED"));
+      JSONObject rejected = choices.optJSONObject("notSame");
+      if (rejected == null) {
+        rejected = new JSONObject();
+        choices.put("notSame", rejected);
+      }
+      rejected.put(
+          key,
+          new JSONObject()
+              .put("left", selected.getString("left"))
+              .put("right", selected.getString("right")));
+      return;
     }
     if (action.equals("restore-people")) {
       choices.put("hidden", new JSONArray());
@@ -281,6 +377,7 @@ final class GalleryPeople {
       if (!target.confirmed || source.id.equals(target.id))
         throw new R2Exception("INVALID_SELECTION");
       for (GalleryIndexedPhotos.Face f : source.faces) assignments.put(f.id, target.id);
+      if (source.confirmed) alias(choices, source.id, target.id);
       return;
     }
     if (action.equals("name-person")) {

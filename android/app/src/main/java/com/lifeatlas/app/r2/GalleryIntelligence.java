@@ -129,6 +129,7 @@ final class GalleryIntelligence {
               .put("visual", input.optBoolean("visual"))
               .put("similar", input.optBoolean("similar"))
               .put("people", input.optBoolean("people"))
+              .put("faceQualityPolicy", GalleryFaceQuality.VERSION)
               .put("chargingOnly", input.optBoolean("chargingOnly", true))
               .put("wifiOnly", input.optBoolean("wifiOnly", true))
               .put("albums", albums)
@@ -262,6 +263,28 @@ final class GalleryIntelligence {
 
   boolean refreshMediaIfChanged() throws Exception {
     JSONObject preferences = settings();
+    boolean qualityChanged =
+        preferences.optBoolean("enabled")
+            && preferences.optBoolean("people")
+            && !GalleryFaceQuality.VERSION.equals(preferences.optString("faceQualityPolicy"));
+    if (qualityChanged) {
+      synchronized (STATE_LOCK) {
+        preferences = settings();
+        preferences.put("faceQualityPolicy", GalleryFaceQuality.VERSION);
+        writeSettings(preferences);
+      }
+      if (Set.of("ready", "error").contains(preferences.optString("state"))) control("scan");
+      else
+        change(
+            preferences.optString("epoch"),
+            v -> {
+              try {
+                v.put("qualityDirty", true);
+              } catch (Exception ignored) {
+              }
+            });
+    }
+
     if (preferences.optBoolean("enabled")) {
       boolean waiting = false;
       for (WorkInfo work :
@@ -317,7 +340,7 @@ final class GalleryIntelligence {
     String stamp = token.toString();
     synchronized (STATE_LOCK) {
       try (GallerySearchStore db = new GallerySearchStore(secure)) {
-        if (stamp.equals(db.choice("media-observer").optString("stamp"))) return false;
+        if (stamp.equals(db.choice("media-observer").optString("stamp"))) return qualityChanged;
         db.choice("media-observer", new JSONObject().put("stamp", stamp));
       }
     }

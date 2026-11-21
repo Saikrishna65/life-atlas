@@ -36,6 +36,11 @@ export default function GalleryCollections({
     <section className="gc-home" aria-label="Your collections">
       <p className="gc-plain-intro">Albums, people and places.</p>
       <div className="gsmart-shortcuts" aria-label="Smart collections">
+        <button onClick={() => onSmart("albums")}>
+          <Images />
+          <strong>My albums</strong>
+          <small>Collections you create</small>
+        </button>
         <button onClick={onFavorites}>
           <Star />
           <strong>Favourites</strong>

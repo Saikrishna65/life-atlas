@@ -1,5 +1,5 @@
 import type { DeviceMedia, DevicePage } from "./types";
-export type CollectionKind = "similar" | "people" | "memories";
+export type CollectionKind = "similar" | "people" | "memories" | "albums";
 export interface SmartCollection {
   id: string;
   kind: "similar" | "people" | "memory" | "album";
@@ -23,6 +23,7 @@ export interface CollectionPage {
   hiddenPeople?: number;
   canUndoPeople?: boolean;
   analysisState: string;
+  matches?: PeopleMatch[];
 }
 export interface CollectionMediaPage extends DevicePage {
   bestId?: string;
@@ -35,7 +36,23 @@ export interface PeopleFacePage {
   cursor: string;
   complete: boolean;
 }
+export interface PeopleMatch {
+  id: string;
+  left: string;
+  right: string;
+  leftName: string;
+  rightName: string;
+  leftFace: string;
+  rightFace: string;
+}
 export type CollectionEdit =
+  | {
+      action: "confirm-people-pair";
+      keys: string[];
+      name: string;
+      personId?: string;
+    }
+  | { action: "reject-people-match"; key: string }
   | { action: "merge-people-many"; keys: string[]; personId: string }
   | { action: "pick" | "separate-photo"; key: string; mediaId: string }
   | { action: "dismiss-similar" | "hide-memory"; key: string }
@@ -59,4 +76,13 @@ export interface GalleryRecoveryStatus {
   error?: string;
   lastSaved?: number;
   lastRestored?: number;
+}
+
+export interface AlbumEdit {
+  action: "create" | "rename" | "add" | "remove" | "cover" | "move" | "delete";
+  id?: string;
+  name?: string;
+  ids?: string[];
+  cover?: string;
+  direction?: number;
 }

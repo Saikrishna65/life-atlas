@@ -333,6 +333,163 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void shareGalleryPreview(PluginCall call) {
+    work(
+        call,
+        () -> {
+          if (!galleryForeground) throw new R2Exception("AUTHENTICATION_REQUIRED");
+          Intent intent =
+              GalleryMediaActions.sharePreview(getContext(), call.getString("token", ""));
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    try {
+                      startActivityForResult(call, intent, "galleryShareResult");
+                    } catch (Exception e) {
+                      fail(call, e);
+                    }
+                  });
+        });
+  }
+
+  @PluginMethod
+  public void shareDeviceMedia(PluginCall call) {
+    work(
+        call,
+        () -> {
+          Intent intent = GalleryMediaActions.share(getContext(), call.getArray("ids"));
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    try {
+                      startActivityForResult(call, intent, "galleryShareResult");
+                    } catch (Exception e) {
+                      fail(call, e);
+                    }
+                  });
+        });
+  }
+
+  @ActivityCallback
+  private void galleryShareResult(PluginCall call, ActivityResult result) {
+    if (call != null) call.resolve();
+  }
+
+  private JSONObject pendingGalleryEdit;
+
+  @PluginMethod
+  public void editDeviceMedia(PluginCall call) {
+    work(
+        call,
+        () -> {
+          if (pendingGalleryEdit != null) throw new R2Exception("EDITOR_BUSY");
+          JSONObject copy = GalleryMediaActions.editCopy(getContext(), call.getString("id", ""));
+          Intent intent = GalleryMediaActions.editor(getContext(), copy);
+          if (intent.resolveActivity(getContext().getPackageManager()) == null) {
+            new File(copy.getString("path")).delete();
+            throw new R2Exception("EDITOR_UNAVAILABLE");
+          }
+          pendingGalleryEdit = copy;
+          startActivityForResult(call, intent, "galleryEditResult");
+        });
+  }
+
+  @ActivityCallback
+  private void galleryEditResult(PluginCall call, ActivityResult result) {
+    JSONObject copy = pendingGalleryEdit;
+    pendingGalleryEdit = null;
+    if (call == null || copy == null) return;
+    execute(
+        () -> {
+          try {
+            if (result.getResultCode() != Activity.RESULT_OK) {
+              new File(copy.getString("path")).delete();
+              call.resolve(new JSObject().put("saved", false));
+              return;
+            }
+            call.resolve(
+                js(
+                    GalleryMediaActions.saveEdited(
+                        getContext(),
+                        copy,
+                        result.getData() == null ? null : result.getData().getData())));
+          } catch (Exception e) {
+            try {
+              new File(copy.getString("path")).delete();
+            } catch (Exception ignored) {
+            }
+            fail(call, e);
+          }
+        });
+  }
+
+  @PluginMethod
+  public void setDeviceMediaAs(PluginCall call) {
+    work(
+        call,
+        () -> {
+          JSONObject photo = new R2DeviceGallery(getContext()).one(call.getString("id", ""));
+          if (!photo.getString("mimeType").startsWith("image/"))
+            throw new R2Exception("EDIT_PHOTO_ONLY");
+          Intent intent =
+              new Intent(Intent.ACTION_ATTACH_DATA)
+                  .setDataAndType(
+                      R2DeviceGallery.uri(photo.getString("id")), photo.getString("mimeType"))
+                  .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    try {
+                      startActivityForResult(
+                          call, Intent.createChooser(intent, "Use photo as"), "galleryShareResult");
+                    } catch (Exception e) {
+                      fail(call, e);
+                    }
+                  });
+        });
+  }
+
+  @PluginMethod
+  public void freeUpDeviceMedia(PluginCall call) {
+    if (Build.VERSION.SDK_INT >= 29
+        && getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      requestPermissionForAlias("galleryOriginal", call, "galleryCleanupPermission");
+      return;
+    }
+    authenticated(
+        call,
+        () -> {
+          JSONArray verified =
+              GallerySpace.verify(getContext(), repository(), call.getArray("ids"));
+          call.getData().put("ids", verified).put("trashed", true);
+          trashDeviceMedia(call);
+        });
+  }
+
+  @PermissionCallback
+  private void galleryCleanupPermission(PluginCall call) {
+    if (getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      call.reject("ORIGINAL_MEDIA_ACCESS_REQUIRED", "ORIGINAL_MEDIA_ACCESS_REQUIRED");
+      return;
+    }
+    freeUpDeviceMedia(call);
+  }
+
+  @PluginMethod
+  public void editGalleryAlbum(PluginCall call) {
+    work(
+        call,
+        () -> {
+          try (GallerySearchStore db =
+              new GallerySearchStore(new GalleryIntelligence(getContext()).secure)) {
+            JSONObject result = GalleryAlbums.edit(getContext(), db, call.getData());
+            GalleryRecoveryWorker.scheduleIfEnabled(getContext());
+            call.resolve(js(result));
+          }
+        });
+  }
+
+  @PluginMethod
   public void getGalleryCollections(PluginCall call) {
     work(
         call,
@@ -450,12 +607,14 @@ public class R2StoragePlugin extends Plugin {
           call.resolve(
               js(
                   new R2DeviceGallery(getContext())
-                      .list(
+                      .listBetween(
                           call.getString("cursor", ""),
                           call.getString("query", ""),
                           call.getString("kind", "all"),
                           call.getString("album", ""),
-                          call.getString("order", "newest"))));
+                          call.getString("order", "newest"),
+                          call.getLong("from", 0L),
+                          call.getLong("to", 0L))));
         });
   }
 

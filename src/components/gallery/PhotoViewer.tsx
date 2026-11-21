@@ -6,10 +6,29 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { ArrowLeft, Info, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Info,
+  Trash2,
+  X,
+  Heart,
+  Share2,
+  MoreHorizontal,
+  Pencil,
+  Images,
+  Download,
+  ImagePlus,
+} from "lucide-react";
 import { Modal } from "@/components/world/primitives";
 import type { DetailMedia } from "@/lib/public-trips/detail";
 import { useGalleryBack } from "@/lib/gallery/navigation";
+import { R2 } from "@/lib/r2/native";
+import {
+  deviceMediaId,
+  shareDevice,
+  editDevice,
+  setDevicePhotoAs,
+} from "@/lib/gallery/viewer-actions";
 import ViewerVideo from "./ViewerVideo";
 import "@/components/media/journal-viewer.css";
 import "./photo-viewer.css";
@@ -20,6 +39,12 @@ export default function PhotoViewer({
   onClose,
   details,
   onDelete,
+  favorite,
+  onFavorite,
+  onShare,
+  onAlbum,
+  onTrip,
+  onDownload,
 }: {
   items: DetailMedia[];
   selected: string;
@@ -27,6 +52,12 @@ export default function PhotoViewer({
   onClose: () => void;
   details?: (id: string) => ReactNode;
   onDelete?: (id: string) => Promise<void>;
+  favorite?: boolean;
+  onFavorite?: (id: string) => void | Promise<void>;
+  onShare?: (id: string) => Promise<void>;
+  onAlbum?: (id: string) => void;
+  onTrip?: (id: string) => void;
+  onDownload?: (id: string) => Promise<void>;
 }) {
   const index = items.findIndex((i) => i.id === selected),
     item = items[index];
@@ -35,6 +66,44 @@ export default function PhotoViewer({
     [error, setError] = useState(""),
     [chrome, setChrome] = useState(true),
     [info, setInfo] = useState(false);
+  const [actions, setActions] = useState(false),
+    [vertical, setVertical] = useState(0);
+  const axis = useRef<"x" | "y" | undefined>(undefined);
+  const [magnify, setMagnify] = useState(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const beforeHold = useRef({ scale: 1, x: 0, y: 0 });
+  const videoPositions = useRef(new Map<string, number>());
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
+  const [localFavourite, setLocalFavourite] = useState(false);
+  useEffect(() => {
+    if (onFavorite || !deviceMediaId(selected)) return;
+    let alive = true;
+    void R2.getGalleryMediaPreferences()
+      .then((v) => {
+        if (alive) setLocalFavourite(!!v.favorites?.includes(selected));
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [onFavorite, selected]);
+  const favouriteActive = onFavorite ? !!favorite : localFavourite;
+  const toggleFavourite = async () => {
+    if (onFavorite) {
+      await onFavorite(selected);
+      return;
+    }
+    const prefs = await R2.getGalleryMediaPreferences();
+    const values = prefs.favorites || [];
+    const next = values.includes(selected)
+      ? values.filter((id) => id !== selected)
+      : [...values, selected];
+    await R2.saveGalleryMediaPreferences({ favorites: next });
+    setLocalFavourite(next.includes(selected));
+    window.dispatchEvent(new Event("atlas:gallery-restored"));
+  };
   useGalleryBack(true, onClose, 100);
   const [drag, setDrag] = useState(0);
   const [settling, setSettling] = useState(false);
@@ -54,6 +123,14 @@ export default function PhotoViewer({
     }, 2800);
   }, []);
   useGalleryBack(
+    actions,
+    () => {
+      setActions(false);
+      activity();
+    },
+    110,
+  );
+  useGalleryBack(
     info,
     () => {
       setInfo(false);
@@ -69,8 +146,8 @@ export default function PhotoViewer({
     return () => clearTimeout(timer.current);
   }, [selected]);
   useEffect(() => {
-    if (info || busy) clearTimeout(timer.current);
-  }, [info, busy]);
+    if (info || actions || busy) clearTimeout(timer.current);
+  }, [info, actions, busy]);
   const points = useRef(new Map<number, { x: number; y: number }>()),
     start = useRef({
       distance: 0,
@@ -110,7 +187,12 @@ export default function PhotoViewer({
   }, [selected]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (info || (e.target as HTMLElement)?.closest("input,textarea,select"))
+      if (
+        info ||
+        actions ||
+        busy ||
+        (e.target as HTMLElement)?.closest("input,textarea,select")
+      )
         return;
       if (e.key === "ArrowRight") {
         e.preventDefault();
@@ -124,6 +206,33 @@ export default function PhotoViewer({
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   });
+  const perform = async (action: () => Promise<unknown>) => {
+    setBusy(true);
+    setError("");
+    try {
+      await action();
+      setActions(false);
+    } catch (e) {
+      setError(
+        e instanceof Error ? e.message : "This action could not finish.",
+      );
+    } finally {
+      setBusy(false);
+      activity();
+    }
+  };
+  const share = () =>
+    perform(() => (onShare ? onShare(selected) : shareDevice([selected])));
+  const remove = () =>
+    perform(async () => {
+      if (!onDelete) return;
+      if (
+        confirm(
+          "Move this file to phone trash? Cloud originals and trip records remain.",
+        )
+      )
+        await onDelete(selected);
+    });
   if (!item) return null;
   const zoom = (scale: number) => setTransform({ scale, x: 0, y: 0 });
   return (
@@ -149,48 +258,15 @@ export default function PhotoViewer({
         <span>
           {index + 1} / {items.length}
         </span>
-        <div className="pv-top-actions">
-          {onDelete && (
-            <button
-              disabled={busy}
-              aria-label="Delete"
-              onClick={async () => {
-                if (
-                  !confirm(
-                    "Move this file to your phone’s trash? Cloud copies and trip records will stay unchanged.",
-                  )
-                )
-                  return;
-                setBusy(true);
-                try {
-                  await onDelete(selected);
-                } catch {
-                  setError(
-                    "Could not move this file to trash. Please try again.",
-                  );
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              <Trash2 size={21} />
-            </button>
-          )}
-          <button
-            aria-label="Photo details"
-            aria-expanded={info}
-            onClick={() => {
-              setInfo(!info);
-              if (info) activity();
-            }}
-          >
-            <Info size={21} />
-          </button>
-        </div>
+        <div className="pv-top-actions" />
       </div>
       <div
         ref={stage}
         className={`pv-picture journal-viewer-stage ${settling ? "is-settling" : ""}`}
+        style={{
+          transform: `translate3d(0,${vertical}px,0)`,
+          opacity: Math.max(0.35, 1 - Math.abs(vertical) / 1000),
+        }}
         onClick={(e) => {
           if (
             (e.target as HTMLElement).closest("button,input") ||
@@ -219,7 +295,21 @@ export default function PhotoViewer({
           e.currentTarget.setPointerCapture(e.pointerId);
           points.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           const p = [...points.current.values()];
-          if (p.length === 1) dragRef.current = 0;
+          if (p.length === 1) {
+            dragRef.current = 0;
+            axis.current = undefined;
+            clearTimeout(holdTimer.current);
+            if (item.kind === "photo" && transform.scale > 1)
+              holdTimer.current = setTimeout(() => {
+                beforeHold.current = transform;
+                setMagnify(true);
+                setTransform((t) => ({
+                  ...t,
+                  scale: Math.min(5, t.scale * 1.5),
+                }));
+                suppressClick.current = true;
+              }, 500);
+          } else clearTimeout(holdTimer.current);
           if (p.length === 1)
             start.current = {
               distance: 0,
@@ -243,6 +333,13 @@ export default function PhotoViewer({
         onPointerMove={(e) => {
           if (!points.current.has(e.pointerId)) return;
           points.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+          if (
+            Math.hypot(
+              e.clientX - start.current.x,
+              e.clientY - start.current.y,
+            ) > 8
+          )
+            clearTimeout(holdTimer.current);
           const p = [...points.current.values()];
           if (
             p.length === 2 &&
@@ -269,7 +366,21 @@ export default function PhotoViewer({
             transform.scale === 1 &&
             !start.current.multi
           ) {
-            const dx = e.clientX - start.current.x;
+            const dx = e.clientX - start.current.x,
+              dy = e.clientY - start.current.y;
+            if (Math.hypot(dx, dy) > 8) clearTimeout(holdTimer.current);
+            if (!axis.current && Math.max(Math.abs(dx), Math.abs(dy)) > 10)
+              axis.current =
+                Math.abs(dx) > Math.abs(dy) * 1.15
+                  ? "x"
+                  : Math.abs(dy) > Math.abs(dx) * 1.15
+                    ? "y"
+                    : undefined;
+            if (axis.current === "y") {
+              setVertical(Math.max(-180, Math.min(500, dy)));
+              suppressClick.current = true;
+              return;
+            }
             if (Math.abs(dx) > 8) {
               suppressClick.current = true;
               dragRef.current = dx;
@@ -307,22 +418,44 @@ export default function PhotoViewer({
           }
         }}
         onPointerCancel={(e) => {
+          clearTimeout(holdTimer.current);
+          setVertical(0);
           points.current.delete(e.pointerId);
           setDrag(0);
           dragRef.current = 0;
         }}
         onPointerUp={(e) => {
           if (!points.current.has(e.pointerId)) return;
+          clearTimeout(holdTimer.current);
+          if (magnify) {
+            setMagnify(false);
+            setTransform(beforeHold.current);
+          }
           const s = start.current;
           points.current.delete(e.pointerId);
           if (!points.current.size && !s.multi && transform.scale === 1) {
             const dx = e.clientX - s.x,
               dy = e.clientY - s.y;
+            if (axis.current === "y") {
+              if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+                setSettling(true);
+                setVertical(stage.current?.clientHeight || window.innerHeight);
+                slideTimer.current = setTimeout(onClose, 180);
+                return;
+              }
+              if (dy < -75 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+                setActions(true);
+                activity();
+              }
+              setVertical(0);
+              return;
+            }
             if (
               items.length > 1 &&
               Math.abs(dx) > 50 &&
               Math.abs(dx) > Math.abs(dy) * 1.3 &&
-              Date.now() - s.at < 1000
+              (Math.abs(dx) > (stage.current?.clientWidth || 400) * 0.2 ||
+                Date.now() - s.at < 1000)
             )
               move(dx < 0 ? 1 : -1);
             else if (dragRef.current !== 0) {
@@ -348,16 +481,16 @@ export default function PhotoViewer({
           const media = items[(index + offset + items.length) % items.length];
           return (
             <div
-              key={offset}
+              key={
+                items.length === 2 && offset === -1
+                  ? `${media.id}:mirror`
+                  : media.id
+              }
               className="pv-slide"
               aria-hidden={offset !== 0}
               inert={offset !== 0}
               style={{
                 transform: `translate3d(calc(${offset * 100}% + ${drag}px),0,0)`,
-                backgroundImage:
-                  media.poster && transform.scale === 1
-                    ? `url(${JSON.stringify(media.poster)})`
-                    : undefined,
               }}
             >
               {offset === 0 && media.kind === "video" ? (
@@ -365,6 +498,14 @@ export default function PhotoViewer({
                   key={media.id}
                   src={media.url}
                   poster={media.poster}
+                  onResumeTime={() => videoPositions.current.get(media.id) || 0}
+                  onPosition={(time) => {
+                    videoPositions.current.set(media.id, time);
+                    if (videoPositions.current.size > 8)
+                      videoPositions.current.delete(
+                        videoPositions.current.keys().next().value!,
+                      );
+                  }}
                   show={chrome && !info}
                   onActivity={activity}
                 />
@@ -373,8 +514,8 @@ export default function PhotoViewer({
               ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img
-                  key={`${media.id}:${offset}`}
-                  src={offset === 0 ? media.url : media.poster || media.url}
+                  key={media.id}
+                  src={media.kind === "photo" ? media.url : media.poster}
                   alt={offset === 0 ? media.caption || "Photo" : ""}
                   draggable={false}
                   decoding="async"
@@ -391,7 +532,165 @@ export default function PhotoViewer({
           );
         })}
       </div>
-      {error && <p role="alert">{error}</p>}
+      <div
+        className={`pv-bottom ${chrome || info || actions || busy ? "" : "is-hidden"}`}
+        inert={!chrome && !info && !actions && !busy}
+        onPointerDown={activity}
+      >
+        {onShare || deviceMediaId(selected) ? (
+          <button
+            aria-label="Share"
+            disabled={busy}
+            onClick={() => void share()}
+          >
+            <Share2 />
+            <small>Share</small>
+          </button>
+        ) : null}
+        {(onFavorite || deviceMediaId(selected)) && (
+          <button
+            disabled={busy}
+            aria-label={favouriteActive ? "Remove favourite" : "Favourite"}
+            aria-pressed={favouriteActive}
+            onClick={() => void perform(toggleFavourite)}
+          >
+            <Heart fill={favouriteActive ? "currentColor" : "none"} />
+            <small>Favourite</small>
+          </button>
+        )}
+        <button
+          aria-label="Photo details"
+          aria-expanded={info}
+          onClick={() => {
+            setInfo((v) => !v);
+            activity();
+          }}
+        >
+          <Info />
+          <small>Info</small>
+        </button>
+        {onDelete && (
+          <button
+            aria-label="Delete"
+            disabled={busy}
+            onClick={() => void remove()}
+          >
+            <Trash2 />
+            <small>Delete</small>
+          </button>
+        )}
+        <button
+          aria-label="More photo actions"
+          onClick={() => {
+            setActions(true);
+            activity();
+          }}
+        >
+          <MoreHorizontal />
+          <small>More</small>
+        </button>
+      </div>
+      {actions && (
+        <div
+          className="pv-sheet-backdrop"
+          onClick={() => {
+            setActions(false);
+            activity();
+          }}
+        >
+          <section
+            role="region"
+            aria-label="Photo actions"
+            className="pv-action-sheet"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header>
+              <h2>{item.kind === "video" ? "Video" : "Photo"}</h2>
+              <button
+                aria-label="Close actions"
+                onClick={() => {
+                  setActions(false);
+                  activity();
+                }}
+              >
+                <X />
+              </button>
+            </header>
+            {(onShare || deviceMediaId(selected)) && (
+              <button disabled={busy} onClick={() => void share()}>
+                <Share2 />
+                Share original quality
+              </button>
+            )}
+            {onAlbum && (
+              <button
+                onClick={() => {
+                  setActions(false);
+                  onAlbum(selected);
+                }}
+              >
+                <Images />
+                Add to album
+              </button>
+            )}
+            {onTrip && (
+              <button
+                onClick={() => {
+                  setActions(false);
+                  onTrip(selected);
+                }}
+              >
+                <ImagePlus />
+                Add to a trip
+              </button>
+            )}
+            {item.kind === "photo" && deviceMediaId(selected) && (
+              <>
+                <button
+                  disabled={busy}
+                  onClick={() => void perform(() => editDevice(selected))}
+                >
+                  <Pencil />
+                  Edit a copy
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => void perform(() => setDevicePhotoAs(selected))}
+                >
+                  <ImagePlus />
+                  Use as wallpaper or contact photo
+                </button>
+              </>
+            )}
+            {onDownload && (
+              <button
+                disabled={busy}
+                onClick={() => void perform(() => onDownload(selected))}
+              >
+                <Download />
+                Download original
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setActions(false);
+                setInfo(true);
+              }}
+            >
+              <Info />
+              Details & backup status
+            </button>
+            <p>
+              Swipe down to close. Swipe up for actions. Pinch to zoom; drag to
+              pan. Sharing originals may include location metadata. Edits are
+              saved as new photos.
+            </p>
+            {busy && <p role="status">Preparing…</p>}
+            {error && <p role="alert">{error}</p>}
+          </section>
+        </div>
+      )}
+      {error && !actions && <p role="alert">{error}</p>}
       {info && (
         <div
           className="pv-info-backdrop"

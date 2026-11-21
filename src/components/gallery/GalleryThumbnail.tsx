@@ -21,7 +21,7 @@ export function cachedThumbnail(id: string) {
 export async function thumbnail(id: string, stillNeeded: () => boolean) {
   if (cached.has(id)) return cached.get(id)!;
   await new Promise<void>((resolve) => {
-    if (active < 4) {
+    if (active < 3) {
       active++;
       resolve();
     } else waiting.push(resolve);

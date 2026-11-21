@@ -18,9 +18,14 @@ import {
 import { Sheet, notifyLibraryChanged } from "@/components/music/ui";
 import MiniPlayer from "@/components/music/MiniPlayer";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
+import { audioFileAccept, decoderNotice } from "@/lib/music/formats";
 import { importAudioFiles } from "@/lib/music/importLocal";
 import { syncCloudToLocalStorage } from "@/lib/music/cloudSync";
-import { openFilePicker, markPickerGotFile, triggerHaptic } from "@/lib/deviceAuth";
+import {
+  openFilePicker,
+  markPickerGotFile,
+  triggerHaptic,
+} from "@/lib/deviceAuth";
 import { useMusicTheme } from "@/lib/music/theme";
 
 const TABS = [
@@ -31,7 +36,11 @@ const TABS = [
   { href: "/secret/music/settings", label: "Vault", icon: SlidersHorizontal },
 ];
 
-export default function MusicLayout({ children }: { children: React.ReactNode }) {
+export default function MusicLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const pathname = usePathname() || "";
   const { currentTrack, isPlaying } = useMusicPlayer();
   useMusicTheme(); // Synchronizes active theme attribute across document
@@ -51,13 +60,14 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
     return () => window.removeEventListener("lifeatlas_music_add", open);
   }, []);
 
-  const pickFiles = () => {
+  const pickFiles = (all = false) => {
+    if (fileRef.current) fileRef.current.accept = all ? "" : audioFileAccept;
     setAddOpen(false);
     openFilePicker(fileRef.current, () =>
       showToast(
         "No song received from the Android file picker. Open the picker menu, choose Audio or Files, and select your song.",
-        7000
-      )
+        7000,
+      ),
     );
   };
 
@@ -68,12 +78,15 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
     setBusy(`Importing ${list.length} song${list.length > 1 ? "s" : ""}…`);
     try {
       const r = await importAudioFiles(list, (done, total, name) =>
-        setBusy(name ? `Importing ${done + 1}/${total} · ${name}` : "Finishing…")
+        setBusy(
+          name ? `Importing ${done + 1}/${total} · ${name}` : "Finishing…",
+        ),
       );
       notifyLibraryChanged();
       const parts = [`Added ${r.imported} song${r.imported === 1 ? "" : "s"}`];
       if (r.duplicates) parts.push(`${r.duplicates} already in library`);
-      if (r.failed.length) parts.push(`${r.failed.length} failed (${r.failed[0]})`);
+      if (r.failed.length)
+        parts.push(`${r.failed.length} failed (${r.failed[0]})`);
       showToast(parts.join(" · "), 6000);
       triggerHaptic(r.imported ? "success" : "error");
     } catch (err) {
@@ -87,9 +100,15 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
   const openYouTube = () => {
     setAddOpen(false);
     triggerHaptic("tap");
-    const win = window as unknown as { __openYouTubeModal?: (u?: string) => void };
-    if (typeof win.__openYouTubeModal === "function") win.__openYouTubeModal("");
-    else window.dispatchEvent(new CustomEvent("lifeatlas_youtube_share", { detail: { url: "" } }));
+    const win = window as unknown as {
+      __openYouTubeModal?: (u?: string) => void;
+    };
+    if (typeof win.__openYouTubeModal === "function")
+      win.__openYouTubeModal("");
+    else
+      window.dispatchEvent(
+        new CustomEvent("lifeatlas_youtube_share", { detail: { url: "" } }),
+      );
   };
 
   const syncCloud = async () => {
@@ -98,7 +117,9 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
     try {
       const r = await syncCloudToLocalStorage();
       notifyLibraryChanged();
-      showToast(`Cloud sync done · ${r.total} song${r.total === 1 ? "" : "s"} in cloud`);
+      showToast(
+        `Cloud sync done · ${r.total} song${r.total === 1 ? "" : "s"} in cloud`,
+      );
     } catch {
       showToast("Could not reach the cloud.");
     } finally {
@@ -112,7 +133,10 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
       className="music-theme fixed inset-0 z-20 overflow-hidden font-body transition-colors duration-300"
     >
       {/* Playback-reactive ambient lighting */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+        aria-hidden="true"
+      >
         {currentTrack?.artworkUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -135,7 +159,8 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
         />
         <div
           style={{
-            background: "radial-gradient(ellipse at top, transparent 0%, var(--mv-bg) 78%)",
+            background:
+              "radial-gradient(ellipse at top, transparent 0%, var(--mv-bg) 78%)",
           }}
           className="absolute inset-0"
         />
@@ -149,10 +174,15 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
       {(busy || toast) && (
         <div className="fixed left-4 right-4 top-[max(env(safe-area-inset-top),0.75rem)] z-[70] max-w-md mx-auto">
           <div
-            style={{ background: "var(--mv-bg-elevated)", borderColor: "var(--mv-border)" }}
+            style={{
+              background: "var(--mv-bg-elevated)",
+              borderColor: "var(--mv-border)",
+            }}
             className="flex items-center gap-3 px-4 py-3 rounded-2xl backdrop-blur-2xl border shadow-2xl text-sm text-[var(--mv-text)] animate-fade-in"
           >
-            {busy && <Loader2 className="w-4 h-4 animate-spin text-[var(--mv-accent)] shrink-0" />}
+            {busy && (
+              <Loader2 className="w-4 h-4 animate-spin text-[var(--mv-accent)] shrink-0" />
+            )}
             <span className="min-w-0">{busy || toast}</span>
           </div>
         </div>
@@ -182,7 +212,8 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
                       setAddOpen(true);
                     }}
                     style={{
-                      background: "linear-gradient(135deg, var(--mv-accent), var(--mv-accent-2))",
+                      background:
+                        "linear-gradient(135deg, var(--mv-accent), var(--mv-accent-2))",
                       color: "var(--mv-accent-fg)",
                       borderColor: "var(--mv-bg)",
                       boxShadow: "0 12px 30px -4px var(--mv-glow)",
@@ -196,7 +227,9 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
               );
             }
             const active =
-              tab.href === "/secret/music" ? pathname === tab.href : pathname.startsWith(tab.href);
+              tab.href === "/secret/music"
+                ? pathname === tab.href
+                : pathname.startsWith(tab.href);
             const Icon = tab.icon;
             return (
               <Link
@@ -204,7 +237,9 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
                 href={tab.href}
                 onClick={() => triggerHaptic("tap")}
                 className={`relative flex-1 flex flex-col items-center justify-center gap-1 h-full rounded-2xl transition-colors ${
-                  active ? "text-[var(--mv-text)]" : "text-[var(--mv-text-subtle)] hover:text-[var(--mv-text-muted)]"
+                  active
+                    ? "text-[var(--mv-text)]"
+                    : "text-[var(--mv-text-subtle)] hover:text-[var(--mv-text-muted)]"
                 }`}
               >
                 {active && (
@@ -222,7 +257,9 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
                     active ? "text-[var(--mv-accent)] scale-105" : ""
                   }`}
                 />
-                <span className="text-[10px] font-semibold tracking-wide">{tab.label}</span>
+                <span className="text-[10px] font-semibold tracking-wide">
+                  {tab.label}
+                </span>
               </Link>
             );
           })}
@@ -230,7 +267,14 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
       </nav>
 
       {/* Hidden picker (single instance for the whole vault) */}
-      <input ref={fileRef} type="file" accept="audio/*" multiple className="hidden" onChange={onFiles} />
+      <input
+        ref={fileRef}
+        type="file"
+        accept={audioFileAccept}
+        multiple
+        className="hidden"
+        onChange={onFiles}
+      />
 
       {/* Add sheet: the ONE place to bring music in */}
       <Sheet open={addOpen} onClose={() => setAddOpen(false)}>
@@ -238,7 +282,9 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
           <p className="text-[10px] tracking-[0.22em] uppercase text-[var(--mv-accent)] font-semibold">
             Atlas Sonic
           </p>
-          <h3 className="font-display text-2xl text-[var(--mv-text)] mt-0.5">Add music</h3>
+          <h3 className="font-display text-2xl text-[var(--mv-text)] mt-0.5">
+            Add music
+          </h3>
           <p className="text-xs text-[var(--mv-text-muted)] mt-0.5">
             Bring songs in from YouTube, phone storage, or cloud backup.
           </p>
@@ -255,9 +301,19 @@ export default function MusicLayout({ children }: { children: React.ReactNode })
             icon={Smartphone}
             tint="from-emerald-500 to-teal-600"
             title="From this phone"
-            body="Import MP3, M4A, WAV, FLAC, or AAC files"
-            onClick={pickFiles}
+            body="Select multiple songs — MP3, FLAC, AAC, Opus, WAV and more"
+            onClick={() => pickFiles(false)}
           />
+          <AddOption
+            icon={Smartphone}
+            tint="from-emerald-500 to-teal-600"
+            title="Browse all files"
+            body="Find audio hidden by your phone’s file-type filter"
+            onClick={() => pickFiles(true)}
+          />
+          <p className="text-xs text-[var(--mv-text-muted)] px-2">
+            {decoderNotice}
+          </p>
           <AddOption
             icon={CloudDownload}
             tint="from-sky-500 to-cyan-600"
@@ -289,12 +345,18 @@ function AddOption({
       onClick={onClick}
       className="w-full flex items-center gap-4 p-4 rounded-3xl sonic-glass hover:bg-[var(--mv-card-hover)] active:scale-[0.98] transition-all text-left cursor-pointer"
     >
-      <span className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${tint} flex items-center justify-center shrink-0 shadow-lg ring-1 ring-inset ring-white/25`}>
+      <span
+        className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${tint} flex items-center justify-center shrink-0 shadow-lg ring-1 ring-inset ring-white/25`}
+      >
         <Icon className="w-6 h-6 text-white" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-semibold text-[var(--mv-text)]">{title}</span>
-        <span className="block text-xs text-[var(--mv-text-muted)] mt-0.5">{body}</span>
+        <span className="block text-[15px] font-semibold text-[var(--mv-text)]">
+          {title}
+        </span>
+        <span className="block text-xs text-[var(--mv-text-muted)] mt-0.5">
+          {body}
+        </span>
       </span>
       <ChevronRight className="w-4 h-4 text-[var(--mv-text-subtle)] shrink-0" />
     </button>

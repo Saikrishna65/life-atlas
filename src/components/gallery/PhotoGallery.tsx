@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import {
   Aperture,
   ArrowLeft,
+  Share2,
+  Images,
   Check,
   Cloud,
   CloudUpload,
@@ -60,6 +62,9 @@ import { readTripCoverLibrary } from "@/lib/studio/trip-cover";
 import { transferScheduleText } from "@/lib/r2/transfer-status";
 import { useGalleryBack } from "@/lib/gallery/navigation";
 import { cachedThumbnail } from "./GalleryThumbnail";
+import { gallerySearchIntent } from "@/lib/gallery/search-intent";
+import { shareDevice } from "@/lib/gallery/viewer-actions";
+import GalleryAlbumPicker from "./GalleryAlbumPicker";
 import PhotoViewer from "./PhotoViewer";
 import { Modal } from "@/components/world/primitives";
 import GalleryThumbnail from "./GalleryThumbnail";
@@ -159,6 +164,7 @@ export default function PhotoGallery() {
   const [intelligence, setIntelligence] = useState<GalleryIntelligenceStatus>();
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [albumSelection, setAlbumSelection] = useState<string[] | undefined>();
   const [smartMode, setSmartMode] = useState<CollectionKind>();
   const [curated, setCurated] = useState<SmartCollection>();
   const [analysisGoal, setAnalysisGoal] = useState<"similar" | "people">();
@@ -239,6 +245,11 @@ export default function PhotoGallery() {
       clearInterval(timer);
     };
   }, [supported, analysisState]);
+  const dragPick = useRef<{
+    active: boolean;
+    seen: Set<string>;
+    timer?: ReturnType<typeof setTimeout>;
+  }>({ active: false, seen: new Set() });
   const browsing = workspace === "photos" || collectionOpen;
   const grid = useRef<HTMLDivElement>(null),
     sentinel = useRef<HTMLDivElement>(null),
@@ -384,6 +395,10 @@ export default function PhotoGallery() {
         checkedPublications.current.delete(trip.id);
       });
   }, [tripFilter, trips]);
+  const suggestedSearch = useMemo(
+    () => gallerySearchIntent(query, trips),
+    [query, trips],
+  );
   const requestDevice = useCallback(
     async (next: string, append = false) => {
       if (!supported || access.status === "denied") return;
@@ -396,11 +411,13 @@ export default function PhotoGallery() {
           view === "curated" && curated
             ? await R2.getGalleryCollectionMedia({
                 kind:
-                  curated.kind === "similar"
-                    ? "similar"
-                    : curated.kind === "people"
-                      ? "people"
-                      : "memories",
+                  smartMode === "albums"
+                    ? "albums"
+                    : curated.kind === "similar"
+                      ? "similar"
+                      : curated.kind === "people"
+                        ? "people"
+                        : "memories",
                 key: curated.id,
                 cursor: next,
               })
@@ -417,6 +434,10 @@ export default function PhotoGallery() {
                   kind,
                   album,
                   order: order === "oldest" ? "oldest" : "newest",
+                  from: dateFrom
+                    ? new Date(dateFrom + "T00:00:00").getTime()
+                    : 0,
+                  to: dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : 0,
                 });
         if (generation !== deviceGeneration.current) return;
         setItems((old) =>
@@ -446,6 +467,9 @@ export default function PhotoGallery() {
       searchMode,
       view,
       curated,
+      smartMode,
+      dateFrom,
+      dateTo,
     ],
   );
   useEffect(() => {
@@ -528,11 +552,11 @@ export default function PhotoGallery() {
     return items.map((m) => {
       const job = latest.get(`${m.id}|${mediaStamp(m)}`);
       const asset = deviceAsset(m, job ? [job] : []);
-      return view === "curated" && m.capturedAt && m.capturedAt > 0
+      return m.capturedAt && m.capturedAt > 0
         ? { ...asset, date: m.capturedAt }
         : asset;
     });
-  }, [items, jobs, summary, view]);
+  }, [items, jobs, summary]);
   const cloudAssets = useMemo(
     () =>
       objects.map((o) =>
@@ -771,7 +795,7 @@ export default function PhotoGallery() {
   );
   useEffect(() => {
     const hide = () => {
-      if (document.hidden) closeViewer();
+      if (document.hidden && previewToken.current) closeViewer();
     };
     document.addEventListener("visibilitychange", hide);
     return () => {
@@ -858,9 +882,8 @@ export default function PhotoGallery() {
     setFavorites(values);
     try {
       await saveGalleryPreference("favorites", values);
-      void R2.saveGalleryMediaPreferences({ favorites: values }).catch(
-        () => {},
-      );
+      if (supported)
+        await R2.saveGalleryMediaPreferences({ favorites: values });
     } catch (e) {
       report(e);
     }
@@ -1116,6 +1139,29 @@ export default function PhotoGallery() {
           </button>
         </label>
       )}
+      {searchOpen &&
+        browsing &&
+        view !== "cloud" &&
+        suggestedSearch.labels.length > 0 && (
+          <div className="gi-search-mode">
+            <button
+              onClick={() => {
+                setKind(suggestedSearch.kind || "all");
+                setFavoritesOnly(!!suggestedSearch.favorites);
+                setDateFrom(suggestedSearch.from || "");
+                setDateTo(suggestedSearch.to || "");
+                setTripFilter(suggestedSearch.tripId || "");
+                setPlaceFilter(suggestedSearch.placeId || "");
+                setQuery(suggestedSearch.text);
+                setNotice(
+                  `Searching ${suggestedSearch.labels.join(" · ")}. Change or clear these in view options.`,
+                );
+              }}
+            >
+              Search {suggestedSearch.labels.join(" · ")}
+            </button>
+          </div>
+        )}
       {searchOpen && browsing && view !== "cloud" && (
         <div className="gi-search-mode" aria-label="Search type">
           <button
@@ -1676,6 +1722,7 @@ export default function PhotoGallery() {
                       return (
                         <article
                           key={asset.id}
+                          data-media-id={asset.id}
                           className={`pg-tile ${selected.includes(asset.id) ? "is-selected" : ""} ${selected.length || selectionMode ? "in-selection-mode" : ""}`}
                           style={{
                             position: "absolute",
@@ -1697,17 +1744,42 @@ export default function PhotoGallery() {
                               if (hold.current.timer)
                                 clearTimeout(hold.current.timer);
                               if (!e.isPrimary) return;
+                              if (selectionMode || selected.length) {
+                                dragPick.current.active = true;
+                                dragPick.current.seen = new Set([asset.id]);
+                                hold.current = {
+                                  x: e.clientX,
+                                  y: e.clientY,
+                                  handled: false,
+                                };
+                                return;
+                              }
                               hold.current = {
                                 x: e.clientX,
                                 y: e.clientY,
                                 handled: false,
                                 timer: setTimeout(() => {
                                   hold.current.handled = true;
+                                  setSelectionMode(true);
+                                  dragPick.current.active = true;
+                                  dragPick.current.seen = new Set([asset.id]);
                                   toggle(asset.id);
                                 }, 500),
                               };
                             }}
                             onPointerMove={(e) => {
+                              if (dragPick.current.active && e.buttons !== 0) {
+                                const tile = document
+                                  .elementFromPoint(e.clientX, e.clientY)
+                                  ?.closest<HTMLElement>("[data-media-id]");
+                                const id = tile?.dataset.mediaId;
+                                if (id && !dragPick.current.seen.has(id)) {
+                                  dragPick.current.seen.add(id);
+                                  hold.current.handled = true;
+                                  toggle(id);
+                                }
+                                return;
+                              }
                               if (
                                 Math.hypot(
                                   e.clientX - hold.current.x,
@@ -1718,10 +1790,12 @@ export default function PhotoGallery() {
                                 clearTimeout(hold.current.timer);
                             }}
                             onPointerUp={() => {
+                              dragPick.current.active = false;
                               if (hold.current.timer)
                                 clearTimeout(hold.current.timer);
                             }}
                             onPointerCancel={() => {
+                              dragPick.current.active = false;
                               if (hold.current.timer)
                                 clearTimeout(hold.current.timer);
                             }}
@@ -1869,6 +1943,94 @@ export default function PhotoGallery() {
       {selected.length > 0 && (
         <aside className="pg-selection" aria-label="Selected media actions">
           <strong>{selected.length} selected</strong>
+          <button
+            disabled={busy}
+            onClick={() =>
+              void shareDevice(chosen.map((m) => m.id)).catch(report)
+            }
+          >
+            <Share2 size={17} />
+            Share
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => setAlbumSelection(chosen.map((m) => m.id))}
+          >
+            <Images size={17} />
+            Album
+          </button>
+          {view === "curated" && smartMode === "albums" && curated && (
+            <>
+              {chosen.length === 1 && (
+                <button
+                  onClick={() =>
+                    void R2.editGalleryAlbum({
+                      action: "cover",
+                      id: curated.id,
+                      cover: chosen[0].id,
+                    })
+                      .then(() => {
+                        setNotice("Album cover saved.");
+                        setSelected([]);
+                        setRevision((v) => v + 1);
+                      })
+                      .catch(report)
+                  }
+                >
+                  Use as cover
+                </button>
+              )}
+              <button
+                onClick={() =>
+                  void R2.editGalleryAlbum({
+                    action: "remove",
+                    id: curated.id,
+                    ids: chosen.map((m) => m.id),
+                  })
+                    .then(() => {
+                      setSelected([]);
+                      setRevision((v) => v + 1);
+                    })
+                    .catch(report)
+                }
+              >
+                Remove from album
+              </button>
+            </>
+          )}
+          <button
+            disabled={busy || chosen.length > 10}
+            onClick={async () => {
+              if (
+                !confirm(
+                  "Verify each encrypted private original, then ask Android to move the phone copies to trash? Keep your recovery kit. Public copies alone do not qualify.",
+                )
+              )
+                return;
+              setBusy(true);
+              setNotice(
+                "Verifying private originals. Large videos can take time.",
+              );
+              try {
+                const result = await systemAction(() =>
+                  R2.freeUpDeviceMedia({ ids: chosen.map((m) => m.id) }),
+                );
+                if (result.approved) {
+                  setSelected([]);
+                  setRevision((v) => v + 1);
+                  setNotice(
+                    "Phone copies moved to trash. Private cloud originals remain.",
+                  );
+                }
+              } catch (e) {
+                report(e);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Free up phone space
+          </button>
           {selected.length === 1 && chosen[0] && (
             <button
               onClick={() =>
@@ -1930,6 +2092,17 @@ export default function PhotoGallery() {
             <X size={18} />
           </button>
         </aside>
+      )}
+      {albumSelection && (
+        <GalleryAlbumPicker
+          ids={albumSelection}
+          onClose={() => setAlbumSelection(undefined)}
+          onSaved={() => {
+            setAlbumSelection(undefined);
+            setRevision((v) => v + 1);
+            setNotice("Added to your album. Originals stay unchanged.");
+          }}
+        />
       )}
       {assigning && (
         <GalleryAssign
@@ -1999,6 +2172,43 @@ export default function PhotoGallery() {
                 <dd>{statusLabel(a, trips)}</dd>
               </dl>
             ) : null;
+          }}
+          favorite={favorites.includes(viewer)}
+          onFavorite={(id) => favorite(id)}
+          onAlbum={
+            assets.find((a) => a.id === viewer)?.device
+              ? (id) => {
+                  closeViewer();
+                  setAlbumSelection([id]);
+                }
+              : undefined
+          }
+          onTrip={
+            assets.find((a) => a.id === viewer)?.device
+              ? (id) => {
+                  const a = assets.find((v) => v.id === id);
+                  if (a?.device) {
+                    closeViewer();
+                    setSelected([id]);
+                    setSelectionMedia({ [id]: a.device });
+                    setAssigning(true);
+                  }
+                }
+              : undefined
+          }
+          onShare={async (id) => {
+            const a = assets.find((v) => v.id === id);
+            if (a?.device) await shareDevice([a.device.id]);
+            else if (previewToken.current)
+              await systemAction(() =>
+                R2.shareGalleryPreview({ token: previewToken.current }),
+              );
+            else if (a?.url && navigator.share)
+              await navigator.share({ url: a.url });
+            else
+              throw new Error(
+                "Download this original to your phone before sharing.",
+              );
           }}
           onSelect={setViewer}
           onClose={closeViewer}
@@ -2144,8 +2354,9 @@ export default function PhotoGallery() {
             )}
           </div>
           <p className="pg-muted">
-            No local original is deleted by this gallery. Website publishing
-            remains an explicit review in Creator Studio.
+            Organising or uploading never deletes phone originals. Deletion
+            needs your confirmation. Website publishing stays an explicit
+            review.
           </p>
         </Modal>
       )}

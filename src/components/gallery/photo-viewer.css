@@ -395,3 +395,83 @@
   background-position: center;
   background-size: contain;
 }
+
+.pv-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9;
+  display: flex;
+  justify-content: space-evenly;
+  padding: 10px 8px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(transparent, #000c);
+  transition:
+    opacity 0.25s,
+    transform 0.25s;
+}
+.pv-bottom button {
+  flex-direction: column;
+  gap: 5px;
+  min-width: 52px;
+}
+.pv-bottom small {
+  font-size: 11px;
+}
+.pv-bottom.is-hidden {
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+}
+.pv-viewer .pv-video-controls {
+  bottom: calc(86px + env(safe-area-inset-bottom));
+}
+.pv-picture.is-settling {
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+.pv-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  display: flex;
+  align-items: flex-end;
+  background: #0007;
+}
+.pv-action-sheet {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  max-height: 80dvh;
+  overflow: auto;
+  border-radius: 24px 24px 0 0;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  background: #18251f;
+  color: white;
+}
+.pv-action-sheet header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.pv-action-sheet header h2 {
+  font-size: 21px;
+}
+.pv-action-sheet > button {
+  width: 100%;
+  justify-content: flex-start;
+  border-radius: 10px;
+  min-height: 52px;
+  gap: 16px;
+}
+.pv-action-sheet p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #c3d1c9;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv-bottom,
+  .pv-picture.is-settling {
+    transition: none;
+  }
+}

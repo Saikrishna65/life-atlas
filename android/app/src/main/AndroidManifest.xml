@@ -39,6 +39,10 @@
 
         </activity>
 
+        <activity-alias android:name="com.lifeatlas.app.GalleryLauncher" android:targetActivity=".MainActivity" android:enabled="true" android:exported="true" android:icon="@drawable/ic_atlas_photos" android:label="${atlasGalleryLabel}">
+            <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+        </activity-alias>
+
         <service
             android:name=".BankNotificationListener"
             android:label="${atlasAppLabel} bank alerts (Google Messages)"

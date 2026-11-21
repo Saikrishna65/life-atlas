@@ -32,7 +32,7 @@ import {
   type LibraryStatus,
 } from "@/lib/gallery/library";
 import type { StorageSummary } from "@/lib/r2/types";
-import TripMediaViewer from "@/components/media/TripMediaViewer";
+import PhotoViewer from "./PhotoViewer";
 import LibraryThumbnail from "./LibraryThumbnail";
 import PhoneTrash from "./PhoneTrash";
 import "./library-hub.css";
@@ -872,11 +872,26 @@ export default function LibraryHub() {
         </>
       )}
       {viewer && (
-        <TripMediaViewer
-          variant="library"
+        <PhotoViewer
           selected={viewer.item.id}
           onSelect={() => {}}
           onClose={closeViewer}
+          onShare={async () => {
+            if (viewer.clip)
+              throw new Error(
+                "Open the original from this file’s details to share the full video.",
+              );
+            if (!token.current)
+              throw new Error("Open the original before sharing.");
+            await systemAction(() =>
+              R2.shareGalleryPreview({ token: token.current }),
+            );
+          }}
+          onDownload={async () => {
+            await systemAction(() =>
+              R2.downloadLibraryOriginal({ session, id: viewer.item.id }),
+            );
+          }}
           items={[
             {
               id: viewer.item.id,

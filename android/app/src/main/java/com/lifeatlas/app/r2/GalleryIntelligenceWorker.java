@@ -108,7 +108,8 @@ public final class GalleryIntelligenceWorker extends Worker {
                 && GalleryPhotoQuality.VERSION.equals(
                     row.optJSONObject("quality").optString("version"))))
         && (!config.optBoolean("people")
-            || GalleryFaceModels.VERSION.equals(row.optString("faceVersion")));
+            || (GalleryFaceModels.VERSION.equals(row.optString("faceVersion"))
+                && GalleryFaceQuality.VERSION.equals(row.optString("faceQualityVersion"))));
   }
 
   private static JSONObject metadata(JSONObject media) throws Exception {
@@ -243,6 +244,17 @@ public final class GalleryIntelligenceWorker extends Worker {
           if (!albums.isEmpty() && !albums.contains(media.optString("album"))) continue;
           String id = media.getString("id"), stamp = R2DeviceGallery.stamp(media);
           JSONObject row = db.get(id);
+          if (row != null
+              && config.optBoolean("people")
+              && stamp.equals(row.optString("stamp"))
+              && GalleryFaceModels.VERSION.equals(row.optString("faceVersion"))
+              && !GalleryFaceQuality.VERSION.equals(row.optString("faceQualityVersion"))) {
+            GalleryFaceQuality.update(row);
+            synchronized (GalleryIntelligence.STATE_LOCK) {
+              if (stopped(service, epoch)) return Result.success();
+              db.put(row);
+            }
+          }
           if (current(row, media, config)) continue;
           Bitmap bitmap = null;
           com.google.android.gms.tasks.Task<Text> pending = null;
@@ -285,6 +297,7 @@ public final class GalleryIntelligenceWorker extends Worker {
                     .put("faceVersion", GalleryFaceModels.VERSION);
               }
             }
+            if (config.optBoolean("people")) GalleryFaceQuality.update(row);
             // Ignore bytes changed or removed during analysis and do not commit after pause/clear.
             synchronized (GalleryIntelligence.STATE_LOCK) {
               if (stopped(service, epoch)) return Result.success();
@@ -349,7 +362,17 @@ public final class GalleryIntelligenceWorker extends Worker {
       if (page.optBoolean("complete")) {
         new GalleryCollections(getApplicationContext()).warm();
         GalleryRecoveryWorker.photosChanged(getApplicationContext());
-        if (service.settings().optBoolean("mediaDirty")) service.mediaChanged();
+        if (service.settings().optBoolean("qualityDirty")) {
+          service.change(
+              epoch,
+              v -> {
+                try {
+                  v.put("qualityDirty", false);
+                } catch (Exception ignored) {
+                }
+              });
+          service.control("scan");
+        } else if (service.settings().optBoolean("mediaDirty")) service.mediaChanged();
       }
       return Result.success();
     } catch (Exception error) {

@@ -126,6 +126,24 @@ final class R2DeviceGallery {
     return list(cursor, query, kind, album, order, "", List.of(), false);
   }
 
+  JSONObject listBetween(
+      String cursor, String query, String kind, String album, String order, long from, long to)
+      throws Exception {
+    if (from < 0 || to < 0 || (from > 0 && to > 0 && from > to))
+      throw new R2Exception("INVALID_SELECTION");
+    List<String> args = new ArrayList<>();
+    String date = "CASE WHEN datetaken>0 THEN datetaken ELSE date_added*1000 END", extra = "";
+    if (from > 0) {
+      extra = "(" + date + ")>=?";
+      args.add(Long.toString(from));
+    }
+    if (to > 0) {
+      extra += (extra.isEmpty() ? "" : " AND ") + "(" + date + ")<=?";
+      args.add(Long.toString(to));
+    }
+    return list(cursor, query, kind, album, order, extra, args, false);
+  }
+
   JSONObject changedPhotos(String cursor, long since) throws Exception {
     return list(
         cursor,
@@ -276,11 +294,11 @@ final class R2DeviceGallery {
   Map<String, String> accessibleVersions(Set<String> wanted) throws Exception {
     Map<String, String> values = new HashMap<>();
     if (wanted.isEmpty()) return values;
-    List<String> columns = new ArrayList<>(List.of("_id", "_size", "date_modified"));
+    List<String> columns = new ArrayList<>(List.of("_id", "_size", "date_modified", "media_type"));
     if (Build.VERSION.SDK_INT >= 29) columns.add("volume_name");
     if (Build.VERSION.SDK_INT >= 30) columns.add("generation_modified");
     String where =
-        "media_type=1"
+        "media_type IN (1,3)"
             + (Build.VERSION.SDK_INT >= 29 ? " AND is_pending=0" : "")
             + (Build.VERSION.SDK_INT >= 30 ? " AND is_trashed=0" : "");
     try (Cursor c =
@@ -294,7 +312,7 @@ final class R2DeviceGallery {
                 null)) {
       while (c != null && c.moveToNext()) {
         String id =
-            "image:"
+            (number(c, "media_type") == 3 ? "video:" : "image:")
                 + (Build.VERSION.SDK_INT >= 29 ? string(c, "volume_name") : "external")
                 + ":"
                 + number(c, "_id");
@@ -368,32 +386,64 @@ final class R2DeviceGallery {
     JSONObject media = one(id);
     File root = new File(context.getCacheDir(), "device-gallery");
     root.mkdirs();
-    File file = new File(root, selectionId(media) + ".jpg");
+    File file = new File(root, selectionId(media) + "-sharp-v2.jpg");
     if (!file.exists()) {
       Bitmap bitmap =
-          Build.VERSION.SDK_INT >= 29
-              ? context.getContentResolver().loadThumbnail(uri(id), new Size(400, 400), null)
-              : id.startsWith("image:")
-                  ? MediaStore.Images.Thumbnails.getThumbnail(
-                      context.getContentResolver(),
-                      mediaNumber(id),
-                      MediaStore.Images.Thumbnails.MINI_KIND,
-                      null)
-                  : MediaStore.Video.Thumbnails.getThumbnail(
-                      context.getContentResolver(),
-                      mediaNumber(id),
-                      MediaStore.Video.Thumbnails.MINI_KIND,
-                      null);
+          id.startsWith("image:")
+              ? GalleryIntelligenceWorker.decode(context, id)
+              : Build.VERSION.SDK_INT >= 29
+                  ? context.getContentResolver().loadThumbnail(uri(id), new Size(960, 960), null)
+                  : id.startsWith("image:")
+                      ? MediaStore.Images.Thumbnails.getThumbnail(
+                          context.getContentResolver(),
+                          mediaNumber(id),
+                          MediaStore.Images.Thumbnails.MINI_KIND,
+                          null)
+                      : MediaStore.Video.Thumbnails.getThumbnail(
+                          context.getContentResolver(),
+                          mediaNumber(id),
+                          MediaStore.Video.Thumbnails.MINI_KIND,
+                          null);
       if (bitmap == null) throw new R2Exception("PREVIEW_UNAVAILABLE");
-      try (OutputStream out = new FileOutputStream(file)) {
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 82, out);
+      double scale = Math.min(1, 960d / Math.max(bitmap.getWidth(), bitmap.getHeight()));
+      if (scale < 1) {
+        Bitmap resized =
+            Bitmap.createScaledBitmap(
+                bitmap,
+                Math.max(1, (int) (bitmap.getWidth() * scale)),
+                Math.max(1, (int) (bitmap.getHeight() * scale)),
+                true);
+        if (resized != bitmap) bitmap.recycle();
+        bitmap = resized;
+      }
+      android.util.AtomicFile atomic = new android.util.AtomicFile(file);
+      FileOutputStream out = null;
+      try {
+        out = atomic.startWrite();
+        if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 94, out))
+          throw new R2Exception("PREVIEW_UNAVAILABLE");
+        atomic.finishWrite(out);
+      } catch (Exception e) {
+        if (out != null) atomic.failWrite(out);
+        throw e;
       } finally {
         bitmap.recycle();
       }
       File[] files = root.listFiles();
-      if (files != null && files.length > 800) {
+      if (files != null) {
         Arrays.sort(files, Comparator.comparingLong(File::lastModified));
-        for (int i = 0; i < files.length - 700; i++) files[i].delete();
+        long bytes = 0;
+        for (File cached : files) bytes += cached.length();
+        int remaining = files.length;
+        for (File cached : files) {
+          if (bytes <= 96L * 1024 * 1024 && remaining <= 800) break;
+          if (cached.equals(file)) continue;
+          long length = cached.length();
+          if (cached.delete()) {
+            bytes -= length;
+            remaining--;
+          }
+        }
       }
     }
     file.setLastModified(System.currentTimeMillis());

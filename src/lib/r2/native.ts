@@ -13,54 +13,179 @@ import type {
   Transfer,
 } from "./types";
 interface R2Plugin {
-  addListener(event:"galleryChanged",listener:()=>void):Promise<import("@capacitor/core").PluginListenerHandle>;
-  getGalleryRecovery():Promise<import("../gallery/collections").GalleryRecoveryStatus>;
-  configureGalleryRecovery(input:{enabled:boolean}):Promise<import("../gallery/collections").GalleryRecoveryStatus>;
-  controlGalleryRecovery(input:{action:"backup"|"restore"|"cancel";peopleApproved?:boolean}):Promise<void>;
-  getGalleryMediaPreferences():Promise<{favorites?:string[]}>;
-  saveGalleryMediaPreferences(input:{favorites:string[]}):Promise<void>;
-  getGalleryCollections(input:{kind:import('../gallery/collections').CollectionKind;cursor:string}):Promise<import('../gallery/collections').CollectionPage>;
-  getGalleryCollectionMedia(input:{kind:import('../gallery/collections').CollectionKind;key:string;cursor:string}):Promise<import('../gallery/collections').CollectionMediaPage>;
-  getGalleryPeopleFaces(input:{key:string;cursor:string}):Promise<import('../gallery/collections').PeopleFacePage>;
-  getGalleryFaceThumbnail(input:{faceId:string}):Promise<{thumbnail:string}>;
-  editGalleryCollection(input:import('../gallery/collections').CollectionEdit):Promise<void>;
-  getGalleryIntelligence():Promise<import('../gallery/intelligence').GalleryIntelligenceStatus>;
-  configureGalleryIntelligence(input:import('../gallery/intelligence').GalleryIntelligenceSettings & {approved:true;peopleApproved?:boolean}):Promise<import('../gallery/intelligence').GalleryIntelligenceStatus>;
-  controlGalleryIntelligence(input:{action:'pause'|'resume'|'scan'|'clear'}):Promise<import('../gallery/intelligence').GalleryIntelligenceStatus>;
-  searchGalleryIntelligence(input:{query:string;album:string;kind:string;offset:number}):Promise<import('../gallery/types').DevicePage>;
-  getDeviceTrash(input:{cursor:string}):Promise<{items:{id:string;name:string;mimeType:string;size:number;expiresAt:number}[];cursor:string;complete:boolean}>;
-  saveLibraryPreferences(input:{trashDays:number}):Promise<void>;
-  beginLibrarySession():Promise<{session:string}>;
-  endLibrarySession():Promise<void>;
-  getLibraryStatus():Promise<import('../gallery/library').LibraryStatus>;
-  getBackupAlbums():Promise<{albums:{id:string;name:string;count:number}[]}>;
-  configureAutoBackup(input:{settings:import('../gallery/library').BackupSettings}):Promise<import('../gallery/library').BackupSettings>;
-  scanBackupNow():Promise<void>;
-  listLibrary(input:{session:string;slot:'public'|'private';state:string;offset:number}):Promise<import('../gallery/library').LibraryPage>;
-  libraryThumbnail(input:{session:string;id:string}):Promise<{path?:string;url?:string}>;
-  libraryPreview(input:{session:string;id:string;variant:'original'|'clip'}):Promise<{path?:string;url?:string;token?:string;mimeType?:string}>;
-  downloadLibraryOriginal(input:{session:string;id:string}):Promise<unknown>;
-  changeLibraryTrash(input:{action:'trash'|'restore'|'purge';ids:string[];days?:number}):Promise<{session:string}>;
-  startLibraryTask(input:{action:'restore'|'sync'|'reconcile'}):Promise<void>;
-  trashDeviceMedia(input:{ids:string[];trashed:boolean}):Promise<{approved:boolean}>;
-  pickTakeoutArchives():Promise<{files:{id:string;name:string}[]}>;
-  controlTakeoutImport(input:{id:string;action:'start'|'pause'}):Promise<void>;
-  readDeviceLocations(input:{ids:string[];versions:Record<string,string>}):Promise<{items:import('../gallery/places').LocationRead[]}>;
-  fingerprintGalleryMedia(input:{ids:string[];versions:Record<string,string>}):Promise<{items:import('../gallery/places').LocationRead[]}>;
-  backupPlaceCatalog(input:{catalog:import('../gallery/places').PlaceLibrary}):Promise<{key:string;size:number}>;
-  listPlaceBackups(input:{cursor:string}):Promise<ObjectPage>;
-  restorePlaceCatalog(input:{key:string}):Promise<{catalog:unknown}>;
-  getGalleryAccess():Promise<import('../gallery/types').GalleryAccess>;
-  requestGalleryAccess():Promise<import('../gallery/types').GalleryAccess>;
-  openGallerySettings():Promise<void>;
-  listDeviceMedia(input:{cursor:string;query:string;kind:string;album:string;order:string}):Promise<import('../gallery/types').DevicePage>;
-  getGalleryAlbums():Promise<{albums:{name:string;count:number}[]}>;
-  getDeviceThumbnail(input:{id:string}):Promise<{path:string}>;
-  registerDeviceMedia(input:{ids:string[];versions?:Record<string,string>}):Promise<{files:SelectedMedia[]}>;
-  checkDeviceCloud(input:{ids:string[]}):Promise<{items:{id:string;copies:import('../gallery/types').DeviceMedia['copies']}[]}>;
-  openGalleryCloudPreview(input:{key:string}):Promise<{token:string;path:string;mimeType:string;name:string}>;
-  releaseGalleryPreview(input:{token:string}):Promise<void>;
-  queueGalleryUploads(input:{slot:BucketSlot;selectionIds:string[]}):Promise<{transferIds:Record<string,string>}>;
+  shareGalleryPreview(input: { token: string }): Promise<void>;
+  editGalleryAlbum(
+    input: import("../gallery/collections").AlbumEdit,
+  ): Promise<{ id: string }>;
+  shareDeviceMedia(input: { ids: string[] }): Promise<void>;
+  editDeviceMedia(input: { id: string }): Promise<{ saved: boolean }>;
+  setDeviceMediaAs(input: { id: string }): Promise<void>;
+  freeUpDeviceMedia(input: { ids: string[] }): Promise<{ approved: boolean }>;
+  addListener(
+    event: "galleryChanged",
+    listener: () => void,
+  ): Promise<import("@capacitor/core").PluginListenerHandle>;
+  getGalleryRecovery(): Promise<
+    import("../gallery/collections").GalleryRecoveryStatus
+  >;
+  configureGalleryRecovery(input: {
+    enabled: boolean;
+  }): Promise<import("../gallery/collections").GalleryRecoveryStatus>;
+  controlGalleryRecovery(input: {
+    action: "backup" | "restore" | "cancel";
+    peopleApproved?: boolean;
+  }): Promise<void>;
+  getGalleryMediaPreferences(): Promise<{ favorites?: string[] }>;
+  saveGalleryMediaPreferences(input: { favorites: string[] }): Promise<void>;
+  getGalleryCollections(input: {
+    kind: import("../gallery/collections").CollectionKind;
+    cursor: string;
+  }): Promise<import("../gallery/collections").CollectionPage>;
+  getGalleryCollectionMedia(input: {
+    kind: import("../gallery/collections").CollectionKind;
+    key: string;
+    cursor: string;
+  }): Promise<import("../gallery/collections").CollectionMediaPage>;
+  getGalleryPeopleFaces(input: {
+    key: string;
+    cursor: string;
+  }): Promise<import("../gallery/collections").PeopleFacePage>;
+  getGalleryFaceThumbnail(input: {
+    faceId: string;
+  }): Promise<{ thumbnail: string }>;
+  editGalleryCollection(
+    input: import("../gallery/collections").CollectionEdit,
+  ): Promise<void>;
+  getGalleryIntelligence(): Promise<
+    import("../gallery/intelligence").GalleryIntelligenceStatus
+  >;
+  configureGalleryIntelligence(
+    input: import("../gallery/intelligence").GalleryIntelligenceSettings & {
+      approved: true;
+      peopleApproved?: boolean;
+    },
+  ): Promise<import("../gallery/intelligence").GalleryIntelligenceStatus>;
+  controlGalleryIntelligence(input: {
+    action: "pause" | "resume" | "scan" | "clear";
+  }): Promise<import("../gallery/intelligence").GalleryIntelligenceStatus>;
+  searchGalleryIntelligence(input: {
+    query: string;
+    album: string;
+    kind: string;
+    offset: number;
+  }): Promise<import("../gallery/types").DevicePage>;
+  getDeviceTrash(input: {
+    cursor: string;
+  }): Promise<{
+    items: {
+      id: string;
+      name: string;
+      mimeType: string;
+      size: number;
+      expiresAt: number;
+    }[];
+    cursor: string;
+    complete: boolean;
+  }>;
+  saveLibraryPreferences(input: { trashDays: number }): Promise<void>;
+  beginLibrarySession(): Promise<{ session: string }>;
+  endLibrarySession(): Promise<void>;
+  getLibraryStatus(): Promise<import("../gallery/library").LibraryStatus>;
+  getBackupAlbums(): Promise<{
+    albums: { id: string; name: string; count: number }[];
+  }>;
+  configureAutoBackup(input: {
+    settings: import("../gallery/library").BackupSettings;
+  }): Promise<import("../gallery/library").BackupSettings>;
+  scanBackupNow(): Promise<void>;
+  listLibrary(input: {
+    session: string;
+    slot: "public" | "private";
+    state: string;
+    offset: number;
+  }): Promise<import("../gallery/library").LibraryPage>;
+  libraryThumbnail(input: {
+    session: string;
+    id: string;
+  }): Promise<{ path?: string; url?: string }>;
+  libraryPreview(input: {
+    session: string;
+    id: string;
+    variant: "original" | "clip";
+  }): Promise<{
+    path?: string;
+    url?: string;
+    token?: string;
+    mimeType?: string;
+  }>;
+  downloadLibraryOriginal(input: {
+    session: string;
+    id: string;
+  }): Promise<unknown>;
+  changeLibraryTrash(input: {
+    action: "trash" | "restore" | "purge";
+    ids: string[];
+    days?: number;
+  }): Promise<{ session: string }>;
+  startLibraryTask(input: {
+    action: "restore" | "sync" | "reconcile";
+  }): Promise<void>;
+  trashDeviceMedia(input: {
+    ids: string[];
+    trashed: boolean;
+  }): Promise<{ approved: boolean }>;
+  pickTakeoutArchives(): Promise<{ files: { id: string; name: string }[] }>;
+  controlTakeoutImport(input: {
+    id: string;
+    action: "start" | "pause";
+  }): Promise<void>;
+  readDeviceLocations(input: {
+    ids: string[];
+    versions: Record<string, string>;
+  }): Promise<{ items: import("../gallery/places").LocationRead[] }>;
+  fingerprintGalleryMedia(input: {
+    ids: string[];
+    versions: Record<string, string>;
+  }): Promise<{ items: import("../gallery/places").LocationRead[] }>;
+  backupPlaceCatalog(input: {
+    catalog: import("../gallery/places").PlaceLibrary;
+  }): Promise<{ key: string; size: number }>;
+  listPlaceBackups(input: { cursor: string }): Promise<ObjectPage>;
+  restorePlaceCatalog(input: { key: string }): Promise<{ catalog: unknown }>;
+  getGalleryAccess(): Promise<import("../gallery/types").GalleryAccess>;
+  requestGalleryAccess(): Promise<import("../gallery/types").GalleryAccess>;
+  openGallerySettings(): Promise<void>;
+  listDeviceMedia(input: {
+    cursor: string;
+    query: string;
+    kind: string;
+    album: string;
+    order: string;
+    from?: number;
+    to?: number;
+  }): Promise<import("../gallery/types").DevicePage>;
+  getGalleryAlbums(): Promise<{ albums: { name: string; count: number }[] }>;
+  getDeviceThumbnail(input: { id: string }): Promise<{ path: string }>;
+  registerDeviceMedia(input: {
+    ids: string[];
+    versions?: Record<string, string>;
+  }): Promise<{ files: SelectedMedia[] }>;
+  checkDeviceCloud(input: {
+    ids: string[];
+  }): Promise<{
+    items: {
+      id: string;
+      copies: import("../gallery/types").DeviceMedia["copies"];
+    }[];
+  }>;
+  openGalleryCloudPreview(input: {
+    key: string;
+  }): Promise<{ token: string; path: string; mimeType: string; name: string }>;
+  releaseGalleryPreview(input: { token: string }): Promise<void>;
+  queueGalleryUploads(input: {
+    slot: BucketSlot;
+    selectionIds: string[];
+  }): Promise<{ transferIds: Record<string, string> }>;
   setSensitiveScreen(input: { enabled: boolean }): Promise<void>;
   getConfigurationSummary(): Promise<StorageSummary>;
   saveConfiguration(input: ConfigurationInput): Promise<unknown>;
@@ -72,7 +197,7 @@ interface R2Plugin {
     slot: BucketSlot;
     prefix: string;
     cursor: string;
-    revision?:string;
+    revision?: string;
   }): Promise<ObjectPage>;
   getObjectMetadata(input: {
     slot: BucketSlot;
@@ -102,11 +227,14 @@ interface R2Plugin {
     key: string;
     name: string;
   }): Promise<Transfer | { cancelled: true }>;
-  recoverTripUploads():Promise<{recovered:number}>;
+  recoverTripUploads(): Promise<{ recovered: number }>;
   getTransferProgress(): Promise<{ transfers: Transfer[] }>;
   cancelTransfer(input: { id: string }): Promise<void>;
   pauseTransfer(input: { id: string }): Promise<void>;
-  resumeTransfer(input: { id: string; publicationSession?: string }): Promise<void>;
+  resumeTransfer(input: {
+    id: string;
+    publicationSession?: string;
+  }): Promise<void>;
   startMultipartUpload(input: { id: string }): Promise<unknown>;
   uploadMultipartPart(input: { id: string; number: number }): Promise<unknown>;
   completeMultipartUpload(input: { id: string }): Promise<unknown>;
@@ -123,9 +251,19 @@ interface R2Plugin {
     websiteUrl: string;
     catalog: PublicMediaCatalog;
   }>;
-  beginTripPublication(input:{collection:string;selectionIds:string[];transferIds:string[];transfersBySelection:Record<string,string>}):Promise<{publicationSession:string;transferIds:Record<string,string>}>;
-  endTripPublication(input:{publicationSession:string}):Promise<void>;
-  publishTripMedia(input:PublishInput & {publicationSession?:string}):Promise<{item:import("./types").PublishedMedia;manifestUrl:string}>;
+  beginTripPublication(input: {
+    collection: string;
+    selectionIds: string[];
+    transferIds: string[];
+    transfersBySelection: Record<string, string>;
+  }): Promise<{
+    publicationSession: string;
+    transferIds: Record<string, string>;
+  }>;
+  endTripPublication(input: { publicationSession: string }): Promise<void>;
+  publishTripMedia(
+    input: PublishInput & { publicationSession?: string },
+  ): Promise<{ item: import("./types").PublishedMedia; manifestUrl: string }>;
   unpublishMedia(input: {
     id: string;
   }): Promise<{ catalog: PublicMediaCatalog }>;
@@ -152,7 +290,7 @@ export async function systemAction<T>(action: () => Promise<T>): Promise<T> {
     setSystemPickerActive(false);
   }
 }
-export {storageError} from "./errors";
+export { storageError } from "./errors";
 export function bytes(value = 0) {
   if (value === 0) return "0 B";
   const i = Math.min(

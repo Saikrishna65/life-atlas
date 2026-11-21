@@ -31,6 +31,7 @@ final class GalleryIndexedPhotos {
     final float[] vector;
     final long time;
     final long hash;
+    double quality = 1;
 
     Face(String id, String mediaId, float[] vector, long time) {
       this.id = id;
@@ -83,7 +84,10 @@ final class GalleryIndexedPhotos {
               if (v == null || v.length() != 128) continue;
               float[] vector = new float[128];
               for (int j = 0; j < 128; j++) vector[j] = (float) v.getDouble(j);
-              fs.add(new Face(f.getString("id"), id, GalleryFaceModels.normalize(vector), date));
+              Face face =
+                  new Face(f.getString("id"), id, GalleryFaceModels.normalize(vector), date);
+              face.quality = f.optDouble("quality", 1);
+              fs.add(face);
               faces++;
             }
         }
