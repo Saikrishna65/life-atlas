@@ -1,11 +1,17 @@
 .gextract.world-modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  box-sizing: border-box;
+  height: fit-content;
+  z-index: 220;
   width: min(570px, 94vw);
   max-height: 90dvh;
   overflow: auto;
   border: 0;
-  border-radius: 22px;
-  padding: 24px;
-  background: #f6f8f2;
+  border-radius: 26px;
+  padding: clamp(16px, 4vw, 24px);
+  background: #fff;
   color: #18352a;
   font:
     14px/1.5 Arial,
@@ -133,4 +139,42 @@
 }
 .gextract-preview {
   width: min(100%, 340px);
+}
+
+.gextract.world-modal::backdrop {
+  background: #0009;
+  backdrop-filter: none;
+}
+.gextract nav {
+  padding: 4px;
+  background: #eef1ee;
+  border-radius: 16px;
+}
+.gextract nav button {
+  flex: 1;
+  border: 0;
+  background: transparent;
+}
+.gextract header > button {
+  border: 0;
+  border-radius: 50%;
+  background: #f0f2ef;
+  width: 42px;
+  height: 42px;
+  padding: 10px;
+}
+.gextract h2 {
+  font-size: clamp(18px, 5vw, 23px);
+}
+.gextract-preview {
+  border-radius: 14px;
+}
+.gextract-caption {
+  color: #627068;
+  font-size: 12px;
+}
+@media (max-height: 560px) {
+  .gextract-preview {
+    max-height: 26dvh;
+  }
 }

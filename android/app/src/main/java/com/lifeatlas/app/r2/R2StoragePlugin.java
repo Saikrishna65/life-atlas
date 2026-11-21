@@ -744,7 +744,7 @@ public class R2StoragePlugin extends Plugin {
 
   @PluginMethod
   public void createGallerySticker(PluginCall call) {
-    work(call, () -> call.resolve(js(GalleryExtraction.sticker(getContext(), call.getData()))));
+    work(call, () -> call.resolve(js(GallerySubjectInference.extract(getContext(), call.getData()))));
   }
 
   @PluginMethod

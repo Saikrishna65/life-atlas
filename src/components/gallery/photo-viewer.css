@@ -490,10 +490,6 @@
 .pv-viewer .pv-slide {
   background: transparent;
 }
-.pv-viewer.world-modal.is-returning,
-.pv-viewer.is-returning::backdrop {
-  background: transparent;
-}
 .pv-viewer .pv-action-sheet {
   width: min(480px, 100%);
   margin: 0;
@@ -513,25 +509,12 @@
 .pv-viewer .pv-action-sheet p {
   color: #66776d;
 }
-.pv-return {
-  position: fixed;
-  z-index: 14;
-  overflow: hidden;
-  pointer-events: none;
-  animation: pv-return 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+.pv-viewer .pv-picture {
+  will-change: transform;
 }
-.pv-return img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.pv-viewer .pv-slide > img {
+  will-change: transform;
 }
-@keyframes pv-return {
- from { transform:translate3d(0,0,0) scale(1);border-radius:18px; }
- to { transform:translate3d(calc(var(--to-left) - var(--from-left)),calc(var(--to-top) - var(--from-top)),0) scale(var(--return-scale-x),var(--return-scale-y));border-radius:3px; }
-}
-.pv-return {left:var(--from-left);top:var(--from-top);width:var(--from-width);height:var(--from-height);transform-origin:top left;will-change:transform;}
-.pv-viewer .pv-picture {will-change:transform;}
-.pv-viewer .pv-slide > img {will-change:transform;}
 @media (max-width: 600px) {
   .pv-viewer .pv-action-sheet {
     padding: 22px 20px;
@@ -540,9 +523,6 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pv-return {
-    animation: none;
-  }
   .pv-viewer.world-modal,
   .pv-viewer::backdrop {
     transition: none;
@@ -803,9 +783,71 @@
   border: 1px solid #ccd8cc;
   border-radius: 10px;
 }
-.pg-active-filters {display:flex;gap:8px;overflow:auto;padding:8px 20px;}
-.pg-active-filters button {display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:11px;background:#fff;border:1px solid #d7e0d5;border-radius:20px;min-height:34px;padding:7px 12px;}
+.pg-active-filters {
+  display: flex;
+  gap: 8px;
+  overflow: auto;
+  padding: 8px 20px;
+}
+.pg-active-filters button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 11px;
+  background: #fff;
+  border: 1px solid #d7e0d5;
+  border-radius: 20px;
+  min-height: 34px;
+  padding: 7px 12px;
+}
 
-.pv-viewer.world-modal:not(.is-returning),.pv-viewer:not(.is-returning)::backdrop{transition:none;}
+.pv-shortcut {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+.pv-shortcut select {
+  max-width: 55%;
+  background: #f3f5ef;
+  color: #18352a;
+  border: 1px solid #d5dfd5;
+  padding: 9px;
+  border-radius: 10px;
+}
 
-.pv-shortcut{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;font-size:13px}.pv-shortcut select{max-width:55%;background:#f3f5ef;color:#18352a;border:1px solid #d5dfd5;padding:9px;border-radius:10px;}
+/* A short dissolve avoids image distortion, bitmap snapshots and competing travel animations. */
+.pv-viewer.world-modal {
+  opacity: 1;
+  transition: opacity 0.14s ease-out;
+  animation: pv-open 0.14s ease-out;
+}
+.pv-viewer.world-modal.is-leaving {
+  opacity: 0;
+  animation: none;
+  pointer-events: none;
+}
+.pv-viewer.is-leaving::backdrop {
+  background: transparent;
+  transition: background 0.14s ease-out;
+}
+@keyframes pv-open {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pv-viewer.world-modal {
+    animation: none;
+    transition: none;
+  }
+  .pv-viewer.is-leaving::backdrop {
+    transition: none;
+  }
+}

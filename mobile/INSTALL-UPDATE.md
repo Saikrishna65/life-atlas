@@ -1,3 +1,25 @@
+Atlas 2.2.3 — Gallery fixes
+
+Update through Atlas → Control Room → Access → App updates, or install atlas.apk
+over Atlas. Package and signing identity are unchanged; version code 39.
+Do not uninstall or clear app data.
+
+• Photo grid pinching is removed; fixed mobile/desktop layouts are restored.
+• Viewer uses a short fade instead of stretching a thumbnail when opening/closing.
+• Photos and collection pages remember their own scroll positions and loaded lists.
+• Long-press text to select it; holding a point without text tries to lift that subject.
+• Subject inference runs in a separate, non-exported Android process. A failed
+  worker returns an error instead of executing its model in Atlas's main process.
+• Text & stickers uses a compact, centred panel, including small phone screens.
+• Gallery settings → Add Gallery to home screen requests a launcher shortcut.
+  Alternatively, long-press Atlas Gallery in the app drawer and drag it home.
+
+First subject extraction may download a Google Play services model. It requires
+compatible Play services; cutout quality depends on the photo. No personal cloud
+objects, originals, keys or existing data are reset.
+
+Historical release notes below.
+
 Atlas 2.2.2 — Gallery interaction and extraction update
 
 Install through Atlas → Control Room → Access → App updates, or install atlas.apk

@@ -14,20 +14,67 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
-@CapacitorPlugin(name="AtlasPermissions", permissions={
-  @Permission(alias="audio", strings={Manifest.permission.READ_MEDIA_AUDIO}),
-  @Permission(alias="legacyAudio", strings={Manifest.permission.READ_EXTERNAL_STORAGE}),
-  @Permission(alias="location", strings={Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION})
-})
+@CapacitorPlugin(
+    name = "AtlasPermissions",
+    permissions = {
+      @Permission(
+          alias = "audio",
+          strings = {Manifest.permission.READ_MEDIA_AUDIO}),
+      @Permission(
+          alias = "legacyAudio",
+          strings = {Manifest.permission.READ_EXTERNAL_STORAGE}),
+      @Permission(
+          alias = "location",
+          strings = {
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+          })
+    })
 public class AtlasPermissionsPlugin extends Plugin {
+  @PluginMethod
+  public void pinGalleryShortcut(PluginCall call) {
+    if (Build.VERSION.SDK_INT < 26) {
+      call.resolve(new JSObject().put("supported", false).put("requested", false));
+      return;
+    }
+    android.content.pm.ShortcutManager manager =
+        getContext().getSystemService(android.content.pm.ShortcutManager.class);
+    boolean supported = manager != null && manager.isRequestPinShortcutSupported();
+    boolean requested = false;
+    if (supported) {
+      Intent intent =
+          new Intent(Intent.ACTION_MAIN)
+              .setComponent(
+                  new android.content.ComponentName(
+                      getContext(), "com.lifeatlas.app.GalleryLauncher"))
+              .addCategory(Intent.CATEGORY_LAUNCHER);
+      android.content.pm.ShortcutInfo shortcut =
+          new android.content.pm.ShortcutInfo.Builder(getContext(), "atlas-gallery")
+              .setShortLabel("Atlas Gallery")
+              .setLongLabel("Atlas Gallery")
+              .setIcon(
+                  android.graphics.drawable.Icon.createWithResource(
+                      getContext(), R.drawable.ic_atlas_photos))
+              .setIntent(intent)
+              .build();
+      requested = manager.requestPinShortcut(shortcut, null);
+    }
+    call.resolve(new JSObject().put("supported", supported).put("requested", requested));
+  }
+
   private String audioAlias() {
     return Build.VERSION.SDK_INT >= 33 ? "audio" : "legacyAudio";
   }
 
   @PluginMethod
   public void getAudioPermission(PluginCall call) {
-    PermissionState state = Build.VERSION.SDK_INT < 23 ? PermissionState.GRANTED : getPermissionState(audioAlias());
-    call.resolve(new JSObject().put("state", state.toString()).put("granted", state == PermissionState.GRANTED).put("supported", true));
+    PermissionState state =
+        Build.VERSION.SDK_INT < 23 ? PermissionState.GRANTED : getPermissionState(audioAlias());
+    call.resolve(
+        new JSObject()
+            .put("state", state.toString())
+            .put("granted", state == PermissionState.GRANTED)
+            .put("supported", true));
   }
 
   @PluginMethod
@@ -46,8 +93,13 @@ public class AtlasPermissionsPlugin extends Plugin {
 
   @PluginMethod
   public void getLocationPermission(PluginCall call) {
-    PermissionState state = Build.VERSION.SDK_INT < 23 ? PermissionState.GRANTED : getPermissionState("location");
-    call.resolve(new JSObject().put("state", state.toString()).put("granted", state == PermissionState.GRANTED).put("supported", true));
+    PermissionState state =
+        Build.VERSION.SDK_INT < 23 ? PermissionState.GRANTED : getPermissionState("location");
+    call.resolve(
+        new JSObject()
+            .put("state", state.toString())
+            .put("granted", state == PermissionState.GRANTED)
+            .put("supported", true));
   }
 
   @PluginMethod
@@ -67,7 +119,11 @@ public class AtlasPermissionsPlugin extends Plugin {
   @PluginMethod
   public void openAppSettings(PluginCall call) {
     try {
-      getActivity().startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getContext().getPackageName())));
+      getActivity()
+          .startActivity(
+              new Intent(
+                  Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                  Uri.parse("package:" + getContext().getPackageName())));
       call.resolve(new JSObject().put("opened", true));
     } catch (Exception error) {
       call.reject("Could not open Android settings", error);

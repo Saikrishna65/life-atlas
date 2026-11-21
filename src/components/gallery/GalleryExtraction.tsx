@@ -14,7 +14,7 @@ export default function GalleryExtraction({
 }: {
   id: string;
   source: string;
-  point: { x: number; y: number };
+  point: { x: number; y: number; automatic?: boolean };
   onClose: () => void;
 }) {
   const [ocr, setOcr] =
@@ -25,8 +25,7 @@ export default function GalleryExtraction({
   const [busy, setBusy] = useState("Reading text"),
     [sticker, setSticker] =
       useState<Awaited<ReturnType<typeof R2.createGallerySticker>>>(),
-    [tab, setTab] = useState<"text" | "sticker">("text"),
-    [consent, setConsent] = useState(false);
+    [tab, setTab] = useState<"text" | "sticker">("text");
   const [at, setAt] = useState(point),
     [aspect, setAspect] = useState(1);
   const field = useRef<HTMLTextAreaElement>(null),
@@ -34,25 +33,44 @@ export default function GalleryExtraction({
   useGalleryBack(true, onClose, 150);
   useEffect(() => {
     alive.current = true;
-    void R2.extractGalleryText({ id })
-      .then((result) => {
+    void (async () => {
+      try {
+        const result = await R2.extractGalleryText({ id });
         if (!alive.current) return;
         setOcr(result);
         const chosen = result.blocks.find(
           (b) =>
-            point.x >= b.left &&
-            point.x <= b.left + b.width &&
-            point.y >= b.top &&
-            point.y <= b.top + b.height,
+            point.x >= b.left - 0.01 &&
+            point.x <= b.left + b.width + 0.01 &&
+            point.y >= b.top - 0.01 &&
+            point.y <= b.top + b.height + 0.01,
         );
         setText(chosen?.text || result.text);
-      })
-      .catch((e) => {
+        if (!point.automatic || chosen) return;
+      } catch (e) {
+        if (!alive.current) return;
+        if (!point.automatic) {
+          setError(storageError(e));
+          return;
+        }
+      }
+      if (!alive.current) return;
+      setTab("sticker");
+      setBusy("Lifting subject");
+      try {
+        const value = await R2.createGallerySticker({
+          id,
+          x: point.x,
+          y: point.y,
+          consent: true,
+        });
+        if (alive.current) setSticker(value);
+      } catch (e) {
         if (alive.current) setError(storageError(e));
-      })
-      .finally(() => {
-        if (alive.current) setBusy("");
-      });
+      }
+    })().finally(() => {
+      if (alive.current) setBusy("");
+    });
     return () => {
       alive.current = false;
     };
@@ -72,7 +90,7 @@ export default function GalleryExtraction({
   return (
     <Modal title="Text and stickers" onClose={onClose} className="gextract">
       <header>
-        <h2>Text & stickers</h2>
+        <h2>Make something yours</h2>
         <button aria-label="Close extraction" onClick={onClose}>
           <X />
         </button>
@@ -193,17 +211,8 @@ export default function GalleryExtraction({
           </p>
           {!sticker && (
             <>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={consent}
-                  onChange={(e) => setConsent(e.target.checked)}
-                />{" "}
-                Allow on-device subject extraction. Google Play services may
-                download its model on first use.
-              </label>
               <button
-                disabled={!!busy || !consent}
+                disabled={!!busy}
                 onClick={() =>
                   void run("Lifting subject", async () => {
                     const value = await R2.createGallerySticker({
@@ -279,6 +288,9 @@ export default function GalleryExtraction({
           )}
         </>
       )}
+      <p className="gextract-caption">
+        On-device only. First use may download the subject model.
+      </p>
       {busy && <p role="status">{busy}…</p>}
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}

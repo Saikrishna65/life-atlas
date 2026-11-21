@@ -30,6 +30,30 @@ public class GalleryAdvancedToolsTest {
   }
 
   @Test
+  public void subjectRuntimeIsPrivateAndSeparateFromTheActivity() throws Exception {
+    var context = RuntimeEnvironment.getApplication();
+    ServiceInfo info =
+        context
+            .getPackageManager()
+            .getServiceInfo(new ComponentName(context, GalleryExtractionService.class), 0);
+    assertFalse(info.exported);
+    assertTrue(info.processName.endsWith(":gallery_extraction"));
+    assertNotEquals(context.getApplicationInfo().processName, info.processName);
+  }
+
+  @Test
+  public void subjectExtractionWithoutAnExplicitGestureOrActionNeverStartsInference()
+      throws Exception {
+    try {
+      GallerySubjectInference.extract(
+          RuntimeEnvironment.getApplication(), new JSONObject().put("id", "image:external:1"));
+      fail("Expected explicit extraction approval");
+    } catch (R2Exception expected) {
+      assertEquals("EXTRACTION_CONSENT_REQUIRED", expected.code);
+    }
+  }
+
+  @Test
   public void cachedQueriesStayEncryptedAndAvoidStartingAnyRuntime() throws Exception {
     var repo = R2TripQueueTest.repository();
     float[] vector = new float[512];

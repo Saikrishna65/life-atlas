@@ -1,5 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useGalleryScroll } from "@/lib/gallery/use-gallery-scroll";
+import { GalleryPageCache } from "@/lib/gallery/page-cache";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import {
@@ -170,6 +172,7 @@ export default function PhotoGallery() {
   const [albumSelection, setAlbumSelection] = useState<string[] | undefined>();
   const [smartMode, setSmartMode] = useState<CollectionKind>();
   const [curated, setCurated] = useState<SmartCollection>();
+  const [pageCache] = useState(() => new GalleryPageCache());
   const [analysisGoal, setAnalysisGoal] = useState<"similar" | "people">();
   const [searchMode, setSearchMode] = useState<"files" | "smart">("files");
   useEffect(() => {
@@ -311,7 +314,7 @@ export default function PhotoGallery() {
       })
       .catch(() => {});
     void readGalleryPreference<number>(
-      "photos-density",
+      "photos-fixed-density-v1",
       window.innerWidth < 701 ? 3 : 5,
     )
       .then((v) => {
@@ -461,6 +464,33 @@ export default function PhotoGallery() {
       void handle.then((h) => h.remove()).catch(() => {});
     };
   }, [supported]);
+  const pageKey = JSON.stringify([
+    view,
+    slot,
+    query,
+    kind,
+    order,
+    album,
+    favoritesOnly,
+    favoritesOnly ? favorites : [],
+    personFilter,
+    dateFrom,
+    dateTo,
+    curated?.id,
+    smartMode,
+    searchMode,
+  ]);
+  useGalleryScroll(
+    JSON.stringify([
+      workspace,
+      collectionOpen,
+      smartMode,
+      pageKey,
+      tripFilter,
+      placeFilter,
+      searchOpen,
+    ]),
+  );
   const requestDevice = useCallback(
     async (next: string, append = false) => {
       if (!supported || access.status === "denied") return;
@@ -530,15 +560,17 @@ export default function PhotoGallery() {
                   to: dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : 0,
                 });
         if (generation !== deviceGeneration.current) return;
-        setItems((old) =>
-          append
+        setItems((old) => {
+          const records = append
             ? [
                 ...new Map(
                   [...old, ...page.items].map((m) => [m.id, m]),
                 ).values(),
               ]
-            : page.items,
-        );
+            : page.items;
+          pageCache.put(pageKey, { ...page, items: records }, revision);
+          return records;
+        });
         if (smart) setNotice(page.notice || "");
         else if (page.notice) setNotice(page.notice);
         setCursor(page.cursor);
@@ -566,18 +598,32 @@ export default function PhotoGallery() {
       smartMode,
       dateFrom,
       dateTo,
+      pageCache,
+      pageKey,
+      revision,
     ],
   );
   useEffect(() => {
     if (view === "cloud" || view === "places") return;
     const generation = deviceGeneration;
-    const timer = setTimeout(() => void requestDevice(""), 250);
+    const saved = pageCache.get(pageKey, revision);
+    const timer = setTimeout(
+      () => {
+        if (saved) {
+          setItems(saved.items);
+          setCursor(saved.cursor);
+          setHasMore(!saved.complete);
+          setLoading(false);
+        } else void requestDevice("");
+      },
+      saved ? 0 : 250,
+    );
     return () => {
       clearTimeout(timer);
       generation.current++;
       searchToken.current = "";
     };
-  }, [requestDevice, revision, view]);
+  }, [requestDevice, revision, view, pageCache, pageKey]);
   const requestCloud = useCallback(
     async (next: string, append = false) => {
       if (!supported) return;
@@ -784,110 +830,6 @@ export default function PhotoGallery() {
     layout.ready,
     browsing,
     workspace,
-  ]);
-  useEffect(() => {
-    const node = grid.current;
-    if (!node) return;
-    let distance = 0,
-      factor = 1,
-      anchor = "",
-      anchorY = 0;
-    const begin = (e: TouchEvent) => {
-      if (e.touches.length !== 2) return;
-      if (hold.current.timer) clearTimeout(hold.current.timer);
-      dragPick.current.active = false;
-      distance = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY,
-      );
-      const x = (e.touches[0].clientX + e.touches[1].clientX) / 2,
-        y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      const tile = document
-        .elementFromPoint(x, y)
-        ?.closest<HTMLElement>("[data-media-id]");
-      anchor = tile?.dataset.mediaId || "";
-      anchorY = tile?.getBoundingClientRect().top || y;
-      node.style.transformOrigin = `${x - node.getBoundingClientRect().left}px ${y - node.getBoundingClientRect().top}px`;
-      node.dataset.pinching = "true";
-    };
-    const move = (e: TouchEvent) => {
-      if (e.touches.length !== 2 || !distance) return;
-      e.preventDefault();
-      factor = Math.max(
-        0.65,
-        Math.min(
-          1.6,
-          Math.hypot(
-            e.touches[0].clientX - e.touches[1].clientX,
-            e.touches[0].clientY - e.touches[1].clientY,
-          ) / distance,
-        ),
-      );
-      node.style.transform = `scale(${factor})`;
-    };
-    const end = () => {
-      if (!distance) return;
-      distance = 0;
-      const previous = new Map(
-        Array.from(node.querySelectorAll<HTMLElement>("[data-media-id]")).map(
-          (tile) => [tile.dataset.mediaId, tile.getBoundingClientRect()],
-        ),
-      );
-      delete node.dataset.pinching;
-      node.style.transform = "";
-      const next = Math.max(
-        2,
-        Math.min(maxColumns, Math.round(columns / factor)),
-      );
-      setColumns(next);
-      void saveGalleryPreference("photos-density", next);
-      requestAnimationFrame(() =>
-        requestAnimationFrame(() => {
-          const tile = Array.from(
-            node.querySelectorAll<HTMLElement>("[data-media-id]"),
-          ).find((t) => t.dataset.mediaId === anchor);
-          if (tile)
-            window.scrollBy(0, tile.getBoundingClientRect().top - anchorY);
-          if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-            for (const current of node.querySelectorAll<HTMLElement>(
-              "[data-media-id]",
-            )) {
-              const old = previous.get(current.dataset.mediaId),
-                next = current.getBoundingClientRect();
-              if (old && next.width && next.height)
-                current.animate(
-                  [
-                    {
-                      transform: `translate(${old.left - next.left}px,${old.top - next.top}px) scale(${old.width / next.width},${old.height / next.height})`,
-                      transformOrigin: "top left",
-                    },
-                    { transform: "none", transformOrigin: "top left" },
-                  ],
-                  { duration: 190, easing: "cubic-bezier(.2,.7,.2,1)" },
-                );
-            }
-        }),
-      );
-      factor = 1;
-    };
-    node.addEventListener("touchstart", begin, { passive: true });
-    node.addEventListener("touchmove", move, { passive: false });
-    node.addEventListener("touchend", end);
-    node.addEventListener("touchcancel", end);
-    return () => {
-      node.removeEventListener("touchstart", begin);
-      node.removeEventListener("touchmove", move);
-      node.removeEventListener("touchend", end);
-      node.removeEventListener("touchcancel", end);
-    };
-  }, [
-    access.status,
-    supported,
-    view,
-    maxColumns,
-    browsing,
-    workspace,
-    columns,
   ]);
   const closeViewer = useCallback(() => {
     opening.current++;
@@ -1178,7 +1120,7 @@ export default function PhotoGallery() {
               }
               if (collectionOpen) {
                 setCurated(undefined);
-                window.scrollTo(0, 0);
+
                 setCollectionOpen(false);
                 setView("device");
                 setTripFilter("");
@@ -1498,7 +1440,6 @@ export default function PhotoGallery() {
             }
             aria-current={workspace === section ? "page" : undefined}
             onClick={() => {
-              window.scrollTo(0, 0);
               setWorkspace(section);
               setSmartMode(undefined);
               setCurated(undefined);
@@ -1544,13 +1485,11 @@ export default function PhotoGallery() {
           items={items}
           trips={trips}
           onSmart={(mode) => {
-            window.scrollTo(0, 0);
             setSmartMode(mode);
             setSelected([]);
             setSelectionMode(false);
           }}
           onFavorites={() => {
-            window.scrollTo(0, 0);
             setView("device");
             setAlbum("");
             setQuery("");
@@ -1560,20 +1499,19 @@ export default function PhotoGallery() {
           }}
           onAlbum={(name) => {
             setFavoritesOnly(false);
-            window.scrollTo(0, 0);
+
             setAlbum(name);
             setView("device");
             setCollectionOpen(true);
           }}
           onTrip={(id) => {
             setFavoritesOnly(false);
-            window.scrollTo(0, 0);
+
             setTripFilter(id);
             setView("trips");
             setCollectionOpen(true);
           }}
           onPlaces={() => {
-            window.scrollTo(0, 0);
             setView("places");
             setCollectionOpen(true);
           }}
@@ -1590,7 +1528,7 @@ export default function PhotoGallery() {
           onChanged={() => setRevision((value) => value + 1)}
           onOpen={(collection) => {
             deviceGeneration.current++;
-            window.scrollTo(0, 0);
+
             setCurated(collection);
             setView("curated");
             setCollectionOpen(true);
@@ -1626,7 +1564,6 @@ export default function PhotoGallery() {
             setIntelligenceOpen(true);
           }}
           onPublic={() => {
-            window.scrollTo(0, 0);
             setView("cloud");
             setSlot("public");
             setCollectionOpen(true);
@@ -1848,7 +1785,7 @@ export default function PhotoGallery() {
                             onChange={(e) => {
                               setColumns(+e.target.value);
                               void saveGalleryPreference(
-                                "photos-density",
+                                "photos-fixed-density-v1",
                                 +e.target.value,
                               );
                             }}

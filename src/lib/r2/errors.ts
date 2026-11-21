@@ -3,6 +3,8 @@ const messages: Record<string, string> = {
     "Finish the current text or sticker extraction, then try again.",
   SUBJECT_NOT_FOUND:
     "No separate subject was found at that point. Tap a clearer foreground person, pet or object and retry.",
+  SUBJECT_WORKER_STOPPED:
+    "The subject tool stopped. Close other heavy apps, then try again. Your photo is unchanged.",
   SUBJECT_MODEL_UNAVAILABLE:
     "Subject extraction is not ready. Check Google Play services and internet access; its model may still be downloading. Try again later. Your original is unchanged.",
   EXTRACTION_CONSENT_REQUIRED:

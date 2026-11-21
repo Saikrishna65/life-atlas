@@ -106,10 +106,20 @@ final class GalleryExtraction {
     Task<SubjectSegmentationResult> task = null;
     try {
       bitmap = GalleryIntelligenceWorker.decode(context, id);
+      int edge = Math.max(bitmap.getWidth(), bitmap.getHeight());
+      if (edge > 1024) {
+        Bitmap smaller =
+            Bitmap.createScaledBitmap(
+                bitmap,
+                Math.max(1, bitmap.getWidth() * 1024 / edge),
+                Math.max(1, bitmap.getHeight() * 1024 / edge),
+                true);
+        if (smaller != bitmap) bitmap.recycle();
+        bitmap = smaller;
+      }
       segmenter =
           SubjectSegmentation.getClient(
               new SubjectSegmenterOptions.Builder()
-                  .enableForegroundBitmap()
                   .enableMultipleSubjects(
                       new SubjectSegmenterOptions.SubjectResultOptions.Builder()
                           .enableSubjectBitmap()

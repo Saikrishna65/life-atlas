@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { Modal } from "@/components/world/primitives";
 import { R2, bytes, storageError } from "@/lib/r2/native";
 import {
@@ -8,6 +9,9 @@ import {
 } from "@/lib/gallery/intelligence";
 import type { GalleryCacheReport } from "@/lib/gallery/media-tools";
 import { useGalleryBack } from "@/lib/gallery/navigation";
+const launcher = registerPlugin<{
+  pinGalleryShortcut(): Promise<{ supported: boolean; requested: boolean }>;
+}>("AtlasPermissions");
 export default function GalleryManagePanel({
   onClose,
   onLarge,
@@ -22,7 +26,8 @@ export default function GalleryManagePanel({
   const [cache, setCache] = useState<GalleryCacheReport>(),
     [status, setStatus] = useState<GalleryIntelligenceStatus>(),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [shortcutNotice, setShortcutNotice] = useState("");
   useGalleryBack(true, onClose, 70);
   const alive = useRef(true);
   const refresh = async () => {
@@ -75,6 +80,36 @@ export default function GalleryManagePanel({
       onClose={onClose}
     >
       <h2>A little room to breathe.</h2>
+      {Capacitor.isNativePlatform() && (
+        <section>
+          <h3>Open Gallery directly</h3>
+          <p>
+            Add a shortcut to your home screen. Your photos stay in the same
+            Atlas app.
+          </p>
+          <button
+            onClick={() =>
+              void launcher
+                .pinGalleryShortcut()
+                .then((result) =>
+                  setShortcutNotice(
+                    result.requested
+                      ? "Confirm Add in your launcher’s prompt."
+                      : "Open your app drawer, then long-press Atlas Gallery and drag it to the home screen.",
+                  ),
+                )
+                .catch(() =>
+                  setShortcutNotice(
+                    "Open your app drawer, then long-press Atlas Gallery and drag it to the home screen.",
+                  ),
+                )
+            }
+          >
+            Add Gallery to home screen
+          </button>
+          {shortcutNotice && <p role="status">{shortcutNotice}</p>}
+        </section>
+      )}
       <section>
         <h3>Temporary images</h3>
         <p>

@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type ReactNode,
-  type CSSProperties,
 } from "react";
 import {
   ArrowLeft,
@@ -31,11 +30,7 @@ import {
   setDevicePhotoAs,
   shareWhatsApp,
 } from "@/lib/gallery/viewer-actions";
-import {
-  containRect,
-  galleryTarget,
-  type MediaRect,
-} from "@/lib/gallery/viewer-motion";
+import { containRect } from "@/lib/gallery/viewer-motion";
 import { useViewerMotion } from "@/lib/gallery/use-viewer-motion";
 import {
   readGalleryPreference,
@@ -98,7 +93,11 @@ export default function PhotoViewer({
       alive = false;
     };
   }, []);
-  const [extract, setExtract] = useState<{ x: number; y: number }>(),
+  const [extract, setExtract] = useState<{
+      x: number;
+      y: number;
+      automatic?: boolean;
+    }>(),
     [teaching, setTeaching] = useState(false),
     [label, setLabel] = useState("");
   useGalleryBack(teaching, () => setTeaching(false), 150);
@@ -131,7 +130,6 @@ export default function PhotoViewer({
     return () => clearTimeout(timer);
   }, [feedback]);
   const viewingMotion = motionSource?.id === selected;
-  const opened = useRef(false);
   const index = items.findIndex((i) => i.id === selected),
     item = items[index];
   const stage = useRef<HTMLDivElement>(null);
@@ -185,11 +183,6 @@ export default function PhotoViewer({
     window.dispatchEvent(new Event("atlas:gallery-restored"));
   };
   const [closing, setClosing] = useState(false);
-  const [returning, setReturning] = useState<{
-    source: string;
-    from: MediaRect;
-    to: MediaRect;
-  }>();
 
   const [settling, setSettling] = useState(false);
   const dragRef = useRef(0);
@@ -208,44 +201,10 @@ export default function PhotoViewer({
       onClose();
       return;
     }
-    const target = galleryTarget(selected),
-      image = stage.current?.querySelector<HTMLImageElement>(
-        ".pv-slide:not([inert]) > img",
-      ),
-      video = stage.current?.querySelector<HTMLVideoElement>(
-        ".pv-slide:not([inert]) video",
-      ),
-      box = stage.current?.getBoundingClientRect();
-    let source = image?.currentSrc || image?.src || item.poster || "";
-    if (video && video.readyState >= 2) {
-      try {
-        const canvas = document.createElement("canvas"),
-          scale = Math.min(1, 800 / video.videoWidth);
-        canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
-        canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
-        canvas
-          .getContext("2d")
-          ?.drawImage(video, 0, 0, canvas.width, canvas.height);
-        source = canvas.toDataURL("image/jpeg", 0.9);
-        video.pause();
-      } catch {
-        source = item.poster || "";
-      }
-    }
-    if (target && box && source)
-      setReturning({
-        source,
-        from: containRect(
-          box,
-          image?.naturalWidth || video?.videoWidth || 0,
-          image?.naturalHeight || video?.videoHeight || 0,
-        ),
-        to: target,
-      });
     setClosing(true);
     setChrome(false);
     clearTimeout(timer.current);
-    slideTimer.current = setTimeout(onClose, 280);
+    slideTimer.current = setTimeout(onClose, 140);
   }
   useGalleryBack(!!item, dismiss, 100);
   useEffect(() => {
@@ -459,7 +418,7 @@ export default function PhotoViewer({
   return (
     <Modal
       title="Photo viewer"
-      className={`pv-viewer ${closing ? "is-returning" : ""}`}
+      className={`pv-viewer ${closing ? "is-leaving" : ""}`}
       onClose={() => {
         const event = new Event("atlas:back", { cancelable: true });
         if (window.dispatchEvent(event)) dismiss();
@@ -486,7 +445,6 @@ export default function PhotoViewer({
         className={`pv-picture journal-viewer-stage ${settling ? "is-settling" : ""}`}
         style={{
           transform: `translate3d(0,${Math.max(0, vertical)}px,0) scale(${1 - Math.min(0.18, Math.max(0, vertical) / 1500)})`,
-          opacity: returning ? 0 : closing ? 0 : 1,
           borderRadius: vertical > 8 ? 18 : 0,
         }}
         onClick={(e) => {
@@ -549,6 +507,7 @@ export default function PhotoViewer({
                   image.naturalHeight,
                 );
                 setExtract({
+                  automatic: true,
                   x: Math.max(
                     0,
                     Math.min(1, (e.clientX - box.left) / box.width),
@@ -812,33 +771,6 @@ export default function PhotoViewer({
                   alt={offset === 0 ? media.caption || "Photo" : ""}
                   draggable={false}
                   decoding="async"
-                  onLoad={(event) => {
-                    if (offset !== 0 || opened.current) return;
-                    opened.current = true;
-                    if (
-                      window.matchMedia("(prefers-reduced-motion: reduce)")
-                        .matches
-                    )
-                      return;
-                    const from = galleryTarget(selected),
-                      img = event.currentTarget,
-                      to = containRect(
-                        img.getBoundingClientRect(),
-                        img.naturalWidth,
-                        img.naturalHeight,
-                      );
-                    if (from && to.width && to.height)
-                      img.animate(
-                        [
-                          {
-                            transform: `translate3d(${from.left + from.width / 2 - to.left - to.width / 2}px,${from.top + from.height / 2 - to.top - to.height / 2}px,0) scale(${from.width / to.width},${from.height / to.height})`,
-                            borderRadius: "12px",
-                          },
-                          { transform: "none", borderRadius: "0px" },
-                        ],
-                        { duration: 220, easing: "cubic-bezier(.2,.7,.2,1)" },
-                      );
-                  }}
                   style={
                     offset === 0
                       ? {
@@ -1358,28 +1290,6 @@ export default function PhotoViewer({
         <p role="status" className="pv-feedback">
           {feedback}
         </p>
-      )}
-      {returning && (
-        <div
-          className="pv-return"
-          style={
-            {
-              "--return-scale-x": returning.to.width / returning.from.width,
-              "--return-scale-y": returning.to.height / returning.from.height,
-              "--from-left": `${returning.from.left}px`,
-              "--from-top": `${returning.from.top}px`,
-              "--from-width": `${returning.from.width}px`,
-              "--from-height": `${returning.from.height}px`,
-              "--to-left": `${returning.to.left}px`,
-              "--to-top": `${returning.to.top}px`,
-              "--to-width": `${returning.to.width}px`,
-              "--to-height": `${returning.to.height}px`,
-            } as CSSProperties
-          }
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={returning.source} alt="" />
-        </div>
       )}
       {error && !actions && <p role="alert">{error}</p>}
       {info && (

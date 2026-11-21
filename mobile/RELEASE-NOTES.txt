@@ -1,10 +1,9 @@
-Gallery 2.2.2
-• Frame-batched photo gestures, anchored zoom and smoother dismissal.
-• Pinch the grid to resize photos; a dedicated Favourites view.
-• Automatic debounced Smart Search with progressive matches and short-lived warm inference.
-• Encrypted correction-based personalization and clearer best-photo selection.
-• Long-press accessible local photos for English text extraction or optional subject cutouts.
-• Copy/save transparent PNG cutouts and share them, including via WhatsApp.
-• Configurable swipe-up shortcut, keeping WhatsApp as the default.
-• Versioned public asset placements reuse approved media across collections; private AI data stays encrypted.
-Subject extraction needs compatible Google Play services and may download its model on first use. Cutouts are copies, not WhatsApp sticker packs. No originals or existing cloud objects are reset.
+Gallery 2.2.3
+• Restore the fixed photo grid; remove pinch resizing on the grid.
+• Simpler opening/closing fades without stretching thumbnail snapshots.
+• Independent scroll positions and bounded cached media lists for Gallery views.
+• Centre and simplify Text & stickers on phones and larger screens.
+• Holding text selects it; holding a point without text attempts subject extraction.
+• Isolate subject processing in a private, on-demand native process, with safe error handling.
+• Add Gallery to home screen from Gallery settings, or drag its app-drawer icon home.
+Subject extraction needs compatible Google Play services and may download a model on first use. No originals or existing cloud data are reset.
