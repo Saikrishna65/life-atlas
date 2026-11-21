@@ -37,7 +37,7 @@ Source stamps include size, modified time and MediaStore generation where suppor
 
 Tests cover reference tokenization, source-version invalidation, encrypted-at-rest round trip/tampering, safe clearing, OCR term matching, RGB normalization, vector normalization, invalid models, and UI settings/search flows. The browser harness uses native fixtures; it cannot certify actual Android ML inference, phone thermals, OCR quality, photo-provider behavior or battery scheduling. Local full-model downloads are blocked by the workspace network policy. The test-only CI workflow verifies real CPU inference; Android device inference and battery behavior still need validation.
 
-Photo review, optional people grouping, smart albums and anniversary memories are implemented in the next milestone; see [smart collections](smart-collections.md). Video scene indexing, structured natural-language filters and independently recoverable cloud index backups remain separate future work.
+Photo review, optional people grouping, smart albums and anniversary memories are implemented in the next milestone; see [smart collections](smart-collections.md). Video scene indexing, structured natural-language filters and a large-library approximate-nearest-neighbour index remain separate future work. Optional encrypted organisation recovery is now implemented; see the smart-collections guide.
 
 ## Validation and current limits
 
