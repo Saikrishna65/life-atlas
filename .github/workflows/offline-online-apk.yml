@@ -43,10 +43,11 @@ jobs:
           npm ci
           npx prisma generate
           npx tsc --noEmit
-          node --test tests/mobile/apkUpdate.test.mjs
+          node --test tests/mobile/apkUpdate.test.mjs tests/mobile/updateManifest.test.mjs
           node --import tsx --test tests/r2/*.test.ts
           node --import tsx --test tests/studio/*.test.ts tests/gallery/*.test.ts tests/music/*.test.ts tests/vault/websitePayload.test.ts tests/public/public-loading.test.ts tests/public/globe-trip-pins.test.ts
           node --import tsx --test tests/cloud-vault/signingAuthorization.test.ts
+          node --import tsx --test tests/atlas-ai/*.test.ts tests/wakeword/*.test.ts tests/atlas-voice-assistant.test.ts tests/security/*.test.ts
           npm run build:mobile
           npx cap sync android
       - name: Load existing signing key only (never replace or rotate)
@@ -65,10 +66,16 @@ jobs:
           else
             node scripts/verify-apk-update.mjs apk-download
           fi
+          cp apk-download/atlas-next.apk apk-download/atlas.apk
+          if [ "${{ inputs.fresh_install || endsWith(github.ref_name, '-fresh-install') }}" != "true" ]; then
+            node scripts/create-update-manifest.mjs apk-download atlas-install-update-${{ github.run_id }}
+          else
+            printf '{"schemaVersion":1,"packages":[]}\n' > apk-download/atlas-update.json
+          fi
           cp mobile/INSTALL-UPDATE.md apk-download/INSTALL.txt
           cd apk-download
-          sha256sum atlas-offline-online.apk atlas-next.apk > SHA256SUMS.txt
-          zip -9 ../atlas-install-update.zip atlas-offline-online.apk atlas-next.apk INSTALL.txt SHA256SUMS.txt signing-compatibility.json
+          sha256sum atlas-offline-online.apk atlas-next.apk atlas.apk > SHA256SUMS.txt
+          zip -9 ../atlas-install-update.zip atlas.apk atlas-offline-online.apk atlas-next.apk atlas-update.json INSTALL.txt SHA256SUMS.txt signing-compatibility.json
       - name: Publish verified downloads
         uses: actions/github-script@v7
         with:
@@ -78,8 +85,8 @@ jobs:
             const report = JSON.parse(fs.readFileSync('apk-download/signing-compatibility.json', 'utf8'));
             const fresh = report.reports.some(item => item.installMode === 'fresh-install');
             const note = fresh ? 'FRESH INSTALL: signing was checked against the preserved key. This is not offered as an update for older certificates. Use only if that package is not installed. Do not uninstall an app with unsaved data.' : 'UPDATE: certificates match the published 1.4.4 stable build. Older or locally signed releases can differ.';
-            const release = await github.rest.repos.createRelease({...context.repo, tag_name: tag, target_commitish: context.sha, name: 'Atlas ' + report.reports[0].versionName + ' — ' + (fresh ? 'fresh install, stable signing' : 'verified update'), prerelease: true, body: note + '\n\nDownload atlas-offline-online.apk for Atlas Vault or atlas-next.apk for Atlas Next. These are separate app identities with independent databases. Read INSTALL.txt and signing-compatibility.json in the ZIP. No personal cloud data was uploaded or restored by this build.'});
-            for (const [name, file, type] of [['atlas-offline-online.apk', 'apk-download/atlas-offline-online.apk', 'application/vnd.android.package-archive'], ['atlas-next.apk', 'apk-download/atlas-next.apk', 'application/vnd.android.package-archive'], ['atlas-install-update.zip', 'atlas-install-update.zip', 'application/zip']]) {
+            const release = await github.rest.repos.createRelease({...context.repo, tag_name: tag, target_commitish: context.sha, name: 'Atlas ' + report.reports[0].versionName + ' — ' + (fresh ? 'fresh install, stable signing' : 'verified update'), prerelease: true, body: note + '\n\nDownload atlas.apk for Atlas (updates your existing Atlas Next installation). It includes the Atlas Gallery launcher and integrated Atlas AI. The legacy atlas-offline-online.apk is only for the older com.lifeatlas.app package; its storage remains separate. Read INSTALL.txt and signing-compatibility.json in the ZIP. No personal cloud data was uploaded or restored by this build.'});
+            for (const [name, file, type] of [['atlas.apk', 'apk-download/atlas.apk', 'application/vnd.android.package-archive'], ['atlas-update.json', 'apk-download/atlas-update.json', 'application/json'], ['atlas-offline-online.apk', 'apk-download/atlas-offline-online.apk', 'application/vnd.android.package-archive'], ['atlas-next.apk', 'apk-download/atlas-next.apk', 'application/vnd.android.package-archive'], ['atlas-install-update.zip', 'atlas-install-update.zip', 'application/zip']]) {
               await github.rest.repos.uploadReleaseAsset({...context.repo, release_id: release.data.id, name, data: fs.readFileSync(file), headers: {'content-type': type}});
             }
             await core.summary.addHeading('Verified Android update').addLink('Downloads and install instructions', release.data.html_url).write();

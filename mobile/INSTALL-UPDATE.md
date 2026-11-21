@@ -1,3 +1,28 @@
+Atlas 2.1.0 — one integrated app
+
+Download atlas.apk. It updates the existing Atlas Next package
+(com.lifeatlas.app.next) under the visible name Atlas, preserving its data and
+signing identity. Version code: 35. Do not uninstall or clear app storage.
+Atlas Gallery is a second icon for the same installed app, opening Photos directly.
+
+The legacy atlas-offline-online.apk is only for an existing com.lifeatlas.app
+installation. It does not share the other package’s private storage. You do not
+need to install both APKs.
+
+Open Control Room → Access → App updates to check, download or install later
+releases. Daily public release checks are optional. Downloads require approval
+and use Wi-Fi by default. Android requires permission to install from Atlas and
+its own installation confirmation; silent installation is not supported. A killed
+app can interrupt a download; retry from Updates. Nothing is reset or uploaded.
+
+AI: open Atlas AI from the launcher orb or home. Voice and wake-word settings
+are opt-in. Cloud AI requires your provider key and consent. Local language-model
+inference and unreviewed model downloads remain unavailable. Sensitive hosted
+APIs remain blocked until server authentication exists; direct native R2 is
+separate. Keep your independent recovery keys outside this app.
+
+Historical release instructions follow; use the instructions above for 2.1.0.
+
 Atlas 2.0.5 — isolated Smart Search and advanced gallery tools
 
 1. Keep your existing app installed. Do not clear its storage.

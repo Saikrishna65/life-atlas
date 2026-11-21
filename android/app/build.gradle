@@ -1,15 +1,16 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
 
 android {
     namespace "com.lifeatlas.app"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.lifeatlas.app"
-        manifestPlaceholders = [atlasAppLabel: "Atlas Vault", atlasGalleryLabel:"Atlas Photos"]
+        manifestPlaceholders = [atlasAppLabel: "Atlas", atlasGalleryLabel:"Atlas Gallery"]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 34
-        versionName "2.0.5"
+        versionCode 35
+        versionName "2.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -26,6 +27,7 @@ android {
         unitTests.includeAndroidResources = true
         unitTests.all { testLogging { events "failed"; exceptionFormat "full" } }
     }
+    kotlinOptions { jvmTarget = '17' }
     // CI loads the existing private key; never rely on a runner-generated debug key.
     if (System.getenv('ATLAS_SIGNING_STORE')) {
         signingConfigs.debug.storeFile = file(System.getenv('ATLAS_SIGNING_STORE'))
@@ -34,9 +36,8 @@ android {
         preview {
             initWith debug
             applicationIdSuffix ".next"
-            versionNameSuffix "-preview"
             matchingFallbacks = ["debug"]
-            manifestPlaceholders = [atlasAppLabel: "Atlas Next", atlasGalleryLabel:"Atlas Photos Next"]
+            manifestPlaceholders = [atlasAppLabel: "Atlas", atlasGalleryLabel:"Atlas Gallery"]
         }
         release {
             signingConfig signingConfigs.debug
@@ -67,6 +68,7 @@ dependencies {
     implementation 'androidx.media3:media3-effect:1.3.1'
     implementation 'androidx.media3:media3-common:1.3.1'
     implementation 'com.google.guava:guava:33.2.1-android'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
     testImplementation('org.robolectric:robolectric:4.16.1') { exclude group: 'org.robolectric', module: 'nativeruntime-dist-compat' }
     testImplementation 'androidx.test:core:1.6.1'
     testImplementation 'androidx.work:work-testing:2.9.1'

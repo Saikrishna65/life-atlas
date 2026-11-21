@@ -1,3 +1,4 @@
+import {sensitiveApiDenial} from '@/lib/security/api-authorization';
 import {NextResponse} from 'next/server';
 import {EventType} from '@prisma/client';
 import prisma from '@/lib/prisma';
@@ -5,6 +6,8 @@ import {allowAtlasMutation} from '@/lib/mobileRequest';
 import {revalidatePath} from 'next/cache';
 export const runtime='nodejs';
 export async function POST(request: Request) {
+ const denial=await sensitiveApiDenial(request);if(denial)return denial;
+
  if(!allowAtlasMutation(request,'x-atlas-studio'))return NextResponse.json({error:'Open Creator Studio in Atlas to publish entries.'},{status:403});
  try {
   const body=await request.json();

@@ -2,13 +2,13 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.lifeatlas.app',
-  appName: 'Atlas Vault',
+  appName: 'Atlas',
   webDir: 'mobile-dist',
   loggingBehavior: 'none',
   appendUserAgent: 'LifeAtlasApp/1.0',
   android: {
     webContentsDebuggingEnabled: false,
-    allowMixedContent: true,
+    allowMixedContent: false,
   },
   plugins: {
     CapacitorHttp: { enabled: true },

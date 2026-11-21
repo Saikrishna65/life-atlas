@@ -23,7 +23,7 @@ const result = await build({
    });
  }}],
 });
-await fs.writeFile(path.join(output,'index.html'),'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#05070a"><title>Atlas Vault</title>'+Object.keys(result.metafile.outputs).filter(f=>f.endsWith('.css')).map(f=>`<link rel="stylesheet" href="/${path.relative(output,path.resolve(f))}">`).join('')+'<style>:root{--font-display:Georgia;--font-sans:Arial;--font-body:Arial}body{margin:0}</style></head><body><div id="root"></div><script type="module" src="/bootstrap.js"></script></body></html>');
+await fs.writeFile(path.join(output,'index.html'),'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#05070a"><title>Atlas</title>'+Object.keys(result.metafile.outputs).filter(f=>f.endsWith('.css')).map(f=>`<link rel="stylesheet" href="/${path.relative(output,path.resolve(f))}">`).join('')+'<style>:root{--font-display:Georgia;--font-sans:Arial;--font-body:Arial}body{margin:0}</style></head><body><div id="root"></div><script type="module" src="/bootstrap.js"></script></body></html>');
 await fs.copyFile(path.join(output,'index.html'),path.join(output,'offline.html'));
 await fs.cp('public/finance',path.join(output,'finance'),{recursive:true});
 await fs.copyFile('public/placeholder-image.jpg',path.join(output,'placeholder-image.jpg'));

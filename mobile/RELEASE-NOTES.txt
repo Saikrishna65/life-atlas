@@ -1,0 +1,6 @@
+One Atlas: Gallery, trips, Creator Studio, cloud storage and Atlas AI together.
+• Atlas Gallery icon opens your photos directly.
+• In-app update checks, verified downloads and Android installation approval.
+• Latest Gallery gestures, editing copies, face correction and recovery tools.
+• Integrated opt-in voice and Hey Atlas wake-word controls.
+Offline language-model inference remains unavailable in this build. Cloud AI requires your own configured provider and consent. Existing data and originals are preserved.

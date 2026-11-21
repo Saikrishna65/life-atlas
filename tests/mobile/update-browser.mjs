@@ -1,0 +1,26 @@
+import {build} from 'esbuild';
+import {createRequire} from 'node:module';
+import {createServer} from 'node:http';
+import {mkdir,readFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const {chromium}=createRequire(import.meta.url)('playwright');
+const output='work/qa-updates';await mkdir(output,{recursive:true});
+await build({stdin:{contents:`import React from 'react';import{createRoot}from'react-dom/client';import AppUpdates from './src/components/updates/AppUpdates';import{showAppUpdates}from'./src/lib/updates/native';createRoot(document.getElementById('root')).render(<><button onClick={showAppUpdates}>Updates</button><AppUpdates/></>);`,resolveDir:process.cwd(),loader:'tsx'},bundle:true,format:'esm',outdir:output,entryNames:'entry',jsx:'automatic',plugins:[{name:'native-fixture',setup(b){b.onResolve({filter:/^@capacitor\/core$/},()=>({path:'core',namespace:'fixture'}));b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:`export const Capacitor={isNativePlatform:()=>true,isPluginAvailable:()=>true};export const registerPlugin=()=>window.updates;`,loader:'js'}));}}]});
+const fixture=`window.state={installedVersion:'2.1.0',installedCode:35,packageId:'com.lifeatlas.app.next',phase:'idle',error:'',downloadedBytes:0,update:null,ready:false,canInstall:false,automaticChecks:true,wifiOnly:true,lastChecked:0,postponedVersion:0};window.calls=[];window.updates={getStatus:async()=>structuredClone(state),check:async input=>{calls.push(['check',input]);state.update={packageId:state.packageId,versionCode:36,versionName:'2.1.1',bytes:100000000,sha256:'a'.repeat(64),notes:'Synthetic update notes'};return structuredClone(state)},configure:async input=>{calls.push(['configure',input]);Object.assign(state,input);if(input.later)state.postponedVersion=36;return structuredClone(state)},download:async input=>{calls.push(['download',input]);state.ready=true;state.phase='ready';state.downloadedBytes=100000000;return structuredClone(state)},install:async input=>{calls.push(['install',input]);return structuredClone(state)},cancel:async()=>{}};`;
+const server=createServer(async(req,res)=>{try{if(req.url==='/'){res.setHeader('content-type','text/html');res.end(`<meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}.world-modal{border:0;overflow:auto}.world-modal::backdrop{background:#0008}</style><div id="root"></div><script>${fixture}</script><link rel="stylesheet" href="/entry.css"><script type="module" src="/entry.js"></script>`);}else{const file=req.url==='/entry.js'?'entry.js':'entry.css';res.setHeader('content-type',file.endsWith('js')?'application/javascript':'text/css');res.end(await readFile(`${output}/${file}`));}}catch{res.statusCode=404;res.end();}});
+await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
+try{
+ browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(`http://127.0.0.1:${server.address().port}`);await page.getByRole('button',{name:'Updates',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Atlas updates'});await dialog.waitFor();await dialog.getByRole('button',{name:'Check for updates',exact:true}).click();await dialog.getByText('Synthetic update notes').waitFor();
+ assert.equal(await page.evaluate(()=>calls.some(x=>x[0]==='download')),false,'Checking never downloads an APK');
+ await dialog.getByRole('button',{name:'Download update',exact:true}).click();await dialog.getByRole('button',{name:'Allow Atlas to install updates'}).click();await dialog.getByText(/Allow updates from Atlas in Android settings/).waitFor();
+ assert.equal(await page.evaluate(()=>calls.find(x=>x[0]==='install')[1].consent),true);
+ await page.evaluate(()=>{state.canInstall=true;window.dispatchEvent(new Event('focus'))});await dialog.getByRole('button',{name:'Install update',exact:true}).click();await dialog.getByText(/Approve the update in Android/).waitFor();
+ await dialog.getByRole('checkbox',{name:/Download on Wi-Fi only/}).uncheck();assert.equal(await page.evaluate(()=>state.wifiOnly),false);
+ await dialog.getByRole('checkbox',{name:/Check for updates daily/}).uncheck();assert.equal(await page.evaluate(()=>state.automaticChecks),false);
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await page.screenshot({path:`${output}/updates-mobile.png`});await page.evaluate(()=>window.dispatchEvent(new Event('atlas:back',{cancelable:true})));await dialog.waitFor({state:'detached'});
+ await page.getByRole('button',{name:'Updates',exact:true}).click();await dialog.getByRole('button',{name:'Later',exact:true}).click();assert.equal(await page.evaluate(()=>state.postponedVersion),36);assert.equal(await page.getByRole('complementary',{name:'Atlas update available'}).count(),0);
+ assert.deepEqual(errors,[]);console.log('PASS: mobile update discovery, explicit download/install approval, settings handoff, Wi-Fi/daily choices, Back and Later; native fixtures only.');
+}finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
