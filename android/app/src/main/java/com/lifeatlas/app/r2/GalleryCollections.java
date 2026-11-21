@@ -287,13 +287,30 @@ final class GalleryCollections {
         db.choice(
             "people-undo",
             new JSONObject().put("saved", true).put("choices", new JSONObject(choices.toString())));
-        people.edit(
-            choices,
-            action,
-            key,
-            input.optString("faceId"),
-            input.optString("personId"),
-            input.optString("name"));
+        if (action.equals("merge-people-many")) {
+          JSONArray keys = input.optJSONArray("keys");
+          String target = input.optString("personId");
+          if (keys == null
+              || keys.length() == 0
+              || keys.length() > 1000
+              || !people.group(target).confirmed) throw new R2Exception("INVALID_SELECTION");
+          Set<String> unique = new LinkedHashSet<>();
+          for (int i = 0; i < keys.length(); i++) {
+            String source = keys.getString(i);
+            people.group(source);
+            if (!source.equals(target)) unique.add(source);
+          }
+          if (unique.isEmpty()) throw new R2Exception("INVALID_SELECTION");
+          for (String source : unique) people.edit(choices, "merge-people", source, "", target, "");
+        } else {
+          people.edit(
+              choices,
+              action,
+              key,
+              input.optString("faceId"),
+              input.optString("personId"),
+              input.optString("name"));
+        }
         db.choice("people", choices);
         if (action.equals("exclude-face")) {
           String faceId = input.getString("faceId");

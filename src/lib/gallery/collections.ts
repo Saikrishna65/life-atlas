@@ -36,6 +36,7 @@ export interface PeopleFacePage {
   complete: boolean;
 }
 export type CollectionEdit =
+  | { action: "merge-people-many"; keys: string[]; personId: string }
   | { action: "pick" | "separate-photo"; key: string; mediaId: string }
   | { action: "dismiss-similar" | "hide-memory"; key: string }
   | { action: "name-person"; key: string; name: string }

@@ -932,26 +932,56 @@ export default function PhotoGallery() {
     >
       <header className="gw-header">
         <div className="gw-heading">
-          {!collectionOpen && !smartMode && (
-            <Link
-              href="/secret"
-              className="gw-back"
-              aria-label="Back to Private Atlas"
-            >
-              <ArrowLeft size={20} />
-            </Link>
-          )}
+          {!collectionOpen &&
+            !smartMode &&
+            workspace === "photos" &&
+            !selectionMode &&
+            !searchOpen && (
+              <Link
+                href="/secret"
+                className="gw-back"
+                aria-label="Back to Private Atlas"
+              >
+                <ArrowLeft size={20} />
+              </Link>
+            )}
           <button
-            hidden={!collectionOpen && !smartMode}
+            hidden={
+              !collectionOpen &&
+              !smartMode &&
+              workspace === "photos" &&
+              !selectionMode &&
+              !searchOpen
+            }
             className="gw-back"
             aria-label={
               collectionOpen
                 ? "Back to collections"
                 : smartMode
                   ? "Back to collections"
-                  : "Back to Private Atlas"
+                  : "Back to photos"
             }
             onClick={() => {
+              if (
+                !window.dispatchEvent(
+                  new Event("atlas:back", { cancelable: true }),
+                )
+              )
+                return;
+              if (selectionMode) {
+                setSelectionMode(false);
+                setSelected([]);
+                return;
+              }
+              if (searchOpen) {
+                setSearchOpen(false);
+                setQuery("");
+                return;
+              }
+              if (!collectionOpen && !smartMode && workspace !== "photos") {
+                setWorkspace("photos");
+                return;
+              }
               if (smartMode && !collectionOpen) {
                 setSmartMode(undefined);
                 return;

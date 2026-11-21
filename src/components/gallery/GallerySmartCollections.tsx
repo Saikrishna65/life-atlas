@@ -60,6 +60,17 @@ export default function GallerySmartCollections({
     [name, setName] = useState("");
   const [viewer, setViewer] = useState("");
   const [confirm, setConfirm] = useState<"forget-people" | "reset-similar">();
+  const [peopleSelecting, setPeopleSelecting] = useState(false),
+    [peopleSelection, setPeopleSelection] = useState<string[]>([]),
+    [bulkTarget, setBulkTarget] = useState("");
+  useGalleryBack(
+    peopleSelecting,
+    () => {
+      setPeopleSelecting(false);
+      setPeopleSelection([]);
+    },
+    70,
+  );
   const [mergeTarget, setMergeTarget] = useState("");
   useGalleryBack(
     !!selected,
@@ -104,7 +115,6 @@ export default function GallerySmartCollections({
     const counter = request;
     queueMicrotask(() => {
       if (alive) {
-        setSelected(undefined);
         setCollections(pages.get(mode)?.collections || []);
         setPage(pages.get(mode));
         void load();
@@ -178,6 +188,10 @@ export default function GallerySmartCollections({
     setError("");
     try {
       await R2.editGalleryCollection(edit);
+      if (edit.action === "merge-people-many") {
+        setPeopleSelecting(false);
+        setPeopleSelection([]);
+      }
       pages.delete(mode);
       setConfirm(undefined);
       setViewer("");
@@ -360,6 +374,62 @@ export default function GallerySmartCollections({
           complete review.
         </p>
       )}
+      {mode === "people" && !page?.needsAnalysis && (
+        <div className="gsmart-bulk">
+          <button
+            onClick={() => {
+              setPeopleSelecting((v) => !v);
+              setPeopleSelection([]);
+            }}
+          >
+            {peopleSelecting ? "Done" : "Select people"}
+          </button>
+          {peopleSelecting && (
+            <>
+              <span>{peopleSelection.length} selected</span>
+              <label>
+                These are the same person as
+                <select
+                  aria-label="Person for selected groups"
+                  value={bulkTarget}
+                  onChange={(e) => setBulkTarget(e.target.value)}
+                >
+                  <option value="">Choose a named person</option>
+                  {collections
+                    .filter((p) => p.confirmed)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.title}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <button
+                disabled={
+                  busy ||
+                  !bulkTarget ||
+                  !peopleSelection.some((id) => id !== bulkTarget)
+                }
+                onClick={() =>
+                  void act({
+                    action: "merge-people-many",
+                    keys: peopleSelection,
+                    personId: bulkTarget,
+                  })
+                }
+              >
+                Merge selected groups
+              </button>
+              {!collections.some((p) => p.confirmed) && (
+                <p>
+                  Name one group first, then select other groups to merge into
+                  it.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
       {mode === "people" && (
         <div className="gsmart-tools">
           {page?.canUndoPeople && (
@@ -389,8 +459,26 @@ export default function GallerySmartCollections({
             <button
               className="gsmart-card"
               aria-label={`Open ${collection.title}`}
-              onClick={() => open(collection)}
+              aria-pressed={
+                peopleSelecting
+                  ? peopleSelection.includes(collection.id)
+                  : undefined
+              }
+              onClick={() =>
+                peopleSelecting
+                  ? setPeopleSelection((ids) =>
+                      ids.includes(collection.id)
+                        ? ids.filter((id) => id !== collection.id)
+                        : [...ids, collection.id],
+                    )
+                  : open(collection)
+              }
             >
+              {peopleSelecting && (
+                <span className="gsmart-selected-mark">
+                  {peopleSelection.includes(collection.id) ? "✓" : "○"}
+                </span>
+              )}
               <GalleryCollectionCover
                 mediaId={collection.coverId}
                 faceId={collection.faceId}

@@ -1,9 +1,9 @@
-Atlas 2.0.2 — verified stable signing
+Atlas 2.0.3 — verified stable signing
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 31.
+3. Open the matching APK and choose Update. This build uses version code 32.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -179,3 +179,26 @@ settings, enable Similar photos and leave People/description search off. Review
 suggested picks, then test People separately with consent and Wi-Fi. Test
 pause/resume and Forget people. Originals must remain unchanged. For detailed
 coverage and limitations, see docs/gallery/smart-collections.md.
+
+
+2.0.3: Photos and videos share a sliding viewer. Controls are at the bottom.
+Android/browser Back closes information, the viewer or the current collection
+before leaving Gallery. Organize is now called Collections. Native encrypted
+collection pages are saved for reuse rather than regrouped on every visit.
+People supports named-group merges (including selected groups), undo, covers,
+hiding and multiple confirmed reference angles. New photos trigger incremental
+analysis when Android permits, respecting charging/battery/thermal preferences.
+
+Gallery → Backup → Save names & organisation: connect PRIVATE storage and
+verify its recovery kit before opting in. Sidecars contain encrypted analysis,
+names, corrections, favourites and picks, never public image metadata. Existing
+cloud originals do not need deleting or uploading again. Restore uses the same
+recovery kit, explicit face-data consent and exact original-file checksums.
+Unmatched analysis stays encrypted locally and reconnects as originals arrive.
+Restoring organisation does not download missing original media. Existing local
+corrections are retained. Old encrypted snapshots are retained in the private
+bucket; Forget people removes local data, not older cloud recovery snapshots.
+
+Test on a small album first. Check swipe/pinch/video controls, each Back layer,
+merge/undo, pause/resume, and offline browsing. Live R2 recovery and real phone
+battery/heat remain device checks; build tests use synthetic data only.

@@ -255,4 +255,62 @@ public class GalleryRefinementTest {
     }
     assertArrayEquals(before, java.nio.file.Files.readAllBytes(provider.original.toPath()));
   }
+
+  @Test
+  public void bulkPeopleMergeIsOneUndoableNativeEdit() throws Exception {
+    R2DeviceGalleryTest fixture = new R2DeviceGalleryTest();
+    fixture.setup();
+    GalleryIntelligence service =
+        new GalleryIntelligence(RuntimeEnvironment.getApplication(), fixture.repo.store);
+    service.writeSettings(new JSONObject().put("people", true).put("albums", new JSONArray()));
+    try (GallerySearchStore db = new GallerySearchStore(fixture.repo.store)) {
+      for (int id = 42; id <= 43; id++) {
+        JSONObject media = fixture.gallery.one("image:external:" + id);
+        JSONArray vector = new JSONArray();
+        for (float value : GalleryCollectionsTest.vector(id - 42)) vector.put((double) value);
+        db.put(
+            new JSONObject()
+                .put("media", media)
+                .put("stamp", R2DeviceGallery.stamp(media))
+                .put("faceVersion", GalleryFaceModels.VERSION)
+                .put(
+                    "faces",
+                    new JSONArray()
+                        .put(
+                            new JSONObject()
+                                .put(
+                                    "id",
+                                    GallerySearchStore.token(media.getString("id"))
+                                        + ".0.0123456789abcdef")
+                                .put("embedding", vector)
+                                .put("crop", "cHJpdmF0ZQ=="))));
+      }
+    }
+    GalleryCollections api =
+        new GalleryCollections(RuntimeEnvironment.getApplication(), service, fixture.gallery);
+    JSONArray groups = api.list("people", "").getJSONArray("collections");
+    assertEquals(2, groups.length());
+    String first = groups.getJSONObject(0).getString("id"),
+        second = groups.getJSONObject(1).getString("id");
+    api.edit(new JSONObject().put("action", "name-person").put("key", first).put("name", "Me"));
+    api.edit(
+        new JSONObject().put("action", "name-person").put("key", second).put("name", "Duplicate"));
+    groups = api.list("people", "").getJSONArray("collections");
+    String target = "", source = "";
+    for (int i = 0; i < groups.length(); i++) {
+      JSONObject g = groups.getJSONObject(i);
+      if (g.getString("title").equals("Me")) target = g.getString("id");
+      else source = g.getString("id");
+    }
+    api.edit(
+        new JSONObject()
+            .put("action", "merge-people-many")
+            .put("keys", new JSONArray().put(source).put(target))
+            .put("personId", target));
+    assertEquals(1, api.list("people", "").getJSONArray("collections").length());
+    assertEquals(
+        2, api.list("people", "").getJSONArray("collections").getJSONObject(0).getInt("count"));
+    api.edit(new JSONObject().put("action", "undo-people"));
+    assertEquals(2, api.list("people", "").getJSONArray("collections").length());
+  }
 }

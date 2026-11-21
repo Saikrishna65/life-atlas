@@ -514,3 +514,44 @@
   padding: 7px !important;
   min-height: 36px;
 }
+
+.gsmart-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 20px 0;
+}
+.gsmart-bulk label {
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.gsmart-bulk select {
+  padding: 12px;
+  border: 1px solid #d1ddd4;
+  border-radius: 12px;
+  max-width: 100%;
+  background: white;
+}
+.gsmart-selected-mark {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  background: #285449;
+  color: white !important;
+  border-radius: 50%;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+.gsmart-card {
+  position: relative;
+}
+.gsmart-card[aria-pressed="true"] {
+  outline: 3px solid #285449;
+  outline-offset: 3px;
+}
