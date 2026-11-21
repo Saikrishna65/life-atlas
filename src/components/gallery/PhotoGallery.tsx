@@ -422,6 +422,7 @@ export default function PhotoGallery() {
   const [manageOpen, setManageOpen] = useState(false);
   const [smartSubmitted, setSmartSubmitted] = useState("");
   const searchToken = useRef("");
+  const progressToken = useRef("");
   useEffect(() => {
     deviceGeneration.current++;
     searchToken.current = "";
@@ -437,7 +438,17 @@ export default function PhotoGallery() {
     let alive = true;
     const handle = R2.addListener("gallerySearchResults", (event) => {
       if (alive && event.requestId === searchToken.current) {
-        setItems(event.items);
+        if (progressToken.current !== event.requestId) {
+          progressToken.current = event.requestId;
+          setItems(event.items);
+        } else
+          setItems((old) =>
+            [
+              ...new Map(
+                [...old, ...event.items].map((media) => [media.id, media]),
+              ).values(),
+            ].slice(0, 80),
+          );
         setNotice(
           event.stage === "text"
             ? "Finding visual matches…"
@@ -528,7 +539,8 @@ export default function PhotoGallery() {
               ]
             : page.items,
         );
-        if (page.notice) setNotice(page.notice);
+        if (smart) setNotice(page.notice || "");
+        else if (page.notice) setNotice(page.notice);
         setCursor(page.cursor);
         setHasMore(!page.complete);
       } catch (e) {

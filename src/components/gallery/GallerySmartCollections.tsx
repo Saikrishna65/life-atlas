@@ -942,7 +942,9 @@ export default function GallerySmartCollections({
             Open photos
             <ArrowRight size={16} />
           </button>
-          {reviewLoading && <p role="status">Opening photos…</p>}
+          {reviewLoading && !review && !people && (
+            <p role="status">Opening photos…</p>
+          )}
           <div
             className={`gsmart-review${mode === "people" ? " is-faces" : ""}`}
           >

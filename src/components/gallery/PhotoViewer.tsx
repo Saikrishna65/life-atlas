@@ -950,6 +950,15 @@ export default function PhotoViewer({
               onClick={() =>
                 void perform(async () => {
                   await R2.saveGalleryCorrection({ id: selected, label });
+                  setExtra((old) => ({
+                    id: selected,
+                    value: {
+                      ...(old?.id === selected
+                        ? old.value
+                        : { position: 0, cover: 0 }),
+                      searchLabel: label,
+                    },
+                  }));
                   setTeaching(false);
                   setFeedback("Saved. Atlas will remember this description.");
                 })
@@ -1000,6 +1009,15 @@ export default function PhotoViewer({
               onClick={() =>
                 void perform(async () => {
                   await R2.saveGalleryCorrection({ id: selected, clear: true });
+                  setExtra((old) => ({
+                    id: selected,
+                    value: {
+                      ...(old?.id === selected
+                        ? old.value
+                        : { position: 0, cover: 0 }),
+                      searchLabel: "",
+                    },
+                  }));
                   setLabel("");
                   setFeedback("Search corrections cleared for this photo.");
                 })
