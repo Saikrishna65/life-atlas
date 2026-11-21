@@ -87,3 +87,39 @@ rates or Google model quality. Actual pinch/dismiss smoothness, cold/warm query
 latency, segmentation availability, clipboard receiving apps, OCR accuracy and
 Android update installation require phone validation. No personal cloud writes,
 private-data reset or physical-device testing is performed by the test suite.
+
+## Release verification — Atlas 2.2.2
+
+- Full TypeScript suite: 490 passed. APK compatibility/update tests: 7 passed.
+- Scoped ESLint and TypeScript checks passed. Production Next build and mobile
+  bundle passed with synthetic/unavailable-database fallbacks, not live cloud data.
+- Gallery Chromium regression passed with normal motion, real two-finger grid
+  resizing, portrait-image double-tap zoom/pan/quick-zoom, downward dismissal,
+  progressive search fixtures, empty Favourites, text/cutout UI, saved corrections,
+  mixed video swipes and a bounded 2,000-item library. Places and private Library
+  regressions passed as well. Native/cloud responses are fixtures.
+- A focused portrait-pan experiment reproduced native `dragstart` followed by
+  `pointercancel` after the first movement. Preventing native dragging delivered
+  all eight movement steps through pointer-up and the full requested 120px pan.
+  This is browser event/geometry evidence, not a physical-phone FPS measurement.
+- Signed GitHub Actions run `44914476681` passed debug and preview native tests,
+  both APK assemblies, signature verification and update compatibility checks.
+- Release application source: `452f8d48ba19934231e282d88fa8e12ac004d6e5`.
+  Subsequent verification documentation and browser-test edits do not change the
+  packaged application code.
+- Downloaded `atlas.apk`: 73,591,994 bytes; `com.lifeatlas.app.next`; visible label
+  Atlas; version 2.2.2 / code 38. SHA-256:
+  `6bf85d35ea64b436f2de0c9c83c22e82c113c4be67ff4bf76c3e72b10ea85aea`.
+- Certificate SHA-256 remains
+  `2f19571f9d6a4a3b4c7250397b7618f04e047beeeaa0023713e2a6c0a745af7d`.
+  The public update manifest's digest, byte count and version match the APK.
+- No physical Moto testing, native OCR/segmentation inference-quality testing,
+  phone thermals/battery benchmarking or personal cloud writes are claimed.
+
+Update through Control Room → Access → App updates → Check for updates, or install
+`atlas.apk` over the existing Atlas app. Do not uninstall or clear data. On the phone,
+first test portrait pinch/double-tap/panning, swipe-down return and the WhatsApp
+shortcut. Then test live search after indexing, empty/populated Favourites, saved
+corrections, and optional extraction. The cutout is a transparent PNG copy, not an
+installed WhatsApp sticker pack. Existing offline LLM/hosted-authentication limits
+from the unified app are unchanged.

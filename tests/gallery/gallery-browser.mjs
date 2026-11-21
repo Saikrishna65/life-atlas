@@ -213,7 +213,7 @@ try{
  const zoomBox=await page.locator('.pv-picture').boundingBox(),zx=zoomBox.x+zoomBox.width/2,zy=zoomBox.y+zoomBox.height/2;
  await page.mouse.move(zx,zy);await page.mouse.down();await page.mouse.move(zx,zy+120,{steps:6});await page.mouse.up();await page.waitForFunction(()=>new DOMMatrix(getComputedStyle(document.querySelector('.pv-slide:not([inert]) > img')).transform).m42>60);
  const quick=await context.newCDPSession(page);await quick.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:zx,y:zy}]});await quick.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await quick.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:zx,y:zy}]});for(let i=1;i<=6;i++)await quick.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:zx,y:zy+i*50}]});await quick.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await quick.detach();
- await page.waitForFunction(()=>{const m=new DOMMatrix(getComputedStyle(document.querySelector('.pv-slide:not([inert]) > img')).transform);return m.a===1&&m.m41===0&&m.m42===0});if(!(await page.getByRole('button',{name:'More photo actions',exact:true}).isVisible()))await page.locator('.pv-picture').click();
+ await page.waitForFunction(()=>{const m=new DOMMatrix(getComputedStyle(document.querySelector('.pv-slide:not([inert]) > img')).transform);return m.a===1&&m.m41===0&&m.m42===0});if(await page.locator('.pv-bottom').evaluate(el=>el.classList.contains('is-hidden')))await page.locator('.pv-picture').click();
 
  await page.getByRole('button',{name:'More photo actions',exact:true}).click();
  await page.getByRole('button',{name:'Extract text or create sticker',exact:true}).click();
