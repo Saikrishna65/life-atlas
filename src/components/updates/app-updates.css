@@ -143,3 +143,15 @@
   width: 100%;
   accent-color: #234f3f;
 }
+
+/* This app surface supplies its own heading instead of the public lightbox chrome. */
+.atlas-updates-dialog.world-modal > .world-modal-inner {
+  padding: 0;
+}
+.atlas-updates-dialog.world-modal > .world-modal-inner > .world-modal-header {
+  display: none;
+}
+.atlas-updates-dialog.world-modal {
+  box-sizing: border-box;
+  overflow-y: auto;
+}
