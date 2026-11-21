@@ -481,6 +481,8 @@ export default function PhotoViewer({
       </div>
       <div
         ref={stage}
+        onDragStart={(event) => event.preventDefault()}
+        onContextMenu={(event) => event.preventDefault()}
         className={`pv-picture journal-viewer-stage ${settling ? "is-settling" : ""}`}
         style={{
           transform: `translate3d(0,${Math.max(0, vertical)}px,0) scale(${1 - Math.min(0.18, Math.max(0, vertical) / 1500)})`,

@@ -1,8 +1,8 @@
-Atlas 2.2.1 — Gallery interaction and extraction update
+Atlas 2.2.2 — Gallery interaction and extraction update
 
 Install through Atlas → Control Room → Access → App updates, or install atlas.apk
 over the existing Atlas/Atlas Next. Package identity stays com.lifeatlas.app.next;
-version code 37. Do not uninstall or clear app data.
+version code 38. Do not uninstall or clear app data.
 
 Long-press a local photo for text/stickers; More offers extraction and Teach Atlas.
 Subject extraction is optional and may require a Google Play services model

@@ -1,4 +1,4 @@
-Gallery 2.2.1
+Gallery 2.2.2
 • Frame-batched photo gestures, anchored zoom and smoother dismissal.
 • Pinch the grid to resize photos; a dedicated Favourites view.
 • Automatic debounced Smart Search with progressive matches and short-lived warm inference.
