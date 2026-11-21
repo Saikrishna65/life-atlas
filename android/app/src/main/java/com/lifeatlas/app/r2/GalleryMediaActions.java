@@ -126,6 +126,9 @@ final class GalleryMediaActions {
         if (copied > 256L * 1024 * 1024) throw new IOException("INSUFFICIENT_STORAGE");
         out.write(buffer, 0, n);
       }
+    } catch (Exception e) {
+      copy.delete();
+      throw e;
     }
     return new JSONObject()
         .put("path", copy.getAbsolutePath())

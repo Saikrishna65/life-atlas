@@ -375,7 +375,7 @@ public class R2StoragePlugin extends Plugin {
     if (call != null) call.resolve();
   }
 
-  private JSONObject pendingGalleryEdit;
+  private volatile JSONObject pendingGalleryEdit;
 
   @PluginMethod
   public void editDeviceMedia(PluginCall call) {
@@ -385,12 +385,21 @@ public class R2StoragePlugin extends Plugin {
           if (pendingGalleryEdit != null) throw new R2Exception("EDITOR_BUSY");
           JSONObject copy = GalleryMediaActions.editCopy(getContext(), call.getString("id", ""));
           Intent intent = GalleryMediaActions.editor(getContext(), copy);
-          if (intent.resolveActivity(getContext().getPackageManager()) == null) {
-            new File(copy.getString("path")).delete();
-            throw new R2Exception("EDITOR_UNAVAILABLE");
-          }
           pendingGalleryEdit = copy;
-          startActivityForResult(call, intent, "galleryEditResult");
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    try {
+                      startActivityForResult(call, intent, "galleryEditResult");
+                    } catch (Exception e) {
+                      pendingGalleryEdit = null;
+                      try {
+                        new File(copy.getString("path")).delete();
+                      } catch (Exception ignored) {
+                      }
+                      fail(call, new R2Exception("EDITOR_UNAVAILABLE"));
+                    }
+                  });
         });
   }
 
