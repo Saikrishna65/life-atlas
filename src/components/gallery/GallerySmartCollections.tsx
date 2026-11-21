@@ -29,6 +29,7 @@ import GalleryAlbumPicker from "./GalleryAlbumPicker";
 import PhotoViewer from "./PhotoViewer";
 import "./smart-collections.css";
 
+const reviews = new Map<string, CollectionMediaPage | PeopleFacePage>();
 const pages = new Map<CollectionKind, CollectionPage>();
 export default function GallerySmartCollections({
   mode,
@@ -158,8 +159,11 @@ export default function GallerySmartCollections({
     queueMicrotask(() => {
       if (!alive) return;
       setReviewLoading(true);
-      setReview(undefined);
-      setPeople(undefined);
+      const cached = reviews.get(`${mode}:${selectedKey}:${reviewCursor}`);
+      setReview(
+        mode === "similar" ? (cached as CollectionMediaPage) : undefined,
+      );
+      setPeople(mode === "people" ? (cached as PeopleFacePage) : undefined);
       setError("");
       const next =
         mode === "people"
@@ -172,6 +176,8 @@ export default function GallerySmartCollections({
       void next
         .then((value) => {
           if (!alive) return;
+          reviews.set(`${mode}:${selectedKey}:${reviewCursor}`, value);
+          if (reviews.size > 24) reviews.delete(reviews.keys().next().value!);
           if (mode === "people") setPeople(value as PeopleFacePage);
           else setReview(value as CollectionMediaPage);
         })
@@ -194,6 +200,7 @@ export default function GallerySmartCollections({
     setError("");
     try {
       await R2.editGalleryCollection(edit);
+      reviews.clear();
       if (edit.action === "merge-people-many") {
         setPeopleSelecting(false);
         setPeopleSelection([]);
@@ -970,10 +977,10 @@ export default function GallerySmartCollections({
                     {media.id === review.pickedId ? (
                       <>
                         <Check size={15} />
-                        Your pick
+                        Best photo
                       </>
                     ) : (
-                      "Choose this photo"
+                      "Use as best photo"
                     )}
                   </button>
                   <button

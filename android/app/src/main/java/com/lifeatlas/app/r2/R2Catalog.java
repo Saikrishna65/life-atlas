@@ -152,7 +152,7 @@ public final class R2Catalog {
     if (!job.optString("thumbnailKey").isEmpty())
       item.put(
           "thumbnailUrl", credentials.base + "/" + R2Policy.path(job.getString("thumbnailKey")));
-    return item;
+    return R2PublicMetadata.merge(null, item);
   }
 
   public JSONObject publish(JSONObject job, JSONObject input) throws Exception {
@@ -161,10 +161,15 @@ public final class R2Catalog {
       for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
         // Every attempt starts with the latest document and its own strong ETag.
         JSONObject catalog = read();
+        for (int oldIndex = 0; oldIndex < catalog.getJSONArray("items").length(); oldIndex++) {
+          JSONObject oldItem = catalog.getJSONArray("items").getJSONObject(oldIndex);
+          if (oldItem.getString("id").equals(item.getString("id")))
+            item = R2PublicMetadata.merge(oldItem, item);
+        }
         JSONArray previous = catalog.getJSONArray("items"), items = new JSONArray();
         for (int i = 0; i < previous.length(); i++) {
           JSONObject existing = previous.getJSONObject(i);
-          if (existing.getString("id").equals(job.getString("id"))) {
+          if (existing.getString("id").equals(item.getString("id"))) {
             if (samePublication(existing, item)) return catalog;
             if (existing.optString("key").equals(item.getString("key"))
                 && existing.has("publishedAt"))
@@ -202,7 +207,10 @@ public final class R2Catalog {
           "collection",
           "mimeType",
           "metadataPolicy",
-          "thumbnailUrl"
+          "thumbnailUrl",
+          "metadataVersion",
+          "assetId",
+          "placements"
         }) if (!existing.optString(field).equals(item.optString(field))) return false;
     return existing.optLong("size") == item.optLong("size")
         && existing.optJSONArray("tags") != null

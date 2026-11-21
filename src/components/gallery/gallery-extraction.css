@@ -1,0 +1,136 @@
+.gextract.world-modal {
+  width: min(570px, 94vw);
+  max-height: 90dvh;
+  overflow: auto;
+  border: 0;
+  border-radius: 22px;
+  padding: 24px;
+  background: #f6f8f2;
+  color: #18352a;
+  font:
+    14px/1.5 Arial,
+    sans-serif;
+}
+.gextract.world-modal > .world-modal-inner {
+  padding: 0;
+}
+.gextract .world-modal-header {
+  display: none;
+}
+.gextract header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.gextract h2 {
+  font:
+    600 23px Arial,
+    sans-serif;
+  margin: 0;
+}
+.gextract button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #d5dfd5;
+  border-radius: 12px;
+  background: #e9efe4;
+  color: #18352a;
+  padding: 10px 13px;
+  cursor: pointer;
+}
+.gextract button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.gextract button:focus-visible {
+  outline: 2px solid #308a67;
+  outline-offset: 3px;
+}
+.gextract nav {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0;
+}
+.gextract nav [aria-pressed="true"] {
+  background: #245540;
+  color: white;
+}
+.gextract-preview {
+  position: relative;
+  margin: auto;
+  max-height: 38dvh;
+  max-width: 100%;
+  overflow: hidden;
+  background: #23382e;
+}
+.gextract-preview img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+.gextract-preview.is-cutout {
+  background: repeating-conic-gradient(#e3e8df 0% 25%, #fff 0% 50%) 50%/20px
+    20px;
+}
+.gextract-preview > button {
+  position: absolute;
+  padding: 0;
+  border: 1px solid #80e2be;
+  background: #80e2be25;
+  border-radius: 2px;
+  min-height: 8px;
+}
+.gextract-target {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 2px solid white;
+  color: white;
+  background: #0008;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  pointer-events: none;
+}
+.gextract textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 100px;
+  max-height: 25dvh;
+  resize: vertical;
+  color: #18352a;
+  background: white;
+  border: 1px solid #d5dfd5;
+  border-radius: 12px;
+  padding: 12px;
+  font:
+    16px/1.5 Arial,
+    sans-serif;
+  user-select: text;
+}
+.gextract-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+.gextract label {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0;
+  align-items: flex-start;
+}
+.gextract [role="alert"] {
+  background: #fee9e5;
+  color: #963930;
+  padding: 12px;
+  border-radius: 12px;
+}
+.gextract-preview {
+  width: min(100%, 340px);
+}

@@ -1,3 +1,24 @@
+Atlas 2.2.0 — Gallery interaction and extraction update
+
+Install through Atlas → Control Room → Access → App updates, or install atlas.apk
+over the existing Atlas/Atlas Next. Package identity stays com.lifeatlas.app.next;
+version code 36. Do not uninstall or clear app data.
+
+Long-press a local photo for text/stickers; More offers extraction and Teach Atlas.
+Subject extraction is optional and may require a Google Play services model
+download. PNG cutouts are separate derivatives; sharing to WhatsApp does not install
+a sticker pack. Swipe-up defaults to WhatsApp and can be changed in More.
+Favourites opens inside Collections. Pinch the photo grid to change its density.
+Search starts automatically after a short typing pause; visual results need an
+indexed photo library and the approved visual model.
+
+No cloud reset/migration or automatic public publishing occurs. Public metadata
+relations are extended compatibly on subsequent explicit publishing operations.
+Private originals, AI corrections and recovery stay encrypted and separate.
+See docs/gallery/gallery-2.2.md for implementation and validation limits.
+
+Historical release notes below.
+
 Atlas 2.1.0 — one integrated app
 
 Download atlas.apk. It updates the existing Atlas Next package

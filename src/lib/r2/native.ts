@@ -13,6 +13,39 @@ import type {
   Transfer,
 } from "./types";
 interface R2Plugin {
+  extractGalleryText(input: { id: string }): Promise<{
+    text: string;
+    blocks: {
+      text: string;
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+    }[];
+  }>;
+  createGallerySticker(input: {
+    id: string;
+    x: number;
+    y: number;
+    consent: boolean;
+  }): Promise<{ token: string; path: string; width: number; height: number }>;
+  saveGallerySticker(input: { token: string }): Promise<void>;
+  copyGallerySticker(input: { token: string }): Promise<void>;
+  shareGallerySticker(input: {
+    token: string;
+    target?: "whatsapp";
+  }): Promise<void>;
+
+  saveGalleryCorrection(input: {
+    id: string;
+    label?: string;
+    query?: string;
+    relevant?: boolean;
+    clear?: boolean;
+  }): Promise<void>;
+  listGalleryFavorites(input: {
+    offset: number;
+  }): Promise<import("../gallery/types").DevicePage>;
   getGalleryNamedPeople(): Promise<{ people: { id: string; name: string }[] }>;
   getGalleryViewerState(input: {
     id: string;
@@ -62,6 +95,15 @@ interface R2Plugin {
   setDeviceMediaAs(input: { id: string }): Promise<void>;
   freeUpDeviceMedia(input: { ids: string[] }): Promise<{ approved: boolean }>;
   addListener(
+    event: "gallerySearchResults",
+    listener: (event: {
+      requestId: string;
+      items: import("../gallery/types").DeviceMedia[];
+      stage: string;
+    }) => void,
+  ): Promise<import("@capacitor/core").PluginListenerHandle>;
+  cancelGallerySearch(): Promise<void>;
+  addListener(
     event: "galleryChanged",
     listener: () => void,
   ): Promise<import("@capacitor/core").PluginListenerHandle>;
@@ -109,6 +151,7 @@ interface R2Plugin {
     action: "pause" | "resume" | "scan" | "clear";
   }): Promise<import("../gallery/intelligence").GalleryIntelligenceStatus>;
   searchGalleryIntelligence(input: {
+    requestId?: string;
     query: string;
     album: string;
     kind: string;

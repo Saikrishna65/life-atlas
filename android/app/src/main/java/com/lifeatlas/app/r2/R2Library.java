@@ -62,6 +62,7 @@ final class R2Library {
                       .getBytes(StandardCharsets.UTF_8));
       JSONObject r =
           new JSONObject()
+              .put("metadataVersion", 1)
               .put("id", id)
               .put("scope", scope)
               .put("slot", job.getString("slot"))

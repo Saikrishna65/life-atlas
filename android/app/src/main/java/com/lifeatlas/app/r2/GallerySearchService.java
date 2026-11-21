@@ -7,6 +7,7 @@ import java.util.concurrent.*;
 
 /** A native runtime failure must never terminate the activity, vault or ongoing uploads. */
 public final class GallerySearchService extends Service {
+  private GalleryClip model;
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
   private final Messenger inbox =
       new Messenger(
@@ -21,7 +22,8 @@ public final class GallerySearchService extends Service {
               executor.execute(
                   () -> {
                     Bundle data = new Bundle();
-                    try (GalleryClip model = new GalleryClip(getApplicationContext())) {
+                    try {
+                      if (model == null) model = new GalleryClip(getApplicationContext());
                       data.putFloatArray("vector", model.query(query));
                     } catch (Throwable failure) {
                       data.putString("error", "SEARCH_VISUAL_UNAVAILABLE");
@@ -44,7 +46,17 @@ public final class GallerySearchService extends Service {
 
   @Override
   public void onDestroy() {
-    executor.shutdownNow();
+    executor.execute(
+        () -> {
+          if (model != null) {
+            try {
+              model.close();
+            } catch (Exception ignored) {
+            }
+            model = null;
+          }
+        });
+    executor.shutdown();
     super.onDestroy();
     // This process contains only this service. Terminate a timed-out native kernel as well;
     // never leave a detached inference thread consuming battery after the caller cancels.

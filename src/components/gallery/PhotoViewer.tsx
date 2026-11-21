@@ -2,7 +2,6 @@
 import {
   useCallback,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -37,6 +36,12 @@ import {
   galleryTarget,
   type MediaRect,
 } from "@/lib/gallery/viewer-motion";
+import { useViewerMotion } from "@/lib/gallery/use-viewer-motion";
+import {
+  readGalleryPreference,
+  saveGalleryPreference,
+} from "@/lib/gallery/store";
+import GalleryExtraction from "./GalleryExtraction";
 import GalleryPhotoEditor from "./GalleryPhotoEditor";
 import type {
   GalleryViewerState,
@@ -62,7 +67,9 @@ export default function PhotoViewer({
   onDownload,
   onWhatsApp,
   onTripMedia,
+  searchQuery = "",
 }: {
+  searchQuery?: string;
   items: DetailMedia[];
   selected: string;
   onSelect: (id: string) => void;
@@ -78,6 +85,23 @@ export default function PhotoViewer({
   onWhatsApp?: (id: string) => Promise<void>;
   onTripMedia?: (items: import("@/lib/gallery/types").DeviceMedia[]) => void;
 }) {
+  const [swipeUp, setSwipeUp] = useState("whatsapp");
+  useEffect(() => {
+    let alive = true;
+    void readGalleryPreference("viewer-swipe-up", "whatsapp")
+      .then((value) => {
+        if (alive && ["whatsapp", "share", "info", "trip"].includes(value))
+          setSwipeUp(value);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const [extract, setExtract] = useState<{ x: number; y: number }>(),
+    [teaching, setTeaching] = useState(false),
+    [label, setLabel] = useState("");
+  useGalleryBack(teaching, () => setTeaching(false), 150);
   const [editing, setEditing] = useState(false),
     [showOriginal, setShowOriginal] = useState(false),
     [privacyShare, setPrivacyShare] = useState(false),
@@ -107,21 +131,29 @@ export default function PhotoViewer({
     return () => clearTimeout(timer);
   }, [feedback]);
   const viewingMotion = motionSource?.id === selected;
+  const opened = useRef(false);
   const index = items.findIndex((i) => i.id === selected),
     item = items[index];
-  const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 }),
-    [busy, setBusy] = useState(false),
+  const stage = useRef<HTMLDivElement>(null);
+  const {
+    pose: transform,
+    setTransform,
+    vertical,
+    setVertical,
+    setDrag,
+  } = useViewerMotion(stage);
+  const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [chrome, setChrome] = useState(true),
     [info, setInfo] = useState(false);
-  const [actions, setActions] = useState(false),
-    [vertical, setVertical] = useState(0);
+  const [actions, setActions] = useState(false);
   const axis = useRef<"x" | "y" | undefined>(undefined);
-  const [magnify, setMagnify] = useState(false);
+  const quickZoom = useRef(false),
+    lastTap = useRef({ at: 0, x: 0, y: 0 });
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
-  const beforeHold = useRef({ scale: 1, x: 0, y: 0 });
+  const pinchOrigin = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const videoPositions = useRef(new Map<string, number>());
   useEffect(() => () => clearTimeout(holdTimer.current), []);
   const [localFavourite, setLocalFavourite] = useState(false);
@@ -159,20 +191,11 @@ export default function PhotoViewer({
     to: MediaRect;
   }>();
 
-  const [drag, setDrag] = useState(0);
   const [settling, setSettling] = useState(false);
   const dragRef = useRef(0);
   const slideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
-  const stage = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const dialog = stage.current?.closest("dialog");
-    dialog?.style.setProperty(
-      "--pv-shade",
-      String(1 - Math.min(0.95, Math.max(0, vertical) / 280)),
-    );
-  }, [vertical]);
   const suppressClick = useRef(false);
   useEffect(() => () => clearTimeout(slideTimer.current), []);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -197,7 +220,7 @@ export default function PhotoViewer({
     if (video && video.readyState >= 2) {
       try {
         const canvas = document.createElement("canvas"),
-          scale = Math.min(1, 1200 / video.videoWidth);
+          scale = Math.min(1, 800 / video.videoWidth);
         canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
         canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
         canvas
@@ -387,7 +410,52 @@ export default function PhotoViewer({
         await onDelete(selected);
     });
   if (!item) return null;
-  const zoom = (scale: number) => setTransform({ scale, x: 0, y: 0 });
+  const clampPose = (scale: number, x: number, y: number) => {
+    const node = stage.current,
+      img = node?.querySelector<HTMLImageElement>(
+        ".pv-slide:not([inert]) > img",
+      );
+    if (!node || !img) return { scale, x: 0, y: 0 };
+    const box = node.getBoundingClientRect(),
+      fit = containRect(box, img.naturalWidth, img.naturalHeight);
+    const bx = Math.max(0, (fit.width * scale - box.width) / 2),
+      by = Math.max(0, (fit.height * scale - box.height) / 2);
+    return {
+      scale,
+      x: Math.max(-bx, Math.min(bx, x)),
+      y: Math.max(-by, Math.min(by, y)),
+    };
+  };
+  const zoom = (scale: number, clientX?: number, clientY?: number) => {
+    const box = stage.current?.getBoundingClientRect(),
+      image = stage.current?.querySelector<HTMLImageElement>(
+        ".pv-slide:not([inert]) > img",
+      );
+    const next = clampPose(
+      scale,
+      scale === 1 || !box
+        ? 0
+        : ((clientX ?? box.left + box.width / 2) - (box.left + box.width / 2)) *
+            (1 - scale),
+      scale === 1 || !box
+        ? 0
+        : ((clientY ?? box.top + box.height / 2) - (box.top + box.height / 2)) *
+            (1 - scale),
+    );
+    const previous = image ? getComputedStyle(image).transform : "none";
+    image?.getAnimations().forEach((animation) => animation.cancel());
+    setTransform(next);
+    if (image && !window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      image.animate(
+        [
+          { transform: previous },
+          {
+            transform: `translate3d(${next.x}px,${next.y}px,0) scale(${next.scale})`,
+          },
+        ],
+        { duration: 190, easing: "cubic-bezier(.2,.7,.2,1)" },
+      );
+  };
   return (
     <Modal
       title="Photo viewer"
@@ -433,9 +501,9 @@ export default function PhotoViewer({
           if (chrome) setChrome(false);
           else activity();
         }}
-        onDoubleClick={() => {
+        onDoubleClick={(e) => {
           if (item.kind !== "video" && !viewingMotion)
-            zoom(transform.scale > 1 ? 1 : 2.5);
+            zoom(transform.scale > 1 ? 1 : 2.5, e.clientX, e.clientY);
         }}
         onPointerDown={(e) => {
           if (
@@ -450,18 +518,42 @@ export default function PhotoViewer({
           points.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           const p = [...points.current.values()];
           if (p.length === 1) {
+            quickZoom.current =
+              Date.now() - lastTap.current.at < 300 &&
+              Math.hypot(
+                e.clientX - lastTap.current.x,
+                e.clientY - lastTap.current.y,
+              ) < 24;
             suppressClick.current = false;
             dragRef.current = 0;
             axis.current = undefined;
             clearTimeout(holdTimer.current);
-            if (item.kind === "photo" && !viewingMotion && transform.scale > 1)
+            if (
+              !quickZoom.current &&
+              item.kind === "photo" &&
+              !viewingMotion &&
+              deviceMediaId(selected)
+            )
               holdTimer.current = setTimeout(() => {
-                beforeHold.current = transform;
-                setMagnify(true);
-                setTransform((t) => ({
-                  ...t,
-                  scale: Math.min(5, t.scale * 1.5),
-                }));
+                const image = stage.current?.querySelector<HTMLImageElement>(
+                  ".pv-slide:not([inert]) > img",
+                );
+                if (!image) return;
+                const box = containRect(
+                  image.getBoundingClientRect(),
+                  image.naturalWidth,
+                  image.naturalHeight,
+                );
+                setExtract({
+                  x: Math.max(
+                    0,
+                    Math.min(1, (e.clientX - box.left) / box.width),
+                  ),
+                  y: Math.max(
+                    0,
+                    Math.min(1, (e.clientY - box.top) / box.height),
+                  ),
+                });
                 suppressClick.current = true;
               }, 500);
           } else clearTimeout(holdTimer.current);
@@ -477,6 +569,13 @@ export default function PhotoViewer({
               multi: false,
             };
           else if (p.length === 2) {
+            const box = e.currentTarget.getBoundingClientRect();
+            pinchOrigin.current = {
+              x: (p[0].x + p[1].x) / 2 - box.left - box.width / 2,
+              y: (p[0].y + p[1].y) / 2 - box.top - box.height / 2,
+              panX: transform.x,
+              panY: transform.y,
+            };
             start.current.distance = Math.hypot(
               p[0].x - p[1].x,
               p[0].y - p[1].y,
@@ -497,6 +596,27 @@ export default function PhotoViewer({
             clearTimeout(holdTimer.current);
           const p = [...points.current.values()];
           if (
+            p.length === 1 &&
+            quickZoom.current &&
+            item.kind === "photo" &&
+            !viewingMotion &&
+            Math.abs(e.clientY - start.current.y) > 8
+          ) {
+            suppressClick.current = true;
+            setTransform((old) => ({
+              ...old,
+              scale: Math.max(
+                1,
+                Math.min(
+                  5,
+                  start.current.scale *
+                    Math.exp(-(e.clientY - start.current.y) / 180),
+                ),
+              ),
+            }));
+            return;
+          }
+          if (
             p.length === 2 &&
             start.current.distance > 0 &&
             item.kind !== "video" &&
@@ -511,12 +631,24 @@ export default function PhotoViewer({
                   start.current.distance,
               ),
             );
-            setTransform((old) => ({
-              ...old,
-              scale,
-              x: scale === 1 ? 0 : old.x,
-              y: scale === 1 ? 0 : old.y,
-            }));
+            const box = e.currentTarget.getBoundingClientRect(),
+              origin = pinchOrigin.current,
+              k = scale / start.current.scale;
+            setTransform(
+              clampPose(
+                scale,
+                origin.panX * k +
+                  (p[0].x + p[1].x) / 2 -
+                  box.left -
+                  box.width / 2 -
+                  origin.x * k,
+                origin.panY * k +
+                  (p[0].y + p[1].y) / 2 -
+                  box.top -
+                  box.height / 2 -
+                  origin.y * k,
+              ),
+            );
           } else if (
             p.length === 1 &&
             transform.scale === 1 &&
@@ -543,34 +675,13 @@ export default function PhotoViewer({
               setDrag(dx);
             }
           } else if (p.length === 1 && transform.scale > 1) {
-            const r = e.currentTarget.getBoundingClientRect();
-            const img = e.currentTarget.querySelector("img");
-            const boundX = Math.max(
-              0,
-              ((img?.clientWidth || r.width) * transform.scale - r.width) / 2,
-            );
-            const boundY = Math.max(
-              0,
-              ((img?.clientHeight || r.height) * transform.scale - r.height) /
-                2,
-            );
-            setTransform((old) => ({
-              ...old,
-              x: Math.max(
-                -boundX,
-                Math.min(
-                  boundX,
-                  start.current.panX + e.clientX - start.current.x,
-                ),
+            setTransform(
+              clampPose(
+                transform.scale,
+                start.current.panX + e.clientX - start.current.x,
+                start.current.panY + e.clientY - start.current.y,
               ),
-              y: Math.max(
-                -boundY,
-                Math.min(
-                  boundY,
-                  start.current.panY + e.clientY - start.current.y,
-                ),
-              ),
-            }));
+            );
           }
         }}
         onPointerCancel={(e) => {
@@ -583,25 +694,36 @@ export default function PhotoViewer({
         onPointerUp={(e) => {
           if (!points.current.has(e.pointerId)) return;
           clearTimeout(holdTimer.current);
-          if (magnify) {
-            setMagnify(false);
-            setTransform(beforeHold.current);
-          }
           const s = start.current;
           points.current.delete(e.pointerId);
+          if (
+            !points.current.size &&
+            Math.hypot(e.clientX - s.x, e.clientY - s.y) < 8
+          )
+            lastTap.current = { at: Date.now(), x: e.clientX, y: e.clientY };
+          if (quickZoom.current && Math.abs(e.clientY - s.y) > 8) return;
           if (!points.current.size && !s.multi && transform.scale === 1) {
             const dx = e.clientX - s.x,
               dy = e.clientY - s.y;
             if (axis.current === "y") {
-              if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+              if (
+                (dy > 90 ||
+                  (dy > 40 && dy / Math.max(1, Date.now() - s.at) > 0.65)) &&
+                Math.abs(dy) > Math.abs(dx) * 1.2
+              ) {
                 dismiss();
                 return;
               }
               if (dy < -75 && Math.abs(dy) > Math.abs(dx) * 1.2) {
-                void whatsApp();
+                if (swipeUp === "info") setInfo(true);
+                else if (swipeUp === "trip" && onTrip) onTrip(selected);
+                else if (swipeUp === "share") void share();
+                else void whatsApp();
                 activity();
               }
+              setSettling(true);
               setVertical(0);
+              slideTimer.current = setTimeout(() => setSettling(false), 180);
               return;
             }
             if (
@@ -644,7 +766,7 @@ export default function PhotoViewer({
               aria-hidden={offset !== 0}
               inert={offset !== 0}
               style={{
-                transform: `translate3d(calc(${offset * 100}% + ${offset * 18 + drag}px),0,0)`,
+                transform: `translate3d(calc(${offset * 100}% + ${offset * 18}px + var(--pv-drag, 0px)),0,0)`,
               }}
             >
               {offset === 0 &&
@@ -681,6 +803,33 @@ export default function PhotoViewer({
                   alt={offset === 0 ? media.caption || "Photo" : ""}
                   draggable={false}
                   decoding="async"
+                  onLoad={(event) => {
+                    if (offset !== 0 || opened.current) return;
+                    opened.current = true;
+                    if (
+                      window.matchMedia("(prefers-reduced-motion: reduce)")
+                        .matches
+                    )
+                      return;
+                    const from = galleryTarget(selected),
+                      img = event.currentTarget,
+                      to = containRect(
+                        img.getBoundingClientRect(),
+                        img.naturalWidth,
+                        img.naturalHeight,
+                      );
+                    if (from && to.width && to.height)
+                      img.animate(
+                        [
+                          {
+                            transform: `translate3d(${from.left + from.width / 2 - to.left - to.width / 2}px,${from.top + from.height / 2 - to.top - to.height / 2}px,0) scale(${from.width / to.width},${from.height / to.height})`,
+                            borderRadius: "12px",
+                          },
+                          { transform: "none", borderRadius: "0px" },
+                        ],
+                        { duration: 220, easing: "cubic-bezier(.2,.7,.2,1)" },
+                      );
+                  }}
                   style={
                     offset === 0
                       ? {
@@ -755,6 +904,112 @@ export default function PhotoViewer({
           <small>More</small>
         </button>
       </div>
+      {extract && (
+        <GalleryExtraction
+          id={selected}
+          source={item.url}
+          point={extract}
+          onClose={() => {
+            setExtract(undefined);
+            activity();
+          }}
+        />
+      )}
+      {teaching && (
+        <Modal
+          title="Teach Atlas"
+          className="gextract"
+          onClose={() => setTeaching(false)}
+        >
+          <header>
+            <h2>Teach Atlas</h2>
+            <button
+              onClick={() => setTeaching(false)}
+              aria-label="Close corrections"
+            >
+              <X />
+            </button>
+          </header>
+          <p>
+            Your corrections personalize future search. They stay encrypted on
+            your device and in an approved encrypted recovery backup.
+          </p>
+          <label>
+            Describe this photo
+            <input
+              aria-label="Photo search labels"
+              maxLength={200}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Tungnath temple, my birthday"
+            />
+          </label>
+          <div className="gextract-actions">
+            <button
+              disabled={busy}
+              onClick={() =>
+                void perform(async () => {
+                  await R2.saveGalleryCorrection({ id: selected, label });
+                  setTeaching(false);
+                  setFeedback("Saved. Atlas will remember this description.");
+                })
+              }
+            >
+              Save description
+            </button>
+            {searchQuery && (
+              <>
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    void perform(async () => {
+                      await R2.saveGalleryCorrection({
+                        id: selected,
+                        query: searchQuery,
+                        relevant: true,
+                      });
+                      setTeaching(false);
+                      setFeedback("Relevant match remembered.");
+                    })
+                  }
+                >
+                  Good match for “{searchQuery}”
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    void perform(async () => {
+                      await R2.saveGalleryCorrection({
+                        id: selected,
+                        query: searchQuery,
+                        relevant: false,
+                      });
+                      setTeaching(false);
+                      setFeedback(
+                        "This match will be excluded for that search.",
+                      );
+                    })
+                  }
+                >
+                  Wrong match
+                </button>
+              </>
+            )}
+            <button
+              disabled={busy}
+              onClick={() =>
+                void perform(async () => {
+                  await R2.saveGalleryCorrection({ id: selected, clear: true });
+                  setLabel("");
+                  setFeedback("Search corrections cleared for this photo.");
+                })
+              }
+            >
+              Reset this photo’s search corrections
+            </button>
+          </div>
+        </Modal>
+      )}
       {actions && (
         <div
           className="pv-info-backdrop"
@@ -769,6 +1024,31 @@ export default function PhotoViewer({
             className="pv-info-panel pv-action-sheet"
             onClick={(e) => e.stopPropagation()}
           >
+            {deviceMediaId(selected) && item.kind === "photo" && (
+              <>
+                <button
+                  onClick={() => {
+                    setActions(false);
+                    setExtract({ x: 0.5, y: 0.5 });
+                  }}
+                >
+                  Extract text or create sticker
+                </button>
+                <button
+                  onClick={() => {
+                    setActions(false);
+                    setLabel(
+                      extra?.id === selected
+                        ? extra.value.searchLabel || ""
+                        : "",
+                    );
+                    setTeaching(true);
+                  }}
+                >
+                  Teach Atlas about this photo
+                </button>
+              </>
+            )}
             <header>
               <h2>{item.kind === "video" ? "Video" : "Photo"}</h2>
               <button
@@ -781,6 +1061,23 @@ export default function PhotoViewer({
                 <X />
               </button>
             </header>
+            <label className="pv-shortcut">
+              Swipe up opens
+              <select
+                aria-label="Swipe-up shortcut"
+                value={swipeUp}
+                onChange={(e) => {
+                  setSwipeUp(e.target.value);
+                  void saveGalleryPreference("viewer-swipe-up", e.target.value);
+                }}
+              >
+                <option value="whatsapp">WhatsApp</option>
+                <option value="share">Share menu</option>
+                <option value="info">Photo information</option>
+                {onTrip && <option value="trip">Add to a trip</option>}
+              </select>
+            </label>
+
             {(onShare || deviceMediaId(selected)) && (
               <button disabled={busy} onClick={() => void share()}>
                 <Share2 />
@@ -1040,6 +1337,8 @@ export default function PhotoViewer({
           className="pv-return"
           style={
             {
+              "--return-scale-x": returning.to.width / returning.from.width,
+              "--return-scale-y": returning.to.height / returning.from.height,
               "--from-left": `${returning.from.left}px`,
               "--from-top": `${returning.from.top}px`,
               "--from-width": `${returning.from.width}px`,

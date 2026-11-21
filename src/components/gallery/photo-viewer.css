@@ -526,21 +526,12 @@
   object-fit: cover;
 }
 @keyframes pv-return {
-  from {
-    left: var(--from-left);
-    top: var(--from-top);
-    width: var(--from-width);
-    height: var(--from-height);
-    border-radius: 18px;
-  }
-  to {
-    left: var(--to-left);
-    top: var(--to-top);
-    width: var(--to-width);
-    height: var(--to-height);
-    border-radius: 3px;
-  }
+ from { transform:translate3d(0,0,0) scale(1);border-radius:18px; }
+ to { transform:translate3d(calc(var(--to-left) - var(--from-left)),calc(var(--to-top) - var(--from-top)),0) scale(var(--return-scale-x),var(--return-scale-y));border-radius:3px; }
 }
+.pv-return {left:var(--from-left);top:var(--from-top);width:var(--from-width);height:var(--from-height);transform-origin:top left;will-change:transform;}
+.pv-viewer .pv-picture {will-change:transform;}
+.pv-viewer .pv-slide > img {will-change:transform;}
 @media (max-width: 600px) {
   .pv-viewer .pv-action-sheet {
     padding: 22px 20px;
@@ -814,3 +805,7 @@
 }
 .pg-active-filters {display:flex;gap:8px;overflow:auto;padding:8px 20px;}
 .pg-active-filters button {display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:11px;background:#fff;border:1px solid #d7e0d5;border-radius:20px;min-height:34px;padding:7px 12px;}
+
+.pv-viewer.world-modal:not(.is-returning),.pv-viewer:not(.is-returning)::backdrop{transition:none;}
+
+.pv-shortcut{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:12px 0;font-size:13px}.pv-shortcut select{max-width:55%;background:#f3f5ef;color:#18352a;border:1px solid #d5dfd5;padding:9px;border-radius:10px;}

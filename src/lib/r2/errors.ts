@@ -1,4 +1,12 @@
 const messages: Record<string, string> = {
+  EXTRACTION_BUSY:
+    "Finish the current text or sticker extraction, then try again.",
+  SUBJECT_NOT_FOUND:
+    "No separate subject was found at that point. Tap a clearer foreground person, pet or object and retry.",
+  SUBJECT_MODEL_UNAVAILABLE:
+    "Subject extraction is not ready. Check Google Play services and internet access; its model may still be downloading. Try again later. Your original is unchanged.",
+  EXTRACTION_CONSENT_REQUIRED:
+    "Approve the optional on-device subject model before creating a sticker.",
   ANDROID_8_REQUIRED:
     "This feature needs Android 8 or newer. Your originals are unchanged.",
   VIDEO_METADATA_UNAVAILABLE:

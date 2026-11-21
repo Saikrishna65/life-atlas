@@ -37,7 +37,10 @@ final class R2Publication {
           "size",
           "tags",
           "metadataPolicy",
-          "thumbnailUrl"
+          "thumbnailUrl",
+          "metadataVersion",
+          "assetId",
+          "placements"
         }) identity.put(item.opt(field));
     String key =
         "atlas/catalog/publications/"
@@ -115,6 +118,7 @@ final class R2Publication {
           JSONObject item = prepared.getJSONObject("item"),
               old = own.optJSONObject(item.getString("id"));
           if (old == null && own.length() >= 5000) throw new R2Exception("CATALOG_LIMIT_REACHED");
+          if (old != null) item = R2PublicMetadata.merge(old.getJSONObject("item"), item);
           JSONArray keys = old == null ? new JSONArray() : old.getJSONArray("manifestKeys");
           boolean found = false;
           for (int i = 0; i < keys.length(); i++)
@@ -141,7 +145,8 @@ final class R2Publication {
     Iterator<String> ids = own.keys();
     while (ids.hasNext()) {
       JSONObject item = own.getJSONObject(ids.next()).getJSONObject("item");
-      items.put(item.getString("id"), item);
+      items.put(
+          item.getString("id"), R2PublicMetadata.merge(items.get(item.getString("id")), item));
     }
     if (items.size() > 5000) throw new R2Exception("CATALOG_LIMIT_REACHED");
     return new JSONObject(legacy.toString())

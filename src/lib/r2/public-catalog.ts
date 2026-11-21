@@ -114,9 +114,45 @@ export function validatePublicCatalog(
       )
         throw new Error("Invalid preview URL");
     }
+    if (item.metadataVersion !== undefined && item.metadataVersion !== 1)
+      throw new Error("Unsupported public metadata");
+    if (
+      item.assetId !== undefined &&
+      (!text(item.assetId, 80, true) || !/^[a-zA-Z0-9_-]+$/.test(item.assetId))
+    )
+      throw new Error("Invalid public asset identity");
+    if (
+      item.placements !== undefined &&
+      (!Array.isArray(item.placements) ||
+        item.placements.length > 64 ||
+        item.placements.some(
+          (r) =>
+            !r ||
+            !placements.has(r.category) ||
+            !text(r.collection, 140) ||
+            (r.placeId !== undefined &&
+              (!text(r.placeId, 80) || !/^[a-zA-Z0-9_-]*$/.test(r.placeId))) ||
+            (r.placeName !== undefined && !text(r.placeName, 140)),
+        ))
+    )
+      throw new Error("Invalid public placements");
     ids.add(item.id);
     return {
       id: item.id,
+      ...(item.metadataVersion
+        ? { metadataVersion: item.metadataVersion }
+        : {}),
+      ...(item.assetId ? { assetId: item.assetId } : {}),
+      ...(item.placements
+        ? {
+            placements: item.placements.map((r) => ({
+              category: r.category,
+              collection: r.collection,
+              ...(r.placeId ? { placeId: r.placeId } : {}),
+              ...(r.placeName ? { placeName: r.placeName } : {}),
+            })),
+          }
+        : {}),
       key: item.key,
       url: item.url,
       title: item.title,

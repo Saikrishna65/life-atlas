@@ -421,6 +421,35 @@ export default function PhotoGallery() {
   );
   const [manageOpen, setManageOpen] = useState(false);
   const [smartSubmitted, setSmartSubmitted] = useState("");
+  const searchToken = useRef("");
+  useEffect(() => {
+    deviceGeneration.current++;
+    searchToken.current = "";
+    if (searchMode !== "smart") return;
+    void Promise.resolve()
+      .then(() => R2.cancelGallerySearch())
+      .catch(() => {});
+    const timer = setTimeout(() => setSmartSubmitted(query.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [query, searchMode]);
+  useEffect(() => {
+    if (!supported) return;
+    let alive = true;
+    const handle = R2.addListener("gallerySearchResults", (event) => {
+      if (alive && event.requestId === searchToken.current) {
+        setItems(event.items);
+        setNotice(
+          event.stage === "text"
+            ? "Finding visual matches…"
+            : "Refining matches…",
+        );
+      }
+    });
+    return () => {
+      alive = false;
+      void handle.then((h) => h.remove()).catch(() => {});
+    };
+  }, [supported]);
   const requestDevice = useCallback(
     async (next: string, append = false) => {
       if (!supported || access.status === "denied") return;
@@ -431,13 +460,23 @@ export default function PhotoGallery() {
       )
         return;
       const generation = ++deviceGeneration.current;
+      const token = crypto.randomUUID();
+      searchToken.current = token;
+      if (favoritesOnly && favorites.length === 0) {
+        setItems([]);
+        setCursor("");
+        setHasMore(false);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const smart =
           ((searchMode === "smart" && !!query.trim()) || !!personFilter) &&
           kind !== "video";
-        const page =
-          view === "curated" && curated
+        const page = favoritesOnly
+          ? await R2.listGalleryFavorites({ offset: next ? Number(next) : 0 })
+          : view === "curated" && curated
             ? await R2.getGalleryCollectionMedia({
                 kind:
                   smartMode === "albums"
@@ -453,6 +492,7 @@ export default function PhotoGallery() {
             : smart
               ? await R2.searchGalleryIntelligence({
                   query,
+                  requestId: token,
                   album,
                   kind,
                   offset: next ? Number(next) : 0,
@@ -506,6 +546,8 @@ export default function PhotoGallery() {
       order,
       searchMode,
       smartSubmitted,
+      favoritesOnly,
+      favorites,
       personFilter,
       view,
       curated,
@@ -521,6 +563,7 @@ export default function PhotoGallery() {
     return () => {
       clearTimeout(timer);
       generation.current++;
+      searchToken.current = "";
     };
   }, [requestDevice, revision, view]);
   const requestCloud = useCallback(
@@ -733,40 +776,107 @@ export default function PhotoGallery() {
   useEffect(() => {
     const node = grid.current;
     if (!node) return;
-    let start = 0;
+    let distance = 0,
+      factor = 1,
+      anchor = "",
+      anchorY = 0;
     const begin = (e: TouchEvent) => {
-      if (e.touches.length === 2)
-        start = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX,
-          e.touches[0].clientY - e.touches[1].clientY,
-        );
-    };
-    const move = (e: TouchEvent) => {
-      if (e.touches.length !== 2 || !start) return;
-      e.preventDefault();
-      const distance = Math.hypot(
+      if (e.touches.length !== 2) return;
+      if (hold.current.timer) clearTimeout(hold.current.timer);
+      dragPick.current.active = false;
+      distance = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY,
       );
-      if (Math.abs(distance - start) > 45) {
-        setColumns((c) => {
-          const next = Math.max(
-            2,
-            Math.min(maxColumns, c + (distance > start ? -1 : 1)),
-          );
-          void saveGalleryPreference("photos-density", next);
-          return next;
-        });
-        start = distance;
-      }
+      const x = (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const tile = document
+        .elementFromPoint(x, y)
+        ?.closest<HTMLElement>("[data-media-id]");
+      anchor = tile?.dataset.mediaId || "";
+      anchorY = tile?.getBoundingClientRect().top || y;
+      node.style.transformOrigin = `${x - node.getBoundingClientRect().left}px ${y - node.getBoundingClientRect().top}px`;
+      node.dataset.pinching = "true";
+    };
+    const move = (e: TouchEvent) => {
+      if (e.touches.length !== 2 || !distance) return;
+      e.preventDefault();
+      factor = Math.max(
+        0.65,
+        Math.min(
+          1.6,
+          Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY,
+          ) / distance,
+        ),
+      );
+      node.style.transform = `scale(${factor})`;
+    };
+    const end = () => {
+      if (!distance) return;
+      distance = 0;
+      const previous = new Map(
+        Array.from(node.querySelectorAll<HTMLElement>("[data-media-id]")).map(
+          (tile) => [tile.dataset.mediaId, tile.getBoundingClientRect()],
+        ),
+      );
+      delete node.dataset.pinching;
+      node.style.transform = "";
+      const next = Math.max(
+        2,
+        Math.min(maxColumns, Math.round(columns / factor)),
+      );
+      setColumns(next);
+      void saveGalleryPreference("photos-density", next);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const tile = Array.from(
+            node.querySelectorAll<HTMLElement>("[data-media-id]"),
+          ).find((t) => t.dataset.mediaId === anchor);
+          if (tile)
+            window.scrollBy(0, tile.getBoundingClientRect().top - anchorY);
+          if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+            for (const current of node.querySelectorAll<HTMLElement>(
+              "[data-media-id]",
+            )) {
+              const old = previous.get(current.dataset.mediaId),
+                next = current.getBoundingClientRect();
+              if (old && next.width && next.height)
+                current.animate(
+                  [
+                    {
+                      transform: `translate(${old.left - next.left}px,${old.top - next.top}px) scale(${old.width / next.width},${old.height / next.height})`,
+                      transformOrigin: "top left",
+                    },
+                    { transform: "none", transformOrigin: "top left" },
+                  ],
+                  { duration: 190, easing: "cubic-bezier(.2,.7,.2,1)" },
+                );
+            }
+        }),
+      );
+      factor = 1;
     };
     node.addEventListener("touchstart", begin, { passive: true });
     node.addEventListener("touchmove", move, { passive: false });
+    node.addEventListener("touchend", end);
+    node.addEventListener("touchcancel", end);
     return () => {
       node.removeEventListener("touchstart", begin);
       node.removeEventListener("touchmove", move);
+      node.removeEventListener("touchend", end);
+      node.removeEventListener("touchcancel", end);
     };
-  }, [access.status, supported, view, maxColumns, browsing, workspace]);
+  }, [
+    access.status,
+    supported,
+    view,
+    maxColumns,
+    browsing,
+    workspace,
+    columns,
+  ]);
   const closeViewer = useCallback(() => {
     opening.current++;
     setViewer("");
@@ -819,6 +929,7 @@ export default function PhotoGallery() {
         return;
       }
       if (collectionOpen) {
+        setFavoritesOnly(false);
         setCollectionOpen(false);
         setCurated(undefined);
         setView("device");
@@ -1086,7 +1197,9 @@ export default function PhotoGallery() {
                     ? "Public cloud"
                     : tripFilter
                       ? trips.find((t) => t.id === tripFilter)?.title || "Trip"
-                      : album || "Collection"
+                      : favoritesOnly
+                        ? "Favourites"
+                        : album || "Collection"
               : workspace === "photos"
                 ? "Photos"
                 : workspace === "organize"
@@ -1425,17 +1538,23 @@ export default function PhotoGallery() {
             setSelectionMode(false);
           }}
           onFavorites={() => {
-            setWorkspace("photos");
+            window.scrollTo(0, 0);
             setView("device");
+            setAlbum("");
+            setQuery("");
+            setTripFilter("");
+            setCollectionOpen(true);
             setFavoritesOnly(true);
           }}
           onAlbum={(name) => {
+            setFavoritesOnly(false);
             window.scrollTo(0, 0);
             setAlbum(name);
             setView("device");
             setCollectionOpen(true);
           }}
           onTrip={(id) => {
+            setFavoritesOnly(false);
             window.scrollTo(0, 0);
             setTripFilter(id);
             setView("trips");
@@ -2344,6 +2463,7 @@ export default function PhotoGallery() {
               </dl>
             ) : null;
           }}
+          searchQuery={searchMode === "smart" ? query : ""}
           favorite={favorites.includes(viewer)}
           onFavorite={(id) => favorite(id)}
           onAlbum={

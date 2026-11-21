@@ -20,6 +20,7 @@ export const originalRecipe: PhotoRecipe = {
   flip: false,
 };
 export interface GalleryViewerState {
+  searchLabel?: string;
   position: number;
   cover: number;
   original?: DeviceMedia;

@@ -173,6 +173,8 @@ final class GalleryIntelligence {
           try (GallerySearchStore db = new GallerySearchStore(secure)) {
             db.clear();
             db.forgetChoices("query-vectors");
+            db.forgetChoices("extraction-text");
+            db.forgetChoices("search-feedback");
             GalleryRecovery.clearStaged(db);
             db.forgetChoices("people-undo");
             db.choice("people", new JSONObject());
@@ -426,6 +428,22 @@ final class GalleryIntelligence {
       java.util.function.BooleanSupplier cancelled,
       JSONObject filters)
       throws Exception {
+    return search(query, album, kind, offset, cancelled, filters, null);
+  }
+
+  interface Progress {
+    void send(JSONObject page) throws Exception;
+  }
+
+  JSONObject search(
+      String query,
+      String album,
+      String kind,
+      int offset,
+      java.util.function.BooleanSupplier cancelled,
+      JSONObject filters,
+      Progress progress)
+      throws Exception {
     if (cancelled.getAsBoolean()) throw new R2Exception("SEARCH_CANCELLED");
     if (query == null
         || (query.trim().isEmpty()
@@ -473,10 +491,24 @@ final class GalleryIntelligence {
         }
       }
     }
+    if (progress != null
+        && offset == 0
+        && !query.trim().isEmpty()
+        && !filters.optBoolean("textOnly")) {
+      JSONObject textFilters = new JSONObject(filters.toString()).put("textOnly", true);
+      JSONObject first =
+          search(query, album, kind, 0, cancelled, textFilters, progress).put("stage", "text");
+      progress.send(first);
+    }
+    JSONObject corrections;
+    try (GallerySearchStore db = new GallerySearchStore(secure)) {
+      corrections = db.choice("search-feedback");
+    }
     List<String> terms = terms(query);
     float[] vector = null;
     boolean visualUnavailable = config.optBoolean("visual") && !GalleryClip.ready(context);
-    if (!query.trim().isEmpty()
+    if (!filters.optBoolean("textOnly")
+        && !query.trim().isEmpty()
         && config.optBoolean("visual")
         && !kind.equals("video")
         && GalleryClip.ready(context)) {
@@ -496,6 +528,8 @@ final class GalleryIntelligence {
         new PriorityQueue<>(
             Comparator.comparingDouble(Hit::rank)
                 .thenComparing(Hit::id, Comparator.reverseOrder()));
+    int scanned = 0, updates = 0;
+    long emittedAt = 0;
     try (GallerySearchStore db = new GallerySearchStore(secure);
         Cursor cursor = db.searchRows()) {
       while (cursor.moveToNext()) {
@@ -529,9 +563,38 @@ final class GalleryIntelligence {
           double similarity = GalleryClip.cosine(vector, values);
           if (similarity >= .20) score = Math.max(score, similarity);
         }
+        score =
+            GalleryCorrections.adjust(
+                corrections, media, row.getString("stamp"), query, terms, score);
         if (score == 0) continue;
         top.add(new Hit(media.getString("id"), row.getString("stamp"), score));
         if (top.size() > limit) top.poll();
+        scanned++;
+        if (progress != null
+            && offset == 0
+            && (scanned == 8 || scanned % 64 == 0)
+            && updates < 8
+            && System.currentTimeMillis() - emittedAt > 250) {
+          JSONArray partial = new JSONArray();
+          List<Hit> ranked = new ArrayList<>(top);
+          ranked.sort(Comparator.comparingDouble(Hit::rank).reversed().thenComparing(Hit::id));
+          R2DeviceGallery device = new R2DeviceGallery(context);
+          for (Hit hit : ranked) {
+            if (partial.length() >= 40) break;
+            try {
+              JSONObject current = device.one(hit.id());
+              if (hit.stamp().equals(R2DeviceGallery.stamp(current))) partial.put(current);
+            } catch (Exception unavailable) {
+            }
+          }
+          if (cancelled.getAsBoolean()) throw new R2Exception("SEARCH_CANCELLED");
+          progress.send(
+              new JSONObject()
+                  .put("stage", filters.optBoolean("textOnly") ? "text" : "visual")
+                  .put("items", partial));
+          updates++;
+          emittedAt = System.currentTimeMillis();
+        }
       }
     }
     List<Hit> sorted = new ArrayList<>(top);

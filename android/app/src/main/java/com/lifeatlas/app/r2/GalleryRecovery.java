@@ -13,7 +13,14 @@ final class GalleryRecovery {
   static final int LIMIT = 16 * 1024 * 1024;
   static final List<String> CHOICES =
       List.of(
-          "people", "similar", "memories", "media-preferences", "albums", "edits", "viewer-state");
+          "people",
+          "similar",
+          "memories",
+          "media-preferences",
+          "albums",
+          "edits",
+          "viewer-state",
+          "search-feedback");
 
   static String prefix(byte[] keys) {
     return "encrypted/catalog/gallery-ai/" + R2Crypto.keyId(keys) + "/";
@@ -490,6 +497,12 @@ final class GalleryRecovery {
   static JSONObject project(String name, JSONObject value, Map<String, String> map)
       throws Exception {
     JSONObject out = remap(value, map);
+    if (name.equals("search-feedback")) {
+      JSONObject kept = new JSONObject();
+      for (String key : keys(value))
+        if (map.containsKey(key)) kept.put(map.get(key), value.get(key));
+      return kept;
+    }
     if (name.equals("edits")) {
       JSONObject kept = new JSONObject();
       for (String key : keys(value))

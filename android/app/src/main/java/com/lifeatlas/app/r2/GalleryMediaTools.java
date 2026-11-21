@@ -25,6 +25,8 @@ final class GalleryMediaTools {
           new JSONObject()
               .put("position", positions == null ? 0 : positions.optDouble(key, 0))
               .put("cover", covers == null ? 0 : covers.optDouble(key, 0));
+      JSONObject correction = db.choice("search-feedback").optJSONObject(key);
+      result.put("searchLabel", correction == null ? "" : correction.optString("label"));
       JSONObject edit = edits.optJSONObject(key);
       if (edit != null) {
         String original = edit.optString("originalKey");

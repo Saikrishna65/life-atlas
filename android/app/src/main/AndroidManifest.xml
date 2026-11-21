@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Subject extraction requires API 24 and is reached only behind the API 26+ native guard.
+         ML Kit auto-init stays disabled below API 26. -->
     <!-- These libraries are reached only through the Android 26+ gallery bridge/worker.
          Keep the rest of Atlas available on its existing minSdk; gate ML Kit's startup provider too. -->
-    <uses-sdk tools:overrideLibrary="ai.onnxruntime" />
+    <uses-sdk tools:overrideLibrary="ai.onnxruntime,com.google.mlkit.vision.segmentation.subject" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <queries>

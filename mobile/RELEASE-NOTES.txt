@@ -1,6 +1,10 @@
-One Atlas: Gallery, trips, Creator Studio, cloud storage and Atlas AI together.
-• Atlas Gallery icon opens your photos directly.
-• In-app update checks, verified downloads and Android installation approval.
-• Latest Gallery gestures, editing copies, face correction and recovery tools.
-• Integrated opt-in voice and Hey Atlas wake-word controls.
-Offline language-model inference remains unavailable in this build. Cloud AI requires your own configured provider and consent. Existing data and originals are preserved.
+Gallery 2.2.0
+• Frame-batched photo gestures, anchored zoom and smoother dismissal.
+• Pinch the grid to resize photos; a dedicated Favourites view.
+• Automatic debounced Smart Search with progressive matches and short-lived warm inference.
+• Encrypted correction-based personalization and clearer best-photo selection.
+• Long-press accessible local photos for English text extraction or optional subject cutouts.
+• Copy/save transparent PNG cutouts and share them, including via WhatsApp.
+• Configurable swipe-up shortcut, keeping WhatsApp as the default.
+• Versioned public asset placements reuse approved media across collections; private AI data stays encrypted.
+Subject extraction needs compatible Google Play services and may download its model on first use. Cutouts are copies, not WhatsApp sticker packs. No originals or existing cloud objects are reset.

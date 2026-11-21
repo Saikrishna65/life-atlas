@@ -839,3 +839,6 @@
     display: none;
   }
 }
+
+.pg-grid[data-pinching] {will-change:transform;touch-action:none;}
+@media(prefers-reduced-motion:no-preference){.gc-home,.gsmart,.pg-grid,.pg-backup{animation:gallery-arrive .16s ease-out;}@keyframes gallery-arrive{from{opacity:.65;transform:translateY(4px)}to{opacity:1;transform:none}}}

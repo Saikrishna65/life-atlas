@@ -732,6 +732,128 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void extractGalleryText(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(
+                js(
+                    GalleryExtraction.text(
+                        getContext(), repository().store, call.getString("id", "")))));
+  }
+
+  @PluginMethod
+  public void createGallerySticker(PluginCall call) {
+    work(call, () -> call.resolve(js(GalleryExtraction.sticker(getContext(), call.getData()))));
+  }
+
+  @PluginMethod
+  public void saveGallerySticker(PluginCall call) {
+    work(
+        call,
+        () -> {
+          GalleryExtraction.save(getContext(), call.getString("token", ""));
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void copyGallerySticker(PluginCall call) {
+    work(
+        call,
+        () -> {
+          File file = GalleryExtraction.file(getContext(), call.getString("token", ""));
+          Uri uri =
+              androidx.core.content.FileProvider.getUriForFile(
+                  getContext(), getContext().getPackageName() + ".fileprovider", file);
+          ClipData clip = ClipData.newUri(getContext().getContentResolver(), "Atlas sticker", uri);
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    try {
+                      ((android.content.ClipboardManager)
+                              getContext().getSystemService(Context.CLIPBOARD_SERVICE))
+                          .setPrimaryClip(clip);
+                      call.resolve();
+                    } catch (Exception error) {
+                      fail(call, error);
+                    }
+                  });
+        });
+  }
+
+  @PluginMethod
+  public void shareGallerySticker(PluginCall call) {
+    work(
+        call,
+        () -> {
+          File file = GalleryExtraction.file(getContext(), call.getString("token", ""));
+          Uri uri =
+              androidx.core.content.FileProvider.getUriForFile(
+                  getContext(), getContext().getPackageName() + ".fileprovider", file);
+          Intent send =
+              new Intent(Intent.ACTION_SEND)
+                  .setType("image/png")
+                  .putExtra(Intent.EXTRA_STREAM, uri)
+                  .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+          send.setClipData(ClipData.newUri(getContext().getContentResolver(), "Sticker", uri));
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    try {
+                      launchGalleryShare(call, Intent.createChooser(send, "Share sticker"));
+                    } catch (Exception error) {
+                      fail(call, error);
+                    }
+                  });
+        });
+  }
+
+  @PluginMethod
+  public void cancelGallerySearch(PluginCall call) {
+    gallerySearchGeneration.incrementAndGet();
+    call.resolve();
+  }
+
+  @PluginMethod
+  public void saveGalleryCorrection(PluginCall call) {
+    work(
+        call,
+        () -> {
+          GalleryCorrections.save(new GalleryIntelligence(getContext()), call.getData());
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void listGalleryFavorites(PluginCall call) {
+    work(
+        call,
+        () -> {
+          JSONArray ids;
+          try (GallerySearchStore db =
+              new GallerySearchStore(new GalleryIntelligence(getContext()).secure)) {
+            ids = db.choice("media-preferences").optJSONArray("favorites");
+          }
+          JSONArray items = new JSONArray();
+          int offset = Math.max(0, call.getInt("offset", 0)),
+              end = ids == null ? 0 : Math.min(ids.length(), offset + 80);
+          R2DeviceGallery gallery = new R2DeviceGallery(getContext());
+          for (int i = offset; i < end; i++)
+            try {
+              items.put(gallery.one(ids.getString(i)));
+            } catch (Exception missing) {
+            }
+          call.resolve(
+              js(
+                  new JSONObject()
+                      .put("items", items)
+                      .put("cursor", ids != null && end < ids.length() ? String.valueOf(end) : "")
+                      .put("complete", ids == null || end >= ids.length())));
+        });
+  }
+
+  @PluginMethod
   public void searchGalleryIntelligence(PluginCall call) {
     final long generation = gallerySearchGeneration.incrementAndGet();
     work(
@@ -748,7 +870,13 @@ public class R2StoragePlugin extends Plugin {
                           call.getString("kind", "all"),
                           call.getInt("offset", 0),
                           () -> generation != gallerySearchGeneration.get(),
-                          call.getData())));
+                          call.getData(),
+                          page -> {
+                            String request = call.getString("requestId", "");
+                            if (!request.isEmpty() && generation == gallerySearchGeneration.get())
+                              notifyListeners(
+                                  "gallerySearchResults", js(page.put("requestId", request)));
+                          })));
         });
   }
 
@@ -2664,6 +2792,8 @@ public class R2StoragePlugin extends Plugin {
   @Override
   protected void handleOnPause() {
     gallerySearchGeneration.incrementAndGet();
+    GallerySearchInference.releaseWarm();
+    gallerySearchGeneration.incrementAndGet();
     galleryForeground = false;
     librarySession = "";
     R2LibraryPreviews.clear(getContext());
@@ -2681,6 +2811,7 @@ public class R2StoragePlugin extends Plugin {
 
   @Override
   protected void handleOnDestroy() {
+    GallerySearchInference.releaseWarm();
     galleryHandler.removeCallbacks(galleryChanged);
     if (galleryObserver != null)
       getContext().getContentResolver().unregisterContentObserver(galleryObserver);

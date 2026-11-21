@@ -8,6 +8,30 @@ import java.util.concurrent.*;
 import org.json.*;
 
 final class GallerySearchInference {
+  private static Context warmContext;
+  private static ServiceConnection warmConnection;
+  private static final Handler IDLE = new Handler(Looper.getMainLooper());
+  private static final Runnable RELEASE = GallerySearchInference::releaseWarm;
+
+  static synchronized void releaseWarm() {
+    IDLE.removeCallbacks(RELEASE);
+    if (warmConnection != null) {
+      try {
+        warmContext.unbindService(warmConnection);
+      } catch (IllegalArgumentException ignored) {
+      }
+      warmConnection = null;
+      warmContext = null;
+    }
+  }
+
+  private static synchronized void retain(Context context, ServiceConnection connection) {
+    releaseWarm();
+    warmContext = context;
+    warmConnection = connection;
+    IDLE.postDelayed(RELEASE, 20000);
+  }
+
   static float[] query(
       Context context,
       R2SecureStore secure,
@@ -67,10 +91,11 @@ final class GallerySearchInference {
             done.countDown();
           }
         };
-    boolean bound = false;
+    final Context app = context.getApplicationContext();
+    boolean bound = false, success = false;
     try {
       bound =
-          context.bindService(
+          app.bindService(
               new Intent(context, GallerySearchService.class),
               connection,
               Context.BIND_AUTO_CREATE);
@@ -85,15 +110,19 @@ final class GallerySearchInference {
       float[] vector = GalleryClip.normalize(result[0]);
       try (GallerySearchStore db = new GallerySearchStore(secure)) {
         JSONObject values = db.choice("query-vectors");
-        if (values.length() >= 8) values = new JSONObject();
+        if (values.length() >= 32 && !values.has(cacheKey)) values.remove(values.keys().next());
         JSONArray saved = new JSONArray();
         for (float value : vector) saved.put((double) value);
         values.put(cacheKey, saved);
         db.choice("query-vectors", values);
       }
+      success = true;
       return vector;
     } finally {
-      if (bound) context.unbindService(connection);
+      if (bound) {
+        if (success && !cancelled.getAsBoolean()) retain(app, connection);
+        else app.unbindService(connection);
+      }
     }
   }
 }

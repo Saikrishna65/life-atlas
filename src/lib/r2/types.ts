@@ -8,7 +8,7 @@ export interface BucketSummary {
   bucket?: string;
   publicBaseUrl?: string;
   revision?: string;
-  storageScope?:string;
+  storageScope?: string;
 }
 export interface StorageSummary {
   supported: boolean;
@@ -28,8 +28,8 @@ export interface ConfigurationInput {
   publicBaseUrl: string;
 }
 export interface SelectedMedia {
-  galleryId?:string;
-  sourceStamp?:string;
+  galleryId?: string;
+  sourceStamp?: string;
   id: string;
   name: string;
   size: number;
@@ -72,12 +72,19 @@ export interface Transfer {
   error?: string;
   createdAt: number;
   updatedAt?: number;
-  workerState?: 'RUNNING'|'ENQUEUED'|'BLOCKED'|'SUCCEEDED'|'FAILED'|'CANCELLED'|'MISSING';
+  workerState?:
+    | "RUNNING"
+    | "ENQUEUED"
+    | "BLOCKED"
+    | "SUCCEEDED"
+    | "FAILED"
+    | "CANCELLED"
+    | "MISSING";
   retryScheduled?: boolean;
   nextAttemptAt?: number;
   attempts?: number;
   stopReason?: number;
-  androidWait?: 'QUOTA'|'BACKGROUND'|'NETWORK'|'TIME_LIMIT';
+  androidWait?: "QUOTA" | "BACKGROUND" | "NETWORK" | "TIME_LIMIT";
   canRecover?: boolean;
   verifiedBytes?: number;
   verificationTotalBytes?: number;
@@ -86,8 +93,8 @@ export interface Transfer {
   publicUrl?: string;
   thumbnailUrl?: string;
   verified?: boolean;
-  storageScope?:string;
-  revision?:string;
+  storageScope?: string;
+  revision?: string;
   galleryId?: string;
   sourceStamp?: string;
   reused?: boolean;
@@ -112,7 +119,15 @@ export type MediaPlacement =
   | "music-artwork"
   | "atlas-visual";
 export interface PublishedMedia {
-  manifestUrl?:string;
+  metadataVersion?: 1;
+  assetId?: string;
+  placements?: {
+    category: MediaPlacement;
+    collection: string;
+    placeId?: string;
+    placeName?: string;
+  }[];
+  manifestUrl?: string;
   id: string;
   key: string;
   url: string;
