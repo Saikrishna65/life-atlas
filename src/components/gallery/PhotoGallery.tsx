@@ -58,6 +58,8 @@ import { useTripVault, notifyVaultChange } from "@/lib/vault/useTripVault";
 import { patchTripFields } from "@/lib/vault/storage";
 import { readTripCoverLibrary } from "@/lib/studio/trip-cover";
 import { transferScheduleText } from "@/lib/r2/transfer-status";
+import { useGalleryBack } from "@/lib/gallery/navigation";
+import { cachedThumbnail } from "./GalleryThumbnail";
 import PhotoViewer from "./PhotoViewer";
 import { Modal } from "@/components/world/primitives";
 import GalleryThumbnail from "./GalleryThumbnail";
@@ -74,6 +76,9 @@ import type {
   SmartCollection,
 } from "@/lib/gallery/collections";
 import "./smart-collections.css";
+const GalleryRecoveryPanel = dynamic(() => import("./GalleryRecoveryPanel"), {
+  ssr: false,
+});
 const GallerySmartCollections = dynamic(
   () => import("./GallerySmartCollections"),
   { ssr: false },
@@ -153,6 +158,7 @@ export default function PhotoGallery() {
     [searchOpen, setSearchOpen] = useState(false);
   const [intelligence, setIntelligence] = useState<GalleryIntelligenceStatus>();
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [smartMode, setSmartMode] = useState<CollectionKind>();
   const [curated, setCurated] = useState<SmartCollection>();
   const [analysisGoal, setAnalysisGoal] = useState<"similar" | "people">();
@@ -170,6 +176,69 @@ export default function PhotoGallery() {
       alive = false;
     };
   }, [supported, revision]);
+  useGalleryBack(
+    assigning || !!detail || websiteControls || drawer,
+    () => {
+      setAssigning(false);
+      setDetail(undefined);
+      setWebsiteControls(false);
+      setDrawer(false);
+    },
+    90,
+  );
+  useEffect(() => {
+    if (!supported) return;
+    let alive = true;
+    const changed = () => {
+      if (!alive) return;
+      setRevision((v) => v + 1);
+      window.dispatchEvent(new Event("atlas:gallery-analysis"));
+    };
+    const subscription = R2.addListener("galleryChanged", changed);
+    const restored = () => {
+      void R2.getGalleryMediaPreferences()
+        .then((v) => {
+          if (alive && v.favorites) {
+            setFavorites(v.favorites);
+            void saveGalleryPreference("favorites", v.favorites);
+          }
+        })
+        .catch(() => {});
+    };
+    window.addEventListener("atlas:gallery-restored", restored);
+    return () => {
+      alive = false;
+      void subscription.then((s) => s.remove()).catch(() => {});
+      window.removeEventListener("atlas:gallery-restored", restored);
+    };
+  }, [supported]);
+  const analysisState = intelligence?.state;
+  useEffect(() => {
+    if (
+      !supported ||
+      !analysisState ||
+      ["ready", "off", "paused", "error"].includes(analysisState)
+    )
+      return;
+    let alive = true;
+    const timer = setInterval(() => {
+      if (document.hidden) return;
+      void R2.getGalleryIntelligence()
+        .then((v) => {
+          if (!alive) return;
+          setIntelligence(v);
+          if (v.state === "ready") {
+            setRevision((n) => n + 1);
+            window.dispatchEvent(new Event("atlas:gallery-analysis"));
+          }
+        })
+        .catch(() => {});
+    }, 4000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [supported, analysisState]);
   const browsing = workspace === "photos" || collectionOpen;
   const grid = useRef<HTMLDivElement>(null),
     sentinel = useRef<HTMLDivElement>(null),
@@ -215,7 +284,15 @@ export default function PhotoGallery() {
       })
       .catch(() => {});
     void readGalleryPreference<string[]>("favorites", [])
-      .then((v) => {
+      .then(async (v) => {
+        if (supported) {
+          try {
+            const native = await R2.getGalleryMediaPreferences();
+            if (native.favorites) v = native.favorites;
+            else if (v.length)
+              await R2.saveGalleryMediaPreferences({ favorites: v });
+          } catch {}
+        }
         if (alive) setFavorites(v);
       })
       .catch(() => {});
@@ -634,6 +711,64 @@ export default function PhotoGallery() {
       previewToken.current = "";
     }
   }, []);
+  useGalleryBack(
+    workspace !== "photos" ||
+      collectionOpen ||
+      searchOpen ||
+      selectionMode ||
+      !!detail ||
+      assigning ||
+      intelligenceOpen ||
+      drawer ||
+      websiteControls,
+    () => {
+      if (intelligenceOpen) {
+        setIntelligenceOpen(false);
+        return;
+      }
+      if (assigning) {
+        setAssigning(false);
+        return;
+      }
+      if (detail) {
+        setDetail(undefined);
+        return;
+      }
+      if (websiteControls) {
+        setWebsiteControls(false);
+        return;
+      }
+      if (drawer) {
+        setDrawer(false);
+        return;
+      }
+      if (selectionMode) {
+        setSelectionMode(false);
+        setSelected([]);
+        return;
+      }
+      if (searchOpen) {
+        setSearchOpen(false);
+        setQuery("");
+        return;
+      }
+      if (collectionOpen) {
+        setCollectionOpen(false);
+        setCurated(undefined);
+        setView("device");
+        setAlbum("");
+        setTripFilter("");
+        setPlaceFilter("");
+        return;
+      }
+      if (smartMode) {
+        setSmartMode(undefined);
+        return;
+      }
+      setWorkspace("photos");
+    },
+    20,
+  );
   useEffect(() => {
     const hide = () => {
       if (document.hidden) closeViewer();
@@ -723,6 +858,9 @@ export default function PhotoGallery() {
     setFavorites(values);
     try {
       await saveGalleryPreference("favorites", values);
+      void R2.saveGalleryMediaPreferences({ favorites: values }).catch(
+        () => {},
+      );
     } catch (e) {
       report(e);
     }
@@ -810,7 +948,7 @@ export default function PhotoGallery() {
               collectionOpen
                 ? "Back to collections"
                 : smartMode
-                  ? "Back to Organize"
+                  ? "Back to collections"
                   : "Back to Private Atlas"
             }
             onClick={() => {
@@ -860,7 +998,7 @@ export default function PhotoGallery() {
                       ? "People"
                       : smartMode === "memories"
                         ? "Albums & memories"
-                        : "Organize"
+                        : "Collections"
                   : "Backup"}
           </h1>
         </div>
@@ -892,6 +1030,15 @@ export default function PhotoGallery() {
           </div>
         )}
       </header>
+      {recoveryOpen && (
+        <GalleryRecoveryPanel
+          onClose={() => {
+            setRecoveryOpen(false);
+            setRevision((v) => v + 1);
+            window.dispatchEvent(new Event("atlas:gallery-restored"));
+          }}
+        />
+      )}
       {intelligenceOpen && (
         <GalleryIntelligencePanel
           albums={allAlbums}
@@ -1018,7 +1165,7 @@ export default function PhotoGallery() {
               {section === "photos"
                 ? "Photos"
                 : section === "organize"
-                  ? "Organize"
+                  ? "Collections"
                   : "Backup"}
             </span>
           </button>
@@ -1034,6 +1181,11 @@ export default function PhotoGallery() {
             setSmartMode(mode);
             setSelected([]);
             setSelectionMode(false);
+          }}
+          onFavorites={() => {
+            setWorkspace("photos");
+            setView("device");
+            setFavoritesOnly(true);
           }}
           onAlbum={(name) => {
             window.scrollTo(0, 0);
@@ -1094,6 +1246,7 @@ export default function PhotoGallery() {
         <GalleryStorageHome
           summary={summary}
           pending={pending.length}
+          onRecovery={() => setRecoveryOpen(true)}
           onSmartSearch={() => {
             setAnalysisGoal(undefined);
             setIntelligenceOpen(true);
@@ -1822,7 +1975,9 @@ export default function PhotoGallery() {
           items={viewerAssets.map((a) => ({
             id: a.id,
             url: a.device ? gallerySource(a.device.uri) : a.url!,
-            poster: a.thumbnail,
+            poster:
+              a.thumbnail ||
+              (a.device ? cachedThumbnail(a.device.id) : undefined),
             kind: a.kind === "video" ? "video" : "photo",
             place: a.device?.album || "My gallery",
             category: statusLabel(a, trips),

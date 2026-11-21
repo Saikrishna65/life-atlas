@@ -26,6 +26,13 @@ final class GallerySearchStore implements AutoCloseable {
     db.execSQL(
         "CREATE TABLE IF NOT EXISTS search_entries (token TEXT PRIMARY KEY, payload BLOB NOT"
             + " NULL)");
+    db.execSQL(
+        "CREATE TABLE IF NOT EXISTS collection_cache (kind TEXT NOT NULL, token TEXT NOT NULL,"
+            + " payload BLOB NOT NULL, PRIMARY KEY(kind,token))");
+    db.execSQL(
+        "CREATE TABLE IF NOT EXISTS collection_meta (id INTEGER PRIMARY KEY, revision INTEGER NOT"
+            + " NULL)");
+    db.execSQL("INSERT OR IGNORE INTO collection_meta VALUES (1,0)");
     // This PRAGMA returns a row, so Android requires the query API even when setting it.
     try (Cursor setting = db.rawQuery("PRAGMA secure_delete=ON", null)) {
       if (!setting.moveToFirst() || setting.getInt(0) != 1)
@@ -104,6 +111,7 @@ final class GallerySearchStore implements AutoCloseable {
       if (db.insertWithOnConflict(
               "search_entries", null, searchValues, SQLiteDatabase.CONFLICT_REPLACE)
           < 0) throw new IOException("LOCAL_STORAGE_UNAVAILABLE");
+      invalidate();
       db.setTransactionSuccessful();
     } finally {
       db.endTransaction();
@@ -174,6 +182,111 @@ final class GallerySearchStore implements AutoCloseable {
     }
     if (db.insertWithOnConflict("choices", null, v, SQLiteDatabase.CONFLICT_REPLACE) < 0)
       throw new IOException("LOCAL_STORAGE_UNAVAILABLE");
+    if (java.util.Set.of("people", "similar", "memories", "media-preferences").contains(id))
+      invalidate();
+  }
+
+  JSONObject cache(String kind, String key) throws Exception {
+    String token = token(key);
+    try (Cursor c =
+        db.rawQuery(
+            "SELECT payload FROM collection_cache WHERE kind=? AND token=?",
+            new String[] {kind, token})) {
+      if (!c.moveToFirst()) return new JSONObject();
+      byte[] plain = secure.unseal("gallery-cache-v1:" + kind + ":" + token, c.getBlob(0));
+      try {
+        return new JSONObject(new String(plain, StandardCharsets.UTF_8));
+      } finally {
+        java.util.Arrays.fill(plain, (byte) 0);
+      }
+    }
+  }
+
+  void cachePut(String kind, String key, JSONObject value) throws Exception {
+    String token = token(key);
+    ContentValues values = sealed(token, "gallery-cache-v1:" + kind + ":", value);
+    values.put("kind", kind);
+    if (db.insertWithOnConflict("collection_cache", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+        < 0) throw new IOException("LOCAL_STORAGE_UNAVAILABLE");
+  }
+
+  void clearCollections(String kind) {
+    db.delete("collection_cache", "kind=?", new String[] {kind});
+  }
+
+  void saveCollections(String kind, JSONObject snapshot) throws Exception {
+    db.beginTransaction();
+    try {
+      clearCollections(kind);
+      JSONArray cards = snapshot.getJSONArray("collections");
+      JSONObject groups = snapshot.getJSONObject("groups");
+      for (int start = 0; start < Math.max(1, cards.length()); start += 40) {
+        JSONArray page = new JSONArray();
+        for (int i = start; i < Math.min(start + 40, cards.length()); i++) page.put(cards.get(i));
+        cachePut(
+            kind,
+            "page:" + start,
+            new JSONObject()
+                .put("collections", page)
+                .put("cursor", start + 40 < cards.length() ? Integer.toString(start + 40) : "")
+                .put("complete", start + 40 >= cards.length()));
+      }
+      boolean namesSaved = false;
+      java.util.Iterator<String> keys = groups.keys();
+      while (keys.hasNext()) {
+        String key = keys.next();
+        JSONObject group = groups.getJSONObject(key);
+        JSONArray ids = group.getJSONArray("ids"), faces = group.optJSONArray("faces");
+        for (int start = 0; start < Math.max(1, ids.length()); start += 80) {
+          JSONArray page = new JSONArray();
+          for (int i = start; i < Math.min(start + 80, ids.length()); i++) page.put(ids.get(i));
+          cachePut(
+              kind,
+              "media:" + key + ":" + start,
+              new JSONObject()
+                  .put("ids", page)
+                  .put("bestId", group.optString("bestId"))
+                  .put("pickedId", group.optString("pickedId"))
+                  .put("cursor", start + 80 < ids.length() ? Integer.toString(start + 80) : "")
+                  .put("complete", start + 80 >= ids.length()));
+        }
+        if (faces != null && !namesSaved) {
+          cachePut(kind, "names", new JSONObject().put("people", group.getJSONArray("people")));
+          namesSaved = true;
+        }
+        if (faces != null)
+          for (int start = 0; start < Math.max(1, faces.length()); start += 80) {
+            JSONArray page = new JSONArray();
+            for (int i = start; i < Math.min(start + 80, faces.length()); i++)
+              page.put(faces.get(i));
+            cachePut(
+                kind,
+                "faces:" + key + ":" + start,
+                new JSONObject()
+                    .put("faces", page)
+                    .put("cursor", start + 80 < faces.length() ? Integer.toString(start + 80) : "")
+                    .put("complete", start + 80 >= faces.length()));
+          }
+      }
+      JSONObject info = new JSONObject();
+      for (String field : java.util.List.of("revision", "scope", "partial", "needsAnalysis"))
+        info.put(field, snapshot.get(field));
+      cachePut(kind, "info", info);
+      db.setTransactionSuccessful();
+    } finally {
+      db.endTransaction();
+    }
+  }
+
+  long revision() {
+    try (Cursor c = db.rawQuery("SELECT revision FROM collection_meta WHERE id=1", null)) {
+      c.moveToFirst();
+      return c.getLong(0);
+    }
+  }
+
+  void invalidate() {
+    db.execSQL("UPDATE collection_meta SET revision=revision+1 WHERE id=1");
   }
 
   void forgetChoices(String id) throws Exception {
@@ -201,6 +314,8 @@ final class GallerySearchStore implements AutoCloseable {
       db.delete("photos", null, null);
       db.delete("summaries", null, null);
       db.delete("search_entries", null, null);
+      db.delete("collection_cache", null, null);
+      invalidate();
       db.setTransactionSuccessful();
     } finally {
       db.endTransaction();
@@ -214,6 +329,7 @@ final class GallerySearchStore implements AutoCloseable {
       db.delete("photos", "token=?", new String[] {key});
       db.delete("summaries", "token=?", new String[] {key});
       db.delete("search_entries", "token=?", new String[] {key});
+      invalidate();
       db.setTransactionSuccessful();
     } finally {
       db.endTransaction();

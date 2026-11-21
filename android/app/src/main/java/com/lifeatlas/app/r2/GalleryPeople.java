@@ -41,9 +41,16 @@ final class GalleryPeople {
   private final Map<Integer, List<Anchor>> buckets = new HashMap<>();
   private final List<Anchor> allAnchors = new ArrayList<>();
   final boolean partial;
+  final Set<String> hidden;
+  final JSONObject covers;
 
   GalleryPeople(GalleryIndexedPhotos index, JSONObject choices) throws Exception {
     partial = index.partial;
+    hidden = set(choices.optJSONArray("hidden"));
+    covers =
+        choices.optJSONObject("covers") == null
+            ? new JSONObject()
+            : choices.getJSONObject("covers");
     JSONObject people = choices.optJSONObject("people"),
         assignments = choices.optJSONObject("assignments");
     Set<String> excluded = set(choices.optJSONArray("excluded")),
@@ -72,8 +79,27 @@ final class GalleryPeople {
         g.add(f);
       }
     groups.addAll(named.values());
-    for (Group g : named.values())
-      for (int i = 0; i < Math.min(8, g.faces.size()); i++) add(g.faces.get(i), g);
+    for (Group g : named.values()) {
+      List<GalleryIndexedPhotos.Face> references = new ArrayList<>();
+      if (!g.faces.isEmpty()) references.add(g.faces.get(0));
+      while (references.size() < Math.min(8, g.faces.size())) {
+        GalleryIndexedPhotos.Face chosen = null;
+        double distance = -1;
+        for (GalleryIndexedPhotos.Face f : g.faces) {
+          if (references.contains(f)) continue;
+          double nearest = -1;
+          for (GalleryIndexedPhotos.Face r : references)
+            nearest = Math.max(nearest, cosine(f.vector, r.vector));
+          if (1 - nearest > distance) {
+            distance = 1 - nearest;
+            chosen = f;
+          }
+        }
+        if (chosen == null) break;
+        references.add(chosen);
+      }
+      for (GalleryIndexedPhotos.Face f : references) add(f, g);
+    }
     for (GalleryIndexedPhotos.Face f : all) {
       if (assignments != null && named.containsKey(assignments.optString(f.id))) continue;
       if (separated.contains(f.id)) {
@@ -179,6 +205,12 @@ final class GalleryPeople {
     Map<String, String> names = new HashMap<>();
     for (Group g : groups) if (g.confirmed) names.put(g.id, g.name);
     for (Group g : groups) {
+      if (hidden.contains(g.id)) continue;
+      GalleryIndexedPhotos.Face cover =
+          g.faces.stream()
+              .filter(f -> f.id.equals(covers.optString(g.id)))
+              .findFirst()
+              .orElse(g.faces.get(0));
       String title =
           g.confirmed
               ? g.name
@@ -196,8 +228,8 @@ final class GalleryPeople {
               .put("confirmed", g.confirmed)
               .put("suggestedPersonId", g.suggestedPersonId)
               .put("count", g.photos.size())
-              .put("faceId", g.faces.get(0).id)
-              .put("coverId", g.faces.get(0).mediaId));
+              .put("faceId", cover.id)
+              .put("coverId", cover.mediaId));
     }
     return rows;
   }
@@ -220,6 +252,36 @@ final class GalleryPeople {
     if (assignments == null) {
       assignments = new JSONObject();
       choices.put("assignments", assignments);
+    }
+    if (action.equals("restore-people")) {
+      choices.put("hidden", new JSONArray());
+      return;
+    }
+    if (action.equals("hide-person")) {
+      Group g = group(key);
+      Set<String> values = set(choices.optJSONArray("hidden"));
+      values.add(g.id);
+      choices.put("hidden", new JSONArray(new TreeSet<>(values)));
+      return;
+    }
+    if (action.equals("person-cover")) {
+      Group g = group(key);
+      if (g.faces.stream().noneMatch(f -> f.id.equals(faceId)))
+        throw new R2Exception("INVALID_SELECTION");
+      JSONObject c = choices.optJSONObject("covers");
+      if (c == null) {
+        c = new JSONObject();
+        choices.put("covers", c);
+      }
+      c.put(g.id, faceId);
+      return;
+    }
+    if (action.equals("merge-people")) {
+      Group source = group(key), target = group(personId);
+      if (!target.confirmed || source.id.equals(target.id))
+        throw new R2Exception("INVALID_SELECTION");
+      for (GalleryIndexedPhotos.Face f : source.faces) assignments.put(f.id, target.id);
+      return;
     }
     if (action.equals("name-person")) {
       Group g = group(key);
@@ -265,5 +327,8 @@ final class GalleryPeople {
       }
     }
     db.choice("people", new JSONObject());
+    db.forgetChoices("people-undo");
+    db.clearCollections("people");
+    GalleryRecovery.forgetPendingPeople(db);
   }
 }

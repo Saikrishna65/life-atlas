@@ -227,6 +227,112 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void getGalleryRecovery(PluginCall call) {
+    work(
+        call,
+        () -> call.resolve(js(GalleryRecovery.status(new GalleryIntelligence(getContext())))));
+  }
+
+  @PluginMethod
+  public void configureGalleryRecovery(PluginCall call) {
+    if (Boolean.TRUE.equals(call.getBoolean("enabled"))
+        && Build.VERSION.SDK_INT >= 29
+        && getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      requestPermissionForAlias("galleryOriginal", call, "galleryRecoveryPermission");
+      return;
+    }
+    authenticated(
+        call,
+        () ->
+            call.resolve(
+                js(
+                    GalleryRecovery.configure(
+                        getContext(), Boolean.TRUE.equals(call.getBoolean("enabled"))))));
+  }
+
+  @PermissionCallback
+  private void galleryRecoveryPermission(PluginCall call) {
+    if (getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      call.reject("ORIGINAL_MEDIA_ACCESS_REQUIRED", "ORIGINAL_MEDIA_ACCESS_REQUIRED");
+      return;
+    }
+    configureGalleryRecovery(call);
+  }
+
+  @PluginMethod
+  public void controlGalleryRecovery(PluginCall call) {
+    if (Build.VERSION.SDK_INT >= 29
+        && getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      requestPermissionForAlias("galleryOriginal", call, "galleryRecoveryControlPermission");
+      return;
+    }
+    authenticated(
+        call,
+        () -> {
+          String action = call.getString("action", "");
+          if (!Set.of("backup", "restore", "cancel").contains(action))
+            throw new R2Exception("INVALID_SELECTION");
+          if (action.equals("cancel")) {
+            WorkManager.getInstance(getContext()).cancelUniqueWork(GalleryRecoveryWorker.WORK);
+            GalleryRecovery.progress(new GalleryIntelligence(getContext()), "paused", 0, 0, "");
+          } else {
+            if (action.equals("restore")) {
+              new GalleryIntelligence(getContext()).control("pause");
+              try (GallerySearchStore db =
+                  new GallerySearchStore(new GalleryIntelligence(getContext()).secure)) {
+                JSONObject state = db.choice("recovery-settings");
+                state.put(
+                    "denyRecoveredFaces", !Boolean.TRUE.equals(call.getBoolean("peopleApproved")));
+                db.choice("recovery-settings", state);
+              }
+            }
+            GalleryRecoveryWorker.schedule(
+                getContext(), action, Boolean.TRUE.equals(call.getBoolean("peopleApproved")));
+          }
+          call.resolve();
+        });
+  }
+
+  @PermissionCallback
+  private void galleryRecoveryControlPermission(PluginCall call) {
+    if (getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
+      call.reject("ORIGINAL_MEDIA_ACCESS_REQUIRED", "ORIGINAL_MEDIA_ACCESS_REQUIRED");
+      return;
+    }
+    controlGalleryRecovery(call);
+  }
+
+  @PluginMethod
+  public void getGalleryMediaPreferences(PluginCall call) {
+    work(
+        call,
+        () -> {
+          try (GallerySearchStore db =
+              new GallerySearchStore(new GalleryIntelligence(getContext()).secure)) {
+            call.resolve(js(db.choice("media-preferences")));
+          }
+        });
+  }
+
+  @PluginMethod
+  public void saveGalleryMediaPreferences(PluginCall call) {
+    work(
+        call,
+        () -> {
+          JSONArray ids = call.getArray("favorites");
+          if (ids == null || ids.length() > 100000) throw new R2Exception("INVALID_SELECTION");
+          try (GallerySearchStore db =
+              new GallerySearchStore(new GalleryIntelligence(getContext()).secure)) {
+            JSONObject prefs = db.choice("media-preferences");
+            prefs.put("favorites", ids);
+            db.choice("media-preferences", prefs);
+          }
+          GalleryRecoveryWorker.scheduleIfEnabled(getContext());
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
   public void getGalleryCollections(PluginCall call) {
     work(
         call,
@@ -283,6 +389,7 @@ public class R2StoragePlugin extends Plugin {
         call,
         () -> {
           new GalleryCollections(getContext()).edit(call.getData());
+          GalleryRecoveryWorker.scheduleIfEnabled(getContext());
           call.resolve();
         });
   }
@@ -2179,6 +2286,44 @@ public class R2StoragePlugin extends Plugin {
         });
   }
 
+  private android.database.ContentObserver galleryObserver;
+  private final android.os.Handler galleryHandler =
+      new android.os.Handler(android.os.Looper.getMainLooper());
+  private final Runnable galleryChanged =
+      () ->
+          execute(
+              () -> {
+                try {
+                  new GalleryIntelligence(getContext()).mediaChanged();
+                } catch (Exception ignored) {
+                }
+                notifyListeners("galleryChanged", new JSObject());
+              });
+
+  @Override
+  public void load() {
+    if (Build.VERSION.SDK_INT < 26) return;
+    galleryObserver =
+        new android.database.ContentObserver(galleryHandler) {
+          @Override
+          public void onChange(boolean self, Uri uri) {
+            galleryHandler.removeCallbacks(galleryChanged);
+            galleryHandler.postDelayed(galleryChanged, 1500);
+          }
+        };
+    try {
+      getContext()
+          .getContentResolver()
+          .registerContentObserver(
+              MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true, galleryObserver);
+      getContext()
+          .getContentResolver()
+          .registerContentObserver(
+              MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true, galleryObserver);
+    } catch (SecurityException ignored) {
+    }
+  }
+
   private volatile boolean galleryForeground = true;
 
   @Override
@@ -2194,11 +2339,16 @@ public class R2StoragePlugin extends Plugin {
   @Override
   protected void handleOnResume() {
     galleryForeground = true;
+    galleryHandler.removeCallbacks(galleryChanged);
+    galleryHandler.postDelayed(galleryChanged, 1500);
     super.handleOnResume();
   }
 
   @Override
   protected void handleOnDestroy() {
+    galleryHandler.removeCallbacks(galleryChanged);
+    if (galleryObserver != null)
+      getContext().getContentResolver().unregisterContentObserver(galleryObserver);
     if (recoveryPassword != null) Arrays.fill(recoveryPassword, '\0');
     if (pendingKit != null) Arrays.fill(pendingKit, (byte) 0);
     R2GalleryPreview.clear(getContext());

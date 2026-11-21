@@ -126,6 +126,18 @@ final class R2DeviceGallery {
     return list(cursor, query, kind, album, order, "", List.of(), false);
   }
 
+  JSONObject changedPhotos(String cursor, long since) throws Exception {
+    return list(
+        cursor,
+        "",
+        "photo",
+        "",
+        "newest",
+        since > 0 ? "(date_modified>=? OR date_added>=?)" : "",
+        since > 0 ? List.of(Long.toString(since / 1000), Long.toString(since / 1000)) : List.of(),
+        false);
+  }
+
   JSONObject smartPage(String cursor, GallerySmartAlbums.Filter filter) throws Exception {
     return list(
         cursor,

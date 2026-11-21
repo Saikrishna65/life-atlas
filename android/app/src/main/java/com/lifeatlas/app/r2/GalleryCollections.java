@@ -31,38 +31,103 @@ final class GalleryCollections {
   JSONObject list(String kind, String cursor) throws Exception {
     JSONObject config = service.settings();
     try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
-      List<JSONObject> summaries;
-      boolean partial = false, needs = false;
-      if (kind.equals("memories"))
-        summaries =
-            GallerySmartAlbums.summaries(
-                context, db, System.currentTimeMillis(), TimeZone.getDefault());
-      else if (Set.of("similar", "people").contains(kind)) {
-        if (!config.optBoolean(kind)) {
-          summaries = List.of();
-          needs = true;
-        } else {
-          GalleryIndexedPhotos index =
-              new GalleryIndexedPhotos(
-                  context, db, config, kind.equals("similar"), kind.equals("people"));
-          partial = index.partial;
-          if (kind.equals("similar")) {
-            GallerySimilar similar = new GallerySimilar(index, db.choice("similar"));
-            partial |= similar.partial;
-            summaries = similar.summaries();
-          } else summaries = new GalleryPeople(index, db.choice("people")).summaries();
-        }
-      } else throw new R2Exception("INVALID_SELECTION");
-      offset(cursor);
-      return GalleryIndexedPhotos.page(summaries, cursor)
-          .put("partial", partial)
+      JSONObject snapshot = snapshot(kind, db, config);
+      boolean partial = snapshot.optBoolean("partial"),
+          needs = snapshot.optBoolean("needsAnalysis");
+      int start = offset(cursor);
+      JSONObject page = db.cache(kind, "page:" + start);
+      if (page.length() == 0) throw new R2Exception("INVALID_SELECTION");
+      return page.put("partial", partial)
           .put("needsAnalysis", needs)
           .put("analysisState", config.optString("state", "off"))
+          .put("hiddenPeople", GalleryPeople.set(db.choice("people").optJSONArray("hidden")).size())
+          .put("canUndoPeople", db.choice("people-undo").optBoolean("saved"))
           .put(
               "hiddenMemories",
               kind.equals("memories")
                   ? GalleryPeople.set(db.choice("memories").optJSONArray("hidden")).size()
                   : 0);
+    }
+  }
+
+  JSONObject snapshot(String kind, GallerySearchStore db, JSONObject config) throws Exception {
+    if (!Set.of("similar", "people", "memories").contains(kind))
+      throw new R2Exception("INVALID_SELECTION");
+    long revision = db.revision();
+    String scope =
+        kind
+            + ":"
+            + config.optBoolean(kind)
+            + ":"
+            + Objects.toString(config.optJSONArray("albums"), "[]")
+            + (kind.equals("memories") ? ":" + java.time.LocalDate.now() : "");
+    JSONObject cached = db.cache(kind, "info");
+    if (cached.optLong("revision", -1) == revision && scope.equals(cached.optString("scope")))
+      return cached;
+    List<JSONObject> summaries;
+    JSONObject groups = new JSONObject();
+    boolean partial = false, needs = false;
+    if (kind.equals("memories"))
+      summaries =
+          GallerySmartAlbums.summaries(
+              context, db, System.currentTimeMillis(), TimeZone.getDefault());
+    else if (!config.optBoolean(kind)) {
+      summaries = List.of();
+      needs = true;
+    } else {
+      GalleryIndexedPhotos index =
+          new GalleryIndexedPhotos(
+              context, db, config, kind.equals("similar"), kind.equals("people"));
+      partial = index.partial;
+      if (kind.equals("similar")) {
+        GallerySimilar similar = new GallerySimilar(index, db.choice("similar"));
+        partial |= similar.partial;
+        summaries = similar.summaries();
+        for (GallerySimilar.Group g : similar.groups) {
+          JSONArray ids = new JSONArray();
+          for (GalleryIndexedPhotos.Photo p : g.photos) ids.put(p.id);
+          groups.put(
+              g.key,
+              new JSONObject().put("ids", ids).put("bestId", g.best).put("pickedId", g.pick));
+        }
+      } else {
+        GalleryPeople people = new GalleryPeople(index, db.choice("people"));
+        summaries = people.summaries();
+        JSONArray names = new JSONArray();
+        for (GalleryPeople.Group g : people.groups)
+          if (g.confirmed && names.length() < 2000)
+            names.put(new JSONObject().put("id", g.id).put("name", g.name));
+        for (GalleryPeople.Group g : people.groups) {
+          JSONArray faces = new JSONArray();
+          for (GalleryIndexedPhotos.Face f : g.faces)
+            faces.put(new JSONObject().put("id", f.id).put("mediaId", f.mediaId));
+          groups.put(
+              g.id,
+              new JSONObject()
+                  .put("ids", new JSONArray(g.photos))
+                  .put("faces", faces)
+                  .put("people", names));
+        }
+      }
+    }
+    JSONObject result =
+        new JSONObject()
+            .put("revision", revision)
+            .put("scope", scope)
+            .put("collections", new JSONArray(summaries))
+            .put("groups", groups)
+            .put("partial", partial)
+            .put("needsAnalysis", needs);
+    db.saveCollections(kind, result);
+    result.remove("collections");
+    result.remove("groups");
+    return result;
+  }
+
+  void warm() throws Exception {
+    JSONObject config = service.settings();
+    try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
+      for (String kind : List.of("similar", "people", "memories")) snapshot(kind, db, config);
     }
   }
 
@@ -76,33 +141,22 @@ final class GalleryCollections {
     if (!Set.of("people", "similar").contains(kind) || !config.optBoolean(kind))
       throw new R2Exception("SEARCH_NOT_CONFIGURED");
     try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
-      GalleryIndexedPhotos index =
-          new GalleryIndexedPhotos(
-              context, db, config, kind.equals("similar"), kind.equals("people"));
-      List<String> ids = new ArrayList<>();
-      String best = "", pick = "";
-      if (kind.equals("similar")) {
-        GallerySimilar.Group g = new GallerySimilar(index, db.choice("similar")).group(key);
-        for (GalleryIndexedPhotos.Photo p : g.photos) ids.add(p.id);
-        best = g.best;
-        pick = g.pick;
-      } else {
-        GalleryPeople.Group g = new GalleryPeople(index, db.choice("people")).group(key);
-        ids.addAll(new LinkedHashSet<>(g.photos));
-      }
+      snapshot(kind, db, config);
       int start = offset(cursor);
-      if (start > ids.size()) throw new R2Exception("INVALID_SELECTION");
-      int end = Math.min(ids.size(), start + 80);
-      JSONArray items = new JSONArray();
-      for (int i = start; i < end; i++)
+      JSONObject group = db.cache(kind, "media:" + key + ":" + start);
+      if (group.length() == 0) throw new R2Exception("GALLERY_COLLECTION_CHANGED");
+      JSONArray ids = group.getJSONArray("ids"), items = new JSONArray();
+      for (int i = 0; i < ids.length(); i++)
         try {
-          items.put(gallery.one(ids.get(i)));
+          items.put(gallery.one(ids.getString(i)));
         } catch (R2Exception | SecurityException ignored) {
         }
+      String best = group.optString("bestId"), pick = group.optString("pickedId");
+
       return new JSONObject()
           .put("items", items)
-          .put("cursor", end < ids.size() ? Integer.toString(end) : "")
-          .put("complete", end >= ids.size())
+          .put("cursor", group.optString("cursor"))
+          .put("complete", group.optBoolean("complete"))
           .put("bestId", best)
           .put("pickedId", pick);
     }
@@ -111,24 +165,16 @@ final class GalleryCollections {
   JSONObject facePage(String key, String cursor) throws Exception {
     if (!service.settings().optBoolean("people")) throw new R2Exception("SEARCH_NOT_CONFIGURED");
     try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
-      GalleryPeople people =
-          new GalleryPeople(
-              new GalleryIndexedPhotos(context, db, service.settings(), false, true),
-              db.choice("people"));
-      GalleryPeople.Group group = people.group(key);
-      int start = offset(cursor);
-      if (start > group.faces.size()) throw new R2Exception("INVALID_SELECTION");
-      int end = Math.min(group.faces.size(), start + 80);
-      JSONArray faces = new JSONArray(), names = new JSONArray();
-      for (int i = start; i < end; i++) {
-        GalleryIndexedPhotos.Face face = group.faces.get(i);
-        faces.put(new JSONObject().put("id", face.id).put("mediaId", face.mediaId));
-      }
-      for (GalleryPeople.Group p : people.groups)
-        if (p.confirmed) names.put(new JSONObject().put("id", p.id).put("name", p.name));
+      snapshot("people", db, service.settings());
+      JSONObject group = db.cache("people", "faces:" + key + ":" + offset(cursor));
+      if (group.length() == 0) throw new R2Exception("GALLERY_COLLECTION_CHANGED");
+      JSONArray all = group.getJSONArray("faces"),
+          faces = all,
+          names = db.cache("people", "names").getJSONArray("people");
+      int start = 0, end = all.length();
       JSONArray media = new JSONArray();
       Set<String> mediaIds = new LinkedHashSet<>();
-      for (int i = start; i < end; i++) mediaIds.add(group.faces.get(i).mediaId);
+      for (int i = start; i < end; i++) mediaIds.add(all.getJSONObject(i).getString("mediaId"));
       for (String id : mediaIds)
         try {
           media.put(gallery.one(id));
@@ -138,8 +184,8 @@ final class GalleryCollections {
           .put("media", media)
           .put("faces", faces)
           .put("people", names)
-          .put("cursor", end < group.faces.size() ? Integer.toString(end) : "")
-          .put("complete", end >= group.faces.size());
+          .put("cursor", group.optString("cursor"))
+          .put("complete", group.optBoolean("complete"));
     }
   }
 
@@ -148,6 +194,8 @@ final class GalleryCollections {
         || !faceId.matches("[0-9a-f]{64}\\.[0-9]{1,2}\\.[0-9a-f]{16}"))
       throw new R2Exception("INVALID_SELECTION");
     try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
+      if (GalleryPeople.set(db.choice("people").optJSONArray("excluded")).contains(faceId))
+        throw new R2Exception("SOURCE_UNAVAILABLE");
       JSONObject row = db.byToken(faceId.substring(0, 64));
       if (row == null || !GalleryFaceModels.VERSION.equals(row.optString("faceVersion")))
         throw new R2Exception("SOURCE_UNAVAILABLE");
@@ -176,6 +224,17 @@ final class GalleryCollections {
       }
       return;
     }
+    if (action.equals("undo-people")) {
+      synchronized (GalleryIntelligence.STATE_LOCK) {
+        try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
+          JSONObject undo = db.choice("people-undo");
+          if (!undo.optBoolean("saved")) throw new R2Exception("NOTHING_TO_UNDO");
+          db.choice("people", undo.getJSONObject("choices"));
+          db.forgetChoices("people-undo");
+        }
+      }
+      return;
+    }
     if (action.equals("forget-people")) {
       JSONObject config = service.settings();
       boolean wasEnabled = config.optBoolean("enabled");
@@ -186,6 +245,7 @@ final class GalleryCollections {
         service.writeSettings(stopped);
         try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
           GalleryPeople.forget(db);
+          db.forgetChoices("people-undo");
         }
       }
       synchronized (GalleryClip.LOCK) {
@@ -224,6 +284,9 @@ final class GalleryCollections {
         JSONObject choices = db.choice("people");
         GalleryPeople people =
             new GalleryPeople(new GalleryIndexedPhotos(context, db, config, false, true), choices);
+        db.choice(
+            "people-undo",
+            new JSONObject().put("saved", true).put("choices", new JSONObject(choices.toString())));
         people.edit(
             choices,
             action,

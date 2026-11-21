@@ -11,6 +11,7 @@ import {
   Users,
   Sparkles,
 } from "lucide-react";
+import { useGalleryBack } from "@/lib/gallery/navigation";
 import { R2, storageError } from "@/lib/r2/native";
 import { gallerySource } from "@/lib/gallery/actions";
 import type {
@@ -23,9 +24,11 @@ import type {
 } from "@/lib/gallery/collections";
 import { Modal } from "@/components/world/primitives";
 import GalleryCollectionCover from "./GalleryCollectionCover";
+import { cachedThumbnail } from "./GalleryThumbnail";
 import PhotoViewer from "./PhotoViewer";
 import "./smart-collections.css";
 
+const pages = new Map<CollectionKind, CollectionPage>();
 export default function GallerySmartCollections({
   mode,
   revision,
@@ -39,9 +42,11 @@ export default function GallerySmartCollections({
   onOpen: (collection: SmartCollection) => void;
   onChanged: () => void;
 }) {
-  const [page, setPage] = useState<CollectionPage>();
-  const [collections, setCollections] = useState<SmartCollection[]>([]);
-  const [loading, setLoading] = useState(true),
+  const [page, setPage] = useState<CollectionPage | undefined>(pages.get(mode));
+  const [collections, setCollections] = useState<SmartCollection[]>(
+    pages.get(mode)?.collections || [],
+  );
+  const [loading, setLoading] = useState(!pages.has(mode)),
     [busy, setBusy] = useState(false);
   const [error, setError] = useState(""),
     [notice, setNotice] = useState("");
@@ -55,6 +60,16 @@ export default function GallerySmartCollections({
     [name, setName] = useState("");
   const [viewer, setViewer] = useState("");
   const [confirm, setConfirm] = useState<"forget-people" | "reset-similar">();
+  const [mergeTarget, setMergeTarget] = useState("");
+  useGalleryBack(
+    !!selected,
+    () => {
+      setSelected(undefined);
+      setViewer("");
+    },
+    80,
+  );
+  useGalleryBack(!!confirm, () => setConfirm(undefined), 90);
   const request = useRef(0),
     sentinel = useRef<HTMLDivElement>(null);
   const load = useCallback(
@@ -65,6 +80,7 @@ export default function GallerySmartCollections({
       try {
         const result = await R2.getGalleryCollections({ kind: mode, cursor });
         if (generation !== request.current) return;
+        if (!cursor) pages.set(mode, result);
         setPage(result);
         setCollections((old) =>
           append
@@ -89,8 +105,8 @@ export default function GallerySmartCollections({
     queueMicrotask(() => {
       if (alive) {
         setSelected(undefined);
-        setCollections([]);
-        setPage(undefined);
+        setCollections(pages.get(mode)?.collections || []);
+        setPage(pages.get(mode));
         void load();
       }
     });
@@ -98,7 +114,15 @@ export default function GallerySmartCollections({
       alive = false;
       counter.current++;
     };
-  }, [load, revision, epoch]);
+  }, [load, revision, epoch, mode]);
+  useEffect(() => {
+    const refresh = () => {
+      pages.delete(mode);
+      void load();
+    };
+    window.addEventListener("atlas:gallery-analysis", refresh);
+    return () => window.removeEventListener("atlas:gallery-analysis", refresh);
+  }, [load, mode]);
   useEffect(() => {
     const element = sentinel.current;
     if (!element || !page?.cursor || loading) return;
@@ -154,6 +178,7 @@ export default function GallerySmartCollections({
     setError("");
     try {
       await R2.editGalleryCollection(edit);
+      pages.delete(mode);
       setConfirm(undefined);
       setViewer("");
       setNotice(
@@ -199,15 +224,16 @@ export default function GallerySmartCollections({
     setReviewCursor("");
     setPastPages([]);
     setName(collection.confirmed ? collection.title : "");
+    setMergeTarget("");
     setSelected(collection);
   };
   const loadedMedia =
     mode === "people" ? people?.media || [] : review?.items || [];
   const next = mode === "people" ? people?.cursor : review?.cursor;
   const titles = {
-    similar: "A few worth comparing.",
-    people: "Familiar faces.",
-    memories: "Your days, collected.",
+    similar: "Similar photos",
+    people: "People",
+    memories: "Albums & memories",
   };
   return (
     <section
@@ -324,8 +350,8 @@ export default function GallerySmartCollections({
       )}
       {mode === "people" && !page?.needsAnalysis && (
         <p className="gsmart-hint">
-          Names and corrections stay on this phone. Cloud recovery for them is
-          not available yet.
+          Names and corrections stay private. Encrypted recovery is available in
+          analysis settings.
         </p>
       )}
       {page?.partial && (
@@ -333,6 +359,26 @@ export default function GallerySmartCollections({
           This collection is large. Limit analysis to selected albums for a more
           complete review.
         </p>
+      )}
+      {mode === "people" && (
+        <div className="gsmart-tools">
+          {page?.canUndoPeople && (
+            <button
+              disabled={busy}
+              onClick={() => void act({ action: "undo-people" })}
+            >
+              Undo last people change
+            </button>
+          )}
+          {!!page?.hiddenPeople && (
+            <button
+              disabled={busy}
+              onClick={() => void act({ action: "restore-people" })}
+            >
+              Show hidden people
+            </button>
+          )}
+        </div>
       )}
       <div className={`gsmart-grid${mode === "people" ? " is-people" : ""}`}>
         {collections.map((collection) => (
@@ -353,7 +399,13 @@ export default function GallerySmartCollections({
                 <strong>{collection.title}</strong>
                 <small>
                   {collection.count.toLocaleString()}{" "}
-                  {collection.kind === "album" || collection.kind === "memory" ? (collection.count === 1 ? "item" : "items") : (collection.count === 1 ? "photo" : "photos")}
+                  {collection.kind === "album" || collection.kind === "memory"
+                    ? collection.count === 1
+                      ? "item"
+                      : "items"
+                    : collection.count === 1
+                      ? "photo"
+                      : "photos"}
                 </small>
                 <span>{collection.subtitle}</span>
               </span>
@@ -391,7 +443,7 @@ export default function GallerySmartCollections({
           <p>
             {mode === "people"
               ? "Check every face before confirming a name. Use the menu under a face to move it, separate it or remove a wrong detection."
-              : "The suggested pick compares clarity, lighting and resolution. Tap a photo to inspect the original. Choosing a pick never deletes other shots."}
+              : "The suggested pick compares clarity, lighting and resolution. Tap a photo to open it. Choosing a pick never deletes other shots."}
           </p>
           {error && (
             <p role="alert" className="gsmart-error">
@@ -445,8 +497,49 @@ export default function GallerySmartCollections({
                 }
               </button>
             )}
+          {mode === "people" && people && (
+            <div className="gsmart-merge">
+              <label>
+                Same person as
+                <select
+                  aria-label="Merge with person"
+                  value={mergeTarget}
+                  onChange={(e) => setMergeTarget(e.target.value)}
+                >
+                  <option value="">Choose a named person</option>
+                  {people.people
+                    .filter((p) => p.id !== selected.id)
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <button
+                disabled={busy || !mergeTarget}
+                onClick={() =>
+                  void act({
+                    action: "merge-people",
+                    key: selected.id,
+                    personId: mergeTarget,
+                  })
+                }
+              >
+                Merge into this person
+              </button>
+              <button
+                disabled={busy}
+                onClick={() =>
+                  void act({ action: "hide-person", key: selected.id })
+                }
+              >
+                Hide from People
+              </button>
+            </div>
+          )}
           <button onClick={() => onOpen(selected)} className="gsmart-view-all">
-            View all original photos
+            Open photos
             <ArrowRight size={16} />
           </button>
           {reviewLoading && <p role="status">Opening photos…</p>}
@@ -514,6 +607,19 @@ export default function GallerySmartCollections({
                     onClick={() => setViewer(face.mediaId)}
                   >
                     <GalleryCollectionCover faceId={face.id} />
+                  </button>
+                  <button
+                    disabled={busy}
+                    className="gsmart-cover-choice"
+                    onClick={() =>
+                      void act({
+                        action: "person-cover",
+                        key: selected.id,
+                        faceId: face.id,
+                      })
+                    }
+                  >
+                    Use as cover
                   </button>
                   <label className="gsmart-face-menu">
                     <span>Change group</span>
@@ -600,6 +706,7 @@ export default function GallerySmartCollections({
               items={loadedMedia.map((m) => ({
                 id: m.id,
                 url: gallerySource(m.uri),
+                poster: cachedThumbnail(m.id),
                 kind: m.kind,
                 place: m.album,
                 category: "My private gallery",

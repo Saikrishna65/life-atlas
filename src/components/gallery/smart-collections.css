@@ -466,3 +466,51 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.gsmart-merge {
+  padding: 14px 0;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: end;
+}
+.gsmart-merge label {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+  min-width: 180px;
+  font-size: 13px;
+}
+.gsmart-merge select {
+  padding: 12px;
+  background: #f5f7f2;
+  border: 1px solid #d3dfd4;
+  border-radius: 12px;
+  color: #243d32;
+  max-width: 100%;
+}
+.gsmart-recovery-status {
+  background: #f3f7f1;
+  border-radius: 14px;
+  padding: 16px;
+  margin: 20px 0;
+}
+.gsmart-recovery-toggle {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  margin: 20px 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.gsmart-recovery-toggle input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: #285449;
+}
+.gsmart-cover-choice {
+  font-size: 11px !important;
+  padding: 7px !important;
+  min-height: 36px;
+}

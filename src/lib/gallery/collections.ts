@@ -20,6 +20,8 @@ export interface CollectionPage {
   partial: boolean;
   needsAnalysis: boolean;
   hiddenMemories?: number;
+  hiddenPeople?: number;
+  canUndoPeople?: boolean;
   analysisState: string;
 }
 export interface CollectionMediaPage extends DevicePage {
@@ -40,4 +42,20 @@ export type CollectionEdit =
   | { action: "confirm-person-match"; key: string; personId: string }
   | { action: "assign-face"; key: string; faceId: string; personId: string }
   | { action: "separate-face" | "exclude-face"; key: string; faceId: string }
+  | { action: "merge-people"; key: string; personId: string }
+  | { action: "hide-person"; key: string }
+  | { action: "person-cover"; key: string; faceId: string }
+  | { action: "undo-people" | "restore-people" }
   | { action: "forget-people" | "reset-similar" | "restore-memories" };
+
+export interface GalleryRecoveryStatus {
+  enabled?: boolean;
+  state?: string;
+  processed?: number;
+  total?: number;
+  matched?: number;
+  unmatched?: number;
+  error?: string;
+  lastSaved?: number;
+  lastRestored?: number;
+}

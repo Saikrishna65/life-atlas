@@ -9,6 +9,7 @@ import {
 import { ArrowLeft, Info, Trash2, X } from "lucide-react";
 import { Modal } from "@/components/world/primitives";
 import type { DetailMedia } from "@/lib/public-trips/detail";
+import { useGalleryBack } from "@/lib/gallery/navigation";
 import ViewerVideo from "./ViewerVideo";
 import "@/components/media/journal-viewer.css";
 import "./photo-viewer.css";
@@ -34,6 +35,16 @@ export default function PhotoViewer({
     [error, setError] = useState(""),
     [chrome, setChrome] = useState(true),
     [info, setInfo] = useState(false);
+  useGalleryBack(true, onClose, 100);
+  const [drag, setDrag] = useState(0);
+  const [settling, setSettling] = useState(false);
+  const dragRef = useRef(0);
+  const slideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const stage = useRef<HTMLDivElement>(null);
+  const suppressClick = useRef(false);
+  useEffect(() => () => clearTimeout(slideTimer.current), []);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const activity = useCallback(() => {
     setChrome(true);
@@ -42,6 +53,14 @@ export default function PhotoViewer({
       if (!document.activeElement?.matches(":focus-visible")) setChrome(false);
     }, 2800);
   }, []);
+  useGalleryBack(
+    info,
+    () => {
+      setInfo(false);
+      activity();
+    },
+    120,
+  );
   useEffect(() => {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
@@ -64,11 +83,25 @@ export default function PhotoViewer({
       multi: false,
     });
   const move = (n: number) => {
-    if (items.length > 1) {
-      setTransform({ scale: 1, x: 0, y: 0 });
-      setInfo(false);
-      activity();
-      onSelect(items[(index + n + items.length) % items.length].id);
+    if (items.length > 1 && !settling) {
+      const reduced = window.matchMedia(
+        "(prefers-reduced-motion: reduce)",
+      ).matches;
+      const width = stage.current?.clientWidth || window.innerWidth;
+      setSettling(true);
+      setDrag(-n * width);
+      slideTimer.current = setTimeout(
+        () => {
+          setDrag(0);
+          dragRef.current = 0;
+          setSettling(false);
+          setTransform({ scale: 1, x: 0, y: 0 });
+          setInfo(false);
+          activity();
+          onSelect(items[(index + n + items.length) % items.length].id);
+        },
+        reduced ? 0 : 220,
+      );
     }
   };
   useEffect(() => {
@@ -156,9 +189,16 @@ export default function PhotoViewer({
         </div>
       </div>
       <div
-        className="pv-picture journal-viewer-stage"
+        ref={stage}
+        className={`pv-picture journal-viewer-stage ${settling ? "is-settling" : ""}`}
         onClick={(e) => {
-          if ((e.target as HTMLElement).closest("button,input")) return;
+          if (
+            (e.target as HTMLElement).closest("button,input") ||
+            suppressClick.current
+          ) {
+            suppressClick.current = false;
+            return;
+          }
           if (start.current.multi) return;
           if (Math.abs(e.clientX - start.current.x) > 12 && points.current.size)
             return;
@@ -167,7 +207,13 @@ export default function PhotoViewer({
         }}
         onDoubleClick={() => zoom(transform.scale > 1 ? 1 : 2.5)}
         onPointerDown={(e) => {
-          if (item.kind === "video") return;
+          if (
+            (e.target as HTMLElement).closest(
+              "button,input,.pv-video-controls",
+            ) ||
+            settling
+          )
+            return;
           e.currentTarget.setPointerCapture(e.pointerId);
           points.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           const p = [...points.current.values()];
@@ -211,6 +257,17 @@ export default function PhotoViewer({
               x: scale === 1 ? 0 : old.x,
               y: scale === 1 ? 0 : old.y,
             }));
+          } else if (
+            p.length === 1 &&
+            transform.scale === 1 &&
+            !start.current.multi
+          ) {
+            const dx = e.clientX - start.current.x;
+            if (Math.abs(dx) > 8) {
+              suppressClick.current = true;
+              dragRef.current = dx;
+              setDrag(dx);
+            }
           } else if (p.length === 1 && transform.scale > 1) {
             const r = e.currentTarget.getBoundingClientRect();
             const img = e.currentTarget.querySelector("img");
@@ -242,8 +299,13 @@ export default function PhotoViewer({
             }));
           }
         }}
-        onPointerCancel={(e) => points.current.delete(e.pointerId)}
+        onPointerCancel={(e) => {
+          points.current.delete(e.pointerId);
+          setDrag(0);
+          dragRef.current = 0;
+        }}
         onPointerUp={(e) => {
+          if (!points.current.has(e.pointerId)) return;
           const s = start.current;
           points.current.delete(e.pointerId);
           if (!points.current.size && !s.multi && transform.scale === 1) {
@@ -255,6 +317,11 @@ export default function PhotoViewer({
               Date.now() - s.at < 1000
             )
               move(dx < 0 ? 1 : -1);
+            else {
+              setSettling(true);
+              setDrag(0);
+              slideTimer.current = setTimeout(() => setSettling(false), 180);
+            }
           } else if (points.current.size === 1) {
             const p = [...points.current.values()][0];
             start.current = {
@@ -267,29 +334,48 @@ export default function PhotoViewer({
           }
         }}
       >
-        {item.kind === "video" ? (
-          <ViewerVideo
-            key={item.id}
-            src={item.url}
-            poster={item.poster}
-            show={chrome && !info}
-            onActivity={activity}
-          />
-        ) : (
-          <>
-            {" "}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              key={item.id}
-              src={item.url}
-              alt={item.caption || "Photo"}
-              draggable={false}
+        {[-1, 0, 1].map((offset) => {
+          if (items.length < 2 && offset !== 0) return null;
+          const media = items[(index + offset + items.length) % items.length];
+          return (
+            <div
+              key={offset}
+              className="pv-slide"
+              aria-hidden={offset !== 0}
+              inert={offset !== 0}
               style={{
-                transform: `translate(${transform.x}px,${transform.y}px) scale(${transform.scale})`,
+                transform: `translate3d(calc(${offset * 100}% + ${drag}px),0,0)`,
               }}
-            />
-          </>
-        )}
+            >
+              {offset === 0 && media.kind === "video" ? (
+                <ViewerVideo
+                  key={media.id}
+                  src={media.url}
+                  poster={media.poster}
+                  show={chrome && !info}
+                  onActivity={activity}
+                />
+              ) : media.kind === "video" && !media.poster ? (
+                <div className="pv-neighbor-video">Video</div>
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={offset === 0 ? media.url : media.poster || media.url}
+                  alt={offset === 0 ? media.caption || "Photo" : ""}
+                  draggable={false}
+                  decoding="async"
+                  style={
+                    offset === 0
+                      ? {
+                          transform: `translate(${transform.x}px,${transform.y}px) scale(${transform.scale})`,
+                        }
+                      : undefined
+                  }
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
       {error && <p role="alert">{error}</p>}
       {info && (

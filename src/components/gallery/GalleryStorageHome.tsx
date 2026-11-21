@@ -17,12 +17,14 @@ export default function GalleryStorageHome({
   onPublic,
   onTransfers,
   onSmartSearch,
+  onRecovery,
 }: {
   summary?: StorageSummary;
   pending: number;
   onPublic: () => void;
   onTransfers: () => void;
   onSmartSearch: () => void;
+  onRecovery: () => void;
 }) {
   return (
     <section className="gs-home" aria-label="Backup and cloud">
@@ -54,6 +56,16 @@ export default function GalleryStorageHome({
         </div>
       </Link>
       <div className="gs-actions">
+        <button onClick={onRecovery}>
+          <LockKeyhole />
+          <span>
+            <strong>Save names & organisation</strong>
+            <small>
+              Encrypted recovery for your photo analysis and corrections
+            </small>
+          </span>
+          <ArrowUpRight />
+        </button>
         <button onClick={onSmartSearch}>
           <Sparkles />
           <span>

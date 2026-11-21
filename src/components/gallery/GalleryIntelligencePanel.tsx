@@ -1,4 +1,5 @@
 "use client";
+import { useGalleryBack } from "@/lib/gallery/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   Brain,
@@ -32,6 +33,7 @@ export default function GalleryIntelligencePanel({
   onChange: (status: GalleryIntelligenceStatus) => void;
   initialFeature?: "similar" | "people";
 }) {
+  useGalleryBack(true, onClose, 96);
   const [status, setStatus] = useState<GalleryIntelligenceStatus>();
   const [settings, setSettings] = useState<GalleryIntelligenceSettings>(
     defaultIntelligenceSettings,
@@ -151,7 +153,11 @@ export default function GalleryIntelligencePanel({
       )}
       {setup ? (
         <fieldset disabled={busy} className="gi-setup">
-          <legend>What would you like to find?</legend>
+          <legend>Photo settings</legend>
+          <p>
+            New photos update automatically. Only new or changed files need
+            analysis.
+          </p>
           <label>
             <input
               type="checkbox"
@@ -258,7 +264,13 @@ export default function GalleryIntelligencePanel({
                   setSettings((v) => ({ ...v, chargingOnly: e.target.checked }))
                 }
               />
-              <span>Analyze only while charging</span>
+              <span>
+                Charging only{" "}
+                <small>
+                  Turn off for Balanced: analyse new photos when battery and
+                  temperature allow.
+                </small>
+              </span>
             </label>
             {(settings.visual || settings.people) && (
               <label>

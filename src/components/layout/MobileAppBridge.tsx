@@ -28,6 +28,7 @@ export default function MobileAppBridge() {
 
     // Android hardware & gesture back button listener
     const backButtonListener = CapApp.addListener("backButton", () => {
+      if (!window.dispatchEvent(new Event("atlas:back", { cancelable: true }))) return;
       const path = window.location.pathname;
       if (path === "/" || path === "/secret") {
         try {
@@ -52,7 +53,7 @@ export default function MobileAppBridge() {
       if (e.touches.length !== 1) return;
       const touch = e.touches[0];
       // Only capture swipes starting within 35px of the left edge
-      if (touch.clientX <= 35) {
+      if (touch.clientX <= 35 && !(e.target as HTMLElement)?.closest(".pv-viewer")) {
         touchStartX = touch.clientX;
         touchStartY = touch.clientY;
         isEdgeSwipe = true;
@@ -71,6 +72,7 @@ export default function MobileAppBridge() {
       if (deltaX > 55 && deltaY < deltaX * 0.75) {
         const path = window.location.pathname;
         if (path !== "/" && path !== "/secret") {
+          if (!window.dispatchEvent(new Event("atlas:back", { cancelable: true }))) return;
           window.history.back();
         }
       }

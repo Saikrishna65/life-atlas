@@ -8,7 +8,15 @@ import { gallerySource } from "@/lib/gallery/actions";
 // Native thumbnails only, bounded concurrency. No full originals fetched by the grid.
 let active = 0;
 const waiting: (() => void)[] = [];
+const cached = new Map<string, { path: string }>();
+if (typeof window !== "undefined")
+  window.addEventListener("atlas:gallery-analysis", () => cached.clear());
+export function cachedThumbnail(id: string) {
+  const value = cached.get(id);
+  return value ? gallerySource(value.path) : undefined;
+}
 export async function thumbnail(id: string, stillNeeded: () => boolean) {
+  if (cached.has(id)) return cached.get(id)!;
   await new Promise<void>((resolve) => {
     if (active < 4) {
       active++;
@@ -17,7 +25,10 @@ export async function thumbnail(id: string, stillNeeded: () => boolean) {
   });
   try {
     if (!stillNeeded()) throw Error("Thumbnail no longer visible");
-    return await R2.getDeviceThumbnail({ id });
+    const result = await R2.getDeviceThumbnail({ id });
+    cached.set(id, result);
+    if (cached.size > 240) cached.delete(cached.keys().next().value!);
+    return result;
   } finally {
     const next = waiting.shift();
     if (next) next();

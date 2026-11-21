@@ -1,4 +1,5 @@
 "use client";
+import { useGalleryBack } from "@/lib/gallery/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -95,6 +96,17 @@ export default function GalleryPlaces({
     [showBackup, setShowBackup] = useState(false),
     [viewer, setViewer] = useState(""),
     [draftMembers, setDraftMembers] = useState<string[]>([]);
+  useGalleryBack(
+    !!active || showBackup,
+    () => {
+      if (showBackup) setShowBackup(false);
+      else {
+        setActive("");
+        setSelected([]);
+      }
+    },
+    60,
+  );
   const cancel = useRef(false),
     alive = useRef(true),
     busyRef = useRef(false);

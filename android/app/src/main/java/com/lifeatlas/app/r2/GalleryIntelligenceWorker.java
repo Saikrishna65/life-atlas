@@ -149,7 +149,12 @@ public final class GalleryIntelligenceWorker extends Worker {
               epoch,
               v -> {
                 try {
-                  v.put("cursor", "").put("state", "waiting").put("scanned", 0).put("failed", 0);
+                  v.put("cursor", "")
+                      .put("since", Math.max(0, v.optLong("lastScanStarted") - 2000))
+                      .put("scanStarted", System.currentTimeMillis())
+                      .put("state", "waiting")
+                      .put("scanned", 0)
+                      .put("failed", 0);
                 } catch (JSONException e) {
                   throw new IllegalStateException(e);
                 }
@@ -220,7 +225,7 @@ public final class GalleryIntelligenceWorker extends Worker {
             }
           });
       R2DeviceGallery gallery = new R2DeviceGallery(getApplicationContext());
-      JSONObject page = gallery.list(config.optString("cursor"), "", "photo", "", "newest");
+      JSONObject page = gallery.changedPhotos(config.optString("cursor"), config.optLong("since"));
       JSONArray photos = page.getJSONArray("items"), allowed = config.getJSONArray("albums");
       Set<String> albums = new HashSet<>();
       for (int i = 0; i < allowed.length(); i++) albums.add(allowed.getString(i));
@@ -332,11 +337,19 @@ public final class GalleryIntelligenceWorker extends Worker {
                 v.put("cursor", page.optString("cursor"))
                     .put("state", page.optBoolean("complete") ? "ready" : "waiting")
                     .put("updatedAt", System.currentTimeMillis());
+                if (page.optBoolean("complete"))
+                  v.put(
+                      "lastScanStarted", config.optLong("scanStarted", System.currentTimeMillis()));
               } catch (JSONException e) {
                 throw new IllegalStateException(e);
               }
             });
         if (!page.optBoolean("complete")) service.enqueue(service.settings());
+      }
+      if (page.optBoolean("complete")) {
+        new GalleryCollections(getApplicationContext()).warm();
+        GalleryRecoveryWorker.photosChanged(getApplicationContext());
+        if (service.settings().optBoolean("mediaDirty")) service.mediaChanged();
       }
       return Result.success();
     } catch (Exception error) {

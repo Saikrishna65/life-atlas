@@ -133,6 +133,8 @@ final class GalleryIntelligence {
               .put("wifiOnly", input.optBoolean("wifiOnly", true))
               .put("albums", albums)
               .put("cursor", "")
+              .put("since", 0)
+              .put("scanStarted", System.currentTimeMillis())
               .put("state", "waiting")
               .put("scanned", 0)
               .put("failed", 0)
@@ -146,6 +148,7 @@ final class GalleryIntelligence {
       }
       enqueue(v);
       schedule(v);
+      watch(v);
     }
     if (!input.optBoolean("people"))
       synchronized (GalleryClip.LOCK) {
@@ -168,6 +171,8 @@ final class GalleryIntelligence {
         if (action.equals("clear")) {
           try (GallerySearchStore db = new GallerySearchStore(secure)) {
             db.clear();
+            GalleryRecovery.clearStaged(db);
+            db.forgetChoices("people-undo");
             db.choice("people", new JSONObject());
             db.choice("similar", new JSONObject());
           }
@@ -181,10 +186,15 @@ final class GalleryIntelligence {
             .put("epoch", UUID.randomUUID().toString());
         WorkManager.getInstance(context).cancelAllWorkByTag(WORK);
         if (action.equals("scan") || v.optString("cursor").isEmpty())
-          v.put("cursor", "").put("scanned", 0).put("failed", 0);
+          v.put("cursor", "")
+              .put("since", 0)
+              .put("scanStarted", System.currentTimeMillis())
+              .put("scanned", 0)
+              .put("failed", 0);
         writeSettings(v);
         enqueue(v);
         schedule(v);
+        watch(v);
       }
     }
     // Cancel first, then acquire the model lock; a stopped download leaves no newly installed
@@ -224,6 +234,57 @@ final class GalleryIntelligence {
             .build();
     WorkManager.getInstance(context)
         .enqueueUniqueWork(WORK, ExistingWorkPolicy.APPEND_OR_REPLACE, request);
+  }
+
+  void watch(JSONObject config) {
+    if (!config.optBoolean("enabled")) return;
+    Constraints c =
+        new Constraints.Builder()
+            .setRequiresBatteryNotLow(true)
+            .setRequiresStorageNotLow(true)
+            .setRequiresCharging(config.optBoolean("chargingOnly", true))
+            .addContentUriTrigger(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, true)
+            .addContentUriTrigger(
+                android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, true)
+            .setTriggerContentUpdateDelay(3, TimeUnit.SECONDS)
+            .setTriggerContentMaxDelay(30, TimeUnit.SECONDS)
+            .build();
+    WorkManager.getInstance(context)
+        .enqueueUniqueWork(
+            "atlas-gallery-media-watch",
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
+            new OneTimeWorkRequest.Builder(GalleryWatchWorker.class)
+                .addTag(WORK)
+                .setConstraints(c)
+                .build());
+  }
+
+  void mediaChanged() throws Exception {
+    synchronized (STATE_LOCK) {
+      try (GallerySearchStore db = new GallerySearchStore(secure)) {
+        db.invalidate();
+      }
+      JSONObject v = settings();
+      if (!v.optBoolean("enabled")) {
+        GalleryRecoveryWorker.photosChanged(context);
+        return;
+      }
+      if (Set.of("ready", "error").contains(v.optString("state"))) {
+        v.put("since", Math.max(0, v.optLong("lastScanStarted") - 2000))
+            .put("scanStarted", System.currentTimeMillis())
+            .put("cursor", "")
+            .put("state", "waiting")
+            .put("failed", 0)
+            .put("scanned", 0)
+            .put("mediaDirty", false);
+        writeSettings(v);
+        enqueue(v);
+      } else {
+        v.put("mediaDirty", true);
+        writeSettings(v);
+      }
+    }
   }
 
   void schedule(JSONObject v) {

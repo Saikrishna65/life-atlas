@@ -6,6 +6,7 @@ import {
   Images,
   Users,
   Heart,
+  Star,
 } from "lucide-react";
 import Link from "next/link";
 import AlbumCover from "./AlbumCover";
@@ -16,6 +17,7 @@ export default function GalleryCollections({
   albums,
   items,
   trips,
+  onFavorites,
   onAlbum,
   onTrip,
   onPlaces,
@@ -24,15 +26,21 @@ export default function GalleryCollections({
   albums: { name: string; count?: number }[];
   items: DeviceMedia[];
   trips: TripRecord[];
+  onFavorites: () => void;
   onAlbum: (name: string) => void;
   onTrip: (id: string) => void;
   onPlaces: () => void;
   onSmart: (mode: import("@/lib/gallery/collections").CollectionKind) => void;
 }) {
   return (
-    <section className="gc-home" aria-label="Organize your library">
-      <p className="gc-plain-intro">Your albums, trips and places.</p>
+    <section className="gc-home" aria-label="Your collections">
+      <p className="gc-plain-intro">Albums, people and places.</p>
       <div className="gsmart-shortcuts" aria-label="Smart collections">
+        <button onClick={onFavorites}>
+          <Star />
+          <strong>Favourites</strong>
+          <small>Your saved favourites</small>
+        </button>
         <button onClick={() => onSmart("similar")}>
           <Images />
           <strong>Similar photos</strong>

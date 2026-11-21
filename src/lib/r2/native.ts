@@ -13,6 +13,12 @@ import type {
   Transfer,
 } from "./types";
 interface R2Plugin {
+  addListener(event:"galleryChanged",listener:()=>void):Promise<import("@capacitor/core").PluginListenerHandle>;
+  getGalleryRecovery():Promise<import("../gallery/collections").GalleryRecoveryStatus>;
+  configureGalleryRecovery(input:{enabled:boolean}):Promise<import("../gallery/collections").GalleryRecoveryStatus>;
+  controlGalleryRecovery(input:{action:"backup"|"restore"|"cancel";peopleApproved?:boolean}):Promise<void>;
+  getGalleryMediaPreferences():Promise<{favorites?:string[]}>;
+  saveGalleryMediaPreferences(input:{favorites:string[]}):Promise<void>;
   getGalleryCollections(input:{kind:import('../gallery/collections').CollectionKind;cursor:string}):Promise<import('../gallery/collections').CollectionPage>;
   getGalleryCollectionMedia(input:{kind:import('../gallery/collections').CollectionKind;key:string;cursor:string}):Promise<import('../gallery/collections').CollectionMediaPage>;
   getGalleryPeopleFaces(input:{key:string;cursor:string}):Promise<import('../gallery/collections').PeopleFacePage>;

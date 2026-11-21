@@ -153,6 +153,14 @@ final class GallerySimilar {
         choices.put("hidden", hidden);
       }
       hidden.put(g.key);
+      JSONObject members = choices.optJSONObject("hiddenGroups");
+      if (members == null) {
+        members = new JSONObject();
+        choices.put("hiddenGroups", members);
+      }
+      JSONArray sources = new JSONArray();
+      for (GalleryIndexedPhotos.Photo p : g.photos) sources.put(p.id + "|" + p.stamp);
+      members.put(g.key, sources);
       return;
     }
     GalleryIndexedPhotos.Photo p =

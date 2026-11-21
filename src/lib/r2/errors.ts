@@ -1,4 +1,8 @@
 const messages: Record<string, string> = {
+  INVALID_GALLERY_RECOVERY:"This organisation backup could not be verified. Your existing photos and corrections are kept.",
+  GALLERY_RECOVERY_LIMIT:"This recovery snapshot exceeds the supported size. Existing cloud snapshots and originals are kept.",
+  GALLERY_RECOVERY_NOT_FOUND:"No saved organisation was found for this recovery key and private bucket.",
+  NOTHING_TO_UNDO:"There is no people change to undo.",
   PEOPLE_CONSENT_REQUIRED: "Confirm private face analysis before enabling people grouping.",
   PEOPLE_MODEL_DOWNLOAD_FAILED: "The people models could not download. Check your connection, then resume analysis in Gallery settings.",
   PEOPLE_MODEL_INVALID: "The people-model download did not pass verification. Resume analysis to download a clean copy; your photos are unchanged.",
