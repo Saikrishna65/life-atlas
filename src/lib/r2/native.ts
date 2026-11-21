@@ -13,11 +13,51 @@ import type {
   Transfer,
 } from "./types";
 interface R2Plugin {
-  shareGalleryPreview(input: { token: string }): Promise<void>;
+  getGalleryNamedPeople(): Promise<{ people: { id: string; name: string }[] }>;
+  getGalleryViewerState(input: {
+    id: string;
+  }): Promise<import("../gallery/media-tools").GalleryViewerState>;
+  saveGalleryVideoState(input: {
+    id: string;
+    seconds: number;
+    cover?: boolean;
+  }): Promise<void>;
+  getGalleryVideoFrames(input: {
+    id: string;
+  }): Promise<{ frames: { seconds: number; path: string }[] }>;
+  getGalleryMotionPhoto(input: {
+    id: string;
+    extract?: boolean;
+  }): Promise<import("../gallery/media-tools").GalleryMotion>;
+  editGalleryPhoto(input: {
+    id: string;
+    recipe: import("../gallery/media-tools").PhotoRecipe;
+  }): Promise<{
+    saved: boolean;
+    media: import("../gallery/types").DeviceMedia;
+  }>;
+  getGalleryCache(): Promise<
+    import("../gallery/media-tools").GalleryCacheReport
+  >;
+  configureGalleryCache(input: {
+    limitMiB: number;
+    clear?: boolean;
+  }): Promise<import("../gallery/media-tools").GalleryCacheReport>;
+  shareSanitizedMedia(input: {
+    id: string;
+    target?: "whatsapp";
+  }): Promise<void>;
+  shareGalleryPreview(input: {
+    token: string;
+    target?: "whatsapp";
+  }): Promise<void>;
   editGalleryAlbum(
     input: import("../gallery/collections").AlbumEdit,
   ): Promise<{ id: string }>;
-  shareDeviceMedia(input: { ids: string[] }): Promise<void>;
+  shareDeviceMedia(input: {
+    ids: string[];
+    target?: "whatsapp";
+  }): Promise<void>;
   editDeviceMedia(input: { id: string }): Promise<{ saved: boolean }>;
   setDeviceMediaAs(input: { id: string }): Promise<void>;
   freeUpDeviceMedia(input: { ids: string[] }): Promise<{ approved: boolean }>;
@@ -73,10 +113,11 @@ interface R2Plugin {
     album: string;
     kind: string;
     offset: number;
+    personId?: string;
+    from?: number;
+    to?: number;
   }): Promise<import("../gallery/types").DevicePage>;
-  getDeviceTrash(input: {
-    cursor: string;
-  }): Promise<{
+  getDeviceTrash(input: { cursor: string }): Promise<{
     items: {
       id: string;
       name: string;
@@ -170,9 +211,7 @@ interface R2Plugin {
     ids: string[];
     versions?: Record<string, string>;
   }): Promise<{ files: SelectedMedia[] }>;
-  checkDeviceCloud(input: {
-    ids: string[];
-  }): Promise<{
+  checkDeviceCloud(input: { ids: string[] }): Promise<{
     items: {
       id: string;
       copies: import("../gallery/types").DeviceMedia["copies"];
@@ -244,6 +283,7 @@ interface R2Plugin {
   }): Promise<{ saved: boolean; verified: boolean }>;
   restoreRecoveryKit(input: {
     passphrase: string;
+    verifyOnly?: boolean;
   }): Promise<{ verified: boolean }>;
   resetUnavailableKeystore(): Promise<void>;
   publishMedia(input: PublishInput): Promise<{

@@ -181,6 +181,13 @@ final class GalleryCollections {
       JSONArray all = group.getJSONArray("faces"),
           faces = all,
           names = db.cache("people", "names").getJSONArray("people");
+      JSONObject refs = db.choice("people").optJSONObject("references");
+      Set<String> referenceIds =
+          refs == null ? Set.of() : GalleryPeople.set(refs.optJSONArray(key));
+      for (int i = 0; i < faces.length(); i++)
+        faces
+            .getJSONObject(i)
+            .put("reference", referenceIds.contains(faces.getJSONObject(i).getString("id")));
       int start = 0, end = all.length();
       JSONArray media = new JSONArray();
       Set<String> mediaIds = new LinkedHashSet<>();
@@ -308,7 +315,29 @@ final class GalleryCollections {
         db.choice(
             "people-undo",
             new JSONObject().put("saved", true).put("choices", new JSONObject(choices.toString())));
-        if (action.equals("confirm-people-pair")) {
+        if (action.equals("move-faces")) {
+          JSONArray selected = input.optJSONArray("faceIds");
+          GalleryPeople.Group source = people.group(key);
+          if (selected == null || selected.length() == 0 || selected.length() > 1000)
+            throw new R2Exception("INVALID_SELECTION");
+          String target = input.optString("personId");
+          JSONObject names = choices.optJSONObject("people");
+          if (names == null) names = new JSONObject();
+          if (target.isEmpty()) {
+            target = UUID.randomUUID().toString();
+            names.put(target, GalleryPeople.name(input.optString("name")));
+            choices.put("people", names);
+          } else if (!people.group(target).confirmed || target.equals(source.id))
+            throw new R2Exception("INVALID_SELECTION");
+          Set<String> selectedIds = GalleryPeople.set(selected);
+          for (String id : selectedIds)
+            if (source.faces.stream().noneMatch(f -> f.id.equals(id)))
+              throw new R2Exception("GALLERY_COLLECTION_CHANGED");
+          JSONObject assignments = choices.optJSONObject("assignments");
+          if (assignments == null) assignments = new JSONObject();
+          for (String id : selectedIds) assignments.put(id, target);
+          choices.put("assignments", assignments);
+        } else if (action.equals("confirm-people-pair")) {
           JSONArray keys = input.optJSONArray("keys");
           if (keys == null || keys.length() != 2 || keys.getString(0).equals(keys.getString(1)))
             throw new R2Exception("INVALID_SELECTION");

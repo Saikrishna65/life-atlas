@@ -45,9 +45,30 @@ final class GalleryPeople {
   final JSONObject covers;
   final JSONObject notSame;
   final JSONObject aliases;
+  final JSONObject references;
+  final List<JSONObject> neverRules = new ArrayList<>();
+  final Map<String, List<JSONObject>> rulesByFace = new HashMap<>();
 
   GalleryPeople(GalleryIndexedPhotos index, JSONObject choices) throws Exception {
     partial = index.partial;
+    references =
+        choices.optJSONObject("references") == null
+            ? new JSONObject()
+            : choices.getJSONObject("references");
+    JSONObject rules = choices.optJSONObject("neverTogether");
+    if (rules != null) {
+      java.util.Iterator<String> keys = rules.keys();
+      while (keys.hasNext()) {
+        JSONObject rule = rules.getJSONObject(keys.next());
+        neverRules.add(rule);
+        for (String field : List.of("leftFaces", "rightFaces")) {
+          JSONArray ids = rule.optJSONArray(field);
+          if (ids != null)
+            for (int i = 0; i < ids.length(); i++)
+              rulesByFace.computeIfAbsent(ids.getString(i), v -> new ArrayList<>()).add(rule);
+        }
+      }
+    }
     aliases =
         choices.optJSONObject("aliases") == null
             ? new JSONObject()
@@ -91,7 +112,10 @@ final class GalleryPeople {
     groups.addAll(named.values());
     for (Group g : named.values()) {
       List<GalleryIndexedPhotos.Face> references = new ArrayList<>();
-      if (!g.faces.isEmpty())
+      Set<String> preferred = set(this.references.optJSONArray(g.id));
+      for (GalleryIndexedPhotos.Face face : g.faces)
+        if (preferred.contains(face.id) && references.size() < 8) references.add(face);
+      if (references.isEmpty() && !g.faces.isEmpty())
         references.add(
             g.faces.stream().max(Comparator.comparingDouble(f -> f.quality)).orElseThrow());
       while (references.size() < Math.min(8, g.faces.size())) {
@@ -124,7 +148,7 @@ final class GalleryPeople {
       Map<String, Anchor> bestByGroup = new HashMap<>();
       Map<String, Double> scores = new HashMap<>();
       for (Anchor anchor : candidates) {
-        if (anchor.group.photos.contains(f.mediaId)) continue;
+        if (anchor.group.photos.contains(f.mediaId) || blocked(f, anchor.group)) continue;
         String logical = anchor.group.logical();
         double score = cosine(f.vector, anchor.face.vector);
         if (score > scores.getOrDefault(logical, -2d)) {
@@ -163,6 +187,26 @@ final class GalleryPeople {
             .thenComparing(g -> g.id));
   }
 
+  boolean blocked(GalleryIndexedPhotos.Face face, Group other) throws Exception {
+    for (JSONObject rule : rulesByFace.getOrDefault(face.id, List.of())) {
+      Set<String> left = set(rule.optJSONArray("leftFaces")),
+          right = set(rule.optJSONArray("rightFaces"));
+      Set<String> opposite = left.contains(face.id) ? right : left;
+      for (GalleryIndexedPhotos.Face member : other.faces)
+        if (opposite.contains(member.id)) return true;
+    }
+    return false;
+  }
+
+  boolean neverNamed(Group first, Group second) {
+    for (JSONObject rule : neverRules)
+      if ((resolve(rule.optString("left")).equals(resolve(first.logical()))
+              && resolve(rule.optString("right")).equals(resolve(second.logical())))
+          || (resolve(rule.optString("right")).equals(resolve(first.logical()))
+              && resolve(rule.optString("left")).equals(resolve(second.logical())))) return true;
+    return false;
+  }
+
   String resolve(String id) {
     Set<String> seen = new HashSet<>();
     while (aliases.has(id) && seen.add(id) && seen.size() < 32) id = aliases.optString(id);
@@ -177,6 +221,13 @@ final class GalleryPeople {
       choices.put("aliases", links);
     }
     links.put(from, target);
+    JSONObject refs = choices.optJSONObject("references");
+    if (refs != null) {
+      Set<String> combined = new LinkedHashSet<>(set(refs.optJSONArray(target)));
+      for (String face : set(refs.optJSONArray(from))) if (combined.size() < 8) combined.add(face);
+      refs.put(target, new JSONArray(combined));
+      refs.remove(from);
+    }
   }
 
   static Set<String> set(JSONArray array) throws Exception {
@@ -282,7 +333,9 @@ final class GalleryPeople {
           if (other == g
               || hidden.contains(other.id)
               || other.logical().equals(g.logical())
-              || other.photos.stream().anyMatch(g.photos::contains)) continue;
+              || other.photos.stream().anyMatch(g.photos::contains)
+              || blocked(f, other)
+              || neverNamed(g, other)) continue;
           double score = cosine(f.vector, anchor.face.vector);
           if (score < (g.confirmed && other.confirmed ? .72 : .52)) continue;
           String key = pair(g.id, other.id);
@@ -330,6 +383,41 @@ final class GalleryPeople {
     if (assignments == null) {
       assignments = new JSONObject();
       choices.put("assignments", assignments);
+    }
+    if (action.equals("never-people")) {
+      Group first = group(key), second = group(personId);
+      if (first == second) throw new R2Exception("INVALID_SELECTION");
+      JSONObject rules = choices.optJSONObject("neverTogether");
+      if (rules == null) rules = new JSONObject();
+      if (rules.length() >= 200) throw new R2Exception("PEOPLE_RULE_LIMIT");
+      JSONArray left = new JSONArray(), right = new JSONArray();
+      for (GalleryIndexedPhotos.Face face : first.faces) left.put(face.id);
+      for (GalleryIndexedPhotos.Face face : second.faces) right.put(face.id);
+      rules.put(
+          pair(first.id, second.id),
+          new JSONObject()
+              .put("left", first.id)
+              .put("right", second.id)
+              .put("leftFaces", left)
+              .put("rightFaces", right));
+      choices.put("neverTogether", rules);
+      return;
+    }
+    if (action.equals("reference-face")) {
+      Group current = group(key);
+      if (!current.confirmed || current.faces.stream().noneMatch(f -> f.id.equals(faceId)))
+        throw new R2Exception("INVALID_SELECTION");
+      JSONObject refs = choices.optJSONObject("references");
+      if (refs == null) refs = new JSONObject();
+      Set<String> selected = new LinkedHashSet<>(set(refs.optJSONArray(current.id)));
+      if (selected.contains(faceId)) selected.remove(faceId);
+      else {
+        if (selected.size() >= 8) throw new R2Exception("FACE_REFERENCE_LIMIT");
+        selected.add(faceId);
+      }
+      refs.put(current.id, new JSONArray(selected));
+      choices.put("references", refs);
+      return;
     }
     if (action.equals("reject-people-match")) {
       JSONObject selected =

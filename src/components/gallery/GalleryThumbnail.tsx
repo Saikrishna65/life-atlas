@@ -13,6 +13,10 @@ if (typeof window !== "undefined")
   window.addEventListener("atlas:gallery-analysis", () => cached.clear());
 export function invalidateThumbnail(id: string) {
   cached.delete(id);
+  if (typeof window !== "undefined")
+    window.dispatchEvent(
+      new CustomEvent("atlas:gallery-thumbnail", { detail: id }),
+    );
 }
 export function cachedThumbnail(id: string) {
   const value = cached.get(id);
@@ -45,6 +49,17 @@ export default function GalleryThumbnail({ asset }: { asset: GalleryAsset }) {
   const [near, setNear] = useState(false),
     [source, setSource] = useState(asset.thumbnail || ""),
     [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const change = (event: Event) => {
+      if ((event as CustomEvent<string>).detail === asset.id) {
+        setSource("");
+        setFailed(false);
+        retried.current = false;
+      }
+    };
+    window.addEventListener("atlas:gallery-thumbnail", change);
+    return () => window.removeEventListener("atlas:gallery-thumbnail", change);
+  }, [asset.id]);
   useEffect(() => {
     const node = root.current;
     if (!node) return;

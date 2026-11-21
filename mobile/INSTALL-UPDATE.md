@@ -1,9 +1,9 @@
-Atlas 2.0.4 — Atlas Photos and original-quality viewing
+Atlas 2.0.5 — isolated Smart Search and advanced gallery tools
 
 1. Keep your existing app installed. Do not clear its storage.
 2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
    If it is Atlas Next, download atlas-next.apk.
-3. Open the matching APK and choose Update. This build uses version code 33.
+3. Open the matching APK and choose Update. This build uses version code 34.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
    preserved signing key and may NOT update older releases. Use that mode only
@@ -273,3 +273,88 @@ albums and editing a copy. Verify named people and rejected suggestions after
 reopening. Test private metadata restore only with a recovery kit you have verified.
 The automated suite uses synthetic media and cloud transports; it does not validate
 physical-device gestures, camera codecs, installed editors or OEM launchers.
+
+
+Atlas Photos 2.0.5
+------------------
+Smart Search runs only after Search/Enter is pressed. CLIP text inference is in a
+non-exported :gallery_search Android service process, outside the activity/vault/
+upload process. The client has a 30-second deadline, cancellation checks, low-memory
+deferral and an encrypted eight-query vector cache. A failed service returns useful
+filename/OCR results with an explanation, without restarting Atlas. Inference uses
+one CPU thread, conservative graph optimisations and no retained CPU arena. Isolated
+processes are released when unbound. This prevents a text-runtime crash from killing
+the activity; the phone's original crash stack was not available for diagnosis.
+
+Quick photo opening is independent of cloud-operation busy state. Gesture suppression
+resets for every new touch, including after cancelled touches. Horizontal slides have
+an 18px gutter. Dragging down hides controls, shrinks the content and fades the viewer
+background. On release, supported media return to their visible gallery thumbnail;
+if the target is offscreen, dismissal fades gracefully. Reduced motion skips travel.
+Swipe UP opens WhatsApp's recipient picker (standard app, then Business fallback).
+It does not choose a recipient or send a message automatically. More stays a button;
+More and Info now use the same centred, light panel. Missing WhatsApp has a readable
+error and ordinary Share remains available. Sharing is always an explicit user action.
+
+Built-in editing: More > Edit photo. Crop, pan the crop, rotate, flip, straighten,
+brightness and contrast use matching preview/native geometry with no empty corners.
+Save creates a separate JPEG in Pictures/Atlas Edits, up to 3072px / 6MP at quality95.
+It does not overwrite or resize the original. More > See unedited original opens
+the linked source while available on this phone. Edit recipes and verified original
+references participate in encrypted metadata recovery. Other installed editors remain
+available separately. Saving built-in copies requires Android10+.
+
+Videos: More > Browse video frames and Use current frame as video cover. Eight small
+frames are created only on demand; covers use a sharper 960px frame. Current positions
+are encrypted locally and saved at most once every five seconds plus pause/close.
+Returning/reopening seeks to a saved position. Cover changes invalidate that video's
+thumbnail. File changes invalidate positions/covers by source stamp. Video decoding
+still depends on the Android/WebView codec and container support; there is no automatic
+transcoding of originals. Slow or unsupported metadata can return an explicit error.
+
+Supported Motion Photos: More inspects Google-style XMP embedded-MP4 offsets and
+same-folder/same-volume matching JPEG/HEIC+MOV/MP4 names. Embedded MP4 boundaries are
+checked before extraction; clips are cached read-only (64MB playback limit). Common
+Samsung-only or other proprietary containers are not promised. A same-name companion
+is a suggestion requiring explicit action. Play motion/companion, Share photo+video,
+or Add both to a trip/backup keeps the two selected files together in the normal
+review/approval flow. Sharing/backing up an embedded original keeps its entire original
+file. There is no automatic upload of companions or private media.
+
+Sharing privacy: More > Remove location tags from shared copies. Photos become a still
+JPEG copy up to3072px/6MP without EXIF; motion/HDR extras remain only in the original.
+Videos are remuxed into MP4 with original audio/video samples and no location set;
+orientation is retained. Unsupported containers fail without sharing. Visible content
+can still reveal a place. The source is never changed. Public website publishing keeps
+its existing separate explicit approval. Hidden custom albums remove collection cards,
+not photos from Photos; this is organisation, not another secure vault. Restore hidden
+albums from My albums. Phone-original encryption and app protection are unchanged.
+
+People: select multiple face detections and move them to an existing or newly named
+person. Confirm up to eight reference faces, preferably clear and varied. Never group
+these two people together saves a negative rule, respected by grouping/suggestions.
+Undo remains available. References, aliases, negative rules and moves are stored locally
+and included in opt-in encrypted metadata recovery, remapped only to verified files.
+Search can combine confirmed people with saved places/trips and English dates; ambiguous
+same-name people are not silently selected. Active filters have visible clear buttons.
+No identity names are inferred and no new face/LLM model is bundled.
+
+Gallery Settings: inspect actual temporary-image usage, choose a32/64/96/192MB photo
+cache, clear rebuildable thumbnails/frames, and review largest phone files via native
+pagination. Video frames are limited to16MB and motion clips64MB separately; in-progress
+edits/shared exports/private cloud originals are not cleared. Analysis activity refreshes
+only while this panel is visible, shows state, selected work, saved index records,
+failures, constraints and pause/resume. First-time setup goes through feature consent.
+Thumbnail backup badges distinguish known private backups, public copies, pending/
+failed work and unchecked phone files. A cloud-list entry alone never proves cloud-only.
+
+Recovery rehearsal: Settings > Verify recovery & organisation > enter the kit passphrase
+> Choose kit & verify restoration. The independently saved file must match the current
+key. A synthetic authenticated-encryption round trip is checked locally; active keys
+are never replaced by verification-only mode. No personal file is uploaded/restored.
+
+Phone validation still required: reproduce Smart Search repeatedly, including rapid
+query changes, backgrounding and low-memory use; try WhatsApp/Business/not-installed;
+check gesture travel with real photos/videos and device Back; test the phone's video
+formats, crop outputs, Motion Photo variants and recovery-kit picker. Automated browser
+native seams use synthetic fixtures, and native unit tests do not equal a phone test.

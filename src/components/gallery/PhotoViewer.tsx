@@ -2,9 +2,11 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
+  type CSSProperties,
 } from "react";
 import {
   ArrowLeft,
@@ -28,7 +30,20 @@ import {
   shareDevice,
   editDevice,
   setDevicePhotoAs,
+  shareWhatsApp,
 } from "@/lib/gallery/viewer-actions";
+import {
+  containRect,
+  galleryTarget,
+  type MediaRect,
+} from "@/lib/gallery/viewer-motion";
+import GalleryPhotoEditor from "./GalleryPhotoEditor";
+import type {
+  GalleryViewerState,
+  GalleryMotion,
+} from "@/lib/gallery/media-tools";
+import { gallerySource } from "@/lib/gallery/actions";
+import { systemAction } from "@/lib/r2/native";
 import ViewerVideo from "./ViewerVideo";
 import "@/components/media/journal-viewer.css";
 import "./photo-viewer.css";
@@ -45,6 +60,8 @@ export default function PhotoViewer({
   onAlbum,
   onTrip,
   onDownload,
+  onWhatsApp,
+  onTripMedia,
 }: {
   items: DetailMedia[];
   selected: string;
@@ -58,7 +75,38 @@ export default function PhotoViewer({
   onAlbum?: (id: string) => void;
   onTrip?: (id: string) => void;
   onDownload?: (id: string) => Promise<void>;
+  onWhatsApp?: (id: string) => Promise<void>;
+  onTripMedia?: (items: import("@/lib/gallery/types").DeviceMedia[]) => void;
 }) {
+  const [editing, setEditing] = useState(false),
+    [showOriginal, setShowOriginal] = useState(false),
+    [privacyShare, setPrivacyShare] = useState(false),
+    [feedback, setFeedback] = useState("");
+  const [extra, setExtra] = useState<{
+      id: string;
+      value: GalleryViewerState;
+    }>(),
+    [motion, setMotion] = useState<{ id: string; value: GalleryMotion }>(),
+    [motionSource, setMotionSource] = useState<{ id: string; url: string }>();
+  useEffect(() => {
+    if (!deviceMediaId(selected)) return;
+    let alive = true;
+    void Promise.resolve()
+      .then(() => R2.getGalleryViewerState({ id: selected }))
+      .then((value) => {
+        if (alive) setExtra({ id: selected, value });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [selected]);
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = setTimeout(() => setFeedback(""), 5000);
+    return () => clearTimeout(timer);
+  }, [feedback]);
+  const viewingMotion = motionSource?.id === selected;
   const index = items.findIndex((i) => i.id === selected),
     item = items[index];
   const [transform, setTransform] = useState({ scale: 1, x: 0, y: 0 }),
@@ -104,7 +152,13 @@ export default function PhotoViewer({
     setLocalFavourite(next.includes(selected));
     window.dispatchEvent(new Event("atlas:gallery-restored"));
   };
-  useGalleryBack(true, onClose, 100);
+  const [closing, setClosing] = useState(false);
+  const [returning, setReturning] = useState<{
+    source: string;
+    from: MediaRect;
+    to: MediaRect;
+  }>();
+
   const [drag, setDrag] = useState(0);
   const [settling, setSettling] = useState(false);
   const dragRef = useRef(0);
@@ -112,9 +166,70 @@ export default function PhotoViewer({
     undefined,
   );
   const stage = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const dialog = stage.current?.closest("dialog");
+    dialog?.style.setProperty(
+      "--pv-shade",
+      String(1 - Math.min(0.95, Math.max(0, vertical) / 280)),
+    );
+  }, [vertical]);
   const suppressClick = useRef(false);
   useEffect(() => () => clearTimeout(slideTimer.current), []);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  function dismiss() {
+    if (closing || !item) return;
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reduced) {
+      onClose();
+      return;
+    }
+    const target = galleryTarget(selected),
+      image = stage.current?.querySelector<HTMLImageElement>(
+        ".pv-slide:not([inert]) > img",
+      ),
+      video = stage.current?.querySelector<HTMLVideoElement>(
+        ".pv-slide:not([inert]) video",
+      ),
+      box = stage.current?.getBoundingClientRect();
+    let source = image?.currentSrc || image?.src || item.poster || "";
+    if (video && video.readyState >= 2) {
+      try {
+        const canvas = document.createElement("canvas"),
+          scale = Math.min(1, 1200 / video.videoWidth);
+        canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+        canvas
+          .getContext("2d")
+          ?.drawImage(video, 0, 0, canvas.width, canvas.height);
+        source = canvas.toDataURL("image/jpeg", 0.9);
+        video.pause();
+      } catch {
+        source = item.poster || "";
+      }
+    }
+    if (target && box && source)
+      setReturning({
+        source,
+        from: containRect(
+          box,
+          image?.naturalWidth || video?.videoWidth || 0,
+          image?.naturalHeight || video?.videoHeight || 0,
+        ),
+        to: target,
+      });
+    setClosing(true);
+    setChrome(false);
+    clearTimeout(timer.current);
+    slideTimer.current = setTimeout(onClose, 280);
+  }
+  useGalleryBack(!!item, dismiss, 100);
+  useEffect(() => {
+    if (item) return;
+    const timeout = setTimeout(onClose, 0);
+    return () => clearTimeout(timeout);
+  }, [item, onClose]);
   const activity = useCallback(() => {
     setChrome(true);
     clearTimeout(timer.current);
@@ -146,8 +261,14 @@ export default function PhotoViewer({
     return () => clearTimeout(timer.current);
   }, [selected]);
   useEffect(() => {
-    if (info || actions || busy) clearTimeout(timer.current);
-  }, [info, actions, busy]);
+    clearTimeout(timer.current);
+    if (!info && !actions && !busy && !editing && !showOriginal)
+      timer.current = setTimeout(() => {
+        if (!document.activeElement?.matches(":focus-visible"))
+          setChrome(false);
+      }, 2800);
+    return () => clearTimeout(timer.current);
+  }, [info, actions, busy, editing, showOriginal]);
   const points = useRef(new Map<number, { x: number; y: number }>()),
     start = useRef({
       distance: 0,
@@ -164,7 +285,7 @@ export default function PhotoViewer({
       const reduced = window.matchMedia(
         "(prefers-reduced-motion: reduce)",
       ).matches;
-      const width = stage.current?.clientWidth || window.innerWidth;
+      const width = (stage.current?.clientWidth || window.innerWidth) + 18;
       setSettling(true);
       setDrag(-n * width);
       slideTimer.current = setTimeout(
@@ -227,7 +348,34 @@ export default function PhotoViewer({
     }
   };
   const share = () =>
-    perform(() => (onShare ? onShare(selected) : shareDevice([selected])));
+    perform(() =>
+      privacyShare && deviceMediaId(selected)
+        ? systemAction(() => R2.shareSanitizedMedia({ id: selected }))
+        : onShare
+          ? onShare(selected)
+          : shareDevice([selected]),
+    );
+  const whatsApp = () =>
+    perform(() =>
+      privacyShare && deviceMediaId(selected)
+        ? systemAction(() =>
+            R2.shareSanitizedMedia({ id: selected, target: "whatsapp" }),
+          )
+        : onWhatsApp
+          ? onWhatsApp(selected)
+          : shareWhatsApp(selected),
+    );
+  const inspectMotion = () => {
+    if (
+      !deviceMediaId(selected) ||
+      item?.kind !== "photo" ||
+      motion?.id === selected
+    )
+      return;
+    void R2.getGalleryMotionPhoto({ id: selected })
+      .then((value) => setMotion({ id: selected, value }))
+      .catch(() => {});
+  };
   const remove = () =>
     perform(async () => {
       if (!onDelete) return;
@@ -243,21 +391,19 @@ export default function PhotoViewer({
   return (
     <Modal
       title="Photo viewer"
-      className="pv-viewer"
+      className={`pv-viewer ${closing ? "is-returning" : ""}`}
       onClose={() => {
-        if (info) {
-          setInfo(false);
-          activity();
-        } else onClose();
+        const event = new Event("atlas:back", { cancelable: true });
+        if (window.dispatchEvent(event)) dismiss();
       }}
     >
       <div
-        className={`pv-top ${chrome || info || busy ? "" : "is-hidden"}`}
-        inert={!chrome && !info && !busy}
+        className={`pv-top ${(chrome || info || busy) && vertical <= 8 && !closing ? "" : "is-hidden"}`}
+        inert={vertical > 8 || closing || (!chrome && !info && !busy)}
         onClick={activity}
         onKeyDown={activity}
       >
-        <button onClick={onClose} aria-label="Back to photos">
+        <button onClick={dismiss} aria-label="Back to photos">
           <ArrowLeft />
         </button>
         <span>
@@ -269,8 +415,9 @@ export default function PhotoViewer({
         ref={stage}
         className={`pv-picture journal-viewer-stage ${settling ? "is-settling" : ""}`}
         style={{
-          transform: `translate3d(0,${vertical}px,0)`,
-          opacity: Math.max(0.35, 1 - Math.abs(vertical) / 1000),
+          transform: `translate3d(0,${Math.max(0, vertical)}px,0) scale(${1 - Math.min(0.18, Math.max(0, vertical) / 1500)})`,
+          opacity: returning ? 0 : closing ? 0 : 1,
+          borderRadius: vertical > 8 ? 18 : 0,
         }}
         onClick={(e) => {
           if (
@@ -287,24 +434,27 @@ export default function PhotoViewer({
           else activity();
         }}
         onDoubleClick={() => {
-          if (item.kind !== "video") zoom(transform.scale > 1 ? 1 : 2.5);
+          if (item.kind !== "video" && !viewingMotion)
+            zoom(transform.scale > 1 ? 1 : 2.5);
         }}
         onPointerDown={(e) => {
           if (
             (e.target as HTMLElement).closest(
               "button,input,.pv-video-controls",
             ) ||
-            settling
+            settling ||
+            closing
           )
             return;
           e.currentTarget.setPointerCapture(e.pointerId);
           points.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           const p = [...points.current.values()];
           if (p.length === 1) {
+            suppressClick.current = false;
             dragRef.current = 0;
             axis.current = undefined;
             clearTimeout(holdTimer.current);
-            if (item.kind === "photo" && transform.scale > 1)
+            if (item.kind === "photo" && !viewingMotion && transform.scale > 1)
               holdTimer.current = setTimeout(() => {
                 beforeHold.current = transform;
                 setMagnify(true);
@@ -349,7 +499,8 @@ export default function PhotoViewer({
           if (
             p.length === 2 &&
             start.current.distance > 0 &&
-            item.kind !== "video"
+            item.kind !== "video" &&
+            !viewingMotion
           ) {
             const scale = Math.max(
               1,
@@ -443,13 +594,11 @@ export default function PhotoViewer({
               dy = e.clientY - s.y;
             if (axis.current === "y") {
               if (dy > 90 && Math.abs(dy) > Math.abs(dx) * 1.2) {
-                setSettling(true);
-                setVertical(stage.current?.clientHeight || window.innerHeight);
-                slideTimer.current = setTimeout(onClose, 180);
+                dismiss();
                 return;
               }
               if (dy < -75 && Math.abs(dy) > Math.abs(dx) * 1.2) {
-                setActions(true);
+                void whatsApp();
                 activity();
               }
               setVertical(0);
@@ -495,13 +644,21 @@ export default function PhotoViewer({
               aria-hidden={offset !== 0}
               inert={offset !== 0}
               style={{
-                transform: `translate3d(calc(${offset * 100}% + ${drag}px),0,0)`,
+                transform: `translate3d(calc(${offset * 100}% + ${offset * 18 + drag}px),0,0)`,
               }}
             >
-              {offset === 0 && media.kind === "video" ? (
+              {offset === 0 &&
+              (media.kind === "video" || motionSource?.id === selected) ? (
                 <ViewerVideo
                   key={media.id}
-                  src={media.url}
+                  src={
+                    motionSource?.id === selected ? motionSource.url : media.url
+                  }
+                  mediaId={
+                    media.kind === "video" && deviceMediaId(media.id)
+                      ? media.id
+                      : undefined
+                  }
                   poster={media.poster}
                   onResumeTime={() => videoPositions.current.get(media.id) || 0}
                   onPosition={(time) => {
@@ -511,7 +668,7 @@ export default function PhotoViewer({
                         videoPositions.current.keys().next().value!,
                       );
                   }}
-                  show={chrome && !info}
+                  show={chrome && !info && vertical <= 8 && !closing}
                   onActivity={activity}
                 />
               ) : media.kind === "video" && !media.poster ? (
@@ -538,8 +695,10 @@ export default function PhotoViewer({
         })}
       </div>
       <div
-        className={`pv-bottom ${chrome || info || actions || busy ? "" : "is-hidden"}`}
-        inert={!chrome && !info && !actions && !busy}
+        className={`pv-bottom ${(chrome || info || actions || busy) && vertical <= 8 && !closing ? "" : "is-hidden"}`}
+        inert={
+          vertical > 8 || closing || (!chrome && !info && !actions && !busy)
+        }
         onPointerDown={activity}
       >
         {onShare || deviceMediaId(selected) ? (
@@ -588,6 +747,7 @@ export default function PhotoViewer({
           aria-label="More photo actions"
           onClick={() => {
             setActions(true);
+            inspectMotion();
             activity();
           }}
         >
@@ -597,7 +757,7 @@ export default function PhotoViewer({
       </div>
       {actions && (
         <div
-          className="pv-sheet-backdrop"
+          className="pv-info-backdrop"
           onClick={() => {
             setActions(false);
             activity();
@@ -606,7 +766,7 @@ export default function PhotoViewer({
           <section
             role="region"
             aria-label="Photo actions"
-            className="pv-action-sheet"
+            className="pv-info-panel pv-action-sheet"
             onClick={(e) => e.stopPropagation()}
           >
             <header>
@@ -624,8 +784,143 @@ export default function PhotoViewer({
             {(onShare || deviceMediaId(selected)) && (
               <button disabled={busy} onClick={() => void share()}>
                 <Share2 />
-                Share original quality
+                {privacyShare
+                  ? "Share location-free copy"
+                  : "Share original file"}
               </button>
+            )}
+            {item.kind === "video" && deviceMediaId(selected) && (
+              <>
+                <button
+                  onClick={() => {
+                    setActions(false);
+                    window.dispatchEvent(
+                      new CustomEvent("atlas:video-action", {
+                        detail: { id: selected, action: "frames" },
+                      }),
+                    );
+                  }}
+                >
+                  Browse video frames
+                </button>
+                <button
+                  onClick={() => {
+                    setActions(false);
+                    window.dispatchEvent(
+                      new CustomEvent("atlas:video-action", {
+                        detail: { id: selected, action: "cover" },
+                      }),
+                    );
+                  }}
+                >
+                  Use current frame as video cover
+                </button>
+              </>
+            )}
+            {deviceMediaId(selected) && (
+              <label className="pv-privacy-choice">
+                <input
+                  type="checkbox"
+                  checked={privacyShare}
+                  onChange={(e) => setPrivacyShare(e.target.checked)}
+                />
+                Remove location tags from shared copies
+                <small>
+                  {item.kind === "video"
+                    ? "Creates an MP4 without re-encoding its audio/video tracks."
+                    : "Creates a still JPEG copy up to 3072px / 6 MP. Motion stays in your original."}{" "}
+                  What appears in the picture or sound can still reveal a place.
+                </small>
+              </label>
+            )}
+            {extra?.id === selected && extra.value.original && (
+              <button
+                onClick={() => {
+                  setActions(false);
+                  setShowOriginal(true);
+                }}
+              >
+                See unedited original
+              </button>
+            )}
+            {motion?.id === selected && motion.value.embedded && (
+              <button
+                disabled={busy}
+                onClick={() =>
+                  void perform(async () => {
+                    const value = await R2.getGalleryMotionPhoto({
+                      id: selected,
+                      extract: true,
+                    });
+                    if (!value.path)
+                      throw new Error(
+                        "This motion clip is not supported on this phone.",
+                      );
+                    setTransform({ scale: 1, x: 0, y: 0 });
+                    setMotionSource({
+                      id: selected,
+                      url: gallerySource(value.path),
+                    });
+                  })
+                }
+              >
+                Play motion photo
+              </button>
+            )}
+            {motion?.id === selected && motion.value.companion && (
+              <>
+                <button
+                  disabled={busy}
+                  onClick={() =>
+                    void perform(() =>
+                      shareDevice([selected, motion.value.companion!.id]),
+                    )
+                  }
+                >
+                  Share photo + companion video
+                </button>
+                <button
+                  onClick={() => {
+                    setTransform({ scale: 1, x: 0, y: 0 });
+                    setMotionSource({
+                      id: selected,
+                      url: gallerySource(motion.value.companion!.uri),
+                    });
+                    setActions(false);
+                  }}
+                >
+                  Play companion video
+                </button>
+                {onTripMedia && (
+                  <button
+                    disabled={busy}
+                    onClick={() => {
+                      const companion = motion.value.companion!;
+                      setActions(false);
+                      onTripMedia([companion]);
+                    }}
+                  >
+                    Add photo + video to a trip or backup
+                  </button>
+                )}
+              </>
+            )}
+            {motionSource?.id === selected && (
+              <button
+                onClick={() => {
+                  setMotionSource(undefined);
+                  setActions(false);
+                }}
+              >
+                Back to still photo
+              </button>
+            )}
+            {motion?.id === selected && motion.value.companion && (
+              <p>
+                This photo has a matching companion video,{" "}
+                {motion.value.companion.name}. Keep both selected when backing
+                up or sharing this Live Photo pair.
+              </p>
             )}
             {onAlbum && (
               <button
@@ -653,10 +948,20 @@ export default function PhotoViewer({
               <>
                 <button
                   disabled={busy}
+                  onClick={() => {
+                    setActions(false);
+                    setEditing(true);
+                  }}
+                >
+                  <Pencil />
+                  Edit photo
+                </button>
+                <button
+                  disabled={busy}
                   onClick={() => void perform(() => editDevice(selected))}
                 >
                   <Pencil />
-                  Edit a copy
+                  Open another editor
                 </button>
                 <button
                   disabled={busy}
@@ -686,13 +991,68 @@ export default function PhotoViewer({
               Details & backup status
             </button>
             <p>
-              Swipe down to close. Swipe up for actions. Pinch to zoom; drag to
-              pan. Sharing originals may include location metadata. Edits are
-              saved as new photos.
+              Swipe down to close. Swipe up to choose a recipient in WhatsApp.
+              Pinch to zoom; drag to pan. Sharing originals may include location
+              metadata. Edits are saved as new photos.
             </p>
             {busy && <p role="status">Preparing…</p>}
             {error && <p role="alert">{error}</p>}
           </section>
+        </div>
+      )}
+      {editing && (
+        <GalleryPhotoEditor
+          id={selected}
+          source={item.url}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setEditing(false);
+            setFeedback(
+              "Edited copy saved in Pictures / Atlas Edits. Your original is unchanged.",
+            );
+          }}
+        />
+      )}
+      {showOriginal && extra?.id === selected && extra.value.original && (
+        <PhotoViewer
+          selected={extra.value.original.id}
+          items={[
+            {
+              id: extra.value.original.id,
+              url: gallerySource(extra.value.original.uri),
+              kind: extra.value.original.kind,
+              place: extra.value.original.album,
+              category: "Unedited original",
+              caption: extra.value.original.name,
+            },
+          ]}
+          onSelect={() => {}}
+          onClose={() => setShowOriginal(false)}
+        />
+      )}
+      {feedback && (
+        <p role="status" className="pv-feedback">
+          {feedback}
+        </p>
+      )}
+      {returning && (
+        <div
+          className="pv-return"
+          style={
+            {
+              "--from-left": `${returning.from.left}px`,
+              "--from-top": `${returning.from.top}px`,
+              "--from-width": `${returning.from.width}px`,
+              "--from-height": `${returning.from.height}px`,
+              "--to-left": `${returning.to.left}px`,
+              "--to-top": `${returning.to.top}px`,
+              "--to-width": `${returning.to.width}px`,
+              "--to-height": `${returning.to.height}px`,
+            } as CSSProperties
+          }
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={returning.source} alt="" />
         </div>
       )}
       {error && !actions && <p role="alert">{error}</p>}

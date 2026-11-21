@@ -24,6 +24,7 @@ export interface DeviceMedia {
   copies?: Partial<Record<BucketSlot, CloudCopy>>;
 }
 export interface DevicePage {
+  notice?: string;
   items: DeviceMedia[];
   cursor: string;
   complete: boolean;

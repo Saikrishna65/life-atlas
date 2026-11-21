@@ -139,7 +139,7 @@ export default function GalleryIntelligencePanel({
             : "Checking smart search…"}
         {status && (
           <small>
-            {status.indexed.toLocaleString()} photos analyzed
+            {status.indexed.toLocaleString()} saved media details
             {status.failed
               ? ` · ${status.failed} couldn’t be read; a new scan will retry`
               : ""}

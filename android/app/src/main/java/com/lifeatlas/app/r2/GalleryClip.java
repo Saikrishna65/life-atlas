@@ -130,7 +130,10 @@ final class GalleryClip implements AutoCloseable {
     if (environment == null) environment = OrtEnvironment.getEnvironment();
     if (!ready(context)) throw new R2Exception("SEARCH_MODEL_NOT_READY");
     try (OrtSession.SessionOptions options = new OrtSession.SessionOptions()) {
-      options.setIntraOpNumThreads(2);
+      options.setIntraOpNumThreads(1);
+      options.setCPUArenaAllocator(false);
+      options.setMemoryPatternOptimization(false);
+      options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.BASIC_OPT);
       options.setInterOpNumThreads(1);
       return environment.createSession(
           new File(directory(context), NAMES[model]).getPath(), options);

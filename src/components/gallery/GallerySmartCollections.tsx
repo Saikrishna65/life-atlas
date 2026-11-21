@@ -76,6 +76,8 @@ export default function GallerySmartCollections({
     [matchNames, setMatchNames] = useState<Record<string, string>>({});
   const [newAlbum, setNewAlbum] = useState(false);
   const [mergeTarget, setMergeTarget] = useState("");
+  const [chosenFaces, setChosenFaces] = useState<string[]>([]),
+    [moveName, setMoveName] = useState("");
   useGalleryBack(
     !!selected,
     () => {
@@ -183,7 +185,7 @@ export default function GallerySmartCollections({
     return () => {
       alive = false;
     };
-  }, [selectedKey, mode, reviewCursor]);
+  }, [selectedKey, mode, reviewCursor, epoch]);
   const act = async (
     edit: CollectionEdit | { action: "reset-similar" | "restore-memories" },
   ) => {
@@ -224,7 +226,7 @@ export default function GallerySmartCollections({
           ),
         );
       } else {
-        setSelected(undefined);
+        if (edit.action !== "reference-face") setSelected(undefined);
         setEpoch((v) => v + 1);
       }
       if (edit.action === "forget-people") onChanged();
@@ -243,6 +245,8 @@ export default function GallerySmartCollections({
     setPastPages([]);
     setName(collection.confirmed ? collection.title : "");
     setMergeTarget("");
+    setChosenFaces([]);
+    setMoveName("");
     setSelected(collection);
   };
   const loadedMedia =
@@ -554,7 +558,28 @@ export default function GallerySmartCollections({
         </div>
       )}
       {mode === "albums" && (
-        <button onClick={() => setNewAlbum(true)}>Create album</button>
+        <div>
+          <button onClick={() => setNewAlbum(true)}>Create album</button>
+          <button
+            disabled={busy}
+            onClick={() => {
+              setBusy(true);
+              void R2.editGalleryAlbum({ action: "restore-hidden" })
+                .then(() => {
+                  pages.delete("albums");
+                  setEpoch((v) => v + 1);
+                })
+                .catch((e) => setError(storageError(e)))
+                .finally(() => setBusy(false));
+            }}
+          >
+            Restore hidden albums
+          </button>
+          <p className="gsmart-hint">
+            Hiding a custom album removes its collection card. Its photos remain
+            in Photos.
+          </p>
+        </div>
       )}
       {newAlbum && (
         <GalleryAlbumPicker
@@ -617,6 +642,24 @@ export default function GallerySmartCollections({
             </button>
             {mode === "albums" && (
               <div className="gsmart-album-controls">
+                <button
+                  disabled={busy}
+                  onClick={() => {
+                    setBusy(true);
+                    void R2.editGalleryAlbum({
+                      action: "hide",
+                      id: collection.id,
+                    })
+                      .then(() => {
+                        pages.delete("albums");
+                        setEpoch((v) => v + 1);
+                      })
+                      .catch((e) => setError(storageError(e)))
+                      .finally(() => setBusy(false));
+                  }}
+                >
+                  Hide album
+                </button>
                 <button
                   aria-label={`Rename ${collection.title}`}
                   onClick={() => {
@@ -779,6 +822,62 @@ export default function GallerySmartCollections({
                 }
               </button>
             )}
+          {mode === "people" && chosenFaces.length > 0 && (
+            <section className="gsmart-face-selection">
+              <strong>{chosenFaces.length} faces selected</strong>
+              <label>
+                Move to
+                <select
+                  aria-label="Move selected faces to"
+                  value={mergeTarget}
+                  onChange={(e) => setMergeTarget(e.target.value)}
+                >
+                  <option value="">A new person</option>
+                  {people?.people
+                    .filter((p) => p.id !== selected.id)
+                    .map((p) => (
+                      <option value={p.id} key={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              {!mergeTarget && (
+                <label>
+                  Name
+                  <input
+                    aria-label="New person name"
+                    value={moveName}
+                    onChange={(e) => setMoveName(e.target.value)}
+                    maxLength={80}
+                  />
+                </label>
+              )}
+              <button
+                disabled={busy || (!mergeTarget && !moveName.trim())}
+                onClick={() =>
+                  void act({
+                    action: "move-faces",
+                    key: selected.id,
+                    faceIds: chosenFaces,
+                    personId: mergeTarget || undefined,
+                    name: moveName || undefined,
+                  })
+                }
+              >
+                Move selected faces
+              </button>
+              <button onClick={() => setChosenFaces([])}>
+                Clear face selection
+              </button>
+            </section>
+          )}
+          {mode === "people" && selected.confirmed && (
+            <p className="gsmart-hint">
+              Choose up to eight clear reference photos from different angles.
+              They help future match suggestions; names always come from you.
+            </p>
+          )}
           {mode === "people" && people && (
             <div className="gsmart-merge">
               <label>
@@ -809,6 +908,18 @@ export default function GallerySmartCollections({
                 }
               >
                 Merge into this person
+              </button>
+              <button
+                disabled={busy || !mergeTarget}
+                onClick={() =>
+                  void act({
+                    action: "never-people",
+                    key: selected.id,
+                    personId: mergeTarget,
+                  })
+                }
+              >
+                Never group these two people together
               </button>
               <button
                 disabled={busy}
@@ -883,6 +994,39 @@ export default function GallerySmartCollections({
             {mode === "people" &&
               people?.faces.map((face, faceIndex) => (
                 <article key={face.id}>
+                  <label className="gsmart-face-check">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select face ${faceIndex + 1}`}
+                      checked={chosenFaces.includes(face.id)}
+                      onChange={() =>
+                        setChosenFaces((v) =>
+                          v.includes(face.id)
+                            ? v.filter((id) => id !== face.id)
+                            : [...v, face.id],
+                        )
+                      }
+                    />
+                    Select
+                  </label>
+                  {selected.confirmed && (
+                    <label className="gsmart-face-check">
+                      <input
+                        type="checkbox"
+                        aria-label={`Use face ${faceIndex + 1} as reference`}
+                        disabled={busy}
+                        checked={!!face.reference}
+                        onChange={() =>
+                          void act({
+                            action: "reference-face",
+                            key: selected.id,
+                            faceId: face.id,
+                          })
+                        }
+                      />
+                      Reference photo
+                    </label>
+                  )}
                   <button
                     className="gsmart-photo"
                     aria-label="Open photo"

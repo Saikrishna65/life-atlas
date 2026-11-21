@@ -12,7 +12,8 @@ import org.json.*;
 final class GalleryRecovery {
   static final int LIMIT = 16 * 1024 * 1024;
   static final List<String> CHOICES =
-      List.of("people", "similar", "memories", "media-preferences", "albums");
+      List.of(
+          "people", "similar", "memories", "media-preferences", "albums", "edits", "viewer-state");
 
   static String prefix(byte[] keys) {
     return "encrypted/catalog/gallery-ai/" + R2Crypto.keyId(keys) + "/";
@@ -489,6 +490,27 @@ final class GalleryRecovery {
   static JSONObject project(String name, JSONObject value, Map<String, String> map)
       throws Exception {
     JSONObject out = remap(value, map);
+    if (name.equals("edits")) {
+      JSONObject kept = new JSONObject();
+      for (String key : keys(value))
+        if (map.containsKey(key)) {
+          JSONObject edit = value.getJSONObject(key);
+          if (map.containsKey(edit.optString("originalKey")))
+            kept.put(map.get(key), remap(edit, map));
+        }
+      return kept;
+    }
+    if (name.equals("viewer-state")) {
+      JSONObject kept = new JSONObject();
+      for (String field : List.of("positions", "covers")) {
+        JSONObject source = value.optJSONObject(field), members = new JSONObject();
+        if (source != null)
+          for (String key : keys(source))
+            if (map.containsKey(key)) members.put(map.get(key), source.get(key));
+        kept.put(field, members);
+      }
+      return kept;
+    }
     if (name.equals("albums")) {
       JSONObject all = value.optJSONObject("items"), safe = new JSONObject();
       if (all != null)
@@ -526,6 +548,29 @@ final class GalleryRecovery {
             if (map.containsKey(source.getString(i))) kept.put(map.get(source.getString(i)));
         out.put(field, kept);
       }
+      JSONObject refs = value.optJSONObject("references"), safeRefs = new JSONObject();
+      if (refs != null)
+        for (String person : keys(refs)) {
+          JSONArray ids = refs.getJSONArray(person), kept = new JSONArray();
+          for (int i = 0; i < ids.length(); i++)
+            if (map.containsKey(ids.getString(i))) kept.put(map.get(ids.getString(i)));
+          safeRefs.put(person, kept);
+        }
+      out.put("references", safeRefs);
+      JSONObject rules = value.optJSONObject("neverTogether"), safeRules = new JSONObject();
+      if (rules != null)
+        for (String key : keys(rules)) {
+          JSONObject rule = rules.getJSONObject(key), copy = remap(rule, map);
+          for (String field : List.of("leftFaces", "rightFaces")) {
+            JSONArray ids = rule.optJSONArray(field), kept = new JSONArray();
+            if (ids != null)
+              for (int i = 0; i < ids.length(); i++)
+                if (map.containsKey(ids.getString(i))) kept.put(map.get(ids.getString(i)));
+            copy.put(field, kept);
+          }
+          safeRules.put(key, copy);
+        }
+      out.put("neverTogether", safeRules);
       JSONObject rejected = out.optJSONObject("notSame"), restoredRejected = new JSONObject();
       if (rejected != null)
         for (String key : keys(rejected)) {

@@ -195,7 +195,8 @@ final class R2DeviceGallery {
       selection += " AND bucket_display_name=?";
       args.add(album);
     }
-    String dateColumn = captureOrder ? "datetaken" : "date_added";
+    String dateColumn =
+        order.equals("largest") ? "_size" : captureOrder ? "datetaken" : "date_added";
     boolean ascending = order.equals("oldest");
     String comparison = ascending ? ">" : "<";
     if (!cursor.isEmpty()) {
@@ -386,6 +387,9 @@ final class R2DeviceGallery {
     JSONObject media = one(id);
     File root = new File(context.getCacheDir(), "device-gallery");
     root.mkdirs();
+    double cover = GalleryMediaTools.cover(context, repository.store, media);
+    if (cover >= 0) return GalleryMediaTools.frame(context, media, cover, true);
+    long cacheLimit = GalleryMediaTools.cacheLimit(repository.store);
     File file = new File(root, selectionId(media) + "-sharp-v2.jpg");
     if (!file.exists()) {
       Bitmap bitmap =
@@ -436,7 +440,7 @@ final class R2DeviceGallery {
         for (File cached : files) bytes += cached.length();
         int remaining = files.length;
         for (File cached : files) {
-          if (bytes <= 96L * 1024 * 1024 && remaining <= 800) break;
+          if (bytes <= cacheLimit && remaining <= 800) break;
           if (cached.equals(file)) continue;
           long length = cached.length();
           if (cached.delete()) {

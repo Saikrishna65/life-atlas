@@ -876,6 +876,18 @@ export default function LibraryHub() {
           selected={viewer.item.id}
           onSelect={() => {}}
           onClose={closeViewer}
+          onWhatsApp={async () => {
+            if (viewer.clip || !token.current)
+              throw new Error(
+                "Open the original to share the full file in WhatsApp.",
+              );
+            await systemAction(() =>
+              R2.shareGalleryPreview({
+                token: token.current,
+                target: "whatsapp",
+              }),
+            );
+          }}
           onShare={async () => {
             if (viewer.clip)
               throw new Error(

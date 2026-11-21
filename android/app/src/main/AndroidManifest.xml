@@ -14,6 +14,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <service android:name="com.lifeatlas.app.r2.GallerySearchService" android:process=":gallery_search" android:exported="false" android:stopWithTask="true" />
         <provider android:name="com.google.mlkit.common.internal.MlKitInitProvider"
             android:enabled="@bool/atlas_gallery_intelligence_available"
             tools:replace="android:enabled" />

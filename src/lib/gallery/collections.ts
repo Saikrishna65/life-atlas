@@ -30,7 +30,7 @@ export interface CollectionMediaPage extends DevicePage {
   pickedId?: string;
 }
 export interface PeopleFacePage {
-  faces: { id: string; mediaId: string }[];
+  faces: { id: string; mediaId: string; reference?: boolean }[];
   media: DeviceMedia[];
   people: { id: string; name: string }[];
   cursor: string;
@@ -46,6 +46,15 @@ export interface PeopleMatch {
   rightFace: string;
 }
 export type CollectionEdit =
+  | { action: "reference-face"; key: string; faceId: string }
+  | {
+      action: "move-faces";
+      key: string;
+      faceIds: string[];
+      personId?: string;
+      name?: string;
+    }
+  | { action: "never-people"; key: string; personId: string }
   | {
       action: "confirm-people-pair";
       keys: string[];
@@ -79,7 +88,16 @@ export interface GalleryRecoveryStatus {
 }
 
 export interface AlbumEdit {
-  action: "create" | "rename" | "add" | "remove" | "cover" | "move" | "delete";
+  action:
+    | "create"
+    | "rename"
+    | "add"
+    | "remove"
+    | "cover"
+    | "move"
+    | "delete"
+    | "hide"
+    | "restore-hidden";
   id?: string;
   name?: string;
   ids?: string[];

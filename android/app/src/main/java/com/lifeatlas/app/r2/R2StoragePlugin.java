@@ -333,6 +333,105 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void getGalleryViewerState(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(
+                js(
+                    GalleryMediaTools.viewer(
+                        getContext(), repository().store, call.getString("id", "")))));
+  }
+
+  @PluginMethod
+  public void saveGalleryVideoState(PluginCall call) {
+    work(
+        call,
+        () -> {
+          GalleryMediaTools.videoState(getContext(), repository().store, call.getData());
+          GalleryRecoveryWorker.scheduleIfEnabled(getContext());
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void getGalleryVideoFrames(PluginCall call) {
+    work(
+        call,
+        () -> call.resolve(js(GalleryMediaTools.frames(getContext(), call.getString("id", "")))));
+  }
+
+  @PluginMethod
+  public void getGalleryMotionPhoto(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(
+                js(
+                    GalleryMotionPhoto.inspect(
+                        getContext(),
+                        call.getString("id", ""),
+                        call.getBoolean("extract", false)))));
+  }
+
+  @PluginMethod
+  public void editGalleryPhoto(PluginCall call) {
+    work(
+        call,
+        () -> {
+          JSONObject result =
+              GalleryMediaTools.edit(getContext(), repository().store, call.getData());
+          GalleryRecoveryWorker.scheduleIfEnabled(getContext());
+          call.resolve(js(result));
+        });
+  }
+
+  @PluginMethod
+  public void getGalleryCache(PluginCall call) {
+    work(
+        call,
+        () -> call.resolve(js(GalleryMediaTools.cacheReport(getContext(), repository().store))));
+  }
+
+  @PluginMethod
+  public void configureGalleryCache(PluginCall call) {
+    work(
+        call,
+        () -> {
+          GalleryMediaTools.cacheSettings(getContext(), repository().store, call.getData());
+          call.resolve(js(GalleryMediaTools.cacheReport(getContext(), repository().store)));
+        });
+  }
+
+  @PluginMethod
+  public void shareSanitizedMedia(PluginCall call) {
+    work(
+        call,
+        () -> {
+          File file = GalleryMediaTools.sanitized(getContext(), call.getString("id", ""));
+          android.net.Uri uri =
+              androidx.core.content.FileProvider.getUriForFile(
+                  getContext(), getContext().getPackageName() + ".fileprovider", file);
+          Intent share =
+              new Intent(Intent.ACTION_SEND)
+                  .setType(file.getName().endsWith(".mp4") ? "video/mp4" : "image/jpeg")
+                  .putExtra(Intent.EXTRA_STREAM, uri)
+                  .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+          share.setClipData(ClipData.newUri(getContext().getContentResolver(), "Shared copy", uri));
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    try {
+                      launchGalleryShare(
+                          call, Intent.createChooser(share, "Share without location"));
+                    } catch (Exception e) {
+                      fail(call, e);
+                    }
+                  });
+        });
+  }
+
+  @PluginMethod
   public void shareGalleryPreview(PluginCall call) {
     work(
         call,
@@ -344,7 +443,7 @@ public class R2StoragePlugin extends Plugin {
               .runOnUiThread(
                   () -> {
                     try {
-                      startActivityForResult(call, intent, "galleryShareResult");
+                      launchGalleryShare(call, intent);
                     } catch (Exception e) {
                       fail(call, e);
                     }
@@ -362,12 +461,32 @@ public class R2StoragePlugin extends Plugin {
               .runOnUiThread(
                   () -> {
                     try {
-                      startActivityForResult(call, intent, "galleryShareResult");
+                      launchGalleryShare(call, intent);
                     } catch (Exception e) {
                       fail(call, e);
                     }
                   });
         });
+  }
+
+  private void launchGalleryShare(PluginCall call, Intent chooser) throws Exception {
+    if (!"whatsapp".equals(call.getString("target", ""))) {
+      startActivityForResult(call, chooser, "galleryShareResult");
+      return;
+    }
+    Intent intent = chooser.getParcelableExtra(Intent.EXTRA_INTENT);
+    if (intent == null) throw new R2Exception("INVALID_SELECTION");
+    intent.setPackage("com.whatsapp");
+    try {
+      startActivityForResult(call, intent, "galleryShareResult");
+    } catch (android.content.ActivityNotFoundException missing) {
+      try {
+        intent.setPackage("com.whatsapp.w4b");
+        startActivityForResult(call, intent, "galleryShareResult");
+      } catch (android.content.ActivityNotFoundException absent) {
+        throw new R2Exception("WHATSAPP_UNAVAILABLE");
+      }
+    }
   }
 
   @ActivityCallback
@@ -587,6 +706,32 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void getGalleryNamedPeople(PluginCall call) {
+    work(
+        call,
+        () -> {
+          JSONArray result = new JSONArray();
+          GalleryIntelligence intelligence = new GalleryIntelligence(getContext());
+          if (intelligence.settings().optBoolean("people"))
+            try (GallerySearchStore db = new GallerySearchStore(intelligence.secure)) {
+              JSONObject choices = db.choice("people"),
+                  names = choices.optJSONObject("people"),
+                  aliases = choices.optJSONObject("aliases");
+              Set<String> hidden = GalleryPeople.set(choices.optJSONArray("hidden"));
+              if (names != null) {
+                java.util.Iterator<String> ids = names.keys();
+                while (ids.hasNext() && result.length() < 5000) {
+                  String id = ids.next();
+                  if ((aliases == null || !aliases.has(id)) && !hidden.contains(id))
+                    result.put(new JSONObject().put("id", id).put("name", names.getString(id)));
+                }
+              }
+            }
+          call.resolve(new JSObject().put("people", result));
+        });
+  }
+
+  @PluginMethod
   public void searchGalleryIntelligence(PluginCall call) {
     final long generation = gallerySearchGeneration.incrementAndGet();
     work(
@@ -602,7 +747,8 @@ public class R2StoragePlugin extends Plugin {
                           call.getString("album", ""),
                           call.getString("kind", "all"),
                           call.getInt("offset", 0),
-                          () -> generation != gallerySearchGeneration.get())));
+                          () -> generation != gallerySearchGeneration.get(),
+                          call.getData())));
         });
   }
 
@@ -1594,8 +1740,29 @@ public class R2StoragePlugin extends Plugin {
             try {
               R2Repository repository = repository();
               JSONObject state = repository.store.snapshot();
+              if (call.getBoolean("verifyOnly", false) && !state.has("keyset"))
+                throw new R2Exception("RECOVERY_REQUIRED");
               if (state.has("keyset") && !MessageDigest.isEqual(keyset, repository.keyset()))
                 throw new R2Exception("DIFFERENT_RECOVERY_KEY");
+              byte[] synthetic =
+                  "Atlas recovery rehearsal".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+              ByteArrayOutputStream encrypted = new ByteArrayOutputStream(),
+                  restored = new ByteArrayOutputStream();
+              R2Envelope.encrypt(
+                  new ByteArrayInputStream(synthetic),
+                  encrypted,
+                  keyset,
+                  "recovery-rehearsal",
+                  new JSONObject()
+                      .put("size", synthetic.length)
+                      .put("sha256", R2Policy.digest(synthetic)));
+              R2Envelope.decrypt(
+                  new ByteArrayInputStream(encrypted.toByteArray()),
+                  restored,
+                  keyset,
+                  "recovery-rehearsal");
+              if (!MessageDigest.isEqual(synthetic, restored.toByteArray()))
+                throw new R2Exception("INTEGRITY_FAILED");
               repository.store.edit(
                   value ->
                       value

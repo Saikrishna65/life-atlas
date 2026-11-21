@@ -18,6 +18,7 @@ import {
   Search,
   ShieldCheck,
   SlidersHorizontal,
+  Settings2,
   X,
   Trash2,
 } from "lucide-react";
@@ -64,6 +65,8 @@ import { useGalleryBack } from "@/lib/gallery/navigation";
 import { cachedThumbnail } from "./GalleryThumbnail";
 import { gallerySearchIntent } from "@/lib/gallery/search-intent";
 import { shareDevice } from "@/lib/gallery/viewer-actions";
+import GalleryBackupBadge from "./GalleryBackupBadge";
+import GalleryManagePanel from "./GalleryManagePanel";
 import GalleryAlbumPicker from "./GalleryAlbumPicker";
 import PhotoViewer from "./PhotoViewer";
 import { Modal } from "@/components/world/primitives";
@@ -395,18 +398,44 @@ export default function PhotoGallery() {
         checkedPublications.current.delete(trip.id);
       });
   }, [tripFilter, trips]);
+  const [namedPeople, setNamedPeople] = useState<
+      { id: string; name: string }[]
+    >([]),
+    [personFilter, setPersonFilter] = useState("");
+  useEffect(() => {
+    if (!searchOpen || !supported) return;
+    let alive = true;
+    void Promise.resolve()
+      .then(() => R2.getGalleryNamedPeople())
+      .then((value) => {
+        if (alive) setNamedPeople(value.people);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [searchOpen, supported, revision]);
   const suggestedSearch = useMemo(
-    () => gallerySearchIntent(query, trips),
-    [query, trips],
+    () => gallerySearchIntent(query, trips, new Date(), namedPeople),
+    [query, trips, namedPeople],
   );
+  const [manageOpen, setManageOpen] = useState(false);
+  const [smartSubmitted, setSmartSubmitted] = useState("");
   const requestDevice = useCallback(
     async (next: string, append = false) => {
       if (!supported || access.status === "denied") return;
+      if (
+        searchMode === "smart" &&
+        query.trim() &&
+        smartSubmitted !== query.trim()
+      )
+        return;
       const generation = ++deviceGeneration.current;
       setLoading(true);
       try {
         const smart =
-          searchMode === "smart" && !!query.trim() && kind !== "video";
+          ((searchMode === "smart" && !!query.trim()) || !!personFilter) &&
+          kind !== "video";
         const page =
           view === "curated" && curated
             ? await R2.getGalleryCollectionMedia({
@@ -427,13 +456,23 @@ export default function PhotoGallery() {
                   album,
                   kind,
                   offset: next ? Number(next) : 0,
+                  personId: personFilter,
+                  from: dateFrom
+                    ? new Date(dateFrom + "T00:00:00").getTime()
+                    : 0,
+                  to: dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : 0,
                 })
               : await R2.listDeviceMedia({
                   cursor: next,
                   query,
                   kind,
                   album,
-                  order: order === "oldest" ? "oldest" : "newest",
+                  order:
+                    order === "largest"
+                      ? "largest"
+                      : order === "oldest"
+                        ? "oldest"
+                        : "newest",
                   from: dateFrom
                     ? new Date(dateFrom + "T00:00:00").getTime()
                     : 0,
@@ -449,6 +488,7 @@ export default function PhotoGallery() {
               ]
             : page.items,
         );
+        if (page.notice) setNotice(page.notice);
         setCursor(page.cursor);
         setHasMore(!page.complete);
       } catch (e) {
@@ -465,6 +505,8 @@ export default function PhotoGallery() {
       album,
       order,
       searchMode,
+      smartSubmitted,
+      personFilter,
       view,
       curated,
       smartMode,
@@ -893,12 +935,12 @@ export default function PhotoGallery() {
       toggle(asset.id);
       return;
     }
-    await run(async () => {
-      const epoch = ++opening.current;
-      if (asset.device) {
-        setViewer(asset.id);
-        return;
-      }
+    const epoch = ++opening.current;
+    if (asset.device) {
+      setViewer(asset.id);
+      return;
+    }
+    try {
       if (asset.slot === "private" && asset.key) {
         const result = await systemAction(() =>
           R2.openGalleryCloudPreview({ key: asset.key! }),
@@ -940,8 +982,10 @@ export default function PhotoGallery() {
           },
         }));
       }
-      setViewer(asset.id);
-    });
+      if (epoch === opening.current) setViewer(asset.id);
+    } catch (e) {
+      if (epoch === opening.current) report(e);
+    }
   }
   const viewerAssets = assets.filter(
     (a) =>
@@ -1024,6 +1068,7 @@ export default function PhotoGallery() {
                 setKind("all");
                 setStatus("all");
                 setFavoritesOnly(false);
+                setPersonFilter("");
                 setDateFrom("");
                 setDateTo("");
               }
@@ -1057,6 +1102,13 @@ export default function PhotoGallery() {
         </div>
         {browsing && view !== "places" && (
           <div className="gw-header-actions">
+            <button
+              aria-label="Gallery settings"
+              disabled={!supported}
+              onClick={() => setManageOpen(true)}
+            >
+              <Settings2 size={20} />
+            </button>
             {view !== "curated" && (
               <button
                 aria-label="Search photos"
@@ -1083,6 +1135,35 @@ export default function PhotoGallery() {
           </div>
         )}
       </header>
+      {manageOpen && (
+        <GalleryManagePanel
+          onClose={() => setManageOpen(false)}
+          onLarge={() => {
+            setManageOpen(false);
+            setWorkspace("photos");
+            setView("device");
+            setOrder("largest");
+            setSearchMode("files");
+            setQuery("");
+            setFavoritesOnly(false);
+            setPersonFilter("");
+            setStatus("all");
+            setDateFrom("");
+            setDateTo("");
+            setTripFilter("");
+            setPlaceFilter("");
+            setAlbum("");
+          }}
+          onAnalysis={() => {
+            setManageOpen(false);
+            setIntelligenceOpen(true);
+          }}
+          onRecovery={() => {
+            setManageOpen(false);
+            setRecoveryOpen(true);
+          }}
+        />
+      )}
       {recoveryOpen && (
         <GalleryRecoveryPanel
           onClose={() => {
@@ -1127,7 +1208,25 @@ export default function PhotoGallery() {
             }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && searchMode === "smart") {
+                setSmartSubmitted(query.trim());
+                setRevision((v) => v + 1);
+              }
+            }}
           />
+          {searchMode === "smart" && (
+            <button
+              aria-label="Run smart search"
+              disabled={!query.trim() || loading}
+              onClick={() => {
+                setSmartSubmitted(query.trim());
+                setRevision((v) => v + 1);
+              }}
+            >
+              Search
+            </button>
+          )}
           <button
             aria-label="Close search"
             onClick={() => {
@@ -1153,6 +1252,10 @@ export default function PhotoGallery() {
                 setTripFilter(suggestedSearch.tripId || "");
                 setPlaceFilter(suggestedSearch.placeId || "");
                 setQuery(suggestedSearch.text);
+                setPersonFilter(suggestedSearch.personId || "");
+                if (suggestedSearch.personId) setKind("photo");
+                if (suggestedSearch.personId) setSearchMode("smart");
+                setSmartSubmitted(suggestedSearch.text);
                 setNotice(
                   `Searching ${suggestedSearch.labels.join(" · ")}. Change or clear these in view options.`,
                 );
@@ -1195,6 +1298,68 @@ export default function PhotoGallery() {
           )}
         </div>
       )}
+      {searchOpen && namedPeople.length > 0 && view !== "cloud" && (
+        <label className="gi-person-filter">
+          Person
+          <select
+            aria-label="Search a confirmed person"
+            value={personFilter}
+            onChange={(e) => {
+              setPersonFilter(e.target.value);
+              if (e.target.value) setKind("photo");
+              setSearchMode("smart");
+              setSmartSubmitted(query.trim());
+            }}
+          >
+            <option value="">Anyone</option>
+            {namedPeople.map((p) => (
+              <option value={p.id} key={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {browsing &&
+        view !== "cloud" &&
+        (personFilter || dateFrom || dateTo || tripFilter) && (
+          <div className="pg-active-filters" aria-label="Active photo filters">
+            {personFilter && (
+              <button
+                aria-label="Clear person filter"
+                onClick={() => setPersonFilter("")}
+              >
+                {namedPeople.find((p) => p.id === personFilter)?.name ||
+                  "Person"}
+                <X size={13} />
+              </button>
+            )}
+            {(dateFrom || dateTo) && (
+              <button
+                aria-label="Clear date filter"
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                }}
+              >
+                {dateFrom || "Any date"} — {dateTo || "Now"}
+                <X size={13} />
+              </button>
+            )}
+            {tripFilter && (
+              <button
+                aria-label="Clear trip filter"
+                onClick={() => {
+                  setTripFilter("");
+                  setPlaceFilter("");
+                }}
+              >
+                {trips.find((t) => t.id === tripFilter)?.title || "Trip"}
+                <X size={13} />
+              </button>
+            )}
+          </div>
+        )}
       <nav className="gw-navigation" aria-label="Gallery views">
         {(["photos", "organize", "backup"] as const).map((section) => (
           <button
@@ -1216,6 +1381,7 @@ export default function PhotoGallery() {
               setKind("all");
               setStatus("all");
               setFavoritesOnly(false);
+              setPersonFilter("");
               setDateFrom("");
               setDateTo("");
               setCollectionOpen(false);
@@ -1307,6 +1473,7 @@ export default function PhotoGallery() {
             setFiltersOpen(false);
             setSearchMode("files");
             setFavoritesOnly(false);
+            setPersonFilter("");
             setDateFrom("");
             setDateTo("");
             setTripFilter("");
@@ -1587,6 +1754,7 @@ export default function PhotoGallery() {
                             setOrder("newest");
                             setAlbum("");
                             setFavoritesOnly(false);
+                            setPersonFilter("");
                             setDateFrom("");
                             setDateTo("");
                           }}
@@ -1739,6 +1907,7 @@ export default function PhotoGallery() {
                               if (asset.device) e.preventDefault();
                             }}
                             onPointerDown={(e) => {
+                              hold.current.handled = false;
                               if (e.pointerType !== "touch" || !asset.device)
                                 return;
                               if (hold.current.timer)
@@ -1795,6 +1964,7 @@ export default function PhotoGallery() {
                                 clearTimeout(hold.current.timer);
                             }}
                             onPointerCancel={() => {
+                              hold.current.handled = false;
                               dragPick.current.active = false;
                               if (hold.current.timer)
                                 clearTimeout(hold.current.timer);
@@ -1802,7 +1972,7 @@ export default function PhotoGallery() {
                             onClick={(event) => {
                               if (hold.current.handled) {
                                 hold.current.handled = false;
-                                return;
+                                if (event.detail !== 0) return;
                               }
                               if (
                                 (selected.length || selectionMode) &&
@@ -1823,6 +1993,7 @@ export default function PhotoGallery() {
                               asset={asset}
                             />
                           </button>
+                          <GalleryBackupBadge asset={asset} />
                           <div className="pg-tile-top">
                             {asset.device && (
                               <button
@@ -2196,6 +2367,36 @@ export default function PhotoGallery() {
                 }
               : undefined
           }
+          onTripMedia={
+            assets.find((a) => a.id === viewer)?.device
+              ? (companions) => {
+                  const original = assets.find((a) => a.id === viewer)?.device;
+                  if (!original) return;
+                  const records = [original, ...companions];
+                  closeViewer();
+                  setSelected(records.map((m) => m.id));
+                  setSelectionMedia(
+                    Object.fromEntries(records.map((m) => [m.id, m])),
+                  );
+                  setAssigning(true);
+                }
+              : undefined
+          }
+          onWhatsApp={async (id) => {
+            const a = assets.find((v) => v.id === id);
+            if (a?.device) await shareDevice([a.device.id], "whatsapp");
+            else if (previewToken.current)
+              await systemAction(() =>
+                R2.shareGalleryPreview({
+                  token: previewToken.current,
+                  target: "whatsapp",
+                }),
+              );
+            else
+              throw new Error(
+                "Download this original to your phone to share it in WhatsApp.",
+              );
+          }}
           onShare={async (id) => {
             const a = assets.find((v) => v.id === id);
             if (a?.device) await shareDevice([a.device.id]);

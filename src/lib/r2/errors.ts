@@ -1,4 +1,19 @@
 const messages: Record<string, string> = {
+  ANDROID_8_REQUIRED:
+    "This feature needs Android 8 or newer. Your originals are unchanged.",
+  VIDEO_METADATA_UNAVAILABLE:
+    "This video’s duration could not be read. You can still try playing the original.",
+  MOTION_CLIP_TOO_LARGE:
+    "This motion clip is larger than the temporary 64 MB playback limit. Its complete original remains safe and can still be backed up.",
+  FACE_REFERENCE_LIMIT: "Choose up to eight clear reference faces per person.",
+  PEOPLE_RULE_LIMIT:
+    "You have saved 200 separation rules. Existing corrections are kept.",
+  PRIVACY_EXPORT_UNSUPPORTED:
+    "This file cannot be exported without location tags on this phone. Nothing was shared; your original is unchanged.",
+  WHATSAPP_UNAVAILABLE:
+    "WhatsApp is not installed or cannot receive this file. Use Share to choose another app.",
+  SEARCH_VISUAL_UNAVAILABLE:
+    "Visual search is unavailable right now. Your photos and text search remain available.",
   EDITOR_UNAVAILABLE:
     "No photo editor is installed. Install an Android photo editor to edit a copy; your original is unchanged.",
   EDIT_PHOTO_ONLY:

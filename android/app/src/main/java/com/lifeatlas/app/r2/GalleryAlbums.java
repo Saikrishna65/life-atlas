@@ -72,6 +72,7 @@ final class GalleryAlbums {
     Map<String, String> accessible = gallery.accessibleVersions(wanted);
     for (String id : order(db)) {
       JSONObject album = get(db, id), members = album.optJSONObject("members");
+      if (album.optBoolean("hidden")) continue;
       JSONArray ids = new JSONArray();
       if (members != null) {
         java.util.Iterator<String> it = members.keys();
@@ -105,6 +106,15 @@ final class GalleryAlbums {
       throws Exception {
     String action = input.optString("action"), id = input.optString("id");
     List<String> ids = order(db);
+    if (action.equals("restore-hidden")) {
+      for (String existing : ids) {
+        JSONObject value = get(db, existing);
+        value.remove("hidden");
+        db.choice("album:" + existing, value);
+      }
+      db.invalidate();
+      return new JSONObject();
+    }
     JSONObject album;
     if (action.equals("create")) {
       if (ids.size() >= 500) throw new R2Exception("ALBUM_LIMIT");
@@ -120,6 +130,7 @@ final class GalleryAlbums {
       album = get(db, id);
     }
     if (action.equals("rename")) album.put("name", name(input.optString("name")));
+    if (action.equals("hide")) album.put("hidden", true);
     if (action.equals("add") || action.equals("create")) {
       JSONArray selected = input.optJSONArray("ids");
       if (selected != null) {
@@ -162,7 +173,8 @@ final class GalleryAlbums {
     } else if (action.equals("delete")) {
       ids.remove(id);
       db.forgetChoices("album:" + id);
-    } else if (!action.equals("rename")) throw new R2Exception("INVALID_SELECTION");
+    } else if (!Set.of("rename", "hide").contains(action))
+      throw new R2Exception("INVALID_SELECTION");
     if (!action.equals("delete")) db.choice("album:" + id, album);
     db.choice("albums", new JSONObject().put("order", new JSONArray(ids)));
     db.invalidate();

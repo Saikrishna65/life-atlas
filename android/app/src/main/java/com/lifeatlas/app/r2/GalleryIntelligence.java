@@ -172,6 +172,7 @@ final class GalleryIntelligence {
         if (action.equals("clear")) {
           try (GallerySearchStore db = new GallerySearchStore(secure)) {
             db.clear();
+            db.forgetChoices("query-vectors");
             GalleryRecovery.clearStaged(db);
             db.forgetChoices("people-undo");
             db.choice("people", new JSONObject());
@@ -414,9 +415,23 @@ final class GalleryIntelligence {
       int offset,
       java.util.function.BooleanSupplier cancelled)
       throws Exception {
+    return search(query, album, kind, offset, cancelled, new JSONObject());
+  }
+
+  JSONObject search(
+      String query,
+      String album,
+      String kind,
+      int offset,
+      java.util.function.BooleanSupplier cancelled,
+      JSONObject filters)
+      throws Exception {
     if (cancelled.getAsBoolean()) throw new R2Exception("SEARCH_CANCELLED");
     if (query == null
-        || query.trim().isEmpty()
+        || (query.trim().isEmpty()
+            && filters.optString("personId").isEmpty()
+            && filters.optLong("from") == 0
+            && filters.optLong("to") == 0)
         || query.length() > 200
         || offset < 0
         || offset > 10000
@@ -432,15 +447,47 @@ final class GalleryIntelligence {
     JSONArray approvedAlbums = config.optJSONArray("albums");
     if (approvedAlbums != null)
       for (int i = 0; i < approvedAlbums.length(); i++) allowed.add(approvedAlbums.getString(i));
-    List<String> terms = terms(query);
-    float[] vector = null;
-    if (config.optBoolean("visual") && !kind.equals("video") && GalleryClip.ready(context))
-      synchronized (GalleryClip.LOCK) {
-        if (cancelled.getAsBoolean()) throw new R2Exception("SEARCH_CANCELLED");
-        try (GalleryClip clip = new GalleryClip(context)) {
-          vector = clip.query(query);
+    String person = filters.optString("personId");
+    Set<String> personMedia = null;
+    if (!person.isEmpty()) {
+      personMedia = new HashSet<>();
+      try (GallerySearchStore db = new GallerySearchStore(secure)) {
+        JSONObject choices = db.choice("people"),
+            names = choices.optJSONObject("people"),
+            aliases = choices.optJSONObject("aliases"),
+            assignments = choices.optJSONObject("assignments");
+        if (!config.optBoolean("people") || names == null || !names.has(person))
+          throw new R2Exception("INVALID_SELECTION");
+        Set<String> excluded = GalleryPeople.set(choices.optJSONArray("excluded"));
+        if (assignments != null) {
+          java.util.Iterator<String> keys = assignments.keys();
+          while (keys.hasNext()) {
+            String face = keys.next(), target = assignments.optString(face);
+            Set<String> seen = new HashSet<>();
+            while (aliases != null && aliases.has(target) && seen.add(target))
+              target = aliases.optString(target);
+            if (target.equals(person)
+                && !excluded.contains(face)
+                && face.matches("[a-f0-9]{64}\\..+")) personMedia.add(face.substring(0, 64));
+          }
         }
       }
+    }
+    List<String> terms = terms(query);
+    float[] vector = null;
+    boolean visualUnavailable = config.optBoolean("visual") && !GalleryClip.ready(context);
+    if (!query.trim().isEmpty()
+        && config.optBoolean("visual")
+        && !kind.equals("video")
+        && GalleryClip.ready(context)) {
+      try {
+        vector = GallerySearchInference.query(context, secure, query, cancelled);
+      } catch (Exception failure) {
+        if (failure instanceof R2Exception
+            && ((R2Exception) failure).code.equals("SEARCH_CANCELLED")) throw failure;
+        visualUnavailable = true;
+      }
+    }
     record Hit(String id, String stamp, double rank) {}
     // Bound memory while scanning encrypted vectors. No OCR or vector is returned through the
     // bridge.
@@ -452,10 +499,17 @@ final class GalleryIntelligence {
     try (GallerySearchStore db = new GallerySearchStore(secure);
         Cursor cursor = db.searchRows()) {
       while (cursor.moveToNext()) {
+        if (personMedia != null && !personMedia.contains(cursor.getString(0))) continue;
         if (cancelled.getAsBoolean()) throw new R2Exception("SEARCH_CANCELLED");
         JSONObject
             row = db.readSearch(cursor.getString(0), cursor.getBlob(1), cursor.getInt(2) == 1),
             media = row.getJSONObject("media");
+        long captured =
+            media.optLong("capturedAt") > 0
+                ? media.optLong("capturedAt")
+                : media.optLong("addedAt");
+        if (filters.optLong("from") > 0 && captured < filters.optLong("from")) continue;
+        if (filters.optLong("to") > 0 && captured > filters.optLong("to")) continue;
         if (!album.isEmpty() && !album.equals(media.optString("album"))) continue;
         if (!allowed.isEmpty() && !allowed.contains(media.optString("album"))) continue;
         if (kind.equals("video")) continue;
@@ -467,7 +521,7 @@ final class GalleryIntelligence {
                     + " "
                     + (config.optBoolean("ocr") && hasCurrentOcr(row) ? row.optString("text") : ""),
                 terms);
-        double score = text ? 2 : 0;
+        double score = query.trim().isEmpty() ? 1 : text ? 2 : 0;
         JSONArray embedding = row.optJSONArray("embedding");
         if (vector != null && embedding != null && embedding.length() == 512) {
           float[] values = new float[512];
@@ -505,6 +559,12 @@ final class GalleryIntelligence {
     }
     boolean complete = consumed >= sorted.size();
     return new JSONObject()
+        .put(
+            "notice",
+            visualUnavailable
+                ? "Visual search is unavailable right now. Showing matches from filenames and"
+                    + " recognised text; your gallery stays available."
+                : "")
         .put("items", items)
         .put("cursor", complete ? "" : Integer.toString(consumed))
         .put("complete", complete)

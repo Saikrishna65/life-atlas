@@ -10,6 +10,8 @@ export default function GalleryRecoveryPanel({
 }: {
   onClose: () => void;
 }) {
+  const [kitPassword, setKitPassword] = useState(""),
+    [kitMessage, setKitMessage] = useState("");
   const [status, setStatus] = useState<GalleryRecoveryStatus>({}),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -96,6 +98,46 @@ export default function GalleryRecoveryPanel({
         need the same kit on a replacement phone. This saves organisation; photo
         backup is a separate choice.
       </p>
+      <section className="gsmart-rehearsal">
+        <h3>Check your saved recovery kit</h3>
+        <p>
+          Select your independently saved kit. Atlas checks its key against this
+          device, then encrypts and restores a small synthetic sample locally.
+          No photos are uploaded and your active key is never replaced.
+        </p>
+        <label>
+          Kit passphrase
+          <input
+            type="password"
+            autoComplete="off"
+            value={kitPassword}
+            onChange={(e) => setKitPassword(e.target.value)}
+          />
+        </label>
+        <button
+          disabled={busy || !kitPassword}
+          onClick={() => {
+            setBusy(true);
+            setError("");
+            setKitMessage("");
+            const password = kitPassword;
+            setKitPassword("");
+            void systemAction(() =>
+              R2.restoreRecoveryKit({ passphrase: password, verifyOnly: true }),
+            )
+              .then(() =>
+                setKitMessage(
+                  "Recovery kit verified. The local restoration rehearsal passed.",
+                ),
+              )
+              .catch((e) => setError(storageError(e)))
+              .finally(() => setBusy(false));
+          }}
+        >
+          Choose kit & verify restoration
+        </button>
+        {kitMessage && <p role="status">{kitMessage}</p>}
+      </section>
       <Link href="/secret/control-room">Cloud Storage & recovery kit ↗</Link>
       <div className="gsmart-recovery-status" role="status">
         <strong>{messages[status.state || "off"] || "Ready"}</strong>

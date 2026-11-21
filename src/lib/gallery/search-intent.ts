@@ -7,6 +7,7 @@ export interface GallerySearchIntent {
   favorites?: boolean;
   tripId?: string;
   placeId?: string;
+  personId?: string;
   labels: string[];
 }
 const months = [
@@ -30,6 +31,7 @@ export function gallerySearchIntent(
   query: string,
   trips: Pick<TripRecord, "id" | "title" | "websitePlaces">[],
   now = new Date(),
+  people: { id: string; name: string }[] = [],
 ): GallerySearchIntent {
   let text = query.trim().toLowerCase();
   const result: GallerySearchIntent = { text: query, labels: [] };
@@ -70,6 +72,20 @@ export function gallerySearchIntent(
     result.placeId = p.id;
     result.labels.push(p.name);
     take(p.name);
+  }
+  const matchedPeople = people
+    .filter((p) => p.name.trim().length > 1 && contains(p.name))
+    .sort((a, b) => b.name.length - a.name.length);
+  if (
+    matchedPeople.length &&
+    matchedPeople.filter(
+      (p) => p.name.toLowerCase() === matchedPeople[0].name.toLowerCase(),
+    ).length === 1
+  ) {
+    const person = matchedPeople[0];
+    result.personId = person.id;
+    result.labels.push(person.name);
+    take(person.name);
   }
   const relative = text.match(/\b(this|last)\s+(month|year)\b/);
   const date = text.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
@@ -139,6 +155,7 @@ export function gallerySearchIntent(
     text = text.replace(/\bfavou?rites?\b/, " ");
     result.labels.push("Favourites");
   }
+  if (result.personId) text = text.replace(/\bwith\b/g, " ");
   result.text = result.labels.length
     ? text
         .replace(/\b(from|in|at|during|my|the|of|on)\b/g, " ")
