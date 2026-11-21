@@ -22,7 +22,7 @@ import {
 import { Modal } from "@/components/world/primitives";
 import type { DetailMedia } from "@/lib/public-trips/detail";
 import { useGalleryBack } from "@/lib/gallery/navigation";
-import { R2 } from "@/lib/r2/native";
+import { R2, storageError } from "@/lib/r2/native";
 import {
   deviceMediaId,
   shareDevice,
@@ -213,8 +213,13 @@ export default function PhotoViewer({
       await action();
       setActions(false);
     } catch (e) {
+      const failure = e as { code?: string; message?: string };
       setError(
-        e instanceof Error ? e.message : "This action could not finish.",
+        failure?.code || /^[A-Z_]{3,50}$/.test(failure?.message || "")
+          ? storageError(e)
+          : e instanceof Error
+            ? e.message
+            : "This action could not finish.",
       );
     } finally {
       setBusy(false);
