@@ -217,6 +217,7 @@ export default function PhotoViewer({
           e.currentTarget.setPointerCapture(e.pointerId);
           points.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           const p = [...points.current.values()];
+          if (p.length === 1) dragRef.current = 0;
           if (p.length === 1)
             start.current = {
               distance: 0,
@@ -312,12 +313,14 @@ export default function PhotoViewer({
             const dx = e.clientX - s.x,
               dy = e.clientY - s.y;
             if (
+              items.length > 1 &&
               Math.abs(dx) > 50 &&
               Math.abs(dx) > Math.abs(dy) * 1.3 &&
               Date.now() - s.at < 1000
             )
               move(dx < 0 ? 1 : -1);
-            else {
+            else if (dragRef.current !== 0) {
+              dragRef.current = 0;
               setSettling(true);
               setDrag(0);
               slideTimer.current = setTimeout(() => setSettling(false), 180);
