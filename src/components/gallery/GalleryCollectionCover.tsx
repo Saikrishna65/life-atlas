@@ -4,7 +4,7 @@ import { ImageIcon, UserRound } from "lucide-react";
 import Image from "next/image";
 import { R2 } from "@/lib/r2/native";
 import { gallerySource } from "@/lib/gallery/actions";
-import { thumbnail } from "./GalleryThumbnail";
+import { thumbnail, invalidateThumbnail } from "./GalleryThumbnail";
 
 export default function GalleryCollectionCover({
   mediaId,
@@ -14,6 +14,7 @@ export default function GalleryCollectionCover({
   faceId?: string;
 }) {
   const root = useRef<HTMLSpanElement>(null);
+  const retried = useRef(false);
   const [near, setNear] = useState(false),
     [source, setSource] = useState("");
   useEffect(() => {
@@ -55,7 +56,18 @@ export default function GalleryCollectionCover({
           unoptimized
           sizes="(max-width: 700px) 45vw, 280px"
           loading="lazy"
-          onError={() => setSource("")}
+          onError={() => {
+            setSource("");
+            if (mediaId && !faceId && !retried.current) {
+              retried.current = true;
+              invalidateThumbnail(mediaId);
+              void thumbnail(mediaId, () => !!root.current)
+                .then((r) => {
+                  if (root.current) setSource(gallerySource(r.path));
+                })
+                .catch(() => {});
+            }
+          }}
         />
       ) : faceId ? (
         <UserRound aria-hidden="true" />

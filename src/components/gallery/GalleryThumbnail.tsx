@@ -11,6 +11,9 @@ const waiting: (() => void)[] = [];
 const cached = new Map<string, { path: string }>();
 if (typeof window !== "undefined")
   window.addEventListener("atlas:gallery-analysis", () => cached.clear());
+export function invalidateThumbnail(id: string) {
+  cached.delete(id);
+}
 export function cachedThumbnail(id: string) {
   const value = cached.get(id);
   return value ? gallerySource(value.path) : undefined;
@@ -83,6 +86,7 @@ export default function GalleryThumbnail({ asset }: { asset: GalleryAsset }) {
           onError={() => {
             if (asset.device && !retried.current) {
               retried.current = true;
+              invalidateThumbnail(asset.device.id);
               setSource("");
             } else setFailed(true);
           }}
