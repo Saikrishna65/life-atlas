@@ -603,17 +603,15 @@ export default function PhotoViewer({
             Math.abs(e.clientY - start.current.y) > 8
           ) {
             suppressClick.current = true;
-            setTransform((old) => ({
-              ...old,
-              scale: Math.max(
-                1,
-                Math.min(
-                  5,
-                  start.current.scale *
-                    Math.exp(-(e.clientY - start.current.y) / 180),
-                ),
+            const scale = Math.max(
+              1,
+              Math.min(
+                5,
+                start.current.scale *
+                  Math.exp(-(e.clientY - start.current.y) / 180),
               ),
-            }));
+            );
+            setTransform(clampPose(scale, transform.x, transform.y));
             return;
           }
           if (
