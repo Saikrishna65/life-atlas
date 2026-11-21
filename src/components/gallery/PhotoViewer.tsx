@@ -502,6 +502,8 @@ export default function PhotoViewer({
           else activity();
         }}
         onDoubleClick={(e) => {
+          lastTap.current.at = 0;
+          quickZoom.current = false;
           if (item.kind !== "video" && !viewingMotion)
             zoom(transform.scale > 1 ? 1 : 2.5, e.clientX, e.clientY);
         }}
