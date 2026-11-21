@@ -677,6 +677,13 @@ export default function PhotoViewer({
               setDrag(dx);
             }
           } else if (p.length === 1 && transform.scale > 1) {
+            if (
+              Math.hypot(
+                e.clientX - start.current.x,
+                e.clientY - start.current.y,
+              ) > 8
+            )
+              suppressClick.current = true;
             setTransform(
               clampPose(
                 transform.scale,
