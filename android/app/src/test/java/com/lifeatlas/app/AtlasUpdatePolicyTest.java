@@ -96,4 +96,57 @@ public class AtlasUpdatePolicyTest {
     assertEquals(context.getPackageName(), alias.packageName);
     assertEquals("Atlas Gallery", alias.loadLabel(context.getPackageManager()).toString());
   }
+
+  /**
+   * Synthetic archive metadata exercises native policy; Android still verifies real APKs on
+   * install.
+   */
+  @Test
+  @Config(sdk = 27)
+  public void nativeVerificationRejectsChangedBytesIdentityVersionAndSigner() throws Exception {
+    var context = RuntimeEnvironment.getApplication();
+    var pm = context.getPackageManager();
+    var shadow = Shadows.shadowOf(pm);
+    var current = shadow.getInternalMutablePackageInfo(context.getPackageName());
+    current.versionCode = 35;
+    current.signatures =
+        new android.content.pm.Signature[] {new android.content.pm.Signature(new byte[] {1, 2, 3})};
+    java.io.File file = new java.io.File(context.getCacheDir(), "synthetic-update.apk");
+    byte[] bytes =
+        "synthetic fixture, not an actual APK".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    java.nio.file.Files.write(file.toPath(), bytes);
+    String hash =
+        java.util.HexFormat.of()
+            .formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(bytes));
+    JSONObject expected =
+        new JSONObject().put("bytes", bytes.length).put("sha256", hash).put("versionCode", 36);
+    var archive = new android.content.pm.PackageInfo();
+    archive.packageName = context.getPackageName();
+    archive.versionCode = 36;
+    archive.signatures = current.signatures.clone();
+    shadow.setPackageArchiveInfo(file.getAbsolutePath(), archive);
+    AtlasUpdatesPlugin plugin =
+        new AtlasUpdatesPlugin() {
+          @Override
+          public android.content.Context getContext() {
+            return context;
+          }
+        };
+    plugin.verify(file, expected);
+    archive.signatures =
+        new android.content.pm.Signature[] {new android.content.pm.Signature(new byte[] {9, 9, 9})};
+    assertThrows(Exception.class, () -> plugin.verify(file, expected));
+    archive.signatures = current.signatures.clone();
+    archive.packageName = "another.app";
+    assertThrows(Exception.class, () -> plugin.verify(file, expected));
+    archive.packageName = context.getPackageName();
+    archive.versionCode = 35;
+    assertThrows(Exception.class, () -> plugin.verify(file, expected));
+    archive.versionCode = 36;
+    java.nio.file.Files.write(file.toPath(), "tampered".getBytes());
+    assertThrows(Exception.class, () -> plugin.verify(file, expected));
+    java.nio.file.Files.write(file.toPath(), bytes);
+    expected.put("sha256", "0".repeat(64));
+    assertThrows(Exception.class, () -> plugin.verify(file, expected));
+  }
 }
