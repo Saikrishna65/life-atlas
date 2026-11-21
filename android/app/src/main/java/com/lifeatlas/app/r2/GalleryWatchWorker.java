@@ -12,7 +12,7 @@ public final class GalleryWatchWorker extends Worker {
   public Result doWork() {
     try {
       GalleryIntelligence service = new GalleryIntelligence(getApplicationContext());
-      service.mediaChanged();
+      service.refreshMediaIfChanged();
       service.watch(service.settings());
       return Result.success();
     } catch (Exception e) {

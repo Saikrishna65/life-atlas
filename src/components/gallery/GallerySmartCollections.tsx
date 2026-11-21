@@ -320,7 +320,15 @@ export default function GallerySmartCollections({
         </p>
       )}
       {loading && !collections.length && (
-        <p role="status">Gathering your collections…</p>
+        <div
+          className={`gsmart-placeholder ${mode === "people" ? "is-people" : ""}`}
+          role="status"
+        >
+          <span className="sr-only">Opening collections</span>
+          {[0, 1, 2, 3].map((n) => (
+            <i key={n} />
+          ))}
+        </div>
       )}
       {page?.needsAnalysis && (
         <div className="gsmart-empty">

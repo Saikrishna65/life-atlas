@@ -260,6 +260,58 @@ final class GalleryIntelligence {
                 .build());
   }
 
+  boolean refreshMediaIfChanged() throws Exception {
+    StringBuilder token = new StringBuilder();
+    boolean limited =
+        android.os.Build.VERSION.SDK_INT >= 34
+            && context.checkSelfPermission("android.permission.READ_MEDIA_IMAGES")
+                != android.content.pm.PackageManager.PERMISSION_GRANTED;
+    if (android.os.Build.VERSION.SDK_INT >= 30 && !limited) {
+      for (String volume :
+          new TreeSet<>(android.provider.MediaStore.getExternalVolumeNames(context)))
+        token
+            .append(volume)
+            .append(':')
+            .append(android.provider.MediaStore.getVersion(context, volume))
+            .append(':')
+            .append(android.provider.MediaStore.getGeneration(context, volume))
+            .append(';');
+    } else {
+      try (android.database.Cursor c =
+          context
+              .getContentResolver()
+              .query(
+                  android.provider.MediaStore.Files.getContentUri("external"),
+                  new String[] {"_id", "date_modified", "_size"},
+                  "media_type IN (1,3)",
+                  null,
+                  "_id ASC")) {
+        java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+        while (c != null && c.moveToNext())
+          digest.update(
+              (c.getLong(0) + ":" + c.getLong(1) + ":" + c.getLong(2) + ";")
+                  .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        token.append(R2Policy.hex(digest.digest()));
+      }
+    }
+    token
+        .append(':')
+        .append(context.checkSelfPermission("android.permission.READ_MEDIA_IMAGES"))
+        .append(':')
+        .append(context.checkSelfPermission("android.permission.READ_MEDIA_VIDEO"))
+        .append(':')
+        .append(context.checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE"));
+    String stamp = token.toString();
+    synchronized (STATE_LOCK) {
+      try (GallerySearchStore db = new GallerySearchStore(secure)) {
+        if (stamp.equals(db.choice("media-observer").optString("stamp"))) return false;
+        db.choice("media-observer", new JSONObject().put("stamp", stamp));
+      }
+    }
+    mediaChanged();
+    return true;
+  }
+
   void mediaChanged() throws Exception {
     synchronized (STATE_LOCK) {
       try (GallerySearchStore db = new GallerySearchStore(secure)) {

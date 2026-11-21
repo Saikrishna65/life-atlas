@@ -2294,10 +2294,10 @@ public class R2StoragePlugin extends Plugin {
           execute(
               () -> {
                 try {
-                  new GalleryIntelligence(getContext()).mediaChanged();
+                  if (new GalleryIntelligence(getContext()).refreshMediaIfChanged())
+                    notifyListeners("galleryChanged", new JSObject());
                 } catch (Exception ignored) {
                 }
-                notifyListeners("galleryChanged", new JSObject());
               });
 
   @Override

@@ -77,6 +77,7 @@ final class GalleryRecovery {
     try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
       JSONObject v = db.choice("recovery-settings");
       v.put("enabled", enabled).put("state", enabled ? "waiting" : "off");
+      if (enabled) v.put("approvedScope", R2Duplicates.scope(repo.store.credentials("private")));
       db.choice("recovery-settings", v);
     }
     if (enabled) GalleryRecoveryWorker.schedule(context, "backup", false);
@@ -205,6 +206,8 @@ final class GalleryRecovery {
       throw new R2Exception("RECOVERY_VERIFICATION_REQUIRED");
     R2Credentials credentials = repo.store.credentials("private");
     String scope = R2Duplicates.scope(credentials);
+    if (!scope.equals(status(service).optString("approvedScope")))
+      throw new R2Exception("CONFIGURATION_CHANGED");
     R2Transport client = new R2Client(credentials);
     byte[] keys = repo.keyset();
     try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
@@ -231,15 +234,21 @@ final class GalleryRecovery {
           JSONObject row = db.read(rows.getString(0), rows.getBlob(1)),
               media = row.getJSONObject("media");
           String id = media.getString("id"), stamp = row.optString("stamp");
-          JSONObject current;
+          JSONObject current = null;
           try {
             current = new R2DeviceGallery(context).one(id);
           } catch (R2Exception | SecurityException unavailable) {
-            continue;
           }
-          if (!stamp.equals(R2DeviceGallery.stamp(current))) continue;
-          String hash = fingerprint(context, db, current, stopped),
-              digest = R2Policy.digest(row.toString().getBytes(StandardCharsets.UTF_8));
+          String hash;
+          if (current != null && stamp.equals(R2DeviceGallery.stamp(current)))
+            hash = fingerprint(context, db, current, stopped);
+          else {
+            JSONObject savedHash = db.choice("file-hash:" + id);
+            if (!stamp.equals(savedHash.optString("stamp"))
+                || !savedHash.optString("hash").matches("[a-f0-9]{64}")) continue;
+            hash = savedHash.getString("hash");
+          }
+          String digest = R2Policy.digest(row.toString().getBytes(StandardCharsets.UTF_8));
           String lookup = "recovery-object:" + hash;
           JSONObject saved = db.choice(lookup);
           String key;
@@ -271,6 +280,79 @@ final class GalleryRecovery {
       }
       if (stopped.getAsBoolean() || !status(service).optBoolean("enabled"))
         throw new InterruptedIOException();
+      JSONObject staged = db.choice("recovery-staged");
+      if (staged.optJSONArray("photos") != null) {
+        Set<String> present = new HashSet<>();
+        for (int i = 0; i < refs.length(); i++)
+          present.add(refs.getJSONObject(i).getString("hash"));
+        Map<String, String> pendingMap = new HashMap<>();
+        JSONArray pending = staged.getJSONArray("photos");
+        for (int i = 0; i < pending.length(); i++) {
+          JSONObject ref = pending.getJSONObject(i);
+          String hash = ref.getString("hash");
+          if (present.contains(hash)) continue;
+          if (stopped.getAsBoolean()) throw new InterruptedIOException();
+          if (!scope.equals(R2Duplicates.scope(repo.store.credentials("private"))))
+            throw new R2Exception("CONFIGURATION_CHANGED");
+          JSONObject stored = db.choice("restore-photo:" + hash).optJSONObject("row");
+          if (stored == null) throw new R2Exception("INVALID_GALLERY_RECOVERY");
+          JSONObject row = namespacePending(stored, hash, pendingMap);
+          if (db.choice("recovery-settings").optBoolean("denyRecoveredFaces")) {
+            row.remove("faces");
+            row.remove("faceVersion");
+          }
+          String digest = R2Policy.digest(row.toString().getBytes(StandardCharsets.UTF_8)),
+              lookup = "recovery-object:" + hash;
+          JSONObject saved = db.choice(lookup);
+          String key;
+          if (digest.equals(saved.optString("digest")) && scope.equals(saved.optString("scope")))
+            key = saved.getString("key");
+          else {
+            key = prefix(keys) + "photos/" + UUID.randomUUID() + ".atlas";
+            put(
+                client,
+                keys,
+                key,
+                new JSONObject()
+                    .put("format", "life-atlas-gallery-photo")
+                    .put("version", 1)
+                    .put("hash", hash)
+                    .put("row", row));
+            db.choice(
+                lookup, new JSONObject().put("digest", digest).put("scope", scope).put("key", key));
+          }
+          refs.put(
+              new JSONObject()
+                  .put("key", key)
+                  .put("hash", hash)
+                  .put("size", row.getJSONObject("media").optLong("size"))
+                  .put("oldId", row.getJSONObject("media").getString("id")));
+        }
+        JSONObject oldChoices = staged.optJSONObject("choices");
+        if (oldChoices != null)
+          for (String name : CHOICES) {
+            if (name.equals("people")
+                && db.choice("recovery-settings").optBoolean("denyRecoveredFaces")) continue;
+            JSONObject old = oldChoices.optJSONObject(name);
+            if (old == null) continue;
+            JSONObject missing = project(name, old, pendingMap),
+                current = choices.getJSONObject(name);
+            if (name.equals("media-preferences")) {
+              Set<String> favorites =
+                  new LinkedHashSet<>(GalleryPeople.set(current.optJSONArray("favorites")));
+              favorites.addAll(GalleryPeople.set(missing.optJSONArray("favorites")));
+              current.put("favorites", new JSONArray(favorites));
+            }
+            if (name.equals("people"))
+              for (String field : List.of("excluded", "separated")) {
+                Set<String> entries =
+                    new LinkedHashSet<>(GalleryPeople.set(current.optJSONArray(field)));
+                entries.addAll(GalleryPeople.set(missing.optJSONArray(field)));
+                current.put(field, new JSONArray(entries));
+              }
+            mergeMissing(current, missing);
+          }
+      }
       // A snapshot is immutable. Later local edits remain dirty for the next save.
       JSONObject manifest =
           new JSONObject()
@@ -292,7 +374,9 @@ final class GalleryRecovery {
         v.put("lastSaved", System.currentTimeMillis())
             .put("savedRevision", revision)
             .put("state", "saved")
-            .put("lastKey", key);
+            .put("lastKey", key)
+            .put("processed", refs.length())
+            .put("total", refs.length());
         db.choice("recovery-settings", v);
       }
     } finally {
@@ -333,7 +417,7 @@ final class GalleryRecovery {
             || photo.optInt("version") != 1
             || !ref.getString("hash").equals(photo.optString("hash")))
           throw new R2Exception("INVALID_GALLERY_RECOVERY");
-        if (!faces) {
+        if (!faces || status(service).optBoolean("denyRecoveredFaces")) {
           photo.getJSONObject("row").remove("faces");
           photo.getJSONObject("row").remove("faceVersion");
         }
@@ -345,7 +429,14 @@ final class GalleryRecovery {
           .put("restoreFaces", faces)
           .put("idMap", new JSONObject())
           .put("faceMap", new JSONObject());
-      db.choice("recovery-staged", manifest);
+      synchronized (GalleryIntelligence.STATE_LOCK) {
+        if (stopped.getAsBoolean()) throw new InterruptedIOException();
+        if (db.choice("recovery-settings").optBoolean("denyRecoveredFaces")) {
+          manifest.put("restoreFaces", false);
+          manifest.getJSONObject("choices").remove("people");
+        }
+        db.choice("recovery-staged", manifest);
+      }
     } finally {
       Arrays.fill(keys, (byte) 0);
     }
@@ -363,6 +454,27 @@ final class GalleryRecovery {
     for (int i = 0; i < refs.length(); i++)
       if (!refs.getJSONObject(i).optString("hash").matches("[a-f0-9]{64}"))
         throw new R2Exception("INVALID_GALLERY_RECOVERY");
+  }
+
+  static JSONObject namespacePending(
+      JSONObject source, String hash, Map<String, String> replacements) throws Exception {
+    JSONObject row = new JSONObject(source.toString());
+    String oldId = row.getJSONObject("media").getString("id"),
+        id = "recovered:" + hash,
+        stamp = row.optString("stamp");
+    replacements.put(oldId, id);
+    replacements.put(oldId + "|" + stamp, id + "|" + stamp);
+    row.getJSONObject("media").put("id", id);
+    JSONArray faces = row.optJSONArray("faces");
+    if (faces != null)
+      for (int i = 0; i < faces.length(); i++) {
+        JSONObject face = faces.getJSONObject(i);
+        String before = face.getString("id"),
+            after = GallerySearchStore.token(id) + before.substring(64);
+        face.put("id", after);
+        replacements.put(before, after);
+      }
+    return row;
   }
 
   static List<String> keys(JSONObject value) {

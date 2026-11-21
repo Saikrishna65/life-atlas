@@ -313,4 +313,46 @@ public class GalleryRefinementTest {
     api.edit(new JSONObject().put("action", "undo-people"));
     assertEquals(2, api.list("people", "").getJSONArray("collections").length());
   }
+
+  @Test
+  public void appResumeWithoutMediaChangesKeepsCollectionSnapshotsValid() throws Exception {
+    R2DeviceGalleryTest fixture = new R2DeviceGalleryTest();
+    fixture.setup();
+    GalleryIntelligence service =
+        new GalleryIntelligence(RuntimeEnvironment.getApplication(), fixture.repo.store);
+    service.writeSettings(new JSONObject().put("enabled", false));
+    assertTrue(service.refreshMediaIfChanged());
+    long before;
+    try (GallerySearchStore db = new GallerySearchStore(fixture.repo.store)) {
+      before = db.revision();
+    }
+    assertFalse(service.refreshMediaIfChanged());
+    try (GallerySearchStore db = new GallerySearchStore(fixture.repo.store)) {
+      assertEquals(before, db.revision());
+    }
+  }
+
+  @Test
+  public void cloudOnlyRecoveryMembersUseIndependentIdentitiesRatherThanReusedPhoneIds()
+      throws Exception {
+    String source = "image:external:1",
+        hash = "a".repeat(64),
+        face = GallerySearchStore.token(source) + ".0.0123456789abcdef";
+    JSONObject row =
+        new JSONObject()
+            .put("media", new JSONObject().put("id", source))
+            .put("stamp", "saved-version")
+            .put("faces", new JSONArray().put(new JSONObject().put("id", face)));
+    Map<String, String> replacement = new HashMap<>();
+    JSONObject safe = GalleryRecovery.namespacePending(row, hash, replacement);
+    assertNotEquals(source, safe.getJSONObject("media").getString("id"));
+    assertEquals(source, row.getJSONObject("media").getString("id"));
+    assertNotEquals(face, safe.getJSONArray("faces").getJSONObject(0).getString("id"));
+    JSONObject preferences =
+        GalleryRecovery.project(
+            "media-preferences",
+            new JSONObject().put("favorites", new JSONArray().put(source)),
+            replacement);
+    assertEquals("recovered:" + hash, preferences.getJSONArray("favorites").getString(0));
+  }
 }

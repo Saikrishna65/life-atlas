@@ -555,3 +555,24 @@
   outline: 3px solid #285449;
   outline-offset: 3px;
 }
+
+.gsmart-placeholder {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin: 24px 0;
+}
+.gsmart-placeholder i {
+  display: block;
+  height: 160px;
+  border-radius: 14px;
+  background: #edf1eb;
+}
+.gsmart-placeholder.is-people {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.gsmart-placeholder.is-people i {
+  height: auto;
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
