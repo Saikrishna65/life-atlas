@@ -205,7 +205,9 @@ export default function PhotoViewer({
           if (chrome) setChrome(false);
           else activity();
         }}
-        onDoubleClick={() => zoom(transform.scale > 1 ? 1 : 2.5)}
+        onDoubleClick={() => {
+          if (item.kind !== "video") zoom(transform.scale > 1 ? 1 : 2.5);
+        }}
         onPointerDown={(e) => {
           if (
             (e.target as HTMLElement).closest(
@@ -242,7 +244,11 @@ export default function PhotoViewer({
           if (!points.current.has(e.pointerId)) return;
           points.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           const p = [...points.current.values()];
-          if (p.length === 2 && start.current.distance > 0) {
+          if (
+            p.length === 2 &&
+            start.current.distance > 0 &&
+            item.kind !== "video"
+          ) {
             const scale = Math.max(
               1,
               Math.min(
