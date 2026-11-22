@@ -21,7 +21,7 @@ const fixture=`window.media=${JSON.stringify(media)};window.media[94].album='Arc
  getGalleryMotionPhoto:async({id,extract})=>id===window.media[0].id?{embedded:true,...(extract?{path:'/film.mp4'}:{companion:window.media[4]})}:{},
  editGalleryPhoto:async input=>{window.calls.photoEdit=input;window.editedOriginal={...window.media[0],id:'image:external:9000',name:'Atlas edited copy.jpg'};return {saved:true,media:window.editedOriginal};},
  shareSanitizedMedia:async input=>{window.calls.sanitized=input;},getGalleryNamedPeople:async()=>({people:window.personName?[{id:'person-group',name:window.personName}]:[]}),
- getGalleryCache:async()=>window.galleryCache||{bytes:42000,files:12,limitMiB:96},configureGalleryCache:async input=>(window.galleryCache={bytes:input.clear?0:42000,files:input.clear?0:12,limitMiB:input.limitMiB}),
+ getGalleryCache:async()=>window.galleryCache||{bytes:42000,files:12,limitMiB:96,previewQuality:92,previewMaxEdge:1280},configureGalleryCache:async input=>(window.galleryCache={previewQuality:92,previewMaxEdge:1280,...window.galleryCache,...input,bytes:input.clear?0:42000,files:input.clear?0:12}),
  restoreRecoveryKit:async input=>{window.calls.kit=input;return {verified:true};},
  editGalleryAlbum:async input=>{window.customAlbums||=[];window.calls.albumEdit=input;if(input.action==='restore-hidden'){window.customAlbums.forEach(a=>a.hidden=false);return {};}if(input.action==='hide'){window.customAlbums.find(a=>a.id===input.id).hidden=true;return {id:input.id};}if(input.action==='create'){const a={id:'custom-'+(window.customAlbums.length+1),title:input.name,kind:'album',subtitle:'My album',ids:input.ids||[],coverId:input.ids?.[0]||'',count:input.ids?.length||0};window.customAlbums.push(a);return {id:a.id};}const a=window.customAlbums.find(a=>a.id===input.id);if(input.action==='add'){a.ids=[...new Set([...a.ids,...input.ids])];a.count=a.ids.length;a.coverId||=a.ids[0];}if(input.action==='cover')a.coverId=input.cover;return {id:input.id};},
  getGalleryCollections:async({kind})=>{
@@ -95,6 +95,11 @@ try{
   await page.getByRole('button',{name:'Open Frame 001.jpg',exact:true}).click();
  }
  if(process.env.GALLERY_NO_THUMB==='1'){assert.equal(await page.locator('.pv-shared-image').count(),0);assert.ok(await page.locator('.pv-picture').evaluate(node=>node.getAnimations().some(a=>a.effect.getKeyframes().some(f=>f.opacity==='0'))),'Missing thumbnails use a one-time fade');}
+ if(process.env.GALLERY_SLOW_ORIGINAL==='1'){
+   await page.locator('.pv-decoding-state').waitFor();
+   assert.equal(await page.locator('.pv-shared-image').count(),0,'Do not animate a different bitmap while the original is pending');
+   await page.request.get(origin+'/release-originals');
+ }
  if(process.env.GALLERY_MOTION==='normal'&&process.env.GALLERY_NO_THUMB!=='1'){
   await page.waitForFunction(()=>document.querySelector('dialog')?.dataset.pvShared==='opening');
   await page.locator('.pv-shared-image').waitFor({state:'visible'});
@@ -102,13 +107,6 @@ try{
   await page.screenshot({path:'work/qa-gallery-v3/shared-opening-224.png'});
  }
  await page.locator('.pv-picture').waitFor({state:'visible'});
- if(process.env.GALLERY_SLOW_ORIGINAL==='1'){
-  const handoff=await page.locator('.pv-slide:not([inert])').evaluate(slide=>({pending:!slide.querySelector('img').complete,poster:slide.querySelector('.pv-live-poster')?.style.backgroundImage,opacity:slide.querySelector('img').style.opacity}));
-  assert.equal(handoff.pending,true);assert.ok(handoff.poster.includes('url('));assert.equal(handoff.opacity,'0','A visible poster replaces the morph while the original decodes');
-  await page.locator('.pv-picture').dblclick();await page.waitForFunction(()=>new DOMMatrix(getComputedStyle(document.querySelector('.pv-live-poster')).transform).a>2.4);await page.locator('.pv-picture').dblclick();await page.waitForFunction(()=>new DOMMatrix(getComputedStyle(document.querySelector('.pv-live-poster')).transform).a===1);
-  await page.request.get(origin+'/release-originals');
-  await page.waitForFunction(()=>document.querySelector('.pv-slide:not([inert])>img')?.complete);
- }
  await page.waitForFunction(()=>!document.querySelector('.pv-shared-image'));
  assert.equal(await page.locator('dialog.pv-viewer').evaluate(d=>d.getAnimations().some(a=>a.animationName==='pv-open')),false,'No second entrance fade runs after handoff');
  const box=await page.locator('.pv-picture').boundingBox(),sx=box.x+box.width*.7,sy=box.y+box.height*.55;
@@ -346,7 +344,7 @@ console.log('PASS: independent Favourites and Collections scroll positions, nati
  await openMore();await page.getByRole('region',{name:'Photo actions'}).waitFor();await page.getByRole('button',{name:'Share original file',exact:true}).click();await page.waitForFunction(()=>window.calls.shared?.length===1);assert.equal(await page.locator('.pv-bottom').getByRole('button',{name:'Photo details',exact:true}).count(),1);
  await page.screenshot({path:'work/qa-gallery-v3/original-viewer-mobile.png'});await gesture(0,170);await page.getByRole('dialog',{name:'Photo viewer'}).waitFor({state:'detached'});
  // New settings and privacy tools use actual dialogs and controls, with explicit native fixture seams.
- await page.getByRole('button',{name:'Gallery settings',exact:true}).click();let settings=page.getByRole('dialog',{name:'Gallery settings'});await settings.getByLabel('Photo cache limit').selectOption('32');await page.waitForFunction(()=>window.galleryCache?.limitMiB===32);await settings.getByRole('button',{name:'Clear thumbnails & video frames'}).click();await page.waitForFunction(()=>window.galleryCache?.files===0);await settings.getByRole('button',{name:'Close dialog',exact:true}).click();
+ await page.getByRole('button',{name:'Gallery settings',exact:true}).click();let settings=page.getByRole('dialog',{name:'Gallery settings'});await settings.getByLabel('Preview quality preset').selectOption('high');await page.waitForFunction(()=>window.galleryCache?.previewQuality===98&&window.galleryCache?.previewMaxEdge===2560);await settings.getByLabel('Photo cache limit').selectOption('32');await page.waitForFunction(()=>window.galleryCache?.limitMiB===32);await settings.getByRole('button',{name:'Clear thumbnails & video frames'}).click();await page.waitForFunction(()=>window.galleryCache?.files===0);await settings.getByRole('button',{name:'Close dialog',exact:true}).click();
  await page.getByRole('button',{name:'Open Frame 001.jpg',exact:true}).click();await openMore();let morePanel=page.getByRole('region',{name:'Photo actions'});assert.equal(await morePanel.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(255, 255, 255)');await morePanel.getByRole('button',{name:'Edit photo',exact:true}).click();let editor=page.getByRole('dialog',{name:'Edit a copy'});await editor.getByRole('img',{name:'Editing preview'}).waitFor();await editor.getByRole('button',{name:'Rotate right'}).click();await editor.getByRole('combobox',{name:'Crop proportions',exact:true}).selectOption('1');await editor.getByRole('button',{name:'Save edited copy'}).click();await editor.waitFor({state:'detached'});assert.equal((await page.evaluate(()=>window.calls.photoEdit)).recipe.aspect,1);assert.equal((await page.evaluate(()=>window.calls.photoEdit)).recipe.angle,90);
  await openMore();morePanel=page.getByRole('region',{name:'Photo actions'});await morePanel.getByRole('checkbox',{name:/Remove location tags/}).check();await morePanel.getByRole('button',{name:'Share location-free copy'}).click();await page.waitForFunction(()=>window.calls.sanitized?.id===window.media[0].id);await openMore();await page.getByRole('button',{name:'Play motion photo',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.pv-video video')?.readyState>=2);await openMore();await page.getByRole('button',{name:'Back to still photo'}).click();await page.getByRole('button',{name:'Back to photos',exact:true}).click();
  await page.getByRole('button',{name:'Open Frame 005.mp4',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.pv-video video')?.readyState>=2);await openMore();await page.getByRole('button',{name:'Browse video frames',exact:true}).click();await page.getByRole('region',{name:'Video frames'}).getByRole('button',{name:'Seek to frame 5'}).click();await page.waitForFunction(()=>document.querySelector('.pv-video video')?.currentTime>=2);await page.keyboard.press('Escape');await openMore();await page.getByRole('button',{name:'Use current frame as video cover',exact:true}).click();await page.waitForFunction(()=>window.calls.videoState?.cover===true);await page.getByRole('button',{name:'Back to photos',exact:true}).click();

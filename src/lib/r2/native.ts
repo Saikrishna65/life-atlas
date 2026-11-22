@@ -73,7 +73,9 @@ interface R2Plugin {
     import("../gallery/media-tools").GalleryCacheReport
   >;
   configureGalleryCache(input: {
-    limitMiB: number;
+    limitMiB?: number;
+    previewQuality?: number;
+    previewMaxEdge?: number;
     clear?: boolean;
   }): Promise<import("../gallery/media-tools").GalleryCacheReport>;
   shareSanitizedMedia(input: {
@@ -251,7 +253,17 @@ interface R2Plugin {
     to?: number;
   }): Promise<import("../gallery/types").DevicePage>;
   getGalleryAlbums(): Promise<{ albums: { name: string; count: number }[] }>;
-  getDeviceThumbnail(input: { id: string }): Promise<{ path: string }>;
+  openNativeGalleryViewer(input: {
+    ids: string[];
+    selected: string;
+  }): Promise<{
+    id?: string;
+    action: "close" | "share" | "whatsapp" | "favourite" | "info" | "more";
+  }>;
+  getDeviceThumbnail(input: {
+    id: string;
+    pixels?: number;
+  }): Promise<{ path: string }>;
   registerDeviceMedia(input: {
     ids: string[];
     versions?: Record<string, string>;

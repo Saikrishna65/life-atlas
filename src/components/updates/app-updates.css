@@ -155,3 +155,24 @@
   box-sizing: border-box;
   overflow-y: auto;
 }
+
+/* Self-contained native dialog positioning: the public site CSS is not bundled here. */
+.atlas-updates-dialog.world-modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
+  max-height: calc(
+    100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+  );
+  transform: none;
+}
+.atlas-updates-dialog::backdrop {
+  background: #08140fb8;
+}
+.gallery-cache-breakdown div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}

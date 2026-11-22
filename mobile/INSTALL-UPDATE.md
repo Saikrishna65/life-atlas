@@ -1,3 +1,29 @@
+Atlas 2.2.7 — Places, photo quality and viewer improvements
+
+Install atlas.apk over Atlas; do not uninstall. Version code 43.
+Package and signing identity are unchanged. Your local and cloud data stay in place.
+
+• Places opens as a photo collection. Browse saved places, switch to Map, or
+  Review new places. More holds scanning, undo and recovery; location precision
+  and merging sit inside the place details rather than the collection home.
+• Gallery settings → Photo preview quality: Saver, Balanced, High, or custom
+  JPEG quality (70–98) and maximum size (512–2560 pixels). This only changes
+  rebuildable grid previews, never your original files or uploads.
+• Previews match the tile size and screen density. Cache entries remember the
+  file version, size and quality; cleanup is batched. Storage usage separates
+  previews, video timeline frames and motion clips.
+• Web photo opening animates the decoded original through the whole transition
+  without exchanging it for another bitmap at the end. App updates is centered.
+• Optional native viewer: Gallery settings → Photo viewer → Try the native
+  Android viewer. Uses tiled original photos and native video controls. This
+  remains experimental pending physical-phone testing. Info/More and share or
+  favourite actions return to Atlas tools. Cloud media keeps the existing viewer.
+  A session contains the currently loaded collection (up to 2,000 items).
+
+No new AI model download. No originals or cloud data were modified by this update.
+
+Historical release notes below.
+
 Atlas 2.2.6 — Final square-grid and photo-motion update
 
 Install atlas.apk over Atlas, or use Control Room → Access → App updates.

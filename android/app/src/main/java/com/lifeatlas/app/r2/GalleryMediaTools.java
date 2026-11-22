@@ -106,11 +106,14 @@ final class GalleryMediaTools {
 
   static String frame(Context context, JSONObject media, double seconds, boolean cover)
       throws Exception {
-    int edge = cover ? 960 : 320,
-        option =
-            cover
-                ? MediaMetadataRetriever.OPTION_CLOSEST
-                : MediaMetadataRetriever.OPTION_CLOSEST_SYNC;
+    return frame(context, media, seconds, cover, cover ? 960 : 320, cover ? 94 : 88);
+  }
+
+  static String frame(
+      Context context, JSONObject media, double seconds, boolean cover, int edge, int quality)
+      throws Exception {
+    int option =
+        cover ? MediaMetadataRetriever.OPTION_CLOSEST : MediaMetadataRetriever.OPTION_CLOSEST_SYNC;
     if (!"video".equals(media.getString("kind"))) throw new R2Exception("INVALID_SELECTION");
     File dir = cache(context, "gallery-filmstrip"),
         file =
@@ -122,7 +125,9 @@ final class GalleryMediaTools {
                             + ":"
                             + Math.round(seconds * 1000)
                             + ":"
-                            + edge)
+                            + edge
+                            + "-q"
+                            + quality)
                     + ".jpg");
     if (!file.isFile()) {
       MediaMetadataRetriever retriever = new MediaMetadataRetriever();
@@ -147,8 +152,7 @@ final class GalleryMediaTools {
                 Math.max(1, (int) (image.getHeight() * scale)),
                 true);
         try (OutputStream out = new FileOutputStream(file)) {
-          if (!small.compress(Bitmap.CompressFormat.JPEG, cover ? 94 : 88, out))
-            throw new IOException();
+          if (!small.compress(Bitmap.CompressFormat.JPEG, quality, out)) throw new IOException();
         }
       } catch (Exception failure) {
         file.delete();
@@ -190,29 +194,48 @@ final class GalleryMediaTools {
   static JSONObject cacheReport(Context context, R2SecureStore secure) throws Exception {
     long bytes = 0;
     int count = 0;
+    JSONObject categories = new JSONObject();
     for (String directory : List.of("device-gallery", "gallery-filmstrip", "gallery-motion")) {
+      long categoryBytes = 0;
+      int categoryFiles = 0;
       File[] files = cache(context, directory).listFiles();
       if (files != null)
         for (File file : files)
           if (file.isFile()) {
-            bytes += file.length();
-            count++;
+            categoryBytes += file.length();
+            categoryFiles++;
           }
+      bytes += categoryBytes;
+      count += categoryFiles;
+      categories.put(
+          directory, new JSONObject().put("bytes", categoryBytes).put("files", categoryFiles));
     }
-    try (GallerySearchStore db = new GallerySearchStore(secure)) {
-      return new JSONObject()
-          .put("bytes", bytes)
-          .put("files", count)
-          .put("limitMiB", db.choice("cache-settings").optInt("limitMiB", 96));
-    }
+    GalleryPreviewSettings settings = GalleryPreviewSettings.read(secure);
+    return new JSONObject()
+        .put("bytes", bytes)
+        .put("files", count)
+        .put("categories", categories)
+        .put("limitMiB", settings.limitMiB)
+        .put("previewQuality", settings.quality)
+        .put("previewMaxEdge", settings.maxEdge);
   }
 
-  static void cacheSettings(Context context, R2SecureStore secure, JSONObject input)
+  static synchronized void cacheSettings(Context context, R2SecureStore secure, JSONObject input)
       throws Exception {
-    int size = input.optInt("limitMiB", 96);
-    if (!Set.of(32, 64, 96, 192).contains(size)) throw new R2Exception("INVALID_SELECTION");
+    int size;
     try (GallerySearchStore db = new GallerySearchStore(secure)) {
-      db.choice("cache-settings", new JSONObject().put("limitMiB", size));
+      JSONObject current = db.choice("cache-settings");
+      size = input.optInt("limitMiB", current.optInt("limitMiB", 96));
+      int quality = input.optInt("previewQuality", current.optInt("previewQuality", 92));
+      int edge = input.optInt("previewMaxEdge", current.optInt("previewMaxEdge", 1280));
+      if (!Set.of(32, 64, 96, 192).contains(size)
+          || quality < 70
+          || quality > 98
+          || !Set.of(512, 768, 1280, 1920, 2560).contains(edge))
+        throw new R2Exception("INVALID_SELECTION");
+      current.put("limitMiB", size).put("previewQuality", quality).put("previewMaxEdge", edge);
+      db.choice("cache-settings", current);
+      GalleryPreviewSettings.invalidate();
     }
     for (String directory : List.of("device-gallery", "gallery-filmstrip", "gallery-motion"))
       prune(
@@ -225,11 +248,7 @@ final class GalleryMediaTools {
   }
 
   static long cacheLimit(R2SecureStore secure) throws Exception {
-    try (GallerySearchStore db = new GallerySearchStore(secure)) {
-      return db.choice("cache-settings").optInt("limitMiB", 96) * 1024L * 1024;
-    } catch (Exception ignored) {
-      return 96L * 1024 * 1024;
-    }
+    return GalleryPreviewSettings.read(secure).limitMiB * 1024L * 1024;
   }
 
   static Bitmap decodeEdit(Context context, String id) throws Exception {

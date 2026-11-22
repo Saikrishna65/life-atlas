@@ -27,7 +27,6 @@ class SharedViewerTransition {
   opening: Animation[] | null = null;
   epoch = 0;
   frame = 0;
-  restoreOriginal = () => {};
   constructor(readonly id: string) {
     if (typeof document !== "undefined") this.origin = source(id);
   }
@@ -59,8 +58,6 @@ class SharedViewerTransition {
     this.opening = null;
     this.layers.forEach((n) => n.remove());
     this.layers = [];
-    this.restoreOriginal();
-    this.restoreOriginal = () => {};
     if (this.stage) {
       this.stage.style.visibility = "";
       const d = this.stage.closest("dialog");
@@ -73,46 +70,6 @@ class SharedViewerTransition {
     this.layers.forEach((layer) => layer.remove());
     this.layers = [];
   };
-  handoff(preview: string, epoch: number) {
-    const node = this.stage,
-      original = this.photo(),
-      slide = original?.parentElement;
-    if (!node || !original || !slide) return;
-    if (original.complete && original.naturalWidth) return;
-    const poster = document.createElement("div");
-    poster.className = "pv-live-poster";
-    poster.setAttribute("aria-hidden", "true");
-    poster.style.backgroundImage = `url(${JSON.stringify(preview)})`;
-    poster.style.transform = original.style.transform;
-    slide.insertBefore(poster, original);
-    original.style.opacity = "0";
-    this.restoreOriginal = () => {
-      poster.remove();
-      original.style.opacity = "";
-    };
-    void original
-      .decode()
-      .then(() => {
-        if (this.epoch !== epoch || !original.isConnected) return;
-        original.style.opacity = "";
-        const fade = original.animate([{ opacity: 0 }, { opacity: 1 }], {
-          duration: 100,
-          easing: "ease-out",
-        });
-        this.animations.push(fade);
-        void fade.finished
-          .then(() => {
-            if (this.epoch === epoch) {
-              poster.remove();
-              fade.cancel();
-            }
-          })
-          .catch(() => {
-            if (this.epoch === epoch) poster.remove();
-          });
-      })
-      .catch(() => {});
-  }
   async run(
     opening: boolean,
     target: NonNullable<ReturnType<typeof source>>,
@@ -124,8 +81,26 @@ class SharedViewerTransition {
     if (!node || !dialog || !live) return;
     this.cancel();
     const epoch = this.epoch;
-    const src =
-      live.complete && live.naturalWidth ? live.currentSrc : target.src;
+    // Animate the decoded original itself. Using the SDR grid JPEG here and swapping
+    // to a differently decoded/HDR original at the end caused a visible blink.
+    if (opening && (!live.complete || !live.naturalWidth)) {
+      const pending = document.createElement("p");
+      pending.className = "pv-decoding-state";
+      pending.setAttribute("role", "status");
+      pending.textContent = "Opening photo…";
+      dialog.append(pending);
+      this.layers.push(pending);
+      try {
+        await live.decode();
+      } catch {
+        if (epoch === this.epoch) this.cancel();
+        return;
+      } finally {
+        pending.remove();
+      }
+      if (epoch !== this.epoch || !live.isConnected) return;
+    }
+    const src = live.currentSrc || live.src;
     const dimensions = live.naturalWidth
       ? { width: live.naturalWidth, height: live.naturalHeight }
       : target;
@@ -228,31 +203,19 @@ class SharedViewerTransition {
             return;
           }
           this.opening = null;
-          // Set the live photo and background before dissolving the shared layer.
-          this.handoff(src, epoch);
+          // Both layers now use the same decoded source and geometry. Exchange them
+          // atomically; no second opacity timeline or preview/original replacement.
           node.style.visibility = "";
           delete dialog.dataset.pvShared;
           shade.remove();
+          crop.remove();
+          a.cancel();
+          b.cancel();
           c.cancel();
-          const fade = crop.animate([{ opacity: 1 }, { opacity: 0 }], {
-            duration: 80,
-            fill: "both",
-          });
-          this.animations.push(fade);
-          void fade.finished
-            .then(() => {
-              if (epoch === this.epoch) {
-                crop.remove();
-                a.cancel();
-                b.cancel();
-                fade.cancel();
-                this.layers = [];
-                this.animations = this.animations.filter(
-                  (item) => ![a, b, c, fade].includes(item),
-                );
-              }
-            })
-            .catch(() => {});
+          this.layers = [];
+          this.animations = this.animations.filter(
+            (item) => ![a, b, c].includes(item),
+          );
         })
         .catch(() => {});
     });

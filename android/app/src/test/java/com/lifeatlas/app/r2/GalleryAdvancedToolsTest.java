@@ -18,6 +18,81 @@ import org.robolectric.annotation.*;
 @SQLiteMode(SQLiteMode.Mode.LEGACY)
 public class GalleryAdvancedToolsTest {
   @Test
+  public void nativeViewerIsPrivateAndRejectsUntrustedIdentifiers() throws Exception {
+    var context = RuntimeEnvironment.getApplication();
+    var info =
+        context
+            .getPackageManager()
+            .getActivityInfo(new ComponentName(context, GalleryNativeViewerActivity.class), 0);
+    assertFalse(info.exported);
+    assertEquals(
+        2,
+        GalleryNativeViewerActivity.validate(
+                new ArrayList<>(List.of("image:external:42", "video:external:43")))
+            .size());
+    for (String invalid :
+        List.of(
+            "file:///data/private.jpg",
+            "https://example.com/a.jpg",
+            "image:external:0",
+            "image:../:1")) {
+      try {
+        GalleryNativeViewerActivity.validate(new ArrayList<>(List.of(invalid)));
+        fail("untrusted URI");
+      } catch (IllegalArgumentException expected) {
+      }
+    }
+    try {
+      GalleryNativeViewerActivity.validate(
+          new ArrayList<>(List.of("image:external:42", "image:external:42")));
+      fail("duplicate");
+    } catch (IllegalArgumentException expected) {
+    }
+  }
+
+  @Test
+  public void previewSettingsUsePhysicalPixelBucketsAndRespectCaps() throws Exception {
+    var balanced = new GalleryPreviewSettings(new JSONObject());
+    assertEquals(92, balanced.quality);
+    assertEquals(384, balanced.edge(300));
+    assertEquals(1280, balanced.edge(99999));
+    var saver =
+        new GalleryPreviewSettings(
+            new JSONObject().put("previewQuality", 80).put("previewMaxEdge", 768));
+    assertEquals(256, saver.edge(-1));
+    assertEquals(768, saver.edge(2048));
+    assertEquals(80, saver.quality);
+  }
+
+  @Test
+  public void qualityChangesKeepCacheLimitAndReportOnlyRebuildableFiles() throws Exception {
+    var context = RuntimeEnvironment.getApplication();
+    var repo = R2TripQueueTest.repository();
+    GalleryMediaTools.cacheSettings(
+        context,
+        repo.store,
+        new JSONObject().put("limitMiB", 32).put("previewQuality", 98).put("previewMaxEdge", 2560));
+    GalleryMediaTools.cacheSettings(context, repo.store, new JSONObject().put("limitMiB", 64));
+    var report = GalleryMediaTools.cacheReport(context, repo.store);
+    assertEquals(64, report.getInt("limitMiB"));
+    assertEquals(98, report.getInt("previewQuality"));
+    assertEquals(2560, report.getInt("previewMaxEdge"));
+    assertTrue(report.getJSONObject("categories").has("gallery-filmstrip"));
+    for (var invalid :
+        List.of(
+            new JSONObject().put("previewQuality", 100),
+            new JSONObject().put("previewMaxEdge", 9999))) {
+      try {
+        GalleryMediaTools.cacheSettings(context, repo.store, invalid);
+        fail("invalid setting");
+      } catch (R2Exception expected) {
+        assertEquals("INVALID_SELECTION", expected.code);
+      }
+    }
+    assertEquals(98, GalleryPreviewSettings.read(repo.store).quality);
+  }
+
+  @Test
   public void searchRuntimeIsNotExportedAndCannotCrashTheActivityProcess() throws Exception {
     var context = RuntimeEnvironment.getApplication();
     ServiceInfo info =

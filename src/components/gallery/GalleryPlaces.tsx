@@ -49,6 +49,10 @@ import PhotoViewer from "./PhotoViewer";
 import { gallerySource } from "@/lib/gallery/actions";
 import type { StorageSummary, CloudObject } from "@/lib/r2/types";
 import "./places.css";
+const CollectionMap = dynamic(() => import("./PlaceCollectionMap"), {
+  ssr: false,
+  loading: () => <p>Opening map…</p>,
+});
 const ReviewMap = dynamic(() => import("./PlaceReviewMap"), {
   ssr: false,
   loading: () => (
@@ -60,6 +64,10 @@ export default function GalleryPlaces({
   onSearch,
 }: { search?: string; onSearch?: (value: string) => void } = {}) {
   const [localQuery, setLocalQuery] = useState("");
+  const [editingPlace, setEditingPlace] = useState(false);
+  const [collectionView, setCollectionView] = useState<"photos" | "map">(
+    "photos",
+  );
   const query = search ?? localQuery,
     setQuery = onSearch ?? setLocalQuery;
   const { trips } = useTripVault();
@@ -71,7 +79,7 @@ export default function GalleryPlaces({
   const previewToken = useRef("");
   const [library, setLibrary] = useState<PlaceLibrary>(emptyPlaces),
     [mode, setMode] = useState<"suggestions" | "saved" | "unassigned" | "all">(
-      "suggestions",
+      "saved",
     ),
     [active, setActive] = useState(""),
     [radius, setRadius] = useState(200),
@@ -190,8 +198,11 @@ export default function GalleryPlaces({
     setViewer(m.id);
   }
   const suggestions = useMemo(
-    () => suggestPlaces(library.media, library.places, radius, library.ignored),
-    [library, radius],
+    () =>
+      mode === "suggestions"
+        ? suggestPlaces(library.media, library.places, radius, library.ignored)
+        : [],
+    [library, radius, mode],
   );
   const saved = library.places.find((p) => p.id === active),
     suggestion = suggestions.find((p) => p.id === active),
@@ -262,6 +273,7 @@ export default function GalleryPlaces({
     }
   }
   function showPlace(id: string) {
+    setQuery("");
     setActive(id);
     setSelected([]);
     setVisit("");
@@ -269,6 +281,7 @@ export default function GalleryPlaces({
     setDraftMembers([]);
     const p = library.places.find((p) => p.id === id),
       s = suggestions.find((s) => s.id === id);
+    setEditingPlace(!p);
     setName(p?.name || "");
     setAnchor(p?.anchor || s?.anchor);
     setPrecision(p?.precision || "approximate");
@@ -318,8 +331,26 @@ export default function GalleryPlaces({
     setMode("saved");
     setActive(id);
     setDraftMembers([]);
+    setEditingPlace(false);
     setNotice(
       "Place confirmed locally. Originals are unchanged. Use Add/update in trip when ready.",
+    );
+  }
+  async function findPlaces() {
+    const access = await R2.getGalleryAccess();
+    if (access.status === "denied")
+      throw Error("Allow photo and video access above before scanning.");
+    setLibrary(
+      await scanPlaceLibrary(
+        (n, text) => setProgress(`${text} · ${n} files`),
+        () => cancel.current,
+      ),
+    );
+    setMode("suggestions");
+    setNotice(
+      cancel.current
+        ? "Scan stopped. Completed batches are saved."
+        : `Scan complete. ${access.status === "limited" ? "Only Android-approved media was accessible." : ""}`,
     );
   }
   function newFromSelection() {
@@ -327,6 +358,7 @@ export default function GalleryPlaces({
     setDraftMembers(selected);
     setActive("draft");
     setMode("suggestions");
+    setEditingPlace(true);
     setName("");
     setAnchor(library.media.find((m) => chosen.has(m.id) && m.gps)?.gps);
     setPrecision("approximate");
@@ -337,60 +369,52 @@ export default function GalleryPlaces({
     <section className="gallery-places" aria-label="Places organizer">
       <header className="gp-heading">
         <div>
-          <h2>Places</h2>
-          <p>Find photos taken near each other, then name the place.</p>
+          <h2 className="sr-only">Your saved places</h2>
+          <p>Your photos, remembered by place.</p>
         </div>
-        <div className="gp-tools">
-          <button
-            className="pg-primary"
-            disabled={busy}
-            onClick={() =>
-              void run(async () => {
-                const access = await R2.getGalleryAccess();
-                if (access.status === "denied")
-                  throw Error(
-                    "Allow photo and video access above before scanning.",
+        <details className="gp-more">
+          <summary>More</summary>
+          <div
+            className="gp-tools"
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest("button"))
+                e.currentTarget.parentElement?.removeAttribute("open");
+            }}
+          >
+            <button
+              className="pg-primary"
+              disabled={busy}
+              onClick={() => void run(findPlaces)}
+            >
+              <ScanLine size={17} />{" "}
+              {library.media.length
+                ? "Find new photos"
+                : "Group photos by place"}
+            </button>
+            <button
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  setLibrary(await undoPlaces());
+                  setActive("");
+                  setSelected([]);
+                  setNotice(
+                    "Last place edit undone. Cloud backups and website posts are unchanged.",
                   );
-                setLibrary(
-                  await scanPlaceLibrary(
-                    (n, text) => setProgress(`${text} · ${n} files`),
-                    () => cancel.current,
-                  ),
-                );
-                setNotice(
-                  cancel.current
-                    ? "Scan stopped. Completed batches are saved."
-                    : `Scan complete. ${access.status === "limited" ? "Only Android-approved media was accessible." : ""}`,
-                );
-              })
-            }
-          >
-            <ScanLine size={17} />{" "}
-            {library.media.length ? "Find new photos" : "Group photos by place"}
-          </button>
-          <button
-            disabled={busy}
-            onClick={() =>
-              void run(async () => {
-                setLibrary(await undoPlaces());
-                setActive("");
-                setSelected([]);
-                setNotice(
-                  "Last place edit undone. Cloud backups and website posts are unchanged.",
-                );
-              })
-            }
-          >
-            <Undo2 size={16} /> Undo edit
-          </button>
-          <button
-            disabled={busy}
-            aria-expanded={showBackup}
-            onClick={() => setShowBackup(!showBackup)}
-          >
-            <CloudUpload size={16} /> Back up places
-          </button>
-        </div>
+                })
+              }
+            >
+              <Undo2 size={16} /> Undo edit
+            </button>
+            <button
+              disabled={busy}
+              aria-expanded={showBackup}
+              onClick={() => setShowBackup(!showBackup)}
+            >
+              <CloudUpload size={16} /> Back up places
+            </button>
+          </div>
+        </details>
       </header>
       {busy && (
         <div className="gp-progress" role="status">
@@ -428,7 +452,15 @@ export default function GalleryPlaces({
       )}
       {showBackup && (
         <section className="gp-recovery">
-          <h3>My organization, recoverable.</h3>
+          <div className="gp-backup-heading">
+            <h3>Places backup</h3>
+            <button
+              aria-label="Close places backup"
+              onClick={() => setShowBackup(false)}
+            >
+              <X size={18} />
+            </button>
+          </div>
           <p>
             Encrypted place names, memberships, capture locations and file
             identities in the private bucket. Photos and videos are not copied
@@ -554,21 +586,49 @@ export default function GalleryPlaces({
           )}
         </section>
       )}
-      <div className="gp-overview">
-        <span>{library.media.length.toLocaleString()} scanned</span>
-        <span>{library.places.length} confirmed places</span>
-        <span>
-          {library.media.filter((m) => !assigned.has(m.id)).length} unassigned
-        </span>
-      </div>
+      {!active && (
+        <div className="gp-collection-heading">
+          <label className="gp-place-search">
+            <MapPin size={18} />
+            <input
+              type="search"
+              aria-label="Search saved places"
+              placeholder="Search places"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          {mode === "saved" && (
+            <div className="gp-view-switch" aria-label="Places view">
+              <button
+                aria-pressed={collectionView === "photos"}
+                onClick={() => setCollectionView("photos")}
+              >
+                Photos
+              </button>
+              <button
+                aria-pressed={collectionView === "map"}
+                onClick={() => setCollectionView("map")}
+              >
+                Map
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      <p className="gp-overview">
+        {library.places.length} saved places ·{" "}
+        {library.media.length.toLocaleString()} photos & videos organized
+      </p>
       <nav className="gp-modes" aria-label="Place collections">
-        {(["suggestions", "saved", "unassigned", "all"] as const).map((m) => (
+        {(["saved", "suggestions", "unassigned", "all"] as const).map((m) => (
           <button
             key={m}
             aria-pressed={mode === m}
             disabled={busy}
             onClick={() => {
               setMode(m);
+              setShowBackup(false);
               setActive("");
               setDraftMembers([]);
               setSelected([]);
@@ -577,7 +637,9 @@ export default function GalleryPlaces({
             }}
           >
             {m === "suggestions"
-              ? `New places (${suggestions.length})`
+              ? mode === "suggestions"
+                ? `Review new places (${suggestions.length})`
+                : "Review new places"
               : m === "saved"
                 ? "Saved places"
                 : m === "all"
@@ -589,110 +651,150 @@ export default function GalleryPlaces({
       <div
         className={`gp-layout ${active || draftMembers.length || mode === "all" || mode === "unassigned" ? "has-place" : ""}`}
       >
-        <aside className="gp-index">
-          <details className="gp-distance">
-            <summary>Adjust nearby photos</summary>{" "}
-            <label>
-              Distance between photos <strong>{radius} m</strong>
-              <input
-                aria-label="Distance between photos"
-                type="range"
-                min={25}
-                max={5000}
-                step={25}
-                value={radius}
-                disabled={busy}
-                onChange={(e) => {
-                  setRadius(Number(e.target.value));
-                  if (mode === "suggestions") {
-                    setActive("");
-                    setDraftMembers([]);
-                  }
-                }}
-              />
-            </label>
-            <p className="pg-muted">
-              Use a smaller distance to split a large area into smaller places.
-            </p>
-          </details>
-          {mode === "suggestions"
-            ? suggestions.map((s, i) => (
-                <button
-                  key={s.id}
-                  className="gp-place-link"
-                  aria-pressed={active === s.id}
-                  disabled={busy}
-                  onClick={() => {
-                    showPlace(s.id);
-                    if (s.nearPlaceId)
-                      setName(
-                        library.places.find((p) => p.id === s.nearPlaceId)
-                          ?.name || "",
-                      );
-                  }}
-                >
-                  <div className="gp-group-cover">
-                    {(() => {
-                      const first = library.media.find(
-                        (m) => s.members.includes(m.id) && m.device,
-                      );
-                      return first?.device ? (
-                        <GalleryThumbnail
-                          asset={deviceAsset(first.device, [])}
-                        />
-                      ) : (
-                        <MapPin size={24} />
-                      );
-                    })()}
-                  </div>
-                  <span>
-                    {s.nearPlaceId
-                      ? `More near ${library.places.find((p) => p.id === s.nearPlaceId)?.name}`
-                      : `Nearby photos ${i + 1}`}
-                    <small>{s.members.length} photos & videos</small>
-                  </span>
-                </button>
-              ))
-            : library.places.map((p) => (
-                <button
-                  key={p.id}
-                  className="gp-place-link"
-                  disabled={busy}
-                  aria-pressed={active === p.id && mode === "saved"}
-                  onClick={() => {
-                    setMode("saved");
-                    showPlace(p.id);
-                  }}
-                >
-                  <div className="gp-group-cover">
-                    {(() => {
-                      const first = library.media.find(
-                        (m) => p.members.includes(m.id) && m.device,
-                      );
-                      return first?.device ? (
-                        <GalleryThumbnail
-                          asset={deviceAsset(first.device, [])}
-                        />
-                      ) : (
-                        <MapPin size={24} />
-                      );
-                    })()}
-                  </div>
-                  <span>
-                    {p.name}
-                    <small>
-                      {p.members.length} frames ·{" "}
-                      {placeVisits(p, library.media).length} visits
-                    </small>
-                  </span>
-                </button>
-              ))}
-          {!library.media.length && (
-            <p className="gp-empty">
-              Start a scan to read the locations saved by your camera. Nothing
-              uploads automatically.
-            </p>
+        <aside
+          className={`gp-index ${collectionView === "map" && mode === "saved" ? "is-map" : ""}`}
+        >
+          {collectionView === "map" && mode === "saved" && (
+            <CollectionMap
+              places={library.places.filter((p) =>
+                p.name.toLowerCase().includes(query.toLowerCase()),
+              )}
+              onOpen={(id) => showPlace(id)}
+            />
           )}
+          <div className="gp-place-covers">
+            {mode === "suggestions" && (
+              <details className="gp-distance">
+                <summary>Adjust nearby photos</summary>{" "}
+                <label>
+                  Distance between photos <strong>{radius} m</strong>
+                  <input
+                    aria-label="Distance between photos"
+                    type="range"
+                    min={25}
+                    max={5000}
+                    step={25}
+                    value={radius}
+                    disabled={busy}
+                    onChange={(e) => {
+                      setRadius(Number(e.target.value));
+                      if (mode === "suggestions") {
+                        setActive("");
+                        setDraftMembers([]);
+                      }
+                    }}
+                  />
+                </label>
+                <p className="pg-muted">
+                  Use a smaller distance to split a large area into smaller
+                  places.
+                </p>
+              </details>
+            )}
+            {mode === "suggestions"
+              ? suggestions.map((s, i) => (
+                  <button
+                    key={s.id}
+                    className="gp-place-link"
+                    aria-pressed={active === s.id}
+                    disabled={busy}
+                    onClick={() => {
+                      showPlace(s.id);
+                      if (s.nearPlaceId)
+                        setName(
+                          library.places.find((p) => p.id === s.nearPlaceId)
+                            ?.name || "",
+                        );
+                    }}
+                  >
+                    <div className="gp-group-cover">
+                      {(() => {
+                        const first = library.media.find(
+                          (m) => s.members.includes(m.id) && m.device,
+                        );
+                        return first?.device ? (
+                          <GalleryThumbnail
+                            asset={deviceAsset(first.device, [])}
+                          />
+                        ) : (
+                          <MapPin size={24} />
+                        );
+                      })()}
+                    </div>
+                    <span>
+                      {s.nearPlaceId
+                        ? `More near ${library.places.find((p) => p.id === s.nearPlaceId)?.name}`
+                        : `Nearby photos ${i + 1}`}
+                      <small>{s.members.length} photos & videos</small>
+                    </span>
+                  </button>
+                ))
+              : library.places
+                  .filter((p) =>
+                    p.name
+                      .toLocaleLowerCase()
+                      .includes(query.toLocaleLowerCase()),
+                  )
+                  .map((p) => (
+                    <button
+                      key={p.id}
+                      className="gp-place-link"
+                      disabled={busy}
+                      aria-pressed={active === p.id && mode === "saved"}
+                      onClick={() => {
+                        setMode("saved");
+                        showPlace(p.id);
+                      }}
+                    >
+                      <div className="gp-group-cover">
+                        {(() => {
+                          const first = library.media.find(
+                            (m) => p.members.includes(m.id) && m.device,
+                          );
+                          return first?.device ? (
+                            <GalleryThumbnail
+                              asset={deviceAsset(first.device, [])}
+                            />
+                          ) : (
+                            <MapPin size={24} />
+                          );
+                        })()}
+                      </div>
+                      <span>
+                        {p.name}
+                        <small>
+                          {p.members.length} photos & videos ·{" "}
+                          {placeVisits(p, library.media).length} visits
+                        </small>
+                      </span>
+                    </button>
+                  ))}
+            {mode === "saved" && !library.places.length && (
+              <div className="gp-empty">
+                <MapPin size={36} />
+                <h3>Your places start here</h3>
+                <p>
+                  Group photos taken together, give the place a name, and keep
+                  every visit in one collection.
+                </p>
+                <button
+                  className="pg-primary"
+                  onClick={() => {
+                    setMode("suggestions");
+                    setActive("");
+                  }}
+                >
+                  Review new places
+                </button>
+              </div>
+            )}
+            {!library.media.length && (
+              <p className="gp-empty">
+                Start a scan to read the locations saved by your camera. Nothing
+                uploads automatically.
+              </p>
+            )}
+          </div>
         </aside>
         <div className="gp-review">
           <button
@@ -711,25 +813,43 @@ export default function GalleryPlaces({
             mode !== "unassigned" && (
               <>
                 <div className="gp-edit-head">
-                  <label>
-                    Place name
-                    <input
-                      aria-label="Place name"
-                      maxLength={54}
-                      value={name}
-                      disabled={busy}
-                      placeholder="Tungnath, the lake, the campsite…"
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </label>
-                  <button
-                    className="pg-primary"
-                    disabled={busy}
-                    onClick={() => void run(savePlace)}
-                  >
-                    <Check size={16} />{" "}
-                    {saved ? "Save place changes" : "Confirm this place"}
-                  </button>
+                  {saved && !editingPlace && (
+                    <>
+                      <div className="gp-place-title">
+                        <h2>{saved.name}</h2>
+                        <p>
+                          {members.length} photos & videos · {visits.length}{" "}
+                          visits
+                        </p>
+                      </div>
+                      <button onClick={() => setEditingPlace(true)}>
+                        Edit place
+                      </button>
+                    </>
+                  )}
+                  {(!saved || editingPlace) && (
+                    <>
+                      <label>
+                        Place name
+                        <input
+                          aria-label="Place name"
+                          maxLength={54}
+                          value={name}
+                          disabled={busy}
+                          placeholder="Tungnath, the lake, the campsite…"
+                          onChange={(e) => setName(e.target.value)}
+                        />
+                      </label>
+                      <button
+                        className="pg-primary"
+                        disabled={busy}
+                        onClick={() => void run(savePlace)}
+                      >
+                        <Check size={16} />{" "}
+                        {saved ? "Save place changes" : "Confirm this place"}
+                      </button>
+                    </>
+                  )}
                   {suggestion && (
                     <button
                       disabled={busy}
@@ -765,66 +885,72 @@ export default function GalleryPlaces({
                     if (!busy) setAnchor(point);
                   }}
                 />
-                <div className="gp-coordinates">
-                  <label>
-                    Latitude
-                    <input
-                      aria-label="Place latitude"
-                      type="number"
-                      step="any"
-                      value={anchor?.latitude ?? ""}
+                <details className="gp-location-details">
+                  <summary>Location & privacy</summary>
+                  <div className="gp-coordinates">
+                    <label>
+                      Latitude
+                      <input
+                        aria-label="Place latitude"
+                        type="number"
+                        step="any"
+                        value={anchor?.latitude ?? ""}
+                        disabled={busy}
+                        onChange={(e) =>
+                          setAnchor({
+                            latitude: Number(e.target.value),
+                            longitude: anchor?.longitude ?? 0,
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Longitude
+                      <input
+                        aria-label="Place longitude"
+                        type="number"
+                        step="any"
+                        value={anchor?.longitude ?? ""}
+                        disabled={busy}
+                        onChange={(e) =>
+                          setAnchor({
+                            latitude: anchor?.latitude ?? 0,
+                            longitude: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </label>
+                    <button
                       disabled={busy}
-                      onChange={(e) =>
-                        setAnchor({
-                          latitude: Number(e.target.value),
-                          longitude: anchor?.longitude ?? 0,
-                        })
-                      }
-                    />
-                  </label>
-                  <label>
-                    Longitude
-                    <input
-                      aria-label="Place longitude"
-                      type="number"
-                      step="any"
-                      value={anchor?.longitude ?? ""}
-                      disabled={busy}
-                      onChange={(e) =>
-                        setAnchor({
-                          latitude: anchor?.latitude ?? 0,
-                          longitude: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </label>
-                  <button disabled={busy} onClick={() => setAnchor(undefined)}>
-                    Remove pin
-                  </button>
-                  <label>
-                    Public trip-map pin
-                    <select
-                      aria-label="Shared location accuracy"
-                      value={precision}
-                      disabled={busy}
-                      onChange={(e) =>
-                        setPrecision(e.target.value as PinPrecision)
-                      }
+                      onClick={() => setAnchor(undefined)}
                     >
-                      <option value="approximate">
-                        Approximate · about 1 km
-                      </option>
-                      <option value="exact">Exact chosen place pin</option>
-                      <option value="hidden">Hide pin</option>
-                    </select>
-                  </label>
-                </div>
-                <p className="pg-muted">
-                  GPS stays on the original. This controls the place pin shared
-                  on a trip map. Public original files can still contain their
-                  original EXIF; use sanitized derivatives when that information
-                  must stay private.
-                </p>
+                      Remove pin
+                    </button>
+                    <label>
+                      Public trip-map pin
+                      <select
+                        aria-label="Shared location accuracy"
+                        value={precision}
+                        disabled={busy}
+                        onChange={(e) =>
+                          setPrecision(e.target.value as PinPrecision)
+                        }
+                      >
+                        <option value="approximate">
+                          Approximate · about 1 km
+                        </option>
+                        <option value="exact">Exact chosen place pin</option>
+                        <option value="hidden">Hide pin</option>
+                      </select>
+                    </label>
+                  </div>
+                  <p className="pg-muted">
+                    GPS stays on the original. This controls the place pin
+                    shared on a trip map. Public original files can still
+                    contain their original EXIF; use sanitized derivatives when
+                    that information must stay private.
+                  </p>
+                </details>
                 {saved?.tripLinks?.length ? (
                   <p className="pg-muted">
                     Trip references:{" "}
@@ -834,198 +960,206 @@ export default function GalleryPlaces({
                   </p>
                 ) : null}
                 {saved && (
-                  <div className="gp-trip-tools">
-                    <label>
-                      Visit
-                      <select
-                        aria-label="Visit"
-                        value={visit}
-                        disabled={busy}
-                        onChange={(e) => {
-                          setVisit(e.target.value);
-                          setVisitName(saved.visitNames[e.target.value] || "");
-                          setPage(1);
-                          setSelected([]);
-                        }}
-                      >
-                        <option value="">All visits</option>
-                        {visits.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.title} · {v.members.length} frames
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {visit && (
-                      <>
-                        <label>
-                          Visit name
-                          <input
-                            value={visitName}
-                            maxLength={80}
+                  <details className="gp-trip-disclosure">
+                    <summary>Add to trip or choose a visit</summary>
+                    <div className="gp-trip-tools">
+                      <label>
+                        Visit
+                        <select
+                          aria-label="Visit"
+                          value={visit}
+                          disabled={busy}
+                          onChange={(e) => {
+                            setVisit(e.target.value);
+                            setVisitName(
+                              saved.visitNames[e.target.value] || "",
+                            );
+                            setPage(1);
+                            setSelected([]);
+                          }}
+                        >
+                          <option value="">All visits</option>
+                          {visits.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.title} · {v.members.length} frames
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {visit && (
+                        <>
+                          <label>
+                            Visit name
+                            <input
+                              value={visitName}
+                              maxLength={80}
+                              disabled={busy}
+                              onChange={(e) => setVisitName(e.target.value)}
+                            />
+                          </label>
+                          <button
                             disabled={busy}
-                            onChange={(e) => setVisitName(e.target.value)}
+                            onClick={() =>
+                              void run(async () => {
+                                setLibrary(
+                                  await changePlaces((old) => ({
+                                    ...old,
+                                    places: old.places.map((p) =>
+                                      p.id === saved.id
+                                        ? {
+                                            ...p,
+                                            visitNames: {
+                                              ...p.visitNames,
+                                              [visit]:
+                                                visitName.trim() ||
+                                                new Date(
+                                                  visits.find(
+                                                    (v) => v.id === visit,
+                                                  )!.from,
+                                                ).toLocaleDateString(),
+                                            },
+                                          }
+                                        : p,
+                                    ),
+                                  })),
+                                );
+                              })
+                            }
+                          >
+                            Save visit name
+                          </button>
+                        </>
+                      )}
+                      <label>
+                        Trip
+                        <select
+                          aria-label="Destination trip"
+                          value={trip}
+                          disabled={busy}
+                          onChange={(e) => {
+                            setTrip(e.target.value);
+                            if (e.target.value === "new") {
+                              setNewTripName(name);
+                              setNewTripPin(anchor);
+                            }
+                          }}
+                        >
+                          <option value="">Choose a trip</option>
+                          {trips.map((t) => (
+                            <option value={t.id} key={t.id}>
+                              {t.title}
+                            </option>
+                          ))}
+                          <option value="new">+ Create a trip</option>
+                        </select>
+                      </label>
+                      {trip === "new" && (
+                        <div className="gp-new-trip">
+                          <label>
+                            Trip title
+                            <input
+                              aria-label="New trip title"
+                              maxLength={140}
+                              value={newTripName}
+                              disabled={busy}
+                              onChange={(e) => setNewTripName(e.target.value)}
+                            />
+                          </label>
+                          <TripMapPicker
+                            value={newTripPin}
+                            onChange={setNewTripPin}
                           />
+                        </div>
+                      )}
+                      <button
+                        disabled={busy || !trip}
+                        onClick={() =>
+                          void run(async () => {
+                            await savePlace();
+                            const current = await readPlaces(),
+                              place = current.places.find(
+                                (p) => p.id === saved.id,
+                              )!;
+                            let tripId = trip;
+                            if (trip === "new") {
+                              if (!newTripName.trim() || !newTripPin)
+                                throw Error(
+                                  "Add a trip title and choose its main map pin.",
+                                );
+                              const created = await savePastTrip({
+                                title: newTripName,
+                                destination: newTripName,
+                                startDate: "",
+                                endDate: "",
+                                mapLocation: newTripPin,
+                              });
+                              tripId = created.id;
+                              setTrip(tripId);
+                            }
+                            await addSavedPlaceToTrip(
+                              place,
+                              current,
+                              tripId,
+                              visit
+                                ? visits.find((v) => v.id === visit)?.members
+                                : place.members,
+                            );
+                            setNotice(
+                              "Place and originals added to the trip locally. Creator Studio handles upload and website review. The globe keeps the trip’s main pin.",
+                            );
+                          })
+                        }
+                      >
+                        <Plus size={16} /> Add/update in trip
+                      </button>
+                      <Link href="/secret/studio">
+                        Review in Creator Studio ↗
+                      </Link>
+                      <details className="gp-merge">
+                        <summary>Combine with another place</summary>
+                        <label>
+                          Merge into
+                          <select
+                            aria-label="Combine with place"
+                            value={mergeTarget}
+                            disabled={busy}
+                            onChange={(e) => setMergeTarget(e.target.value)}
+                          >
+                            <option value="">Choose another place</option>
+                            {library.places
+                              .filter((p) => p.id !== saved.id)
+                              .map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}
+                                </option>
+                              ))}
+                          </select>
                         </label>
                         <button
-                          disabled={busy}
+                          disabled={busy || !mergeTarget}
                           onClick={() =>
                             void run(async () => {
+                              if (
+                                !confirm(
+                                  "Merge these places? You can undo the local edit. Published trips stay unchanged until updated.",
+                                )
+                              )
+                                return;
                               setLibrary(
-                                await changePlaces((old) => ({
-                                  ...old,
-                                  places: old.places.map((p) =>
-                                    p.id === saved.id
-                                      ? {
-                                          ...p,
-                                          visitNames: {
-                                            ...p.visitNames,
-                                            [visit]:
-                                              visitName.trim() ||
-                                              new Date(
-                                                visits.find(
-                                                  (v) => v.id === visit,
-                                                )!.from,
-                                              ).toLocaleDateString(),
-                                          },
-                                        }
-                                      : p,
-                                  ),
-                                })),
+                                await changePlaces((old) =>
+                                  mergePlaces(old, saved.id, mergeTarget),
+                                ),
                               );
+                              setActive("");
+                              setNotice("Places merged.");
                             })
                           }
                         >
-                          Save visit name
+                          <GitMerge size={16} /> Merge
                         </button>
-                      </>
-                    )}
-                    <label>
-                      Trip
-                      <select
-                        aria-label="Destination trip"
-                        value={trip}
-                        disabled={busy}
-                        onChange={(e) => {
-                          setTrip(e.target.value);
-                          if (e.target.value === "new") {
-                            setNewTripName(name);
-                            setNewTripPin(anchor);
-                          }
-                        }}
-                      >
-                        <option value="">Choose a trip</option>
-                        {trips.map((t) => (
-                          <option value={t.id} key={t.id}>
-                            {t.title}
-                          </option>
-                        ))}
-                        <option value="new">+ Create a trip</option>
-                      </select>
-                    </label>
-                    {trip === "new" && (
-                      <div className="gp-new-trip">
-                        <label>
-                          Trip title
-                          <input
-                            aria-label="New trip title"
-                            maxLength={140}
-                            value={newTripName}
-                            disabled={busy}
-                            onChange={(e) => setNewTripName(e.target.value)}
-                          />
-                        </label>
-                        <TripMapPicker
-                          value={newTripPin}
-                          onChange={setNewTripPin}
-                        />
-                      </div>
-                    )}
-                    <button
-                      disabled={busy || !trip}
-                      onClick={() =>
-                        void run(async () => {
-                          await savePlace();
-                          const current = await readPlaces(),
-                            place = current.places.find(
-                              (p) => p.id === saved.id,
-                            )!;
-                          let tripId = trip;
-                          if (trip === "new") {
-                            if (!newTripName.trim() || !newTripPin)
-                              throw Error(
-                                "Add a trip title and choose its main map pin.",
-                              );
-                            const created = await savePastTrip({
-                              title: newTripName,
-                              destination: newTripName,
-                              startDate: "",
-                              endDate: "",
-                              mapLocation: newTripPin,
-                            });
-                            tripId = created.id;
-                            setTrip(tripId);
-                          }
-                          await addSavedPlaceToTrip(
-                            place,
-                            current,
-                            tripId,
-                            visit
-                              ? visits.find((v) => v.id === visit)?.members
-                              : place.members,
-                          );
-                          setNotice(
-                            "Place and originals added to the trip locally. Creator Studio handles upload and website review. The globe keeps the trip’s main pin.",
-                          );
-                        })
-                      }
-                    >
-                      <Plus size={16} /> Add/update in trip
-                    </button>
-                    <Link href="/secret/studio">
-                      Review in Creator Studio ↗
-                    </Link>
-                    <label>
-                      Merge into
-                      <select
-                        aria-label="Combine with place"
-                        value={mergeTarget}
-                        disabled={busy}
-                        onChange={(e) => setMergeTarget(e.target.value)}
-                      >
-                        <option value="">Choose another place</option>
-                        {library.places
-                          .filter((p) => p.id !== saved.id)
-                          .map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                    <button
-                      disabled={busy || !mergeTarget}
-                      onClick={() =>
-                        void run(async () => {
-                          if (
-                            !confirm(
-                              "Merge these places? You can undo the local edit. Published trips stay unchanged until updated.",
-                            )
-                          )
-                            return;
-                          setLibrary(
-                            await changePlaces((old) =>
-                              mergePlaces(old, saved.id, mergeTarget),
-                            ),
-                          );
-                          setActive("");
-                          setNotice("Places merged.");
-                        })
-                      }
-                    >
-                      <GitMerge size={16} /> Merge
-                    </button>
-                  </div>
+                      </details>
+                    </div>
+                  </details>
                 )}
               </>
             )}

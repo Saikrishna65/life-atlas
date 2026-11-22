@@ -54,6 +54,10 @@ public final class GalleryIntelligenceWorker extends Worker {
   }
 
   static Bitmap decode(Context c, String id) throws Exception {
+    return decode(c, id, 1600);
+  }
+
+  static Bitmap decode(Context c, String id, int edge) throws Exception {
     if (Build.VERSION.SDK_INT >= 28)
       return ImageDecoder.decodeBitmap(
           ImageDecoder.createSource(c.getContentResolver(), R2DeviceGallery.uri(id)),
@@ -61,7 +65,7 @@ public final class GalleryIntelligenceWorker extends Worker {
             decoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE);
             decoder.setTargetColorSpace(ColorSpace.get(ColorSpace.Named.SRGB));
             int width = info.getSize().getWidth(), height = info.getSize().getHeight();
-            double scale = Math.min(1, 1600d / Math.max(width, height));
+            double scale = Math.min(1, (double) edge / Math.max(width, height));
             decoder.setTargetSize(
                 Math.max(1, (int) (width * scale)), Math.max(1, (int) (height * scale)));
           });
@@ -74,8 +78,8 @@ public final class GalleryIntelligenceWorker extends Worker {
     BitmapFactory.Options options = new BitmapFactory.Options();
     options.inSampleSize = 1;
     options.inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB);
-    while (Math.max(bounds.outWidth, bounds.outHeight) / options.inSampleSize > 1600)
-      options.inSampleSize *= 2;
+    while (Math.max(bounds.outWidth, bounds.outHeight) / options.inSampleSize
+        > (edge == 1600 ? edge : edge * 2)) options.inSampleSize *= 2;
     Bitmap bitmap;
     try (InputStream in = c.getContentResolver().openInputStream(R2DeviceGallery.uri(id))) {
       bitmap = BitmapFactory.decodeStream(in, null, options);

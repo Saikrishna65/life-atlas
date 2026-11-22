@@ -8,6 +8,10 @@ import {
   type GalleryIntelligenceStatus,
 } from "@/lib/gallery/intelligence";
 import type { GalleryCacheReport } from "@/lib/gallery/media-tools";
+import {
+  readGalleryPreference,
+  saveGalleryPreference,
+} from "@/lib/gallery/store";
 import { useGalleryBack } from "@/lib/gallery/navigation";
 const launcher = registerPlugin<{
   pinGalleryShortcut(): Promise<{ supported: boolean; requested: boolean }>;
@@ -23,6 +27,12 @@ export default function GalleryManagePanel({
   onAnalysis: () => void;
   onRecovery: () => void;
 }) {
+  const [nativeViewer, setNativeViewer] = useState(false);
+  useEffect(() => {
+    void readGalleryPreference("native-viewer", false)
+      .then(setNativeViewer)
+      .catch(() => {});
+  }, []);
   const [cache, setCache] = useState<GalleryCacheReport>(),
     [status, setStatus] = useState<GalleryIntelligenceStatus>(),
     [busy, setBusy] = useState(false),
@@ -61,12 +71,16 @@ export default function GalleryManagePanel({
       clearInterval(poll);
     };
   }, []);
-  const configure = async (limitMiB: number, clear = false) => {
+  const configure = async (
+    limitMiB: number,
+    clear = false,
+    preview?: { previewQuality?: number; previewMaxEdge?: number },
+  ) => {
     setBusy(true);
     setError("");
     try {
-      setCache(await R2.configureGalleryCache({ limitMiB, clear }));
-      window.dispatchEvent(new Event("atlas:gallery-analysis"));
+      setCache(await R2.configureGalleryCache({ limitMiB, clear, ...preview }));
+      window.dispatchEvent(new Event("atlas:gallery-preview-settings"));
     } catch (e) {
       setError(storageError(e));
     } finally {
@@ -79,7 +93,7 @@ export default function GalleryManagePanel({
       className="pg-dialog gallery-manage"
       onClose={onClose}
     >
-      <h2>A little room to breathe.</h2>
+      <h2>Your Gallery, your way.</h2>
       {Capacitor.isNativePlatform() && (
         <section>
           <h3>Open Gallery directly</h3>
@@ -110,12 +124,149 @@ export default function GalleryManagePanel({
           {shortcutNotice && <p role="status">{shortcutNotice}</p>}
         </section>
       )}
+      {Capacitor.isNativePlatform() && (
+        <section>
+          <h3>Photo viewer</h3>
+          <label>
+            <input
+              type="checkbox"
+              checked={nativeViewer}
+              onChange={(e) => {
+                setNativeViewer(e.target.checked);
+                void saveGalleryPreference("native-viewer", e.target.checked);
+              }}
+            />
+            Try the native Android viewer
+          </label>
+          <p>
+            Uses tiled original photos and Android video controls. Local media
+            only. Info and More open Atlas tools; return to the grid to start
+            another native session. This option is experimental pending phone
+            testing.
+          </p>
+        </section>
+      )}
+      <section aria-label="Preview quality">
+        <h3>Photo preview quality</h3>
+        <p>
+          Choose how sharp photos look in the grid. Open a photo to view the
+          original. Your files and cloud uploads are never compressed by this
+          setting.
+        </p>
+        <label>
+          Quality preset
+          <select
+            aria-label="Preview quality preset"
+            disabled={busy || !cache}
+            value={
+              cache?.previewQuality === 80 && cache?.previewMaxEdge === 768
+                ? "saver"
+                : cache?.previewQuality === 92 && cache?.previewMaxEdge === 1280
+                  ? "balanced"
+                  : cache?.previewQuality === 98 &&
+                      cache?.previewMaxEdge === 2560
+                    ? "high"
+                    : "custom"
+            }
+            onChange={(e) => {
+              const presets = {
+                saver: [80, 768],
+                balanced: [92, 1280],
+                high: [98, 2560],
+              };
+              const p = presets[e.target.value as keyof typeof presets];
+              if (p)
+                void configure(cache!.limitMiB, false, {
+                  previewQuality: p[0],
+                  previewMaxEdge: p[1],
+                });
+            }}
+          >
+            <option value="saver">Data saver · lighter previews</option>
+            <option value="balanced">Balanced · recommended</option>
+            <option value="high">High · sharper, more storage</option>
+            <option value="custom" disabled>
+              Custom
+            </option>
+          </select>
+        </label>
+        <details>
+          <summary>Fine-tune quality</summary>
+          <label>
+            JPEG quality · {cache?.previewQuality ?? 92}
+            <input
+              aria-label="Preview JPEG quality"
+              type="range"
+              min="70"
+              max="98"
+              defaultValue={cache?.previewQuality ?? 92}
+              key={cache?.previewQuality}
+              disabled={busy || !cache}
+              onPointerUp={(e) =>
+                void configure(cache!.limitMiB, false, {
+                  previewQuality: +e.currentTarget.value,
+                })
+              }
+              onKeyUp={(e) => {
+                if (["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key))
+                  void configure(cache!.limitMiB, false, {
+                    previewQuality: +e.currentTarget.value,
+                  });
+              }}
+            />
+          </label>
+          <label>
+            Maximum preview size
+            <select
+              aria-label="Maximum preview size"
+              disabled={busy || !cache}
+              value={cache?.previewMaxEdge ?? 1280}
+              onChange={(e) =>
+                void configure(cache!.limitMiB, false, {
+                  previewMaxEdge: +e.target.value,
+                })
+              }
+            >
+              {[512, 768, 1280, 1920, 2560].map((n) => (
+                <option key={n} value={n}>
+                  {n} pixels
+                </option>
+              ))}
+            </select>
+          </label>
+        </details>
+        <p>
+          Only visible previews are rebuilt after a change. Higher settings take
+          more time and cache space; quality numbers are encoder settings, not a
+          percentage of original detail.
+        </p>
+      </section>
       <section>
         <h3>Temporary images</h3>
         <p>
           {cache
             ? `${bytes(cache.bytes)} used · ${cache.files} temporary files`
             : "Checking cache…"}
+        </p>
+        {cache?.categories && (
+          <dl className="gallery-cache-breakdown">
+            {Object.entries(cache.categories).map(([key, value]) => (
+              <div key={key}>
+                <dt>
+                  {{
+                    "device-gallery": "Photo & video previews",
+                    "gallery-filmstrip": "Video timeline frames",
+                    "gallery-motion": "Motion clips",
+                  }[key] || key}
+                </dt>
+                <dd>{bytes(value.bytes)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        <p>
+          This total covers rebuildable display files. Original files, shared
+          exports, cloud downloads and the AI index are not included.
         </p>
         <label>
           Photo cache limit

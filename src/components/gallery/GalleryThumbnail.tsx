@@ -9,10 +9,22 @@ import { gallerySource } from "@/lib/gallery/actions";
 let active = 0;
 const waiting: (() => void)[] = [];
 const cached = new Map<string, { path: string }>();
+const variants = new Map<string, number>();
+let previewEpoch = 0;
 if (typeof window !== "undefined")
-  window.addEventListener("atlas:gallery-analysis", () => cached.clear());
+  window.addEventListener("atlas:gallery-preview-settings", () => {
+    previewEpoch++;
+    cached.clear();
+    variants.clear();
+  });
+if (typeof window !== "undefined")
+  window.addEventListener("atlas:gallery-analysis", () => {
+    cached.clear();
+    variants.clear();
+  });
 export function invalidateThumbnail(id: string) {
   cached.delete(id);
+  variants.delete(id);
   if (typeof window !== "undefined")
     window.dispatchEvent(
       new CustomEvent("atlas:gallery-thumbnail", { detail: id }),
@@ -22,8 +34,14 @@ export function cachedThumbnail(id: string) {
   const value = cached.get(id);
   return value ? gallerySource(value.path) : undefined;
 }
-export async function thumbnail(id: string, stillNeeded: () => boolean) {
-  if (cached.has(id)) return cached.get(id)!;
+export async function thumbnail(
+  id: string,
+  stillNeeded: () => boolean,
+  pixels = 768,
+) {
+  const epoch = previewEpoch;
+  if (cached.has(id) && (variants.get(id) || 0) >= pixels)
+    return cached.get(id)!;
   await new Promise<void>((resolve) => {
     if (active < 3) {
       active++;
@@ -32,9 +50,15 @@ export async function thumbnail(id: string, stillNeeded: () => boolean) {
   });
   try {
     if (!stillNeeded()) throw Error("Thumbnail no longer visible");
-    const result = await R2.getDeviceThumbnail({ id });
+    const result = await R2.getDeviceThumbnail({ id, pixels });
+    if (epoch !== previewEpoch) throw Error("Preview settings changed");
+    variants.set(id, pixels);
     cached.set(id, result);
-    if (cached.size > 240) cached.delete(cached.keys().next().value!);
+    if (cached.size > 240) {
+      const oldest = cached.keys().next().value!;
+      cached.delete(oldest);
+      variants.delete(oldest);
+    }
     return result;
   } finally {
     const next = waiting.shift();
@@ -54,7 +78,8 @@ export default function GalleryThumbnail({
     retried = useRef(false);
   const [near, setNear] = useState(false),
     [source, setSource] = useState(asset.thumbnail || ""),
-    [failed, setFailed] = useState(false);
+    [failed, setFailed] = useState(false),
+    [revision, setRevision] = useState(0);
   useEffect(() => {
     const change = (event: Event) => {
       if ((event as CustomEvent<string>).detail === asset.id) {
@@ -63,8 +88,18 @@ export default function GalleryThumbnail({
         retried.current = false;
       }
     };
+    const settings = () => {
+      setSource("");
+      setFailed(false);
+      retried.current = false;
+      setRevision((n) => n + 1);
+    };
     window.addEventListener("atlas:gallery-thumbnail", change);
-    return () => window.removeEventListener("atlas:gallery-thumbnail", change);
+    window.addEventListener("atlas:gallery-preview-settings", settings);
+    return () => {
+      window.removeEventListener("atlas:gallery-thumbnail", change);
+      window.removeEventListener("atlas:gallery-preview-settings", settings);
+    };
   }, [asset.id]);
   useEffect(() => {
     const node = root.current;
@@ -79,7 +114,18 @@ export default function GalleryThumbnail({
   useEffect(() => {
     if (paused || !near || source || !asset.device) return;
     let mounted = true;
-    void thumbnail(asset.device.id, () => mounted)
+    const bounds = root.current?.getBoundingClientRect();
+    const ratio = Math.max(
+      1,
+      (asset.device?.height || 1) / (asset.device?.width || 1),
+      (asset.device?.width || 1) / (asset.device?.height || 1),
+    );
+    const pixels = Math.ceil(
+      Math.max(bounds?.width || 160, bounds?.height || 160) *
+        Math.min(devicePixelRatio || 1, 3) *
+        Math.min(ratio, 2),
+    );
+    void thumbnail(asset.device.id, () => mounted, pixels)
       .then((result) => {
         if (mounted) {
           setFailed(false);
@@ -92,7 +138,15 @@ export default function GalleryThumbnail({
     return () => {
       mounted = false;
     };
-  }, [near, source, asset.device, paused]);
+  }, [
+    near,
+    source,
+    asset.device,
+    asset.device?.width,
+    asset.device?.height,
+    paused,
+    revision,
+  ]);
   return (
     <div className="pg-thumbnail" ref={root}>
       {near && source && !failed ? (

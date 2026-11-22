@@ -938,6 +938,46 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void openNativeGalleryViewer(PluginCall call) {
+    work(
+        call,
+        () -> {
+          JSArray raw = call.getArray("ids");
+          ArrayList<String> ids = new ArrayList<>();
+          if (raw != null) for (int i = 0; i < raw.length(); i++) ids.add(raw.getString(i));
+          GalleryNativeViewerActivity.validate(ids);
+          String selected = call.getString("selected", "");
+          if (!ids.contains(selected)) throw new R2Exception("INVALID_SELECTION");
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    Intent intent = new Intent(getContext(), GalleryNativeViewerActivity.class);
+                    intent.putStringArrayListExtra("ids", ids);
+                    intent.putExtra("selected", selected);
+                    startActivityForResult(call, intent, "nativeGalleryClosed");
+                  });
+        });
+  }
+
+  @ActivityCallback
+  private void nativeGalleryClosed(PluginCall call, ActivityResult result) {
+    if (call == null) return;
+    Intent value = result.getData();
+    if (result.getResultCode() != Activity.RESULT_OK || value == null) {
+      call.resolve(new JSObject().put("action", "close"));
+      return;
+    }
+    String id = value.getStringExtra("id");
+    try {
+      R2DeviceGallery.mediaNumber(id);
+    } catch (Exception invalid) {
+      call.reject("INVALID_SELECTION");
+      return;
+    }
+    call.resolve(new JSObject().put("id", id).put("action", value.getStringExtra("action")));
+  }
+
+  @PluginMethod
   public void getDeviceThumbnail(PluginCall call) {
     work(
         call,
@@ -946,7 +986,8 @@ public class R2StoragePlugin extends Plugin {
                 new JSObject()
                     .put(
                         "path",
-                        new R2DeviceGallery(getContext()).thumbnail(call.getString("id")))));
+                        new R2DeviceGallery(getContext())
+                            .thumbnail(call.getString("id"), call.getInt("pixels", 768)))));
   }
 
   @PluginMethod

@@ -393,19 +393,26 @@ final class R2DeviceGallery {
   }
 
   String thumbnail(String id) throws Exception {
+    return thumbnail(id, 768);
+  }
+
+  String thumbnail(String id, int pixels) throws Exception {
     JSONObject media = one(id);
     File root = new File(context.getCacheDir(), "device-gallery");
     root.mkdirs();
     double cover = GalleryMediaTools.cover(context, repository.store, media);
-    if (cover >= 0) return GalleryMediaTools.frame(context, media, cover, true);
-    long cacheLimit = GalleryMediaTools.cacheLimit(repository.store);
-    File file = new File(root, selectionId(media) + "-sharp-v2.jpg");
+    GalleryPreviewSettings settings = GalleryPreviewSettings.read(repository.store);
+    int edge = settings.edge(pixels);
+    if (cover >= 0)
+      return GalleryMediaTools.frame(context, media, cover, true, edge, settings.quality);
+    File file =
+        new File(root, selectionId(media) + "-p3-" + edge + "-q" + settings.quality + ".jpg");
     if (!file.exists()) {
       Bitmap bitmap =
           id.startsWith("image:")
-              ? GalleryIntelligenceWorker.decode(context, id)
+              ? GalleryIntelligenceWorker.decode(context, id, edge)
               : Build.VERSION.SDK_INT >= 29
-                  ? context.getContentResolver().loadThumbnail(uri(id), new Size(960, 960), null)
+                  ? context.getContentResolver().loadThumbnail(uri(id), new Size(edge, edge), null)
                   : id.startsWith("image:")
                       ? MediaStore.Images.Thumbnails.getThumbnail(
                           context.getContentResolver(),
@@ -418,7 +425,7 @@ final class R2DeviceGallery {
                           MediaStore.Video.Thumbnails.MINI_KIND,
                           null);
       if (bitmap == null) throw new R2Exception("PREVIEW_UNAVAILABLE");
-      double scale = Math.min(1, 960d / Math.max(bitmap.getWidth(), bitmap.getHeight()));
+      double scale = Math.min(1, (double) edge / Math.max(bitmap.getWidth(), bitmap.getHeight()));
       if (scale < 1) {
         Bitmap resized =
             Bitmap.createScaledBitmap(
@@ -433,7 +440,7 @@ final class R2DeviceGallery {
       FileOutputStream out = null;
       try {
         out = atomic.startWrite();
-        if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 94, out))
+        if (!bitmap.compress(Bitmap.CompressFormat.JPEG, settings.quality, out))
           throw new R2Exception("PREVIEW_UNAVAILABLE");
         atomic.finishWrite(out);
       } catch (Exception e) {
@@ -442,24 +449,10 @@ final class R2DeviceGallery {
       } finally {
         bitmap.recycle();
       }
-      File[] files = root.listFiles();
-      if (files != null) {
-        Arrays.sort(files, Comparator.comparingLong(File::lastModified));
-        long bytes = 0;
-        for (File cached : files) bytes += cached.length();
-        int remaining = files.length;
-        for (File cached : files) {
-          if (bytes <= cacheLimit && remaining <= 800) break;
-          if (cached.equals(file)) continue;
-          long length = cached.length();
-          if (cached.delete()) {
-            bytes -= length;
-            remaining--;
-          }
-        }
-      }
+      GalleryPreviewSettings.pruneIfDue(root, settings.limitMiB * 1024L * 1024, file);
     }
-    file.setLastModified(System.currentTimeMillis());
+    if (System.currentTimeMillis() - file.lastModified() > 60000)
+      file.setLastModified(System.currentTimeMillis());
     return file.getAbsolutePath();
   }
 

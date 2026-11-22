@@ -23,7 +23,7 @@ import {
 import { Modal } from "@/components/world/primitives";
 import type { DetailMedia } from "@/lib/public-trips/detail";
 import { useGalleryBack } from "@/lib/gallery/navigation";
-import { R2, storageError } from "@/lib/r2/native";
+import { R2, storageError, nativeR2Available } from "@/lib/r2/native";
 import {
   deviceMediaId,
   shareDevice,
@@ -49,7 +49,7 @@ import { systemAction } from "@/lib/r2/native";
 import ViewerVideo from "./ViewerVideo";
 import "@/components/media/journal-viewer.css";
 import "./photo-viewer.css";
-export default function PhotoViewer({
+function WebPhotoViewer({
   items,
   selected,
   onSelect,
@@ -65,7 +65,9 @@ export default function PhotoViewer({
   onWhatsApp,
   onTripMedia,
   searchQuery = "",
+  initialPanel,
 }: {
+  initialPanel?: "info" | "more";
   searchQuery?: string;
   items: DetailMedia[];
   selected: string;
@@ -149,8 +151,8 @@ export default function PhotoViewer({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [chrome, setChrome] = useState(true),
-    [info, setInfo] = useState(false);
-  const [actions, setActions] = useState(false);
+    [info, setInfo] = useState(initialPanel === "info");
+  const [actions, setActions] = useState(initialPanel === "more");
   const axis = useRef<"x" | "y" | undefined>(undefined);
   const quickZoom = useRef(false),
     lastTap = useRef({ at: 0, x: 0, y: 0 });
@@ -1400,4 +1402,87 @@ export default function PhotoViewer({
       )}
     </Modal>
   );
+}
+
+/** Native is opt-in until phone validation; cloud media and Atlas tools keep their existing viewer. */
+export default function PhotoViewer(
+  props: Parameters<typeof WebPhotoViewer>[0],
+) {
+  const [mode, setMode] = useState<"checking" | "native" | "web">("checking");
+  const [panel, setPanel] = useState<"info" | "more">();
+  const started = useRef(false),
+    latest = useRef(props);
+  useLayoutEffect(() => {
+    latest.current = props;
+  });
+  useEffect(() => {
+    let live = true;
+    const initial = latest.current;
+    if (started.current) return;
+    void readGalleryPreference("native-viewer", false)
+      .then((enabled) => {
+        if (!live) return;
+        if (
+          !enabled ||
+          !nativeR2Available() ||
+          !initial.items.every((m) => deviceMediaId(m.id)) ||
+          initial.items.length > 2000
+        ) {
+          setMode("web");
+          return;
+        }
+        started.current = true;
+        setMode("native");
+        void systemAction(() =>
+          R2.openNativeGalleryViewer({
+            ids: initial.items.map((m) => m.id),
+            selected: initial.selected,
+          }),
+        )
+          .then(async (result) => {
+            const p = latest.current;
+            if (result.id) p.onSelect(result.id);
+            const id = result.id || p.selected;
+            if (result.action === "close") {
+              p.onClose();
+              return;
+            }
+            if (result.action === "share")
+              await (p.onShare ? p.onShare(id) : shareDevice([id]));
+            else if (result.action === "whatsapp")
+              await (p.onWhatsApp ? p.onWhatsApp(id) : shareWhatsApp(id));
+            else if (result.action === "favourite") {
+              if (p.onFavorite) await p.onFavorite(id);
+              else {
+                const prefs = await R2.getGalleryMediaPreferences();
+                const values = prefs.favorites || [];
+                await R2.saveGalleryMediaPreferences({
+                  favorites: values.includes(id)
+                    ? values.filter((x) => x !== id)
+                    : [...values, id],
+                });
+                window.dispatchEvent(new Event("atlas:gallery-restored"));
+              }
+            }
+            setPanel(
+              result.action === "info"
+                ? "info"
+                : result.action === "more"
+                  ? "more"
+                  : undefined,
+            );
+            setMode("web");
+          })
+          .catch(() => setMode("web"));
+      })
+      .catch(() => {
+        if (live) setMode("web");
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  return mode === "web" ? (
+    <WebPhotoViewer {...props} initialPanel={panel} />
+  ) : null;
 }

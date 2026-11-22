@@ -12,7 +12,7 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));let browser;
 try{
  browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`http://127.0.0.1:${server.address().port}`);await page.getByRole('button',{name:'Updates',exact:true}).click();
- const dialog=page.getByRole('dialog',{name:'Atlas updates'});await dialog.waitFor();await dialog.getByRole('button',{name:'Check for updates',exact:true}).click();await dialog.getByText('Synthetic update notes').waitFor();
+ const dialog=page.getByRole('dialog',{name:'Atlas updates'});await dialog.waitFor();const centered=await dialog.boundingBox();assert.ok(Math.abs(centered.x+centered.width/2-195)<2);assert.ok(Math.abs(centered.y+centered.height/2-422)<2);await dialog.getByRole('button',{name:'Check for updates',exact:true}).click();await dialog.getByText('Synthetic update notes').waitFor();
  assert.equal(await page.evaluate(()=>calls.some(x=>x[0]==='download')),false,'Checking never downloads an APK');
  await dialog.getByRole('button',{name:'Download update',exact:true}).click();await dialog.getByRole('button',{name:'Allow Atlas to install updates'}).click();await dialog.getByText(/Allow updates from Atlas in Android settings/).waitFor();
  assert.equal(await page.evaluate(()=>calls.find(x=>x[0]==='install')[1].consent),true);
