@@ -5,6 +5,7 @@
 - Navigation commits each swipe immediately. A subsequent gesture samples the
   current slide offset and interrupts it instead of being discarded during a
   220 ms lock. Keyboard steps use the latest selected ID even before React paints.
+- Gallery status messages no longer consume taps; their buttons remain usable.
 - A temporary shared image animates uniformly from the thumbnail to the contained
   original rectangle, using clipping for differing shapes. Exit reverses this to
   the visible tile. Animation resources are released; unavailable thumbnails and
