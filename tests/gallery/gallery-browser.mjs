@@ -76,7 +76,7 @@ console.log('PASS: independent Favourites and Collections scroll positions, nati
  const gridTouch=await context.newCDPSession(page),initialDensity=Number(await page.locator('.pg-grid').getAttribute('data-density'));
  async function pinchGrid(start,end){const box=await page.locator('.pg-grid').boundingBox(),x=box.x+box.width/2,y=Math.max(280,box.y+120);await gridTouch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:x-start,y},{x:x+start,y}]});await gridTouch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x-end,y},{x:x+end,y}]});await gridTouch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
  await pinchGrid(50,80);await page.waitForTimeout(100);assert.equal(Number(await page.locator('.pg-grid').getAttribute('data-density')),initialDensity);
- await pinchGrid(100,65);await page.waitForTimeout(100);assert.equal(Number(await page.locator('.pg-grid').getAttribute('data-density')),initialDensity);await gridTouch.detach();
+ await pinchGrid(100,65);await page.waitForTimeout(100);assert.equal(Number(await page.locator('.pg-grid').getAttribute('data-density')),initialDensity);await gridTouch.send('Emulation.setPageScaleFactor',{pageScaleFactor:1});await gridTouch.detach();
  // A scrolled subpage must not move the parent. Returning restores the loaded list too.
  await page.evaluate(()=>scrollTo(0,400));await page.waitForTimeout(80);const photosY=await page.evaluate(()=>scrollY);
  await page.getByRole('button',{name:'Organize collections',exact:true}).click();await page.waitForFunction(()=>scrollY===0);
