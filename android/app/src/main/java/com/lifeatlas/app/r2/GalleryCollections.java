@@ -57,6 +57,10 @@ final class GalleryCollections {
     String scope =
         kind
             + ":"
+            + (kind.equals("people")
+                ? GalleryPeople.POLICY
+                : kind.equals("similar") ? GallerySimilar.POLICY : "v1")
+            + ":"
             + config.optBoolean(kind)
             + ":"
             + Objects.toString(config.optJSONArray("albums"), "[]")
@@ -95,7 +99,12 @@ final class GalleryCollections {
           for (GalleryIndexedPhotos.Photo p : g.photos) ids.put(p.id);
           groups.put(
               g.key,
-              new JSONObject().put("ids", ids).put("bestId", g.best).put("pickedId", g.pick));
+              new JSONObject()
+                  .put("ids", ids)
+                  .put("bestId", g.best)
+                  .put("pickedId", g.pick)
+                  .put("bestReason", g.reason)
+                  .put("relationship", g.relationship));
         }
       } else {
         GalleryPeople people = new GalleryPeople(index, db.choice("people"));
@@ -168,7 +177,11 @@ final class GalleryCollections {
           .put("cursor", group.optString("cursor"))
           .put("complete", group.optBoolean("complete"))
           .put("bestId", best)
-          .put("pickedId", pick);
+          .put("pickedId", pick)
+          .put("bestReason", group.optString("bestReason"))
+          .put(
+              "relationship",
+              group.optString("relationship").isEmpty() ? null : group.getString("relationship"));
     }
   }
 

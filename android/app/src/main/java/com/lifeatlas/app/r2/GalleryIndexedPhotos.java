@@ -86,7 +86,8 @@ final class GalleryIndexedPhotos {
               for (int j = 0; j < 128; j++) vector[j] = (float) v.getDouble(j);
               Face face =
                   new Face(f.getString("id"), id, GalleryFaceModels.normalize(vector), date);
-              face.quality = f.optDouble("quality", 1);
+              double quality = f.optDouble("quality", 1);
+              face.quality = Double.isFinite(quality) ? Math.max(0, Math.min(1, quality)) : 0;
               fs.add(face);
               faces++;
             }

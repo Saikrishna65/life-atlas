@@ -1,3 +1,37 @@
+Atlas 2.2.9 — Gallery AI reliability and efficiency
+
+Install atlas.apk over Atlas without uninstalling. Version code 45.
+The package and signing identity stay unchanged; existing indexes and corrections
+are kept. No new model download or subscription is introduced by this update.
+
+• Repeated searches reuse a small encrypted cache of saved matches. Android file
+  access and original versions are checked again before displaying a result.
+• Natural search understands today, yesterday, this/last week and past N days,
+  combined with saved people, trip/place names and remaining scene words.
+• Clearer faces become grouping anchors first. Very poor unreviewed detections
+  stay separate; only references you explicitly choose can override that rule.
+  Names still need your confirmation; merge, separate and correction data stay.
+• Suggested photo picks penalize heavy clipping and explain their purpose.
+  Near-identical views are labelled separately from similar shots; neither means
+  verified byte-identical files. Your chosen pick always takes priority.
+• Analysis uses smaller source images for lightweight tasks, keeps English OCR
+  and face analysis at their existing resolution, and pauses for heat, low battery,
+  Battery Saver or memory pressure. Saved text matches remain usable.
+• Stale visual model revisions are detected, optional failures do not discard
+  successful earlier work, and incomplete analysis gets an honest status message.
+• Saved search labels, feedback and edits now mark encrypted recovery as changed.
+  Existing opt-in/recovery-key verification still applies. Private classifications
+  never enter public image metadata or website catalogs.
+
+Gallery → Settings → Analysis activity controls existing analysis preferences.
+People and visual models remain optional. Keep charging-only on for the initial
+library scan. Once saved, matches and classifications can be read offline.
+
+Phone-specific model accuracy, battery use and latency still need testing on your
+own library. Force-stopping Atlas prevents Android background jobs until reopening.
+
+Historical release notes below.
+
 Atlas 2.2.8 — Places, photo quality and viewer improvements
 
 Install atlas.apk over Atlas; do not uninstall. Version code 44.

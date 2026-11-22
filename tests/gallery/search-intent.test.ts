@@ -17,3 +17,15 @@ test('ambiguous saved place names require choosing the trip',()=>{
  assert.equal(gallerySearchIntent('Tungnath',[...trips,other]).placeId,undefined);
  assert.equal(gallerySearchIntent('Tungnath My mountain journey',[...trips,other]).tripId,'himalaya');
 });
+
+test('ordinary day/week questions preserve scene words and confirmed people',()=>{
+ const now=new Date(2026,0,1,12);
+ const yesterday=gallerySearchIntent('show me photos of mountains from yesterday',trips,now);
+ assert.equal(yesterday.from,'2025-12-31');assert.equal(yesterday.to,'2025-12-31');assert.equal(yesterday.text,'mountains');
+ const week=gallerySearchIntent('find photos at Tungnath with Kiran last week',trips,now,[{id:'kiran',name:'Kiran'}]);
+ assert.equal(week.from,'2025-12-22');assert.equal(week.to,'2025-12-28');assert.equal(week.placeId,'temple');assert.equal(week.personId,'kiran');assert.equal(week.text,'');
+ const days=gallerySearchIntent('videos from the past 7 days',[],now);
+ assert.equal(days.from,'2025-12-26');assert.equal(days.to,'2026-01-01');
+ assert.equal(gallerySearchIntent('photos from the last 0 days',[],now).from,undefined);
+ assert.equal(gallerySearchIntent('photos from the last 999 days',[],now).from,undefined);
+});

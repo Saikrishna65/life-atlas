@@ -34,6 +34,14 @@ final class GalleryIntelligence {
     this.secure = secure;
   }
 
+  static boolean hasCurrentVisual(JSONObject row) {
+    JSONArray vector = row.optJSONArray("embedding");
+    return row.optBoolean("visualDone")
+        && GalleryClip.REVISION.equals(row.optString("model"))
+        && vector != null
+        && vector.length() == 512;
+  }
+
   JSONObject settings() throws Exception {
     synchronized (STATE_LOCK) {
       try (GallerySearchStore db = new GallerySearchStore(secure)) {
@@ -130,6 +138,8 @@ final class GalleryIntelligence {
               .put("similar", input.optBoolean("similar"))
               .put("people", input.optBoolean("people"))
               .put("faceQualityPolicy", GalleryFaceQuality.VERSION)
+              .put("visualPolicy", GalleryClip.REVISION)
+              .put("similarPolicy", GalleryPhotoQuality.VERSION)
               .put("chargingOnly", input.optBoolean("chargingOnly", true))
               .put("wifiOnly", input.optBoolean("wifiOnly", true))
               .put("albums", albums)
@@ -268,12 +278,21 @@ final class GalleryIntelligence {
     JSONObject preferences = settings();
     boolean qualityChanged =
         preferences.optBoolean("enabled")
-            && preferences.optBoolean("people")
-            && !GalleryFaceQuality.VERSION.equals(preferences.optString("faceQualityPolicy"));
+            && ((preferences.optBoolean("people")
+                    && !GalleryFaceQuality.VERSION.equals(
+                        preferences.optString("faceQualityPolicy")))
+                || (preferences.optBoolean("visual")
+                    && !GalleryClip.REVISION.equals(preferences.optString("visualPolicy")))
+                || (preferences.optBoolean("similar")
+                    && !GalleryPhotoQuality.VERSION.equals(
+                        preferences.optString("similarPolicy"))));
     if (qualityChanged) {
       synchronized (STATE_LOCK) {
         preferences = settings();
-        preferences.put("faceQualityPolicy", GalleryFaceQuality.VERSION);
+        preferences
+            .put("faceQualityPolicy", GalleryFaceQuality.VERSION)
+            .put("visualPolicy", GalleryClip.REVISION)
+            .put("similarPolicy", GalleryPhotoQuality.VERSION);
         writeSettings(preferences);
       }
       if (Set.of("ready", "error").contains(preferences.optString("state"))) control("scan");
@@ -492,6 +511,22 @@ final class GalleryIntelligence {
         }
       }
     }
+    String resultKey =
+        GallerySearchResults.key(query, album, kind, filters, config, GalleryClip.ready(context));
+    long searchRevision;
+    try (GallerySearchStore db = new GallerySearchStore(secure)) {
+      searchRevision = db.revision();
+      if (offset == 0) {
+        JSONObject cached = null;
+        try {
+          cached = GallerySearchResults.read(context, db, resultKey, cancelled);
+        } catch (R2Exception failure) {
+          if (failure.code.equals("SEARCH_CANCELLED")) throw failure;
+        } catch (Exception ignored) {
+        }
+        if (cached != null) return cached;
+      }
+    }
     if (progress != null
         && offset == 0
         && !query.trim().isEmpty()
@@ -507,12 +542,21 @@ final class GalleryIntelligence {
     }
     List<String> terms = terms(query);
     float[] vector = null;
-    boolean visualUnavailable = config.optBoolean("visual") && !GalleryClip.ready(context);
+    boolean wantsVisual =
+        !filters.optBoolean("textOnly")
+            && !query.trim().isEmpty()
+            && config.optBoolean("visual")
+            && !kind.equals("video");
+    String budgetReason =
+        wantsVisual && GalleryClip.ready(context) ? GalleryAiBudget.reason(context) : "";
+    boolean visualUnavailable =
+        wantsVisual && (!GalleryClip.ready(context) || !budgetReason.isEmpty());
     if (!filters.optBoolean("textOnly")
         && !query.trim().isEmpty()
         && config.optBoolean("visual")
         && !kind.equals("video")
-        && GalleryClip.ready(context)) {
+        && GalleryClip.ready(context)
+        && budgetReason.isEmpty()) {
       try {
         vector = GallerySearchInference.query(context, secure, query, cancelled);
       } catch (Exception failure) {
@@ -552,7 +596,9 @@ final class GalleryIntelligence {
             config.optBoolean("ocr") && hasCurrentOcr(row) ? entry.recognizedText : entry.fileText;
         boolean text = !terms.isEmpty() && terms.stream().allMatch(searchable::contains);
         double score = query.trim().isEmpty() ? 1 : text ? 2 : 0;
-        if (vector != null && entry.vector != null) {
+        if (vector != null
+            && entry.vector != null
+            && GalleryClip.REVISION.equals(row.optString("model"))) {
           double similarity = GalleryClip.cosine(vector, entry.vector);
           if (similarity >= .20) score = Math.max(score, similarity);
         }
@@ -614,17 +660,28 @@ final class GalleryIntelligence {
       }
     }
     boolean complete = consumed >= sorted.size();
-    return new JSONObject()
-        .put(
-            "notice",
-            visualUnavailable
-                ? "Visual search is unavailable right now. Showing matches from filenames and"
-                    + " recognised text; your gallery stays available."
-                : "")
-        .put("items", items)
-        .put("cursor", complete ? "" : Integer.toString(consumed))
-        .put("complete", complete)
-        .put("indexedOnly", true)
-        .put("visual", vector != null);
+    String notice =
+        visualUnavailable
+            ? "Visual search is unavailable right now. Showing matches from filenames and"
+                + " recognised text; your gallery stays available."
+            : "";
+    if (!budgetReason.isEmpty())
+      notice =
+          "Visual matching is resting to protect your phone’s battery, temperature or memory. Saved"
+              + " text matches remain available.";
+    JSONObject result =
+        new JSONObject()
+            .put("notice", notice)
+            .put("items", items)
+            .put("cursor", complete ? "" : Integer.toString(consumed))
+            .put("complete", complete)
+            .put("indexedOnly", true)
+            .put("visual", vector != null);
+    if (offset == 0 && !cancelled.getAsBoolean())
+      try (GallerySearchStore db = new GallerySearchStore(secure)) {
+        GallerySearchResults.write(db, resultKey, searchRevision, result);
+      } catch (Exception ignored) {
+      } // Optional cache failures never hide search results.
+    return result;
   }
 }

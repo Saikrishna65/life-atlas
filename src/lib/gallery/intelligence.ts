@@ -29,7 +29,7 @@ export interface GalleryIntelligenceStatus extends GalleryIntelligenceSettings {
   peopleModelReady?: boolean;
   peopleModelBytes?: number;
   downloadTarget?: "people" | "visual";
-  waitReason?: "heat" | "battery-saver" | "";
+  waitReason?: "heat" | "battery-saver" | "battery" | "memory" | "";
 }
 export const defaultIntelligenceSettings: GalleryIntelligenceSettings = {
   ocr: true,
@@ -51,6 +51,10 @@ export function intelligenceStateText(
         return "Taking a break while your phone cools down";
       if (status.waitReason === "battery-saver")
         return "Paused while Battery Saver is on";
+      if (status.waitReason === "battery")
+        return "Waiting for charging or more than 20% battery";
+      if (status.waitReason === "memory")
+        return "Taking a break while your phone needs memory";
       return status.chargingOnly
         ? "Waiting for charging and enough battery"
         : "Waiting for enough battery and storage";
@@ -61,7 +65,9 @@ export function intelligenceStateText(
     case "indexing":
       return "Analyzing photos on this phone";
     case "ready":
-      return "Up to date";
+      return status.failed > 0
+        ? `Analysis finished · ${status.failed} photos need another try`
+        : "Up to date";
     case "paused":
       return "Paused · your search index is kept";
     case "error":

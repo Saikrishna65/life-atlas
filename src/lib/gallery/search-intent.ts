@@ -87,7 +87,9 @@ export function gallerySearchIntent(
     result.labels.push(person.name);
     take(person.name);
   }
-  const relative = text.match(/\b(this|last)\s+(month|year)\b/);
+  const relative = text.match(/\b(this|last)\s+(week|month|year)\b/);
+  const day = text.match(/\b(today|yesterday)\b/);
+  const recent = text.match(/\b(?:last|past)\s+(\d{1,3})\s+days?\b/);
   const date = text.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
   const month = text.match(
     new RegExp(
@@ -98,7 +100,32 @@ export function gallerySearchIntent(
   let from: Date | undefined,
     to: Date | undefined,
     token = "";
-  if (relative) {
+  if (day) {
+    from = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - (day[1] === "yesterday" ? 1 : 0),
+    );
+    to = new Date(from);
+    token = day[0];
+  } else if (recent && +recent[1] >= 1 && +recent[1] <= 366) {
+    from = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - +recent[1] + 1,
+    );
+    to = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    token = recent[0];
+  } else if (relative?.[2] === "week") {
+    const monday = (now.getDay() + 6) % 7;
+    from = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - monday - (relative[1] === "last" ? 7 : 0),
+    );
+    to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 6);
+    token = relative[0];
+  } else if (relative) {
     const y =
         now.getFullYear() -
         (relative[2] === "year" && relative[1] === "last" ? 1 : 0),
@@ -158,6 +185,10 @@ export function gallerySearchIntent(
   if (result.personId) text = text.replace(/\bwith\b/g, " ");
   result.text = result.labels.length
     ? text
+        .replace(
+          /^(?:please\s+)?(?:show(?:\s+me)?|find|search(?:\s+for)?)\s+/,
+          "",
+        )
         .replace(/\b(from|in|at|during|my|the|of|on)\b/g, " ")
         .replace(/\s+/g, " ")
         .trim()

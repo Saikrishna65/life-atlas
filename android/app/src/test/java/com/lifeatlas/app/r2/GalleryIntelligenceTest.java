@@ -84,6 +84,12 @@ public class GalleryIntelligenceTest {
     config.put("visual", true);
     assertFalse(GalleryIntelligenceWorker.current(row, photo, config));
     row.put("visualDone", true);
+    assertFalse(
+        "A flag alone is not a valid embedding",
+        GalleryIntelligenceWorker.current(row, photo, config));
+    JSONArray embedding = new JSONArray();
+    for (int i = 0; i < 512; i++) embedding.put(i == 0 ? 1 : 0);
+    row.put("model", GalleryClip.REVISION).put("embedding", embedding);
     assertTrue(GalleryIntelligenceWorker.current(row, photo, config));
   }
 

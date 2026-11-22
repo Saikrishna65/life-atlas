@@ -1,10 +1,10 @@
-Gallery 2.2.8
-• A new photo-first Places page with saved collections and a Map switch.
-• Adjustable preview quality: Saver, Balanced, High and custom controls.
-• Size-aware previews and batched cache cleanup; originals stay untouched.
-• Cache usage now separates previews, video frames and motion clips.
-• Original photos animate through opening without a final bitmap swap.
-• Centered app-update dialog.
-• Native video controls stay above Gallery actions.
-• Optional native Android viewer for local photos and videos (experimental).
-Install over Atlas without uninstalling. Native viewer gestures need phone testing.
+Gallery 2.2.9
+• Encrypted repeat-search caching with file-access and version checks.
+• Natural searches combine saved people/places/trips with more date expressions.
+• Clearer face references first; uncertain identities still need your confirmation.
+• Better exposure-aware photo picks and clearer similar-photo explanations.
+• Smaller lightweight analysis images; pauses for battery, heat and memory.
+• Stale-model detection and safer handling of independent analysis failures.
+• Search corrections and edits correctly mark encrypted recovery as changed.
+No new model download. Originals, cloud data and existing indexes are preserved.
+Install over Atlas without uninstalling. Accuracy and speed need phone testing.

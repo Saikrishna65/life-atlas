@@ -65,3 +65,10 @@ test("battery saver, heat and the small people download explain real waiting sta
   assert.equal(defaultIntelligenceSettings.chargingOnly, true);
   assert.equal(defaultIntelligenceSettings.visual, false);
 });
+
+test('low battery, memory pressure and incomplete work have honest status messages',()=>{
+ assert.match(intelligenceStateText({...status,state:'waiting',waitReason:'battery'}),/20% battery/);
+ assert.match(intelligenceStateText({...status,state:'waiting',waitReason:'memory'}),/needs memory/);
+ assert.match(intelligenceStateText({...status,state:'ready',failed:3}),/3 photos need another try/);
+ assert.equal(intelligenceStateText({...status,state:'ready',failed:0}),'Up to date');
+});

@@ -775,7 +775,7 @@ export default function GallerySmartCollections({
           <p>
             {mode === "people"
               ? "Check every face before confirming a name. Use the menu under a face to move it, separate it or remove a wrong detection."
-              : "The suggested pick compares clarity, lighting and resolution. Tap a photo to open it. Choosing a pick never deletes other shots."}
+              : `${review?.bestReason || selected.bestReason || "The suggested pick balances clarity, exposure and resolution."} Tap a photo to open it. Nothing is deleted automatically.`}
           </p>
           {error && (
             <p role="alert" className="gsmart-error">

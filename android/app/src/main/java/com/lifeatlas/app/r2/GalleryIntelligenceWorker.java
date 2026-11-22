@@ -29,17 +29,7 @@ public final class GalleryIntelligenceWorker extends Worker {
   }
 
   private boolean deferForDevice(GalleryIntelligence service, String epoch) throws Exception {
-    android.os.PowerManager power =
-        (android.os.PowerManager) getApplicationContext().getSystemService(Context.POWER_SERVICE);
-    String reason =
-        power != null && power.isPowerSaveMode()
-            ? "battery-saver"
-            : (Build.VERSION.SDK_INT >= 29
-                    && power != null
-                    && power.getCurrentThermalStatus()
-                        >= android.os.PowerManager.THERMAL_STATUS_SEVERE
-                ? "heat"
-                : "");
+    String reason = GalleryAiBudget.reason(getApplicationContext());
     if (reason.isEmpty()) return false;
     service.change(
         epoch,
@@ -106,7 +96,7 @@ public final class GalleryIntelligenceWorker extends Worker {
     return row != null
         && R2DeviceGallery.stamp(media).equals(row.optString("stamp"))
         && (!config.optBoolean("ocr") || GalleryIntelligence.hasCurrentOcr(row))
-        && (!config.optBoolean("visual") || row.optBoolean("visualDone"))
+        && (!config.optBoolean("visual") || GalleryIntelligence.hasCurrentVisual(row))
         && (!config.optBoolean("similar")
             || (row.optJSONObject("quality") != null
                 && GalleryPhotoQuality.VERSION.equals(
@@ -264,7 +254,7 @@ public final class GalleryIntelligenceWorker extends Worker {
           com.google.android.gms.tasks.Task<Text> pending = null;
           boolean failed = false;
           try {
-            bitmap = decode(getApplicationContext(), id);
+            bitmap = decode(getApplicationContext(), id, GalleryAiBudget.decodeEdge(config));
             if (row == null || !stamp.equals(row.optString("stamp")))
               row = new JSONObject().put("media", metadata(media)).put("stamp", stamp);
             row.put("media", metadata(media));
@@ -272,27 +262,45 @@ public final class GalleryIntelligenceWorker extends Worker {
                 && (row.optJSONObject("quality") == null
                     || !GalleryPhotoQuality.VERSION.equals(
                         row.optJSONObject("quality").optString("version"))))
-              row.put("quality", GalleryPhotoQuality.analyze(bitmap, media));
-            if (config.optBoolean("ocr") && !GalleryIntelligence.hasCurrentOcr(row)) {
-              InputImage image = InputImage.fromBitmap(bitmap, 0);
-              pending = latin.process(image);
-              String text = Tasks.await(pending, 45, TimeUnit.SECONDS).getText();
-              row.put("text", text.substring(0, Math.min(24000, text.length())))
-                  .put("ocrDone", true)
-                  .put("ocrVersion", GalleryIntelligence.OCR_VERSION);
-            }
-            if (config.optBoolean("visual") && !row.optBoolean("visualDone")) {
-              float[] vector;
-              synchronized (GalleryClip.LOCK) {
-                if (stopped(service, epoch)) return Result.success();
-                vector = clip.image(bitmap);
+              try {
+                row.put("quality", GalleryPhotoQuality.analyze(bitmap, media));
+              } catch (Exception unavailable) {
+                failed = true;
               }
-              JSONArray values = new JSONArray();
-              for (float f : vector) values.put((double) f);
-              row.put("embedding", values)
-                  .put("visualDone", true)
-                  .put("model", GalleryClip.REVISION);
-              Arrays.fill(vector, 0);
+            if (config.optBoolean("ocr") && !GalleryIntelligence.hasCurrentOcr(row)) {
+              try {
+                InputImage image = InputImage.fromBitmap(bitmap, 0);
+                pending = latin.process(image);
+                String text = Tasks.await(pending, 45, TimeUnit.SECONDS).getText();
+                row.put("text", text.substring(0, Math.min(24000, text.length())))
+                    .put("ocrDone", true)
+                    .put("ocrVersion", GalleryIntelligence.OCR_VERSION);
+              } catch (SecurityException
+                  | java.util.concurrent.TimeoutException
+                  | InterruptedException fatal) {
+                throw fatal;
+              } catch (Exception unavailable) {
+                failed = true;
+              }
+            }
+            if (config.optBoolean("visual") && !GalleryIntelligence.hasCurrentVisual(row)) {
+              try {
+                float[] vector;
+                synchronized (GalleryClip.LOCK) {
+                  if (stopped(service, epoch)) return Result.success();
+                  vector = clip.image(bitmap);
+                }
+                JSONArray values = new JSONArray();
+                for (float f : vector) values.put((double) f);
+                row.put("embedding", values)
+                    .put("visualDone", true)
+                    .put("model", GalleryClip.REVISION);
+                Arrays.fill(vector, 0);
+              } catch (SecurityException | InterruptedException fatal) {
+                throw fatal;
+              } catch (Exception unavailable) {
+                failed = true;
+              }
             }
             if (config.optBoolean("people")
                 && !GalleryFaceModels.VERSION.equals(row.optString("faceVersion"))) {
@@ -364,7 +372,11 @@ public final class GalleryIntelligenceWorker extends Worker {
         if (!page.optBoolean("complete")) service.enqueue(service.settings());
       }
       if (page.optBoolean("complete")) {
-        new GalleryCollections(getApplicationContext()).warm();
+        try {
+          if (GalleryAiBudget.reason(getApplicationContext()).isEmpty())
+            new GalleryCollections(getApplicationContext()).warm();
+        } catch (Exception optionalCacheFailure) {
+        }
         GalleryRecoveryWorker.photosChanged(getApplicationContext());
         if (service.settings().optBoolean("qualityDirty")) {
           service.change(

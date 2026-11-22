@@ -5,10 +5,13 @@ import org.json.*;
 
 /** Anchor-based grouping avoids chaining a whole walking route into a 'duplicate' set. */
 final class GallerySimilar {
+  static final String POLICY = "similar-policy-v2";
+
   static final class Group {
     final List<GalleryIndexedPhotos.Photo> photos = new ArrayList<>();
     String key, best, pick;
     long date;
+    String relationship, reason;
 
     Group(GalleryIndexedPhotos.Photo p) {
       photos.add(p);
@@ -100,9 +103,34 @@ final class GallerySimilar {
       if (hidden.contains(g.key)) continue;
       g.best =
           g.photos.stream()
-              .max(Comparator.comparingDouble(p -> p.quality.optDouble("score")))
+              .max(
+                  Comparator.comparingDouble(
+                          (GalleryIndexedPhotos.Photo p) -> recommendation(p.quality))
+                      .thenComparing(p -> p.id, Comparator.reverseOrder()))
               .orElseThrow()
               .id;
+      boolean nearIdentical = true;
+      JSONObject anchor = g.photos.get(0).quality;
+      for (GalleryIndexedPhotos.Photo p : g.photos) {
+        if (GalleryPhotoQuality.distance(anchor, p.quality) > 2) {
+          nearIdentical = false;
+          break;
+        }
+        JSONArray left = anchor.optJSONArray("samples"), right = p.quality.optJSONArray("samples");
+        if (left == null || right == null) {
+          nearIdentical = false;
+          break;
+        }
+        double delta = 0;
+        for (int i = 0; i < 64; i++) delta += Math.abs(left.getDouble(i) - right.getDouble(i));
+        if (delta / 64 >= 5) {
+          nearIdentical = false;
+          break;
+        }
+      }
+      g.relationship = nearIdentical ? "near-identical" : "similar";
+      g.reason =
+          "A balance of clarity, exposure and resolution. Your chosen pick always takes priority.";
       String saved = picks == null ? "" : picks.optString(g.key);
       g.pick = g.photos.stream().anyMatch(p -> p.id.equals(saved)) ? saved : "";
       JSONObject sourcePicks = choices.optJSONObject("sourcePicks");
@@ -122,6 +150,12 @@ final class GallerySimilar {
     partial = bounded;
   }
 
+  static double recommendation(JSONObject quality) {
+    double score = quality.optDouble("score"), clipped = quality.optDouble("clipped", 0);
+    if (!Double.isFinite(score) || !Double.isFinite(clipped)) return 0;
+    return score * Math.max(.35, 1 - Math.max(0, Math.min(1, clipped)));
+  }
+
   Group group(String key) throws Exception {
     return groups.stream()
         .filter(g -> g.key.equals(key))
@@ -137,7 +171,13 @@ final class GallerySimilar {
               .put("id", g.key)
               .put("kind", "similar")
               .put("title", g.photos.size() + " similar photos")
-              .put("subtitle", "Review the suggested pick")
+              .put(
+                  "subtitle",
+                  g.relationship.equals("near-identical")
+                      ? "Near-identical views · review before removing anything"
+                      : "Similar shots · choose your favourite")
+              .put("relationship", g.relationship)
+              .put("bestReason", g.reason)
               .put("count", g.photos.size())
               .put("coverId", g.pick.isEmpty() ? g.best : g.pick)
               .put("bestId", g.best)

@@ -10,6 +10,8 @@ export interface SmartCollection {
   faceId?: string;
   confirmed?: boolean;
   suggestedPersonId?: string;
+  bestReason?: string;
+  relationship?: "near-identical" | "similar";
   bestId?: string;
   pickedId?: string;
 }
@@ -26,6 +28,8 @@ export interface CollectionPage {
   matches?: PeopleMatch[];
 }
 export interface CollectionMediaPage extends DevicePage {
+  bestReason?: string;
+  relationship?: "near-identical" | "similar";
   bestId?: string;
   pickedId?: string;
 }

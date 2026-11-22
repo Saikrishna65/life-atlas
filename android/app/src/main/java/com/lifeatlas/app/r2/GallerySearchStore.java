@@ -240,7 +240,14 @@ final class GallerySearchStore implements AutoCloseable {
       java.util.Arrays.fill(plain, (byte) 0);
     }
     if (!previous.isEmpty()) noteFile(key, previous).delete();
-    if (java.util.Set.of("people", "similar", "memories", "media-preferences", "albums")
+    if (java.util.Set.of(
+                "people",
+                "similar",
+                "memories",
+                "media-preferences",
+                "albums",
+                "search-feedback",
+                "edits")
             .contains(id)
         || id.startsWith("album:")) invalidate();
   }
@@ -267,6 +274,13 @@ final class GallerySearchStore implements AutoCloseable {
     values.put("kind", kind);
     if (db.insertWithOnConflict("collection_cache", null, values, SQLiteDatabase.CONFLICT_REPLACE)
         < 0) throw new IOException("LOCAL_STORAGE_UNAVAILABLE");
+  }
+
+  void boundCache(String kind, int count) {
+    db.execSQL(
+        "DELETE FROM collection_cache WHERE kind=? AND rowid NOT IN (SELECT rowid FROM"
+            + " collection_cache WHERE kind=? ORDER BY rowid DESC LIMIT ?)",
+        new Object[] {kind, kind, count});
   }
 
   void clearCollections(String kind) {
@@ -306,6 +320,8 @@ final class GallerySearchStore implements AutoCloseable {
                   .put("ids", page)
                   .put("bestId", group.optString("bestId"))
                   .put("pickedId", group.optString("pickedId"))
+                  .put("bestReason", group.optString("bestReason"))
+                  .put("relationship", group.optString("relationship"))
                   .put("cursor", start + 80 < ids.length() ? Integer.toString(start + 80) : "")
                   .put("complete", start + 80 >= ids.length()));
         }

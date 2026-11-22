@@ -5,6 +5,8 @@ import org.json.*;
 
 /** Identity names always come from the owner. Unreviewed matches never join a named person. */
 final class GalleryPeople {
+  static final String POLICY = "people-policy-v2";
+
   static final class Group {
     final String id;
     String name = "", suggestedPersonId = "";
@@ -94,7 +96,9 @@ final class GalleryPeople {
           faces.put(f.id, f);
         }
     all.sort(
-        Comparator.comparingLong((GalleryIndexedPhotos.Face f) -> f.time).thenComparing(f -> f.id));
+        Comparator.comparingDouble((GalleryIndexedPhotos.Face f) -> -f.quality)
+            .thenComparingLong(f -> f.time)
+            .thenComparing(f -> f.id));
     Map<String, Group> named = new LinkedHashMap<>();
     if (assignments != null)
       for (GalleryIndexedPhotos.Face f : all) {
@@ -115,14 +119,16 @@ final class GalleryPeople {
       Set<String> preferred = set(this.references.optJSONArray(g.id));
       for (GalleryIndexedPhotos.Face face : g.faces)
         if (preferred.contains(face.id) && references.size() < 8) references.add(face);
-      if (references.isEmpty() && !g.faces.isEmpty())
-        references.add(
-            g.faces.stream().max(Comparator.comparingDouble(f -> f.quality)).orElseThrow());
+      if (references.isEmpty() && !g.faces.isEmpty()) {
+        GalleryIndexedPhotos.Face best =
+            g.faces.stream().max(Comparator.comparingDouble(f -> f.quality)).orElseThrow();
+        if (best.quality >= .35) references.add(best);
+      }
       while (references.size() < Math.min(8, g.faces.size())) {
         GalleryIndexedPhotos.Face chosen = null;
         double distance = -1;
         for (GalleryIndexedPhotos.Face f : g.faces) {
-          if (references.contains(f) || f.quality < .15) continue;
+          if (references.contains(f) || f.quality < .35) continue;
           double nearest = -1;
           for (GalleryIndexedPhotos.Face r : references)
             nearest = Math.max(nearest, cosine(f.vector, r.vector));
@@ -162,7 +168,9 @@ final class GalleryPeople {
       double best = matches.isEmpty() ? -1 : scores.get(matches.get(0)),
           second = matches.size() < 2 ? -1 : scores.get(matches.get(1));
       Group chosen = null;
-      if (best >= .62 && best - second >= .06) {
+      double threshold = f.quality < .35 ? .72 : .62;
+      double margin = f.quality < .35 ? .10 : .06;
+      if (f.quality >= .15 && best >= threshold && best - second >= margin) {
         Anchor a = bestByGroup.get(matches.get(0));
         if (!a.group.confirmed) chosen = a.group;
         else {
@@ -177,7 +185,7 @@ final class GalleryPeople {
         groups.add(chosen);
       }
       chosen.add(f);
-      if (chosen.faces.size() <= 4) add(f, chosen);
+      if (f.quality >= .35 && chosen.faces.size() <= 4) add(f, chosen);
     }
     groups.sort(
         Comparator.comparing((Group g) -> !g.confirmed)
@@ -289,7 +297,11 @@ final class GalleryPeople {
           g.faces.stream()
               .filter(f -> f.id.equals(covers.optString(g.id)))
               .findFirst()
-              .orElse(g.faces.get(0));
+              .orElseGet(
+                  () ->
+                      g.faces.stream()
+                          .max(Comparator.comparingDouble(f -> f.quality))
+                          .orElseThrow());
       String title =
           g.confirmed
               ? g.name

@@ -78,13 +78,10 @@ public final class GalleryRecoveryWorker extends Worker {
     GalleryIntelligence service = new GalleryIntelligence(getApplicationContext());
     String action = getInputData().getString("action");
     try {
-      android.os.PowerManager power =
-          (android.os.PowerManager) getApplicationContext().getSystemService(Context.POWER_SERVICE);
-      if (power != null
-          && (power.isPowerSaveMode()
-              || android.os.Build.VERSION.SDK_INT >= 29
-                  && power.getCurrentThermalStatus()
-                      >= android.os.PowerManager.THERMAL_STATUS_SEVERE)) return Result.retry();
+      if (!GalleryAiBudget.reason(getApplicationContext()).isEmpty()) {
+        GalleryRecovery.progress(service, "waiting", 0, 0, "");
+        return Result.retry();
+      }
       if ("restore".equals(action))
         GalleryRecovery.restore(
             getApplicationContext(), getInputData().getBoolean("faces", false), this::isStopped);
