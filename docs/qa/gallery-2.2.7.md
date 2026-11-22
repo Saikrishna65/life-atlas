@@ -72,5 +72,6 @@ framework region decoding supplies pixel reads. No new AI model or paid service.
 - Mobile bundle/Capacitor sync and production build passed. Production's existing
   local database-fixture fallback warnings do not indicate a cloud data write.
 
-Signed build evidence will be appended after CI completes. No personal cloud
-writes, uploads, catalog changes, credential rotation or local data reset occurred.
+This build was superseded before publication by [2.2.8](gallery-2.2.8.md), which
+records the final signed-release evidence. No personal cloud writes, uploads,
+catalog changes, credential rotation or local data reset occurred.
