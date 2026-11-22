@@ -18,7 +18,7 @@ export function galleryDay(timestamp: number) {
     ? `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
     : "unknown";
 }
-/** Natural-ratio masonry. Wide landscapes may span two columns; dates remain chronological. */
+/** Dense cell mosaic: 1×1, 2×1 and 2×2 tiles, never unbounded portrait columns. */
 export function galleryLayout(
   items: GalleryAsset[],
   width: number,
@@ -26,9 +26,15 @@ export function galleryLayout(
   gap: number,
   groupDates = false,
 ) {
-  const usable = Math.max(1, width),
-    count = Math.max(2, Math.min(6, columns)),
-    gutter = Math.max(0, Math.min(gap, usable / (count * 2))),
+  const usable = Number.isFinite(width) ? Math.max(1, width) : 1,
+    count = Math.max(
+      2,
+      Math.min(6, Number.isFinite(columns) ? Math.round(columns) : 4),
+    ),
+    gutter = Math.max(
+      0,
+      Math.min(Number.isFinite(gap) ? gap : 0, usable / (count * 2)),
+    ),
     columnWidth = (usable - gutter * (count - 1)) / count,
     placements: GalleryPlacement[] = [],
     headers: GalleryDateHeading[] = [];
@@ -59,50 +65,48 @@ export function galleryLayout(
       });
       y += 44;
     }
-    const bottoms = Array<number>(count).fill(y);
+    const rows: number[] = [],
+      full = (1 << count) - 1;
+    let firstOpen = 0;
     for (let i = start; i < end; i++) {
-      const d = items[i].device;
-      const natural = d?.width && d.height ? d.width / d.height : 1;
-      const ratio =
-        Number.isFinite(natural) && natural > 0
-          ? Math.max(0.125, Math.min(8, natural))
-          : 1;
-      let span = count >= 3 && ratio >= (count >= 4 ? 1.75 : 1.7) ? 2 : 1;
-      let column = 0,
-        top = Infinity;
-      const choose = () => {
-        for (let c = 0; c <= count - span; c++) {
-          const heights = bottoms.slice(c, c + span),
-            candidate = Math.max(...heights);
+      const offset = i - start,
+        d = items[i].device;
+      const wide = !!d?.height && d.width / d.height >= 1.4;
+      const featured = count >= 3 && end - i >= 6 && offset % 12 === 0;
+      const spanX =
+        featured || (count >= 3 && offset % 9 === 5 && wide) ? 2 : 1;
+      const spanY = featured ? 2 : 1;
+      let row = firstOpen,
+        column = 0,
+        found = false;
+      for (; !found; row++) {
+        for (let c = 0; c <= count - spanX; c++) {
+          const mask = ((1 << spanX) - 1) << c;
           if (
-            span > 1 &&
-            candidate - Math.min(...heights) > Math.min(32, columnWidth * 0.18)
+            Array.from(
+              { length: spanY },
+              (_, r) => (rows[row + r] || 0) & mask,
+            ).some(Boolean)
           )
             continue;
-          if (candidate < top) {
-            top = candidate;
-            column = c;
-          }
+          column = c;
+          for (let r = 0; r < spanY; r++)
+            rows[row + r] = (rows[row + r] || 0) | mask;
+          found = true;
+          break;
         }
-      };
-      choose();
-      if (!Number.isFinite(top)) {
-        span = 1;
-        choose();
       }
-      const tileWidth = columnWidth * span + gutter * (span - 1),
-        height = tileWidth / ratio;
+      row--;
       placements.push({
         index: i,
         x: column * (columnWidth + gutter),
-        y: top,
-        width: tileWidth,
-        height,
+        y: y + row * (columnWidth + gutter),
+        width: spanX * columnWidth + (spanX - 1) * gutter,
+        height: spanY * columnWidth + (spanY - 1) * gutter,
       });
-      for (let c = column; c < column + span; c++)
-        bottoms[c] = top + height + gutter;
+      while (rows[firstOpen] === full) firstOpen++;
     }
-    y = Math.max(...bottoms) - gutter;
+    y += rows.length * (columnWidth + gutter) - gutter;
     start = end;
   }
   return { placements, headers, height: Math.max(0, y) };

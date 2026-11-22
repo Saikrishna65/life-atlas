@@ -29,42 +29,49 @@ const asset = (
     duration: 0,
   },
 });
-test("masonry preserves portrait, landscape and video proportions without overlapping tiles", () => {
-  const items = [
-    asset("portrait", 1, 2000, 4000),
-    asset("landscape", 1, 4000, 2000),
-    asset("square", 1, 2000, 2000),
-    asset("wide", 1, 6000, 2000),
-    asset("tall", 1, 2000, 6000),
-  ];
+test("mosaic uses bounded square cells, wide pairs and four-cell features without overlap", () => {
+  const items = Array.from({ length: 40 }, (_, i) =>
+    asset(String(i), 1, i % 2 ? 6000 : 1000, i % 2 ? 2000 : 8000),
+  );
   for (const width of [320, 390, 900, 1440]) {
-    const layout = galleryLayout(items, width, width < 700 ? 3 : 5, 4);
-    for (const p of layout.placements) {
+    const columns = width < 700 ? 3 : 5,
+      gap = 4,
+      cell = (width - gap * (columns - 1)) / columns;
+    const grid = galleryLayout(items, width, columns, gap);
+    const areas = new Set<number>();
+    for (const p of grid.placements) {
+      const sx = Math.round((p.width + gap) / (cell + gap)),
+        sy = Math.round((p.height + gap) / (cell + gap));
       assert.ok(
-        Math.abs(
-          p.width / p.height -
-            items[p.index].device!.width / items[p.index].device!.height,
-        ) < 0.0001,
+        [
+          [1, 1],
+          [2, 1],
+          [2, 2],
+        ].some(([x, y]) => x === sx && y === sy),
       );
+      areas.add(sx * sy);
+      assert.ok(p.height <= 2 * cell + gap + 0.001, "No long portrait columns");
       assert.ok(p.x >= 0 && p.x + p.width <= width + 0.001);
-      for (const q of layout.placements) {
+      for (const q of grid.placements) {
         if (q.index <= p.index) continue;
         assert.ok(
           p.x + p.width <= q.x + 0.001 ||
             q.x + q.width <= p.x + 0.001 ||
             p.y + p.height <= q.y + 0.001 ||
             q.y + q.height <= p.y + 0.001,
-          "Tiles never overlap",
+          "No overlapping tiles",
         );
       }
     }
-    assert.ok(layout.placements[0].height > layout.placements[0].width);
-    assert.ok(
-      new Set(layout.placements.map((p) => Math.round(p.height))).size >= 3,
+    assert.ok(areas.has(1) && areas.has(2) && areas.has(4));
+    assert.deepEqual(
+      grid,
+      galleryLayout(items, width, columns, gap),
+      "Stable on rerender",
     );
   }
 });
-test("chronological headers separate masonry groups, including their tallest images", () => {
+test("chronological headers separate mosaic groups, including enlarged cells", () => {
   const items = [
     asset("a", new Date(2026, 10, 19).getTime(), 2000, 6000),
     asset("b", new Date(2026, 10, 19).getTime()),
@@ -81,17 +88,21 @@ test("chronological headers separate masonry groups, including their tallest ima
       Math.max(...grid.placements.slice(0, 2).map((p) => p.y + p.height)),
   );
 });
-test("wide landscapes receive more space, sparse groups stay compact and unknown dimensions are safe", () => {
-  const grid = galleryLayout(
-    [asset("wide", 1, 6000, 2000), asset("square", 1, 2000, 2000)],
-    900,
-    5,
-    4,
-  );
-  assert.ok(grid.placements[0].width > grid.placements[1].width * 1.9);
-  assert.ok(
-    galleryLayout([asset("one", 1)], 900, 5, 4).placements[0].width < 400,
-  );
+test("sparse groups do not become full-width features and unknown dimensions stay bounded", () => {
+  const grid = galleryLayout([asset("one", 1, 0, 0)], 900, 5, 4);
+  assert.equal(grid.placements[0].width, grid.placements[0].height);
+  assert.ok(grid.placements[0].width < 400);
   assert.equal(galleryDay(NaN), "unknown");
   assert.equal(galleryLayout([], 390, 3, 3, true).height, 0);
+});
+
+test("invalid saved density cannot hang packing or produce non-finite geometry", () => {
+  const items = Array.from({ length: 20 }, (_, i) => asset(String(i), 1));
+  for (const columns of [NaN, Infinity, -4, 2.5]) {
+    const grid = galleryLayout(items, 390, columns, 3);
+    assert.equal(grid.placements.length, 20);
+    assert.ok(
+      grid.placements.every((p) => Object.values(p).every(Number.isFinite)),
+    );
+  }
 });

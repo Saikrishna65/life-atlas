@@ -1,8 +1,7 @@
-Gallery 2.2.4
-• Accept rapid swipes and keyboard steps while a slide is moving.
-• Animate photos from their grid position into the viewer and back.
-• Natural-ratio masonry, wider landscapes and corrected rotated-photo dimensions.
-• Earlier saved-text results, deferred visual refinement and already-installed model preparation.
-• Bounded, short-lived index memory cache; reuse parsed query tokens and skip obsolete queued queries.
-• No new model download, cloud reset, original-file changes or mandatory cloud dependency.
-Cold visual searches can still take time. Install over your existing Atlas; do not uninstall.
+Gallery 2.2.5
+• Dense square-cell mosaic with occasional two-cell wide and four-cell square tiles.
+• Four-column mobile default; no unbounded portrait columns or stretched grid media.
+• Coordinated thumbnail-to-viewer motion without a second entrance fade or clip-path animation.
+• Decoded-image preparation, visible poster handoff and reversible opening animation.
+• Existing search, upload data and originals are unchanged. No new model downloads.
+Install over Atlas without uninstalling. Device-level animation smoothness needs phone testing.

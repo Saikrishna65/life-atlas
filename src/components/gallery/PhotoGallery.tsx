@@ -139,7 +139,7 @@ export default function PhotoGallery() {
     [favoritesOnly, setFavoritesOnly] = useState(false),
     [dateFrom, setDateFrom] = useState(""),
     [dateTo, setDateTo] = useState(""),
-    [columns, setColumns] = useState(3),
+    [columns, setColumns] = useState(4),
     [maxColumns, setMaxColumns] = useState(6),
     [selected, setSelected] = useState<string[]>([]),
     [selectionMedia, setSelectionMedia] = useState<Record<string, DeviceMedia>>(
@@ -277,7 +277,7 @@ export default function PhotoGallery() {
     );
   useEffect(() => {
     const fit = () => {
-      const limit = window.innerWidth < 701 ? 3 : 6;
+      const limit = window.innerWidth < 701 ? 4 : 6;
       setMaxColumns(limit);
       setColumns((value) => Math.min(value, limit));
     };
@@ -314,12 +314,12 @@ export default function PhotoGallery() {
       })
       .catch(() => {});
     void readGalleryPreference<number>(
-      "photos-fixed-density-v1",
-      window.innerWidth < 701 ? 3 : 5,
+      "photos-mosaic-density-v1",
+      window.innerWidth < 701 ? 4 : 5,
     )
       .then((v) => {
         if (alive)
-          setColumns(Math.max(2, Math.min(window.innerWidth < 701 ? 3 : 6, v)));
+          setColumns(Math.max(2, Math.min(window.innerWidth < 701 ? 4 : 6, v)));
       })
       .catch(() => {});
     if (supported) {
@@ -839,7 +839,7 @@ export default function PhotoGallery() {
   const more = view === "cloud" ? cloudMore : hasMore;
   useEffect(() => {
     const node = sentinel.current;
-    if (!node || !more || loading || !layout.ready) return;
+    if (viewer || !node || !more || loading || !layout.ready) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
@@ -860,8 +860,35 @@ export default function PhotoGallery() {
     requestDevice,
     cursor,
     layout.ready,
+    viewer,
     browsing,
     workspace,
+  ]);
+  useEffect(() => {
+    if (
+      !viewer ||
+      loading ||
+      !more ||
+      view === "places" ||
+      (view === "cloud" && slot === "private")
+    )
+      return;
+    const index = assets.findIndex((asset) => asset.id === viewer);
+    if (index < 0 || index < assets.length - 8) return;
+    // Only deliberate navigation near the loaded end fetches another page during viewing.
+    if (view === "cloud") void requestCloud(cloudCursor, true);
+    else void requestDevice(cursor, true);
+  }, [
+    viewer,
+    loading,
+    more,
+    view,
+    slot,
+    assets,
+    requestCloud,
+    cloudCursor,
+    requestDevice,
+    cursor,
   ]);
   const closeViewer = useCallback(() => {
     opening.current++;
@@ -1817,7 +1844,7 @@ export default function PhotoGallery() {
                             onChange={(e) => {
                               setColumns(+e.target.value);
                               void saveGalleryPreference(
-                                "photos-fixed-density-v1",
+                                "photos-mosaic-density-v1",
                                 +e.target.value,
                               );
                             }}
@@ -2095,6 +2122,7 @@ export default function PhotoGallery() {
                                   : asset.thumbnail || asset.id
                               }
                               asset={asset}
+                              paused={!!viewer}
                             />
                           </button>
                           <GalleryBackupBadge asset={asset} />

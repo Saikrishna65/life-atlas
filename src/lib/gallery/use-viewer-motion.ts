@@ -23,10 +23,9 @@ class ViewerMotion {
         "--pv-shade",
         String(1 - Math.min(0.95, Math.max(0, this.y) / 280)),
       );
-    const image = node.querySelector<HTMLElement>(
-      ".pv-slide:not([inert]) > img",
-    );
-    if (image)
+    for (const image of node.querySelectorAll<HTMLElement>(
+      ".pv-slide:not([inert]) > img,.pv-slide:not([inert]) > .pv-live-poster",
+    ))
       image.style.transform = `translate3d(${this.pose.x}px,${this.pose.y}px,0) scale(${this.pose.scale})`;
   };
   schedule = () => {

@@ -43,7 +43,13 @@ export async function thumbnail(id: string, stillNeeded: () => boolean) {
   }
 }
 
-export default function GalleryThumbnail({ asset }: { asset: GalleryAsset }) {
+export default function GalleryThumbnail({
+  asset,
+  paused = false,
+}: {
+  asset: GalleryAsset;
+  paused?: boolean;
+}) {
   const root = useRef<HTMLDivElement>(null),
     retried = useRef(false);
   const [near, setNear] = useState(false),
@@ -71,7 +77,7 @@ export default function GalleryThumbnail({ asset }: { asset: GalleryAsset }) {
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    if (!near || source || !asset.device) return;
+    if (paused || !near || source || !asset.device) return;
     let mounted = true;
     void thumbnail(asset.device.id, () => mounted)
       .then((result) => {
@@ -86,7 +92,7 @@ export default function GalleryThumbnail({ asset }: { asset: GalleryAsset }) {
     return () => {
       mounted = false;
     };
-  }, [near, source, asset.device]);
+  }, [near, source, asset.device, paused]);
   return (
     <div className="pg-thumbnail" ref={root}>
       {near && source && !failed ? (

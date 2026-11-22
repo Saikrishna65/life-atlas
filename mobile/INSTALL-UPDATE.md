@@ -1,3 +1,24 @@
+Atlas 2.2.5 — Square-cell gallery and coordinated photo transitions
+
+Install atlas.apk over Atlas, or use Control Room → Access → App updates.
+Version code 41; package and signing identity are unchanged. Do not uninstall.
+
+• The grid now uses square cells, occasional four-cell squares and two-cell wide
+  tiles. Portrait metadata cannot create long, narrow columns. Mobile defaults to
+  four columns; View options still controls density. Originals stay unchanged.
+• Photo opening/closing uses decoded images, matched transform timelines and a
+  coordinated backdrop. The extra entrance fade and animated clipping mask are gone.
+• If the original is still decoding, the saved image stays visible until a smooth
+  handoff. Closing during opening reverses that same transition instead of jumping
+  to a full-size closing image.
+• Videos and reduced-motion settings use a simple fallback. If a photo's grid tile
+  is off-screen or unavailable, dismissal also uses the fallback.
+
+Existing search optimizations, cloud data, uploads and AI indexes are unchanged.
+Phone-specific smoothness still needs checking on your device.
+
+Historical release notes below.
+
 Atlas 2.2.4 — Gallery motion and search
 
 Install atlas.apk over Atlas, or use Control Room → Access → App updates.

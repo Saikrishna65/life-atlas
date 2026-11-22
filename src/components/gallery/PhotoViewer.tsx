@@ -142,7 +142,10 @@ export default function PhotoViewer({
     setVertical,
     setDrag,
   } = useViewerMotion(stage);
-  const sharedClose = useViewerTransition(stage, selected);
+  const { close: sharedClose, interact: sharedInteract } = useViewerTransition(
+    stage,
+    selected,
+  );
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [chrome, setChrome] = useState(true),
@@ -435,17 +438,27 @@ export default function PhotoViewer({
             (1 - scale),
     );
     const previous = image ? getComputedStyle(image).transform : "none";
-    image?.getAnimations().forEach((animation) => animation.cancel());
+    const targets = [
+      image,
+      stage.current?.querySelector<HTMLElement>(
+        ".pv-slide:not([inert]) > .pv-live-poster",
+      ),
+    ].filter((node): node is HTMLImageElement | HTMLElement => !!node);
+    targets.forEach((node) =>
+      node.getAnimations().forEach((animation) => animation.cancel()),
+    );
     setTransform(next);
-    if (image && !window.matchMedia("(prefers-reduced-motion: reduce)").matches)
-      image.animate(
-        [
-          { transform: previous },
-          {
-            transform: `translate3d(${next.x}px,${next.y}px,0) scale(${next.scale})`,
-          },
-        ],
-        { duration: 190, easing: "cubic-bezier(.2,.7,.2,1)" },
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      targets.forEach((node) =>
+        node.animate(
+          [
+            { transform: previous },
+            {
+              transform: `translate3d(${next.x}px,${next.y}px,0) scale(${next.scale})`,
+            },
+          ],
+          { duration: 190, easing: "cubic-bezier(.2,.7,.2,1)" },
+        ),
       );
   };
   return (
@@ -508,6 +521,7 @@ export default function PhotoViewer({
             closing
           )
             return;
+          sharedInteract();
           if (settling) {
             const active = e.currentTarget.querySelector<HTMLElement>(
               ".pv-slide:not([inert])",
