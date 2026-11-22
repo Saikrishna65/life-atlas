@@ -876,8 +876,11 @@ export default function PhotoGallery() {
     const index = assets.findIndex((asset) => asset.id === viewer);
     if (index < 0 || index < assets.length - 8) return;
     // Only deliberate navigation near the loaded end fetches another page during viewing.
-    if (view === "cloud") void requestCloud(cloudCursor, true);
-    else void requestDevice(cursor, true);
+    const timer = setTimeout(() => {
+      if (view === "cloud") void requestCloud(cloudCursor, true);
+      else void requestDevice(cursor, true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [
     viewer,
     loading,
