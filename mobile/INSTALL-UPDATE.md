@@ -1,3 +1,14 @@
+Atlas 2.2.6 — Final square-grid and photo-motion update
+
+Install atlas.apk over Atlas, or use Control Room → Access → App updates.
+Version code 42; package and signing identity are unchanged. Do not uninstall.
+
+Includes the compact mosaic and coordinated photo transitions described below.
+Photos whose thumbnails are still unavailable now also get a single gentle fade,
+so they cannot fall back to an instant entrance. Originals and existing data remain.
+
+Historical release notes below.
+
 Atlas 2.2.5 — Square-cell gallery and coordinated photo transitions
 
 Install atlas.apk over Atlas, or use Control Room → Access → App updates.

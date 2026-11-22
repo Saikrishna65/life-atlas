@@ -107,7 +107,8 @@ export default function GalleryThumbnail({
           onError={() => {
             if (asset.device && !retried.current) {
               retried.current = true;
-              invalidateThumbnail(asset.device.id);
+              // Retry locally; broadcasting here would reset every instance's retry guard.
+              cached.delete(asset.device.id);
               setSource("");
             } else setFailed(true);
           }}

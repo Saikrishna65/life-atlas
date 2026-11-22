@@ -41,18 +41,15 @@ class SharedViewerTransition {
   }
   attach(node: HTMLElement | null) {
     this.stage = node;
-    if (!this.photo()) {
-      this.origin = undefined;
-      if (node && !this.reduced())
-        this.animations.push(
-          node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 140 }),
-        );
-      return;
-    }
-    if (this.origin && !this.reduced() && node) {
+    if (!this.photo()) this.origin = undefined;
+    if (!node || this.reduced()) return;
+    if (this.origin) {
       node.style.visibility = "hidden";
       node.closest("dialog")!.dataset.pvShared = "opening";
-    }
+    } else
+      this.animations.push(
+        node.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 140 }),
+      );
   }
   cancel = () => {
     this.epoch++;

@@ -32,10 +32,20 @@ media rewrite, cloud operation or database migration is introduced.
 - Focused Chromium tests: normal motion, reduced motion, four-column phone layout,
   opening reversal and deliberately stalled originals passed. The stalled original
   test verifies a visible poster and working zoom before releasing the file.
-- A full Gallery normal-motion browser run passed before the final poster-gesture
-  refinement; final full/static/build checks are recorded after completion.
+- Full Gallery normal-motion browser run passed after poster-gesture refinement
+  and thumbnail pausing. The focused paging test also passed: hidden grid work
+  stays paused and deliberate navigation near the loaded end fetches more media.
+- TypeScript, targeted ESLint and seven signing/update tests passed. The mobile
+  bundle and Capacitor sync passed. Production Next.js build exited successfully;
+  the local PostgreSQL fixture was unavailable, logging existing slug-query fallback
+  warnings. Database-backed public content is not validated by that local build.
 - Physical Android frame pacing and visual quality are not measured here; the
   user's phone is still the required check for WebView-specific rendering.
 
 Source changes do not alter search, AI indexes, originals, cloud uploads or signing
 identity. Install the update over Atlas rather than uninstalling it.
+
+Browser regression commands include `GALLERY_SLOW_ORIGINAL=1` and
+`GALLERY_REVERSE_OPEN=1` with `GALLERY_VIEWER_ONLY=1 GALLERY_MOTION=normal`,
+`GALLERY_GRID_MOBILE=1`, reduced motion, and `GALLERY_PAGING_ONLY=1`.
+Native responses use fixtures. Signed CI/APK evidence follows below.

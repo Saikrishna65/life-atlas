@@ -57,13 +57,23 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.
 try{
  browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});await mkdir('work/qa-gallery-v3',{recursive:true});
  const context=await browser.newContext({viewport:process.env.GALLERY_GRID_MOBILE==='1'?{width:390,height:844}:{width:1440,height:1000},hasTouch:true,reducedMotion:process.env.GALLERY_MOTION==='normal'?'no-preference':'reduce'}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto(origin);await page.locator('.pg-tile').nth(39).waitFor();
+ if(process.env.GALLERY_NO_THUMB==='1')await page.route('**/thumb/**',route=>route.abort());await page.goto(origin);await page.locator('.pg-tile').nth(39).waitFor();
  assert.equal(await page.getByRole('navigation',{name:'Gallery views'}).getByRole('button').count(),3);assert.equal(await page.locator('.pg-top,.pg-toolbar,.pg-page-heading,.pg-album-strip,.pg-quick-filters').count(),0,'Old dashboard is removed, not recolored');
  assert.ok((await page.locator('.pg-grid').boundingBox()).y<250,'Photos start near the top');
  await page.getByRole('button',{name:'Choose more photos',exact:true}).click();await page.waitForFunction(()=>window.permission==='full');await page.locator('.pg-tile').nth(39).waitFor();
 
 
- if(process.env.GALLERY_SEARCH_ONLY==='1'){
+ if(process.env.GALLERY_PAGING_ONLY==='1'){
+ await page.locator('.pg-thumbnail img').first().waitFor();await page.getByRole('button',{name:'Open Frame 001.jpg',exact:true}).click();await page.locator('.pv-picture').waitFor({state:'visible'});await page.waitForTimeout(120);
+ const before=await page.evaluate(()=>({thumbs:window.calls.thumbs.length,count:document.querySelector('.pg-count')?.textContent}));
+ await page.evaluate(()=>scrollTo(0,document.body.scrollHeight));await page.waitForTimeout(200);
+ assert.equal(await page.evaluate(()=>window.calls.thumbs.length),before.thumbs,'Hidden grid does not start thumbnail work');assert.equal(await page.locator('.pg-count').textContent(),before.count,'Grid sentinel is suspended during viewing');
+ await page.evaluate(()=>{for(let i=0;i<33;i++)document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));});
+ await page.waitForFunction(()=>/^\s*34\s*\//.test(document.querySelector('.pv-top span')?.textContent||''));
+ await page.waitForFunction(()=>Number(document.querySelector('.pg-count')?.textContent.match(/(\d+) loaded/)?.[1])>=80);
+ assert.equal(await page.evaluate(()=>window.calls.thumbs.length),before.thumbs,'Viewer lookahead does not decode hidden grid thumbnails');
+ await page.evaluate(()=>scrollTo(0,0));await page.getByRole('button',{name:'Back to photos',exact:true}).click();await page.getByRole('dialog',{name:'Photo viewer'}).waitFor({state:'detached'});assert.deepEqual(errors,[]);console.log('PASS: paused grid work during viewing; deliberate near-end pagination; rapid logical navigation.');
+ }else if(process.env.GALLERY_SEARCH_ONLY==='1'){
  await page.evaluate(()=>{window.slowVisual=true;Object.assign(window.intelligence,{enabled:true,state:'ready',visual:true,modelReady:true,indexed:95});window.nativeEvents.galleryChanged?.({});});await page.waitForTimeout(100);
  await page.getByRole('button',{name:'Search photos',exact:true}).click();await page.getByRole('button',{name:'Smart search',exact:true}).click();
  await page.getByRole('searchbox',{name:'Search gallery'}).fill('mount');await page.waitForFunction(()=>window.calls.searches?.some(q=>q.query==='mount'&&q.textOnly));await page.waitForFunction(()=>document.querySelectorAll('.pg-tile').length===1);
@@ -73,7 +83,7 @@ try{
  assert.equal(await page.evaluate(()=>window.calls.searches.some(q=>q.query==='mount'&&!q.textOnly)),false,'Obsolete prefixes never invoke visual inference');assert.equal(await page.evaluate(()=>window.calls.preparedSearch),true);assert.deepEqual(errors,[]);
  console.log('PASS: automatic text-first search, approved model preparation, cancelled prefix refinement, progressive final matches. Native inference is a fixture; no device latency claim.');
  }else if(process.env.GALLERY_VIEWER_ONLY==='1'){
- await page.locator('.pg-thumbnail img').first().waitFor();await page.waitForFunction(()=>document.querySelector('.pg-thumbnail img')?.naturalWidth>0);
+ if(process.env.GALLERY_NO_THUMB!=='1'){await page.locator('.pg-thumbnail img').first().waitFor();await page.waitForFunction(()=>document.querySelector('.pg-thumbnail img')?.naturalWidth>0);}else await page.waitForTimeout(150);
  await page.getByRole('button',{name:'Open Frame 001.jpg',exact:true}).click();
  if(process.env.GALLERY_REVERSE_OPEN==='1'){
   await page.waitForFunction(()=>document.querySelector('.pv-shared-image')?.getAnimations()[0]?.currentTime>40);
@@ -84,7 +94,8 @@ try{
   await page.getByRole('dialog',{name:'Photo viewer'}).waitFor({state:'detached'});
   await page.getByRole('button',{name:'Open Frame 001.jpg',exact:true}).click();
  }
- if(process.env.GALLERY_MOTION==='normal'){
+ if(process.env.GALLERY_NO_THUMB==='1'){assert.equal(await page.locator('.pv-shared-image').count(),0);assert.ok(await page.locator('.pv-picture').evaluate(node=>node.getAnimations().some(a=>a.effect.getKeyframes().some(f=>f.opacity==='0'))),'Missing thumbnails use a one-time fade');}
+ if(process.env.GALLERY_MOTION==='normal'&&process.env.GALLERY_NO_THUMB!=='1'){
   await page.waitForFunction(()=>document.querySelector('dialog')?.dataset.pvShared==='opening');
   await page.locator('.pv-shared-image').waitFor({state:'visible'});
   assert.equal(await page.locator('.pv-shared-image').count(),1);
@@ -106,8 +117,9 @@ try{
  for(let i=0;i<3;i++)await page.keyboard.press('ArrowRight');await page.waitForFunction(()=>/^\s*7\s*\//.test(document.querySelector('.pv-top span')?.textContent||''));
  for(let i=0;i<4;i++)await page.keyboard.press('ArrowLeft');await page.waitForFunction(()=>/^\s*3\s*\//.test(document.querySelector('.pv-top span')?.textContent||''));
  await page.getByRole('button',{name:'Back to photos',exact:true}).click();
- if(process.env.GALLERY_MOTION==='normal'){await page.waitForFunction(()=>document.querySelector('dialog')?.dataset.pvShared==='closing');assert.equal(await page.locator('.pv-shared-image').count(),1);await page.screenshot({path:'work/qa-gallery-v3/shared-closing-224.png'});}
+ if(process.env.GALLERY_MOTION==='normal'&&process.env.GALLERY_NO_THUMB!=='1'){await page.waitForFunction(()=>document.querySelector('dialog')?.dataset.pvShared==='closing');assert.equal(await page.locator('.pv-shared-image').count(),1);await page.screenshot({path:'work/qa-gallery-v3/shared-closing-224.png'});}
  await page.getByRole('dialog',{name:'Photo viewer'}).waitFor({state:'detached'});assert.deepEqual(errors,[]);
+ if(process.env.GALLERY_NO_THUMB==='1'){await page.waitForTimeout(150);const repeats=await page.evaluate(()=>Object.values(window.calls.thumbs.reduce((m,id)=>(m[id]=(m[id]||0)+1,m),{})));assert.ok(repeats.every(n=>n<=2),'Failed thumbnails retry at most once');}
  await page.screenshot({path:process.env.GALLERY_GRID_MOBILE==='1'?'work/qa-gallery-v3/mosaic-mobile-225.png':'work/qa-gallery-v3/mosaic-225.png'});console.log('PASS: anchored shared opening/closing; every rapid pointer swipe and keyboard step is accepted; bounded mosaic cells; no console errors.');
  }else if(process.env.GALLERY_SCROLL_ONLY==='1'){
  // A deep Favourites page also restores its Collections parent and its own saved position.

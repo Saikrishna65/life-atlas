@@ -1,7 +1,8 @@
-Gallery 2.2.5
-• Dense square-cell mosaic with occasional two-cell wide and four-cell square tiles.
-• Four-column mobile default; no unbounded portrait columns or stretched grid media.
-• Coordinated thumbnail-to-viewer motion without a second entrance fade or clip-path animation.
-• Decoded-image preparation, visible poster handoff and reversible opening animation.
-• Existing search, upload data and originals are unchanged. No new model downloads.
-Install over Atlas without uninstalling. Device-level animation smoothness needs phone testing.
+Gallery 2.2.6
+• A compact photo grid with square tiles and occasional larger photos.
+• Four columns on phones, with no long, narrow photo columns.
+• Photos grow from their thumbnail and return to it when available.
+• No extra blink when the full image appears. A saved image stays visible while it loads.
+• Closing early reverses the opening movement; missing thumbnails use a short fade.
+• Existing search, uploads and originals stay available. No additional model download.
+Install over Atlas without uninstalling. Phone-specific smoothness still needs checking.
