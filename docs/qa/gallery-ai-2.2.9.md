@@ -90,3 +90,38 @@ Android can defer jobs, and force-stop prevents background jobs until reopening.
 7. If recovery was already enabled with a verified kit, check that a correction
    marks it pending. Restoration must be tested separately with a safe test copy;
    development tests did not upload or restore any personal cloud data.
+
+## Local results
+
+- 497 JavaScript/TypeScript unit tests passed, no failures/skips.
+- 179 Android debug and 179 Android preview Robolectric tests passed, no
+  failures/skips. Eight new native cases cover repeat queries, changed files,
+  cancellation, bounded cache, recovery revisions, face anchors/references,
+  exposure-aware owner picks and device-budget policy. The existing index-current
+  test now also rejects a completion flag without a current embedding.
+- Seven signing/update tests passed; version code 44 cannot be republished as an update.
+- TypeScript, targeted ESLint, production build, mobile bundle and Capacitor sync passed.
+- Full Gallery browser regression and progressive search browser checks passed.
+  Native/cloud operations in these browser checks are fixtures. Model prediction
+  accuracy and real-device gesture performance are not established by these tests.
+
+Signed release evidence follows after CI and downloaded-package verification.
+
+## Signed release
+
+- [CI run 45007148750](https://github.com/Saikrishna65/life-atlas/actions/runs/45007148750)
+  completed successfully. Job 137161153165 ran the native tests, built both APKs
+  and verified their signing compatibility. Personal-cloud job 137161154008 was
+  skipped. No personal cloud credentials or data were exercised.
+- Application source: `a9bce2c3344ae484e2451444c57deb0fc53e0fee`.
+- [Atlas 2.2.9 APK](https://github.com/Saikrishna65/life-atlas/releases/download/atlas-install-update-45007148750/atlas.apk):
+  package `com.lifeatlas.app.next`, version code 45, 74,327,293 bytes.
+- SHA-256: `9b82c2a707fe812f4e4be75a957c2f8343b0d0d30ca3f29f6e266592633c4a49`.
+- Verified signer SHA-256:
+  `2f19571f9d6a4a3b4c7250397b7618f04e047beeeaa0023713e2a6c0a745af7d`.
+- Downloaded APK verified with apksigner/aapt. Package, version, bytes and checksum
+  match the public updater manifest. APK growth from 2.2.8 is 4,941 bytes; this is
+  a package-size measurement, not a phone speed, RAM or battery benchmark.
+
+Install over Atlas without uninstalling. Existing analysis models, indexes,
+corrections, private storage credentials and media stay in place.
