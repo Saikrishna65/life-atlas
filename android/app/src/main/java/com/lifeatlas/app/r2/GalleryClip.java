@@ -25,6 +25,7 @@ final class GalleryClip implements AutoCloseable {
   };
   private OrtEnvironment environment;
   private OrtSession vision, text;
+  private GalleryClipTokenizer tokenizer;
   private final Context context;
 
   GalleryClip(Context context) {
@@ -150,10 +151,15 @@ final class GalleryClip implements AutoCloseable {
     }
   }
 
-  float[] query(String query) throws Exception {
+  void prepareQuery() throws Exception {
     if (text == null) text = open(1);
-    GalleryClipTokenizer tokenizer =
-        new GalleryClipTokenizer(context.getAssets().open("gallery-models/clip-merges.txt"));
+    if (tokenizer == null)
+      tokenizer =
+          new GalleryClipTokenizer(context.getAssets().open("gallery-models/clip-merges.txt"));
+  }
+
+  float[] query(String query) throws Exception {
+    prepareQuery();
     long[] ids = tokenizer.encode(query), mask = new long[ids.length];
     Arrays.fill(mask, 1);
     try (OnnxTensor input =

@@ -8,6 +8,7 @@ import java.util.concurrent.*;
 /** A native runtime failure must never terminate the activity, vault or ongoing uploads. */
 public final class GallerySearchService extends Service {
   private GalleryClip model;
+  private volatile long generation;
   private final ExecutorService executor = Executors.newSingleThreadExecutor();
   private final Messenger inbox =
       new Messenger(
@@ -18,13 +19,20 @@ public final class GallerySearchService extends Service {
                 return;
               final Messenger reply = message.replyTo;
               final String query = message.getData().getString("query", "");
-              if (query.isBlank() || query.length() > 200) return;
+              final boolean prepare = message.getData().getBoolean("prepare", false);
+              if ((!prepare && query.isBlank()) || query.length() > 200) return;
+              final long request = prepare ? generation : ++generation;
               executor.execute(
                   () -> {
                     Bundle data = new Bundle();
                     try {
+                      if (!prepare && request != generation)
+                        throw new R2Exception("SEARCH_CANCELLED");
                       if (model == null) model = new GalleryClip(getApplicationContext());
-                      data.putFloatArray("vector", model.query(query));
+                      if (prepare) {
+                        model.prepareQuery();
+                        data.putBoolean("ready", true);
+                      } else data.putFloatArray("vector", model.query(query));
                     } catch (Throwable failure) {
                       data.putString("error", "SEARCH_VISUAL_UNAVAILABLE");
                     }

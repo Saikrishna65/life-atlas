@@ -460,6 +460,7 @@ final class GalleryIntelligence {
           .put("cursor", "")
           .put("complete", true)
           .put("limitReached", true);
+    GallerySearchHotCache.touch();
     JSONObject config = settings();
     Set<String> allowed = new HashSet<>();
     JSONArray approvedAlbums = config.optJSONArray("albums");
@@ -535,9 +536,9 @@ final class GalleryIntelligence {
       while (cursor.moveToNext()) {
         if (personMedia != null && !personMedia.contains(cursor.getString(0))) continue;
         if (cancelled.getAsBoolean()) throw new R2Exception("SEARCH_CANCELLED");
-        JSONObject
-            row = db.readSearch(cursor.getString(0), cursor.getBlob(1), cursor.getInt(2) == 1),
-            media = row.getJSONObject("media");
+        GallerySearchHotCache.Entry entry =
+            db.hotSearch(cursor.getString(0), cursor.getBlob(1), cursor.getInt(2) == 1);
+        JSONObject row = entry.row, media = row.getJSONObject("media");
         long captured =
             media.optLong("capturedAt") > 0
                 ? media.optLong("capturedAt")
@@ -547,20 +548,12 @@ final class GalleryIntelligence {
         if (!album.isEmpty() && !album.equals(media.optString("album"))) continue;
         if (!allowed.isEmpty() && !allowed.contains(media.optString("album"))) continue;
         if (kind.equals("video")) continue;
-        boolean text =
-            textMatch(
-                media.optString("name")
-                    + " "
-                    + media.optString("album")
-                    + " "
-                    + (config.optBoolean("ocr") && hasCurrentOcr(row) ? row.optString("text") : ""),
-                terms);
+        String searchable =
+            config.optBoolean("ocr") && hasCurrentOcr(row) ? entry.recognizedText : entry.fileText;
+        boolean text = !terms.isEmpty() && terms.stream().allMatch(searchable::contains);
         double score = query.trim().isEmpty() ? 1 : text ? 2 : 0;
-        JSONArray embedding = row.optJSONArray("embedding");
-        if (vector != null && embedding != null && embedding.length() == 512) {
-          float[] values = new float[512];
-          for (int i = 0; i < 512; i++) values[i] = (float) embedding.getDouble(i);
-          double similarity = GalleryClip.cosine(vector, values);
+        if (vector != null && entry.vector != null) {
+          double similarity = GalleryClip.cosine(vector, entry.vector);
           if (similarity >= .20) score = Math.max(score, similarity);
         }
         score =
@@ -572,7 +565,7 @@ final class GalleryIntelligence {
         scanned++;
         if (progress != null
             && offset == 0
-            && (scanned == 8 || scanned % 64 == 0)
+            && (scanned == 1 || scanned % 32 == 0)
             && updates < 8
             && System.currentTimeMillis() - emittedAt > 250) {
           JSONArray partial = new JSONArray();

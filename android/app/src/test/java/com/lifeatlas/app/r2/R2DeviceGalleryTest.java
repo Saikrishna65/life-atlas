@@ -23,6 +23,7 @@ public class R2DeviceGalleryTest {
     String where;
     String[] args;
     File original;
+    int orientation;
 
     public boolean onCreate() {
       return true;
@@ -46,6 +47,7 @@ public class R2DeviceGalleryTest {
                 case "_size" -> original.length();
                 case "date_added" -> 1000L - i;
                 case "date_modified" -> 900L;
+                case "orientation" -> orientation;
                 case "width" -> 4000;
                 case "height" -> 3000;
                 case "media_type" -> 1;
@@ -96,6 +98,17 @@ public class R2DeviceGalleryTest {
     ShadowContentResolver.registerProviderInternal("media", provider);
     repo = R2TripQueueTest.repository();
     gallery = new R2DeviceGallery(RuntimeEnvironment.getApplication(), repo);
+  }
+
+  @Test
+  public void cameraRotationProducesPortraitDisplayDimensionsWithoutChangingOriginalStamp()
+      throws Exception {
+    JSONObject before = gallery.one("image:external:42");
+    provider.orientation = 90;
+    JSONObject rotated = gallery.one("image:external:42");
+    assertEquals(3000, rotated.getInt("width"));
+    assertEquals(4000, rotated.getInt("height"));
+    assertEquals(R2DeviceGallery.stamp(before), R2DeviceGallery.stamp(rotated));
   }
 
   @Test

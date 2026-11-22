@@ -49,18 +49,40 @@ final class GallerySearchInference {
         return GalleryClip.normalize(vector);
       }
     }
+    float[] vector = invoke(context, query, false, cancelled);
+    try (GallerySearchStore db = new GallerySearchStore(secure)) {
+      JSONObject values = db.choice("query-vectors");
+      if (values.length() >= 32 && !values.has(cacheKey)) values.remove(values.keys().next());
+      JSONArray saved = new JSONArray();
+      for (float value : vector) saved.put((double) value);
+      values.put(cacheKey, saved);
+      db.choice("query-vectors", values);
+    }
+    return vector;
+  }
+
+  static void prepare(Context context, java.util.function.BooleanSupplier cancelled)
+      throws Exception {
+    invoke(context, "", true, cancelled);
+  }
+
+  private static float[] invoke(
+      Context context, String query, boolean prepare, java.util.function.BooleanSupplier cancelled)
+      throws Exception {
     ActivityManager.MemoryInfo memory = new ActivityManager.MemoryInfo();
     ((ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE)).getMemoryInfo(memory);
     if (memory.lowMemory || memory.availMem < 256L * 1024 * 1024)
       throw new R2Exception("SEARCH_VISUAL_UNAVAILABLE");
     CountDownLatch done = new CountDownLatch(1);
     float[][] result = {null};
+    boolean[] ready = {false};
     Messenger receiver =
         new Messenger(
             new Handler(Looper.getMainLooper()) {
               @Override
               public void handleMessage(Message message) {
                 result[0] = message.getData().getFloatArray("vector");
+                ready[0] = message.getData().getBoolean("ready");
                 done.countDown();
               }
             });
@@ -71,6 +93,7 @@ final class GallerySearchInference {
               Message message = Message.obtain();
               Bundle data = new Bundle();
               data.putString("query", query);
+              data.putBoolean("prepare", prepare);
               message.setData(data);
               message.replyTo = receiver;
               new Messenger(binder).send(message);
@@ -106,16 +129,9 @@ final class GallerySearchInference {
         if (android.os.SystemClock.elapsedRealtime() > end)
           throw new R2Exception("SEARCH_VISUAL_UNAVAILABLE");
       }
-      if (result[0] == null) throw new R2Exception("SEARCH_VISUAL_UNAVAILABLE");
-      float[] vector = GalleryClip.normalize(result[0]);
-      try (GallerySearchStore db = new GallerySearchStore(secure)) {
-        JSONObject values = db.choice("query-vectors");
-        if (values.length() >= 32 && !values.has(cacheKey)) values.remove(values.keys().next());
-        JSONArray saved = new JSONArray();
-        for (float value : vector) saved.put((double) value);
-        values.put(cacheKey, saved);
-        db.choice("query-vectors", values);
-      }
+      if (prepare ? !ready[0] : result[0] == null)
+        throw new R2Exception("SEARCH_VISUAL_UNAVAILABLE");
+      float[] vector = prepare ? null : GalleryClip.normalize(result[0]);
       success = true;
       return vector;
     } finally {

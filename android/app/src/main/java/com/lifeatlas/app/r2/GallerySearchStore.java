@@ -138,6 +138,16 @@ final class GallerySearchStore implements AutoCloseable {
     }
   }
 
+  GallerySearchHotCache.Entry hotSearch(String key, byte[] payload, boolean legacy)
+      throws Exception {
+    return GallerySearchHotCache.get(
+        secure.directory().getAbsolutePath(),
+        key,
+        payload,
+        legacy,
+        () -> readSearch(key, payload, legacy));
+  }
+
   Cursor summaryRows() {
     return db.rawQuery("SELECT token,payload FROM summaries ORDER BY token", null);
   }

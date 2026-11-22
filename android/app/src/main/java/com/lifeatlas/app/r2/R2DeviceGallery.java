@@ -81,6 +81,14 @@ final class R2DeviceGallery {
     boolean video = number(c, "media_type") == 3;
     String volume = Build.VERSION.SDK_INT >= 29 ? string(c, "volume_name") : "external";
     String id = (video ? "video:" : "image:") + volume + ":" + number(c, "_id");
+    long width = number(c, "width"),
+        height = number(c, "height"),
+        orientation = number(c, "orientation");
+    if (!video && (orientation == 90 || orientation == 270)) {
+      long swap = width;
+      width = height;
+      height = swap;
+    }
     return new JSONObject()
         .put("id", id)
         .put("name", string(c, "_display_name"))
@@ -91,8 +99,8 @@ final class R2DeviceGallery {
         .put("capturedAt", number(c, "datetaken"))
         .put("modifiedAt", number(c, "date_modified") * 1000)
         .put("generation", number(c, "generation_modified"))
-        .put("width", number(c, "width"))
-        .put("height", number(c, "height"))
+        .put("width", width)
+        .put("height", height)
         .put("duration", number(c, "duration"))
         .put("album", string(c, "bucket_display_name"))
         .put("albumId", volume + ":" + number(c, "bucket_id"))
@@ -112,6 +120,7 @@ final class R2DeviceGallery {
                 "date_modified",
                 "width",
                 "height",
+                "orientation",
                 "duration",
                 "bucket_display_name",
                 "bucket_id",

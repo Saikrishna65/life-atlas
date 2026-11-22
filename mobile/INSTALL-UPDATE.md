@@ -1,3 +1,26 @@
+Atlas 2.2.4 — Gallery motion and search
+
+Install atlas.apk over Atlas, or use Control Room → Access → App updates.
+The package and signing identity are unchanged; version code 40. Do not uninstall.
+
+• Rapid swipes and arrow keys advance immediately; the next swipe can interrupt
+  the current slide rather than being discarded.
+• Photos expand from their thumbnail and shrink back to it when the tile is
+  visible. Reduced motion and absent thumbnails use the simple fallback.
+• Natural-ratio masonry keeps portraits tall; wide landscapes can occupy more
+  space. Rotated camera dimensions are corrected without changing originals.
+• Smart Search starts local text matches earlier, then refines with visual
+  matches after typing settles. Approved, already-installed visual models can
+  prepare when search opens, without downloading another model.
+• A bounded decoded index avoids repeated decryption/vector parsing. Its memory
+  cache expires after 30 seconds idle and is cleared in the background. The visual
+  worker is retained briefly, for at most 20 seconds idle, and released on pause.
+
+Cold visual queries and large libraries can still take time. Device-level speed
+and gesture smoothness need testing on your phone. No personal cloud data is reset.
+
+Historical release notes below.
+
 Atlas 2.2.3 — Gallery fixes
 
 Update through Atlas → Control Room → Access → App updates, or install atlas.apk

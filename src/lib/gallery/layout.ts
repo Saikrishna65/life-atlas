@@ -18,7 +18,7 @@ export function galleryDay(timestamp: number) {
     ? `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
     : "unknown";
 }
-/** Justified photo rows. Date headers share the same coordinates as the virtualized tiles. */
+/** Natural-ratio masonry. Wide landscapes may span two columns; dates remain chronological. */
 export function galleryLayout(
   items: GalleryAsset[],
   width: number,
@@ -28,17 +28,12 @@ export function galleryLayout(
 ) {
   const usable = Math.max(1, width),
     count = Math.max(2, Math.min(6, columns)),
-    target = usable / count,
+    gutter = Math.max(0, Math.min(gap, usable / (count * 2))),
+    columnWidth = (usable - gutter * (count - 1)) / count,
     placements: GalleryPlacement[] = [],
     headers: GalleryDateHeading[] = [];
   let y = 0,
     start = 0;
-  const ratio = (i: number) => {
-    const d = items[i].device;
-    return d?.width && d.height
-      ? Math.max(0.55, Math.min(2.1, d.width / d.height))
-      : 1;
-  };
   while (start < items.length) {
     let end = start + 1;
     const day = galleryDay(items[start].date);
@@ -46,7 +41,7 @@ export function galleryLayout(
       while (end < items.length && galleryDay(items[end].date) === day) end++;
     else end = items.length;
     if (groupDates) {
-      if (start) y += 22;
+      if (start) y += 20;
       const date = new Date(items[start].date);
       headers.push({
         key: day + ":" + start,
@@ -64,39 +59,51 @@ export function galleryLayout(
       });
       y += 44;
     }
-    let row: number[] = [],
-      sum = 0;
-    const flush = (last: boolean) => {
-      if (!row.length) return;
-      const available = Math.max(1, usable - gap * (row.length - 1));
-      const h = last ? Math.min(target, available / sum) : available / sum;
-      let x = 0;
-      for (const index of row) {
-        const w = Math.min(usable - x, ratio(index) * h);
-        placements.push({
-          index,
-          x,
-          y,
-          width: Math.max(1, w),
-          height: Math.max(1, h),
-        });
-        x += w + gap;
-      }
-      y += h + gap;
-      row = [];
-      sum = 0;
-    };
+    const bottoms = Array<number>(count).fill(y);
     for (let i = start; i < end; i++) {
-      row.push(i);
-      sum += ratio(i);
-      if (sum * target + gap * (row.length - 1) >= usable) flush(false);
+      const d = items[i].device;
+      const natural = d?.width && d.height ? d.width / d.height : 1;
+      const ratio =
+        Number.isFinite(natural) && natural > 0
+          ? Math.max(0.125, Math.min(8, natural))
+          : 1;
+      let span = count >= 3 && ratio >= (count >= 4 ? 1.75 : 1.7) ? 2 : 1;
+      let column = 0,
+        top = Infinity;
+      const choose = () => {
+        for (let c = 0; c <= count - span; c++) {
+          const heights = bottoms.slice(c, c + span),
+            candidate = Math.max(...heights);
+          if (
+            span > 1 &&
+            candidate - Math.min(...heights) > Math.min(32, columnWidth * 0.18)
+          )
+            continue;
+          if (candidate < top) {
+            top = candidate;
+            column = c;
+          }
+        }
+      };
+      choose();
+      if (!Number.isFinite(top)) {
+        span = 1;
+        choose();
+      }
+      const tileWidth = columnWidth * span + gutter * (span - 1),
+        height = tileWidth / ratio;
+      placements.push({
+        index: i,
+        x: column * (columnWidth + gutter),
+        y: top,
+        width: tileWidth,
+        height,
+      });
+      for (let c = column; c < column + span; c++)
+        bottoms[c] = top + height + gutter;
     }
-    flush(true);
+    y = Math.max(...bottoms) - gutter;
     start = end;
   }
-  return {
-    placements,
-    headers,
-    height: Math.max(0, y - (items.length ? gap : 0)),
-  };
+  return { placements, headers, height: Math.max(0, y) };
 }

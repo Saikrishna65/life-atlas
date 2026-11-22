@@ -2,6 +2,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
@@ -31,6 +32,7 @@ import {
   shareWhatsApp,
 } from "@/lib/gallery/viewer-actions";
 import { containRect } from "@/lib/gallery/viewer-motion";
+import { useViewerTransition } from "@/lib/gallery/use-viewer-transition";
 import { useViewerMotion } from "@/lib/gallery/use-viewer-motion";
 import {
   readGalleryPreference,
@@ -140,6 +142,7 @@ export default function PhotoViewer({
     setVertical,
     setDrag,
   } = useViewerMotion(stage);
+  const sharedClose = useViewerTransition(stage, selected);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [chrome, setChrome] = useState(true),
@@ -201,8 +204,12 @@ export default function PhotoViewer({
       onClose();
       return;
     }
-    setClosing(true);
     setChrome(false);
+    if (sharedClose(selected, onClose)) {
+      setClosing(true);
+      return;
+    }
+    setClosing(true);
     clearTimeout(timer.current);
     slideTimer.current = setTimeout(onClose, 140);
   }
@@ -261,28 +268,54 @@ export default function PhotoViewer({
       panY: 0,
       at: 0,
       multi: false,
+      drag: 0,
     });
-  const move = (n: number) => {
-    if (items.length > 1 && !settling) {
-      const reduced = window.matchMedia(
-        "(prefers-reduced-motion: reduce)",
-      ).matches;
-      const width = (stage.current?.clientWidth || window.innerWidth) + 18;
+  const currentId = useRef(selected);
+  const slideFrame = useRef(0);
+  const pendingSlide = useRef<{ id: string; from: number } | undefined>(
+    undefined,
+  );
+  useLayoutEffect(() => {
+    currentId.current = selected;
+    const pending = pendingSlide.current,
+      node = stage.current;
+    if (!pending || pending.id !== selected || !node) return;
+    pendingSlide.current = undefined;
+    node.classList.remove("is-settling");
+    node.style.setProperty("--pv-drag", `${pending.from}px`);
+    setDrag(pending.from);
+    slideFrame.current = requestAnimationFrame(() => {
       setSettling(true);
-      setDrag(-n * width);
-      slideTimer.current = setTimeout(
-        () => {
-          setDrag(0);
-          dragRef.current = 0;
-          setSettling(false);
-          setTransform({ scale: 1, x: 0, y: 0 });
-          setInfo(false);
-          activity();
-          onSelect(items[(index + n + items.length) % items.length].id);
-        },
-        reduced ? 0 : 220,
-      );
+      setDrag(0);
+      dragRef.current = 0;
+      slideTimer.current = setTimeout(() => setSettling(false), 220);
+    });
+  }, [selected, setDrag]);
+  useEffect(() => () => cancelAnimationFrame(slideFrame.current), []);
+  const move = (n: number) => {
+    if (closing || items.length < 2) return;
+    clearTimeout(slideTimer.current);
+    cancelAnimationFrame(slideFrame.current);
+    const at = items.findIndex((m) => m.id === currentId.current),
+      next = items[(Math.max(0, at) + n + items.length) % items.length];
+    const width = (stage.current?.clientWidth || innerWidth) + 18;
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    setSettling(false);
+    pendingSlide.current = reduced
+      ? undefined
+      : { id: next.id, from: n * width + dragRef.current };
+    currentId.current = next.id;
+    setTransform({ scale: 1, x: 0, y: 0 });
+    setVertical(0);
+    setInfo(false);
+    activity();
+    if (reduced) {
+      setDrag(0);
+      dragRef.current = 0;
     }
+    onSelect(next.id);
   };
   useEffect(() => {
     points.current.clear();
@@ -418,7 +451,7 @@ export default function PhotoViewer({
   return (
     <Modal
       title="Photo viewer"
-      className={`pv-viewer ${closing ? "is-leaving" : ""}`}
+      className={`pv-viewer ${closing ? "is-closing" : ""}`}
       onClose={() => {
         const event = new Event("atlas:back", { cancelable: true });
         if (window.dispatchEvent(event)) dismiss();
@@ -472,10 +505,24 @@ export default function PhotoViewer({
             (e.target as HTMLElement).closest(
               "button,input,.pv-video-controls",
             ) ||
-            settling ||
             closing
           )
             return;
+          if (settling) {
+            const active = e.currentTarget.querySelector<HTMLElement>(
+              ".pv-slide:not([inert])",
+            );
+            const offset = active
+              ? new DOMMatrix(getComputedStyle(active).transform).m41
+              : 0;
+            clearTimeout(slideTimer.current);
+            cancelAnimationFrame(slideFrame.current);
+            e.currentTarget.style.setProperty("--pv-drag", `${offset}px`);
+            e.currentTarget.classList.remove("is-settling");
+            setSettling(false);
+            setDrag(offset);
+            dragRef.current = offset;
+          }
           e.currentTarget.setPointerCapture(e.pointerId);
           points.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
           const p = [...points.current.values()];
@@ -487,7 +534,6 @@ export default function PhotoViewer({
                 e.clientY - lastTap.current.y,
               ) < 24;
             suppressClick.current = false;
-            dragRef.current = 0;
             axis.current = undefined;
             clearTimeout(holdTimer.current);
             if (
@@ -529,6 +575,7 @@ export default function PhotoViewer({
               panX: transform.x,
               panY: transform.y,
               at: Date.now(),
+              drag: dragRef.current,
               multi: false,
             };
           else if (p.length === 2) {
@@ -632,8 +679,8 @@ export default function PhotoViewer({
             }
             if (Math.abs(dx) > 8) {
               suppressClick.current = true;
-              dragRef.current = dx;
-              setDrag(dx);
+              dragRef.current = start.current.drag + dx;
+              setDrag(dragRef.current);
             }
           } else if (p.length === 1 && transform.scale > 1) {
             if (

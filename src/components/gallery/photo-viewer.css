@@ -825,12 +825,12 @@
   transition: opacity 0.14s ease-out;
   animation: pv-open 0.14s ease-out;
 }
-.pv-viewer.world-modal.is-leaving {
+.pv-viewer.world-modal.is-closing:not([data-pv-shared="closing"]) {
   opacity: 0;
   animation: none;
   pointer-events: none;
 }
-.pv-viewer.is-leaving::backdrop {
+.pv-viewer.is-closing:not([data-pv-shared="closing"])::backdrop {
   background: transparent;
   transition: background 0.14s ease-out;
 }
@@ -847,7 +847,55 @@
     animation: none;
     transition: none;
   }
-  .pv-viewer.is-leaving::backdrop {
+  .pv-viewer.is-closing:not([data-pv-shared="closing"])::backdrop {
     transition: none;
   }
+}
+
+.pv-shared-image {
+  position: fixed;
+  z-index: 8;
+  overflow: hidden;
+  pointer-events: none;
+  transform-origin: center;
+  will-change: transform, clip-path;
+}
+.pv-shared-image img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+.pv-viewer.world-modal[data-pv-shared="opening"] {
+  animation: pv-shared-open 0.26s ease both;
+}
+.pv-viewer[data-pv-shared="opening"]::backdrop {
+  animation: pv-shared-open 0.26s ease both;
+}
+.pv-viewer.world-modal[data-pv-shared="closing"],
+.pv-viewer[data-pv-shared="closing"]::backdrop {
+  background: transparent;
+  transition: background 0.26s ease;
+}
+.pv-viewer[data-pv-shared="closing"] .pv-top,
+.pv-viewer[data-pv-shared="closing"] .pv-bottom {
+  opacity: 0;
+  pointer-events: none;
+}
+@keyframes pv-shared-open {
+  from {
+    background-color: transparent;
+  }
+  to {
+    background-color: #101010;
+  }
+}
+.pg-grid .pg-thumbnail img {
+  object-fit: contain;
+}
+
+.pv-viewer[data-pv-shared="opening"] .pv-top,
+.pv-viewer[data-pv-shared="opening"] .pv-bottom {
+  opacity: 0;
+  pointer-events: none;
 }

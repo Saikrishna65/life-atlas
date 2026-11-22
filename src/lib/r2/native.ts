@@ -150,8 +150,10 @@ interface R2Plugin {
   controlGalleryIntelligence(input: {
     action: "pause" | "resume" | "scan" | "clear";
   }): Promise<import("../gallery/intelligence").GalleryIntelligenceStatus>;
+  prepareGallerySearch(): Promise<void>;
   searchGalleryIntelligence(input: {
     requestId?: string;
+    textOnly?: boolean;
     query: string;
     album: string;
     kind: string;

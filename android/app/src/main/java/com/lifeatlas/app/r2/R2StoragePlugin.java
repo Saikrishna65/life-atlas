@@ -744,7 +744,9 @@ public class R2StoragePlugin extends Plugin {
 
   @PluginMethod
   public void createGallerySticker(PluginCall call) {
-    work(call, () -> call.resolve(js(GallerySubjectInference.extract(getContext(), call.getData()))));
+    work(
+        call,
+        () -> call.resolve(js(GallerySubjectInference.extract(getContext(), call.getData()))));
   }
 
   @PluginMethod
@@ -850,6 +852,32 @@ public class R2StoragePlugin extends Plugin {
                       .put("items", items)
                       .put("cursor", ids != null && end < ids.length() ? String.valueOf(end) : "")
                       .put("complete", ids == null || end >= ids.length())));
+        });
+  }
+
+  private final java.util.concurrent.atomic.AtomicBoolean galleryPreparing =
+      new java.util.concurrent.atomic.AtomicBoolean();
+
+  @PluginMethod
+  public void prepareGallerySearch(PluginCall call) {
+    work(
+        call,
+        () -> {
+          if (!galleryForeground || !R2GalleryAccess.canAnalyze(galleryAccess()))
+            throw new R2Exception("GALLERY_PERMISSION_REQUIRED");
+          GalleryIntelligence intelligence = new GalleryIntelligence(getContext());
+          if (!intelligence.settings().optBoolean("visual")
+              || !GalleryClip.ready(getContext())
+              || !galleryPreparing.compareAndSet(false, true)) {
+            call.resolve();
+            return;
+          }
+          try {
+            GallerySearchInference.prepare(getContext(), () -> !galleryForeground);
+            call.resolve();
+          } finally {
+            galleryPreparing.set(false);
+          }
         });
   }
 
@@ -2793,6 +2821,7 @@ public class R2StoragePlugin extends Plugin {
   protected void handleOnPause() {
     gallerySearchGeneration.incrementAndGet();
     GallerySearchInference.releaseWarm();
+    GallerySearchHotCache.suspend();
     gallerySearchGeneration.incrementAndGet();
     galleryForeground = false;
     librarySession = "";
@@ -2804,6 +2833,7 @@ public class R2StoragePlugin extends Plugin {
   @Override
   protected void handleOnResume() {
     galleryForeground = true;
+    GallerySearchHotCache.resume();
     galleryHandler.removeCallbacks(galleryChanged);
     galleryHandler.postDelayed(galleryChanged, 1500);
     super.handleOnResume();
@@ -2812,6 +2842,7 @@ public class R2StoragePlugin extends Plugin {
   @Override
   protected void handleOnDestroy() {
     GallerySearchInference.releaseWarm();
+    GallerySearchHotCache.suspend();
     galleryHandler.removeCallbacks(galleryChanged);
     if (galleryObserver != null)
       getContext().getContentResolver().unregisterContentObserver(galleryObserver);

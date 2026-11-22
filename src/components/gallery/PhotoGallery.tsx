@@ -423,6 +423,18 @@ export default function PhotoGallery() {
     [query, trips, namedPeople],
   );
   const [manageOpen, setManageOpen] = useState(false);
+  useEffect(() => {
+    if (
+      !searchOpen ||
+      searchMode !== "smart" ||
+      !supported ||
+      !intelligence?.visual
+    )
+      return;
+    void Promise.resolve()
+      .then(() => R2.prepareGallerySearch())
+      .catch(() => {});
+  }, [searchOpen, searchMode, supported, intelligence?.visual]);
   const [smartSubmitted, setSmartSubmitted] = useState("");
   const searchToken = useRef("");
   const progressToken = useRef("");
@@ -433,7 +445,7 @@ export default function PhotoGallery() {
     void Promise.resolve()
       .then(() => R2.cancelGallerySearch())
       .catch(() => {});
-    const timer = setTimeout(() => setSmartSubmitted(query.trim()), 350);
+    const timer = setTimeout(() => setSmartSubmitted(query.trim()), 180);
     return () => clearTimeout(timer);
   }, [query, searchMode]);
   useEffect(() => {
@@ -515,6 +527,35 @@ export default function PhotoGallery() {
         const smart =
           ((searchMode === "smart" && !!query.trim()) || !!personFilter) &&
           kind !== "video";
+        const findSmart = async () => {
+          const input = {
+            query,
+            requestId: token,
+            album,
+            kind,
+            offset: next ? Number(next) : 0,
+            personId: personFilter,
+            from: dateFrom ? new Date(dateFrom + "T00:00:00").getTime() : 0,
+            to: dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : 0,
+          };
+          // Saved text/labels appear first. Only a settled query invokes the visual encoder.
+          const quick = await R2.searchGalleryIntelligence({
+            ...input,
+            textOnly: true,
+          });
+          if (
+            generation !== deviceGeneration.current ||
+            !query.trim() ||
+            intelligence?.visual === false ||
+            intelligence?.modelReady === false
+          )
+            return quick;
+          if (!append) setItems(quick.items);
+          setNotice("Looking for visual matches…");
+          await new Promise((resolve) => setTimeout(resolve, 250));
+          if (generation !== deviceGeneration.current) return quick;
+          return R2.searchGalleryIntelligence(input);
+        };
         const page = favoritesOnly
           ? await R2.listGalleryFavorites({ offset: next ? Number(next) : 0 })
           : view === "curated" && curated
@@ -531,18 +572,7 @@ export default function PhotoGallery() {
                 cursor: next,
               })
             : smart
-              ? await R2.searchGalleryIntelligence({
-                  query,
-                  requestId: token,
-                  album,
-                  kind,
-                  offset: next ? Number(next) : 0,
-                  personId: personFilter,
-                  from: dateFrom
-                    ? new Date(dateFrom + "T00:00:00").getTime()
-                    : 0,
-                  to: dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : 0,
-                })
+              ? await findSmart()
               : await R2.listDeviceMedia({
                   cursor: next,
                   query,
@@ -590,6 +620,8 @@ export default function PhotoGallery() {
       order,
       searchMode,
       smartSubmitted,
+      intelligence?.visual,
+      intelligence?.modelReady,
       favoritesOnly,
       favorites,
       personFilter,
@@ -616,14 +648,14 @@ export default function PhotoGallery() {
           setLoading(false);
         } else void requestDevice("");
       },
-      saved ? 0 : 250,
+      saved || searchMode === "smart" ? 0 : 120,
     );
     return () => {
       clearTimeout(timer);
       generation.current++;
       searchToken.current = "";
     };
-  }, [requestDevice, revision, view, pageCache, pageKey]);
+  }, [requestDevice, revision, view, pageCache, pageKey, searchMode]);
   const requestCloud = useCallback(
     async (next: string, append = false) => {
       if (!supported) return;
@@ -1893,7 +1925,11 @@ export default function PhotoGallery() {
                     <span>
                       {assets.length} loaded{" "}
                       {view === "cloud" ? "cloud files" : "moments"}{" "}
-                      {loading ? "· Loading…" : ""}
+                      {loading
+                        ? searchMode === "smart" && query.trim()
+                          ? "· Finding more matches…"
+                          : "· Loading…"
+                        : ""}
                       {cached ? " · Cached cloud listing" : ""}
                     </span>
                   </div>
