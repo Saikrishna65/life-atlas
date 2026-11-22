@@ -1,10 +1,9 @@
-Gallery 2.2.9
-• Encrypted repeat-search caching with file-access and version checks.
-• Natural searches combine saved people/places/trips with more date expressions.
-• Clearer face references first; uncertain identities still need your confirmation.
-• Better exposure-aware photo picks and clearer similar-photo explanations.
-• Smaller lightweight analysis images; pauses for battery, heat and memory.
-• Stale-model detection and safer handling of independent analysis failures.
-• Search corrections and edits correctly mark encrypted recovery as changed.
-No new model download. Originals, cloud data and existing indexes are preserved.
-Install over Atlas without uninstalling. Accuracy and speed need phone testing.
+Gallery 2.3.0
+• Analysis health: checked, remaining, queued and failed photos.
+• Targeted retries preserve completed work and the scan cursor.
+• Opened photos receive debounced priority without bypassing battery rules.
+• Local aggregate search/batch timings, cache sizes and performance-history clear.
+• One-at-a-time people match review and clearer reference guidance.
+• Read-only encrypted metadata verification without restoring your index.
+No new models. Existing media, names, corrections, credentials and cloud data stay.
+Install over Atlas without uninstalling. Physical-phone validation is still needed.

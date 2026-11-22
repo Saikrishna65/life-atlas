@@ -1408,6 +1408,16 @@ function WebPhotoViewer({
 export default function PhotoViewer(
   props: Parameters<typeof WebPhotoViewer>[0],
 ) {
+  useEffect(() => {
+    if (!nativeR2Available() || !props.selected.startsWith("image:")) return;
+    const timer = setTimeout(() => {
+      if (!document.hidden)
+        void R2.prioritizeGalleryAnalysis({ id: props.selected }).catch(
+          () => {},
+        );
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [props.selected]);
   const [mode, setMode] = useState<"checking" | "native" | "web">("checking");
   const [panel, setPanel] = useState<"info" | "more">();
   const started = useRef(false),

@@ -153,6 +153,35 @@ final class R2DeviceGallery {
     return list(cursor, query, kind, album, order, extra, args, false);
   }
 
+  int countAnalysisPhotos(JSONObject config) {
+    try {
+      Set<String> allowed = GalleryPeople.set(config.optJSONArray("albums"));
+      String selection =
+          Build.VERSION.SDK_INT >= 30
+              ? "is_pending=0 AND is_trashed=0"
+              : Build.VERSION.SDK_INT >= 29 ? "is_pending=0" : null;
+      long since = config.optLong("since") / 1000;
+      int total = 0;
+      try (Cursor c =
+          context
+              .getContentResolver()
+              .query(
+                  MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                  new String[] {"_id", "bucket_display_name", "date_added", "date_modified"},
+                  selection,
+                  null,
+                  null)) {
+        if (c == null) return -1;
+        while (c.moveToNext())
+          if ((allowed.isEmpty() || allowed.contains(c.getString(1)))
+              && Math.max(c.getLong(2), c.getLong(3)) >= since) total++;
+      }
+      return total;
+    } catch (Exception unavailable) {
+      return -1;
+    }
+  }
+
   JSONObject changedPhotos(String cursor, long since) throws Exception {
     return list(
         cursor,

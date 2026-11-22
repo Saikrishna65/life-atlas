@@ -81,9 +81,14 @@ final class GalleryIntelligence {
 
   JSONObject status() throws Exception {
     JSONObject v = settings();
-    int count;
+    int count, failed;
     try (GallerySearchStore db = new GallerySearchStore(secure)) {
       count = db.count();
+      JSONObject health = GalleryAnalysisHealth.read(db);
+      failed =
+          Math.max(
+              GalleryAnalysisHealth.failures(health).length(),
+              health.optInt("legacyFailures", health.has("failures") ? 0 : v.optInt("failed")));
     }
     return new JSONObject()
         .put("enabled", v.optBoolean("enabled"))
@@ -102,7 +107,7 @@ final class GalleryIntelligence {
         .put("state", v.optString("state", "off"))
         .put("indexed", count)
         .put("scanned", v.optInt("scanned"))
-        .put("failed", v.optInt("failed"))
+        .put("failed", failed)
         .put("error", v.optString("error"))
         .put("updatedAt", v.optLong("updatedAt"))
         .put("modelReady", GalleryClip.ready(context))
@@ -144,6 +149,9 @@ final class GalleryIntelligence {
               .put("wifiOnly", input.optBoolean("wifiOnly", true))
               .put("albums", albums)
               .put("cursor", "")
+              .put("targeted", false)
+              .put("passWorkMs", 0)
+              .put("checked", 0)
               .put("since", 0)
               .put("scanStarted", System.currentTimeMillis())
               .put("state", "waiting")
@@ -153,8 +161,11 @@ final class GalleryIntelligence {
       writeSettings(v);
       WorkManager.getInstance(context).cancelAllWorkByTag(WORK);
       try (GallerySearchStore db = new GallerySearchStore(secure)) {
-        if (!Objects.toString(previous.optJSONArray("albums"), "[]").equals(albums.toString()))
+        GalleryAnalysisHealth.beginPass(db);
+        if (!Objects.toString(previous.optJSONArray("albums"), "[]").equals(albums.toString())) {
           db.clear();
+          db.forgetChoices(GalleryAnalysisHealth.KEY);
+        }
         if (previous.optBoolean("people") && !v.optBoolean("people")) GalleryPeople.forget(db);
       }
       enqueue(v);
@@ -169,8 +180,12 @@ final class GalleryIntelligence {
   }
 
   JSONObject control(String action) throws Exception {
-    if (!Set.of("pause", "resume", "scan", "clear").contains(action))
+    if (!Set.of("pause", "resume", "scan", "clear", "retry").contains(action))
       throw new R2Exception("INVALID_SELECTION");
+    if (action.equals("retry")) {
+      GalleryAnalysisHealth.request(this, "", true);
+      return status();
+    }
     synchronized (STATE_LOCK) {
       JSONObject v = settings();
       if (action.equals("pause") || action.equals("clear")) {
@@ -182,6 +197,8 @@ final class GalleryIntelligence {
         if (action.equals("clear")) {
           try (GallerySearchStore db = new GallerySearchStore(secure)) {
             db.clear();
+            db.forgetChoices(GalleryAnalysisHealth.KEY);
+            db.forgetChoices("analysis-metrics-v1");
             db.forgetChoices("query-vectors");
             db.forgetChoices("extraction-text");
             db.forgetChoices("search-feedback");
@@ -201,10 +218,17 @@ final class GalleryIntelligence {
         WorkManager.getInstance(context).cancelAllWorkByTag(WORK);
         if (action.equals("scan") || v.optString("cursor").isEmpty())
           v.put("cursor", "")
+              .put("targeted", false)
+              .put("passWorkMs", 0)
+              .put("checked", 0)
               .put("since", 0)
               .put("scanStarted", System.currentTimeMillis())
               .put("scanned", 0)
               .put("failed", 0);
+        if (v.optLong("since") == 0 && v.optInt("checked") == 0)
+          try (GallerySearchStore db = new GallerySearchStore(secure)) {
+            GalleryAnalysisHealth.beginPass(db);
+          }
         writeSettings(v);
         enqueue(v);
         schedule(v);
@@ -381,7 +405,10 @@ final class GalleryIntelligence {
         return;
       }
       if (Set.of("ready", "error").contains(v.optString("state"))) {
-        v.put("since", Math.max(0, v.optLong("lastScanStarted") - 2000))
+        v.put("targeted", false)
+            .put("passWorkMs", 0)
+            .put("checked", 0)
+            .put("since", Math.max(0, v.optLong("lastScanStarted") - 2000))
             .put("scanStarted", System.currentTimeMillis())
             .put("cursor", "")
             .put("state", "waiting")
@@ -455,6 +482,31 @@ final class GalleryIntelligence {
   }
 
   JSONObject search(
+      String query,
+      String album,
+      String kind,
+      int offset,
+      java.util.function.BooleanSupplier cancelled,
+      JSONObject filters,
+      Progress progress)
+      throws Exception {
+    long started = android.os.SystemClock.elapsedRealtime();
+    JSONObject result = null;
+    try {
+      result = searchMeasured(query, album, kind, offset, cancelled, filters, progress);
+      return result;
+    } finally {
+      if (!cancelled.getAsBoolean())
+        GalleryAnalysisHealth.metric(
+            this,
+            result != null && result.optBoolean("cached")
+                ? "search-cached"
+                : filters.optBoolean("textOnly") ? "search-text" : "search-visual",
+            android.os.SystemClock.elapsedRealtime() - started);
+    }
+  }
+
+  private JSONObject searchMeasured(
       String query,
       String album,
       String kind,

@@ -78,3 +78,21 @@ export function intelligenceStateText(
           : "Analysis stopped. Resume to try again.";
   }
 }
+
+export interface GalleryAnalysisReport {
+  failed: number;
+  queued: number;
+  failureLimit: boolean;
+  legacyFailures?: number;
+  passWorkMs?: number;
+  indexBytes?: number;
+  decodedSearchBytes?: number;
+  checked: number;
+  indexed: number;
+  passTotal: number;
+  remaining: number;
+  metrics: Record<
+    string,
+    { count: number; totalMs: number; lastMs: number; maxMs: number }
+  >;
+}

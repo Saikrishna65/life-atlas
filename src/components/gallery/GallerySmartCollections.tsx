@@ -73,6 +73,7 @@ export default function GallerySmartCollections({
     },
     70,
   );
+  const [matchPosition, setMatchPosition] = useState(0);
   const [showMatches, setShowMatches] = useState(false),
     [matchNames, setMatchNames] = useState<Record<string, string>>({});
   const [newAlbum, setNewAlbum] = useState(false);
@@ -489,76 +490,98 @@ export default function GallerySmartCollections({
             Review possible matches · {page.matches.length}
           </button>
           {showMatches &&
-            page.matches.map((pair, pairIndex) => (
-              <article key={pair.id}>
-                <h3>Could these be the same person?</h3>
-                <div className="gsmart-match-pair">
-                  <div>
-                    <GalleryCollectionCover faceId={pair.leftFace} />
-                    <span>{pair.leftName}</span>
-                  </div>
-                  <div>
-                    <GalleryCollectionCover faceId={pair.rightFace} />
-                    <span>{pair.rightName}</span>
-                  </div>
-                </div>
-                <label>
-                  Confirm a name
-                  <input
-                    aria-label={`Name for match ${pairIndex + 1}`}
-                    value={
-                      matchNames[pair.id] ??
-                      (pair.leftName !== "Unnamed person"
-                        ? pair.leftName
-                        : pair.rightName !== "Unnamed person"
-                          ? pair.rightName
-                          : "")
-                    }
-                    onChange={(e) =>
-                      setMatchNames((v) => ({
-                        ...v,
-                        [pair.id]: e.target.value,
-                      }))
-                    }
-                    maxLength={80}
-                  />
-                </label>
-                <button
-                  disabled={
-                    busy ||
-                    !(
-                      matchNames[pair.id] ??
-                      (pair.leftName !== "Unnamed person"
-                        ? pair.leftName
-                        : pair.rightName !== "Unnamed person"
-                          ? pair.rightName
-                          : "")
-                    ).trim()
-                  }
-                  onClick={() =>
-                    void act({
-                      action: "confirm-people-pair",
-                      keys: [pair.left, pair.right],
-                      name:
-                        matchNames[pair.id] ??
-                        (pair.leftName !== "Unnamed person"
-                          ? pair.leftName
-                          : pair.rightName),
-                    })
-                  }
-                >
-                  Same person · merge
-                </button>
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    void act({ action: "reject-people-match", key: pair.id })
-                  }
-                >
-                  Different people
-                </button>
-              </article>
-            ))}
+            page.matches
+              .slice(
+                matchPosition % page.matches.length,
+                (matchPosition % page.matches.length) + 1,
+              )
+              .map((pair) => {
+                const pairIndex = matchPosition % page.matches!.length;
+                return (
+                  <article key={pair.id}>
+                    <p>
+                      Suggestion {pairIndex + 1} of {page.matches!.length}
+                    </p>
+                    <h3>Could these be the same person?</h3>
+                    <div className="gsmart-match-pair">
+                      <div>
+                        <GalleryCollectionCover faceId={pair.leftFace} />
+                        <span>{pair.leftName}</span>
+                      </div>
+                      <div>
+                        <GalleryCollectionCover faceId={pair.rightFace} />
+                        <span>{pair.rightName}</span>
+                      </div>
+                    </div>
+                    <label>
+                      Confirm a name
+                      <input
+                        aria-label={`Name for match ${pairIndex + 1}`}
+                        value={
+                          matchNames[pair.id] ??
+                          (pair.leftName !== "Unnamed person"
+                            ? pair.leftName
+                            : pair.rightName !== "Unnamed person"
+                              ? pair.rightName
+                              : "")
+                        }
+                        onChange={(e) =>
+                          setMatchNames((v) => ({
+                            ...v,
+                            [pair.id]: e.target.value,
+                          }))
+                        }
+                        maxLength={80}
+                      />
+                    </label>
+                    <button
+                      disabled={
+                        busy ||
+                        !(
+                          matchNames[pair.id] ??
+                          (pair.leftName !== "Unnamed person"
+                            ? pair.leftName
+                            : pair.rightName !== "Unnamed person"
+                              ? pair.rightName
+                              : "")
+                        ).trim()
+                      }
+                      onClick={() =>
+                        void act({
+                          action: "confirm-people-pair",
+                          keys: [pair.left, pair.right],
+                          name:
+                            matchNames[pair.id] ??
+                            (pair.leftName !== "Unnamed person"
+                              ? pair.leftName
+                              : pair.rightName),
+                        })
+                      }
+                    >
+                      Same person · merge
+                    </button>
+                    <button
+                      disabled={busy}
+                      onClick={() =>
+                        void act({
+                          action: "reject-people-match",
+                          key: pair.id,
+                        })
+                      }
+                    >
+                      Different people
+                    </button>
+                    {page.matches!.length > 1 && (
+                      <button
+                        disabled={busy}
+                        onClick={() => setMatchPosition((n) => n + 1)}
+                      >
+                        Skip for now
+                      </button>
+                    )}
+                  </article>
+                );
+              })}
           <p>
             These are suggestions. Nothing merges without your confirmation.
           </p>
@@ -882,7 +905,10 @@ export default function GallerySmartCollections({
           {mode === "people" && selected.confirmed && (
             <p className="gsmart-hint">
               Choose up to eight clear reference photos from different angles.
-              They help future match suggestions; names always come from you.
+              Use a few sharp photos where only this person’s face is selected.
+              These guide future suggestions; they do not train new model
+              weights. They help future match suggestions; names always come
+              from you.
             </p>
           )}
           {mode === "people" && people && (

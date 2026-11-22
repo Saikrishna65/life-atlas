@@ -21,6 +21,7 @@ import {
   type GalleryIntelligenceStatus,
 } from "@/lib/gallery/intelligence";
 import "./gallery-intelligence.css";
+import AnalysisHealth from "./GalleryAnalysisHealth";
 
 export default function GalleryIntelligencePanel({
   albums,
@@ -89,7 +90,7 @@ export default function GalleryIntelligencePanel({
     };
   }, [initialFeature]);
   const run = async (
-    action: "start" | "pause" | "resume" | "scan" | "clear",
+    action: "start" | "pause" | "resume" | "scan" | "clear" | "retry",
   ) => {
     setBusy(true);
     setError("");
@@ -140,12 +141,18 @@ export default function GalleryIntelligencePanel({
         {status && (
           <small>
             {status.indexed.toLocaleString()} saved media details
-            {status.failed
-              ? ` · ${status.failed} couldn’t be read; a new scan will retry`
-              : ""}
+            {status.failed ? ` · ${status.failed} need another try` : ""}
           </small>
         )}
       </div>
+      {status && status.state !== "off" && (
+        <AnalysisHealth
+          status={status}
+          disabled={busy}
+          onRetry={() => void run("retry")}
+          onScan={() => void run("scan")}
+        />
+      )}
       {error && (
         <p role="alert" className="gi-error">
           {error}

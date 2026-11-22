@@ -131,6 +131,7 @@ public final class GalleryIntelligenceWorker extends Worker {
     GalleryIntelligence service = new GalleryIntelligence(getApplicationContext());
     String epoch = getInputData().getString("epoch");
     if (epoch == null || stopped(service, epoch)) return Result.success();
+    long batchStarted = android.os.SystemClock.elapsedRealtime();
     try {
       JSONObject config = service.settings();
       if (deferForDevice(service, epoch)) return Result.retry();
@@ -144,7 +145,10 @@ public final class GalleryIntelligenceWorker extends Worker {
               epoch,
               v -> {
                 try {
-                  v.put("cursor", "")
+                  v.put("passWorkMs", 0)
+                      .put("checked", 0)
+                      .put("targeted", false)
+                      .put("cursor", "")
                       .put("since", Math.max(0, v.optLong("lastScanStarted") - 2000))
                       .put("scanStarted", System.currentTimeMillis())
                       .put("state", "waiting")
@@ -220,10 +224,19 @@ public final class GalleryIntelligenceWorker extends Worker {
             }
           });
       R2DeviceGallery gallery = new R2DeviceGallery(getApplicationContext());
-      JSONObject page = gallery.changedPhotos(config.optString("cursor"), config.optLong("since"));
+      JSONArray priority = GalleryAnalysisHealth.batch(service, gallery);
+      boolean priorityPage = priority.length() > 0 || config.optBoolean("targeted");
+      JSONObject page =
+          priorityPage
+              ? new JSONObject()
+                  .put("items", priority)
+                  .put("cursor", config.optString("cursor"))
+                  .put("complete", false)
+              : gallery.changedPhotos(config.optString("cursor"), config.optLong("since"));
       JSONArray photos = page.getJSONArray("items"), allowed = config.getJSONArray("albums");
       Set<String> albums = new HashSet<>();
       for (int i = 0; i < allowed.length(); i++) albums.add(allowed.getString(i));
+      int pageChecked = 0;
       try (GallerySearchStore db = new GallerySearchStore(service.secure);
           TextRecognizer latin =
               config.optBoolean("ocr")
@@ -231,11 +244,20 @@ public final class GalleryIntelligenceWorker extends Worker {
                   : null;
           GalleryClip clip = new GalleryClip(getApplicationContext());
           GalleryFaceModels faces = new GalleryFaceModels(getApplicationContext())) {
+        Set<String> journalFailures =
+            new HashSet<>(
+                GalleryRecovery.keys(
+                    GalleryAnalysisHealth.failures(GalleryAnalysisHealth.read(db))));
         for (int i = 0; i < photos.length(); i++) {
           if (stopped(service, epoch)) return Result.success();
           if (deferForDevice(service, epoch)) return Result.retry();
           JSONObject media = photos.getJSONObject(i);
-          if (!albums.isEmpty() && !albums.contains(media.optString("album"))) continue;
+          if (!albums.isEmpty() && !albums.contains(media.optString("album"))) {
+            if (priorityPage)
+              GalleryAnalysisHealth.attempt(service, media.getString("id"), "", false);
+            continue;
+          }
+          if (!priorityPage) pageChecked++;
           String id = media.getString("id"), stamp = R2DeviceGallery.stamp(media);
           JSONObject row = db.get(id);
           if (row != null
@@ -249,7 +271,11 @@ public final class GalleryIntelligenceWorker extends Worker {
               db.put(row);
             }
           }
-          if (current(row, media, config)) continue;
+          if (current(row, media, config)) {
+            if (priorityPage || journalFailures.contains(id))
+              GalleryAnalysisHealth.attempt(service, id, stamp, false);
+            continue;
+          }
           Bitmap bitmap = null;
           com.google.android.gms.tasks.Task<Text> pending = null;
           boolean failed = false;
@@ -318,6 +344,7 @@ public final class GalleryIntelligenceWorker extends Worker {
           } catch (SecurityException
               | java.util.concurrent.TimeoutException
               | InterruptedException e) {
+            if (!stopped(service, epoch)) GalleryAnalysisHealth.attempt(service, id, stamp, true);
             // Stop this batch rather than accumulating recognizers still holding input bitmaps.
             throw e;
           } catch (Exception e) {
@@ -339,6 +366,8 @@ public final class GalleryIntelligenceWorker extends Worker {
               else owned.recycle();
             }
           }
+          if (failed || priorityPage || journalFailures.contains(id))
+            GalleryAnalysisHealth.attempt(service, id, stamp, failed);
           final boolean didFail = failed;
           service.change(
               epoch,
@@ -353,14 +382,60 @@ public final class GalleryIntelligenceWorker extends Worker {
               });
         }
       }
+      final int checkedInPage = pageChecked;
+      final long processingMs = android.os.SystemClock.elapsedRealtime() - batchStarted;
+      service.change(
+          epoch,
+          v -> {
+            try {
+              v.put("passWorkMs", v.optLong("passWorkMs") + processingMs);
+              if (!priorityPage) v.put("checked", v.optInt("checked") + checkedInPage);
+            } catch (JSONException e) {
+              throw new IllegalStateException(e);
+            }
+          });
+      GalleryAnalysisHealth.metric(
+          service, "analysis-batch", android.os.SystemClock.elapsedRealtime() - batchStarted);
+      if (priorityPage) {
+        synchronized (GalleryIntelligence.STATE_LOCK) {
+          if (stopped(service, epoch)) return Result.success();
+          boolean more;
+          try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
+            more = GalleryAnalysisHealth.queue(GalleryAnalysisHealth.read(db)).length() > 0;
+          }
+          boolean finish = config.optBoolean("targeted") && !more;
+          service.change(
+              epoch,
+              v -> {
+                try {
+                  v.put("state", finish ? "ready" : "waiting");
+                  if (finish) v.put("targeted", false);
+                } catch (JSONException e) {
+                  throw new IllegalStateException(e);
+                }
+              });
+          if (!finish) service.enqueue(service.settings());
+          else {
+            GalleryRecoveryWorker.photosChanged(getApplicationContext());
+            if (service.settings().optBoolean("mediaDirty")) service.mediaChanged();
+          }
+        }
+        return Result.success();
+      }
       synchronized (GalleryIntelligence.STATE_LOCK) {
         if (stopped(service, epoch)) return Result.success();
+        boolean queueWaiting;
+        try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
+          queueWaiting = GalleryAnalysisHealth.queue(GalleryAnalysisHealth.read(db)).length() > 0;
+        }
         service.change(
             epoch,
             v -> {
               try {
                 v.put("cursor", page.optString("cursor"))
-                    .put("state", page.optBoolean("complete") ? "ready" : "waiting")
+                    .put(
+                        "state", page.optBoolean("complete") && !queueWaiting ? "ready" : "waiting")
+                    .put("targeted", page.optBoolean("complete") && queueWaiting)
                     .put("updatedAt", System.currentTimeMillis());
                 if (page.optBoolean("complete"))
                   v.put(
@@ -369,7 +444,7 @@ public final class GalleryIntelligenceWorker extends Worker {
                 throw new IllegalStateException(e);
               }
             });
-        if (!page.optBoolean("complete")) service.enqueue(service.settings());
+        if (!page.optBoolean("complete") || queueWaiting) service.enqueue(service.settings());
       }
       if (page.optBoolean("complete")) {
         try {

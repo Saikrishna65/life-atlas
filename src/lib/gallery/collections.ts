@@ -89,6 +89,9 @@ export interface GalleryRecoveryStatus {
   error?: string;
   lastSaved?: number;
   lastRestored?: number;
+  lastVerified?: number;
+  verifiedRecords?: number;
+  pending?: boolean;
 }
 
 export interface AlbumEdit {

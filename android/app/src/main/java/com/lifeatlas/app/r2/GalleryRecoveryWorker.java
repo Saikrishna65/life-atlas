@@ -82,7 +82,8 @@ public final class GalleryRecoveryWorker extends Worker {
         GalleryRecovery.progress(service, "waiting", 0, 0, "");
         return Result.retry();
       }
-      if ("restore".equals(action))
+      if ("verify".equals(action)) GalleryRecovery.verify(getApplicationContext(), this::isStopped);
+      else if ("restore".equals(action))
         GalleryRecovery.restore(
             getApplicationContext(), getInputData().getBoolean("faces", false), this::isStopped);
       else if ("reconnect".equals(action))
@@ -93,7 +94,8 @@ public final class GalleryRecoveryWorker extends Worker {
         if (db.count() > 0
             && state.optBoolean("enabled")
             && state.optLong("savedRevision", -1) != db.revision()
-            && !"restore".equals(action))
+            && !"restore".equals(action)
+            && !"verify".equals(action))
           schedule(getApplicationContext(), "backup", false, ExistingWorkPolicy.APPEND_OR_REPLACE);
       }
       return Result.success();

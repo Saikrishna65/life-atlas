@@ -1,3 +1,36 @@
+Atlas 2.3.0 — Gallery analysis health and recovery checks
+
+Install atlas.apk over Atlas without uninstalling. Version code 46.
+Package identity and signing key are unchanged. Your index, names, corrections,
+credentials, photos and cloud data remain in place.
+
+• Gallery settings → Analysis activity shows saved records, checked records,
+  estimated work remaining, pending priority work and individually tracked failures.
+• Retry failed photos queues only recorded failures; it preserves the bulk scan's
+  cursor. Failures from older versions need one scan to locate them, reusing
+  completed analysis. Work queues/journals are bounded to 2,000 records.
+• Photos you pause on for 350 ms receive priority at the next batch boundary when
+  analysis is enabled. Rapid swipes are debounced. Both Gallery viewers support
+  this; charging, scope, consent and device-health rules are still respected.
+• Newly indexed records contain small completion summaries, avoiding stored face
+  crops when checking whether an opened photo needs analysis.
+• Performance & storage in analysis settings shows local aggregate request/batch
+  timings and cache sizes. It records no query text, OCR, names or filenames.
+  Performance history can be cleared independently of the index.
+• People → Review possible matches shows one pair at a time, with same/different,
+  skip and the existing correction undo. Reference-photo guidance is clearer.
+• Verify recovery & organisation → Verify saved metadata without restoring reads
+  and decrypts the newest private snapshot and its photo records. It does not
+  replace the working index, import names, change keys or write cloud objects.
+  It respects existing charging/unmetered Wi-Fi rules. Original media availability
+  is a separate check. Verified recovery kit and private configuration are required.
+
+No new models or paid services. Background work remains subject to Android
+scheduling; force-stop prevents jobs until reopening. Phone accuracy, frame timing
+and battery use still need testing on your real library.
+
+Historical release notes below.
+
 Atlas 2.2.9 — Gallery AI reliability and efficiency
 
 Install atlas.apk over Atlas without uninstalling. Version code 45.

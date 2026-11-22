@@ -96,8 +96,21 @@ final class GallerySearchStore implements AutoCloseable {
         new JSONObject()
             .put("media", row.getJSONObject("media"))
             .put("stamp", row.optString("stamp"));
-    for (String field : java.util.List.of("text", "ocrDone", "ocrVersion", "embedding", "model"))
-      if (row.has(field)) search.put(field, row.get(field));
+    for (String field :
+        java.util.List.of(
+            "text",
+            "ocrDone",
+            "ocrVersion",
+            "embedding",
+            "model",
+            "visualDone",
+            "faceVersion",
+            "faceQualityVersion")) if (row.has(field)) search.put(field, row.get(field));
+    search.put("completionVersion", 1);
+    if (row.optJSONObject("quality") != null)
+      search.put(
+          "quality",
+          new JSONObject().put("version", row.getJSONObject("quality").optString("version")));
     ContentValues searchValues = sealed(key, "gallery-search-entry-v1:", search);
     ContentValues full = sealed(key, "gallery-search-v1:", row),
         thin = sealed(key, "gallery-summary-v1:", summary);
@@ -117,6 +130,18 @@ final class GallerySearchStore implements AutoCloseable {
     } finally {
       db.endTransaction();
     }
+  }
+
+  JSONObject readiness(String id) throws Exception {
+    String key = token(id);
+    try (Cursor cursor =
+        db.rawQuery("SELECT payload FROM search_entries WHERE token=?", new String[] {key})) {
+      if (cursor.moveToFirst()) {
+        JSONObject row = readSearch(key, cursor.getBlob(0), false);
+        if (row.optInt("completionVersion") == 1) return row;
+      }
+    }
+    return get(id); // Older installations remain compatible until their next index write.
   }
 
   Cursor searchRows() {

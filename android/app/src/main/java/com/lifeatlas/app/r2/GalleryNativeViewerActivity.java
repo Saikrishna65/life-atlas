@@ -31,6 +31,23 @@ public final class GalleryNativeViewerActivity extends Activity {
   private TextView counter;
   private boolean chrome = true;
   private final Runnable hide = () -> setChrome(false);
+  private final java.util.concurrent.ExecutorService priorityExecutor =
+      java.util.concurrent.Executors.newSingleThreadExecutor();
+  private final Runnable prioritize =
+      () -> {
+        if (pager == null || isFinishing() || isDestroyed() || priorityExecutor.isShutdown())
+          return;
+        String id = ids.get(pager.getCurrentItem());
+        if (!id.startsWith("image:")) return;
+        priorityExecutor.execute(
+            () -> {
+              try {
+                GalleryAnalysisHealth.request(
+                    new GalleryIntelligence(getApplicationContext()), id, false);
+              } catch (Exception ignored) {
+              }
+            });
+      };
 
   static ArrayList<String> validate(ArrayList<String> input) {
     if (input == null || input.isEmpty() || input.size() > 2000)
@@ -126,6 +143,8 @@ public final class GalleryNativeViewerActivity extends Activity {
         new ViewPager2.OnPageChangeCallback() {
           @Override
           public void onPageSelected(int position) {
+            handler.removeCallbacks(prioritize);
+            handler.postDelayed(prioritize, 350);
             pager.setUserInputEnabled(true);
             counter.setText((position + 1) + " / " + ids.size());
             for (Page page : pages) page.active(page.position == position);
@@ -206,17 +225,21 @@ public final class GalleryNativeViewerActivity extends Activity {
     super.onPause();
     for (Page page : pages) page.active(false);
     handler.removeCallbacks(hide);
+    handler.removeCallbacks(prioritize);
   }
 
   @Override
   protected void onResume() {
     super.onResume();
+    handler.removeCallbacks(prioritize);
+    handler.postDelayed(prioritize, 350);
     if (pager != null) for (Page page : pages) page.active(page.position == pager.getCurrentItem());
   }
 
   @Override
   protected void onDestroy() {
     handler.removeCallbacksAndMessages(null);
+    priorityExecutor.shutdownNow();
     for (Page page : pages) page.release();
     super.onDestroy();
   }

@@ -261,7 +261,8 @@ public class R2StoragePlugin extends Plugin {
 
   @PluginMethod
   public void controlGalleryRecovery(PluginCall call) {
-    if (Build.VERSION.SDK_INT >= 29
+    if (!Set.of("cancel", "verify").contains(call.getString("action", ""))
+        && Build.VERSION.SDK_INT >= 29
         && getPermissionState("galleryOriginal") != PermissionState.GRANTED) {
       requestPermissionForAlias("galleryOriginal", call, "galleryRecoveryControlPermission");
       return;
@@ -270,7 +271,7 @@ public class R2StoragePlugin extends Plugin {
         call,
         () -> {
           String action = call.getString("action", "");
-          if (!Set.of("backup", "restore", "cancel").contains(action))
+          if (!Set.of("backup", "restore", "cancel", "verify").contains(action))
             throw new R2Exception("INVALID_SELECTION");
           if (action.equals("cancel")) {
             WorkManager.getInstance(getContext()).cancelUniqueWork(GalleryRecoveryWorker.WORK);
@@ -677,6 +678,40 @@ public class R2StoragePlugin extends Plugin {
           GalleryRecoveryWorker.scheduleIfEnabled(getContext());
           call.resolve();
         });
+  }
+
+  @PluginMethod
+  public void resetGalleryAnalysisMetrics(PluginCall call) {
+    work(
+        call,
+        () -> {
+          synchronized (GalleryIntelligence.STATE_LOCK) {
+            try (GallerySearchStore db =
+                new GallerySearchStore(new GalleryIntelligence(getContext()).secure)) {
+              db.forgetChoices("analysis-metrics-v1");
+            }
+          }
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void getGalleryAnalysisHealth(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(js(GalleryAnalysisHealth.report(new GalleryIntelligence(getContext())))));
+  }
+
+  @PluginMethod
+  public void prioritizeGalleryAnalysis(PluginCall call) {
+    work(
+        call,
+        () ->
+            call.resolve(
+                js(
+                    GalleryAnalysisHealth.request(
+                        new GalleryIntelligence(getContext()), call.getString("id", ""), false))));
   }
 
   @PluginMethod

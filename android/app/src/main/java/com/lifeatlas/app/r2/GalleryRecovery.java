@@ -28,7 +28,11 @@ final class GalleryRecovery {
 
   static JSONObject status(GalleryIntelligence service) throws Exception {
     try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
-      return db.choice("recovery-settings");
+      JSONObject value = db.choice("recovery-settings");
+      value.put(
+          "pending",
+          value.optBoolean("enabled") && value.optLong("savedRevision", -1) != db.revision());
+      return value;
     }
   }
 
@@ -394,6 +398,99 @@ final class GalleryRecovery {
     }
   }
 
+  interface VerificationProgress {
+    void update(int done, int total) throws Exception;
+  }
+
+  static String latestSnapshot(
+      R2Client client, byte[] keys, java.util.function.BooleanSupplier stopped) throws Exception {
+    String cursor = "", latest = "";
+    int seen = 0;
+    do {
+      JSONObject page = client.list(prefix(keys) + "snapshots/", cursor);
+      JSONArray items = page.getJSONArray("objects");
+      for (int i = 0; i < items.length(); i++) {
+        if (++seen > 20000) throw new R2Exception("GALLERY_RECOVERY_LIMIT");
+        String key = items.getJSONObject(i).getString("key");
+        if (key.endsWith(".atlas") && key.compareTo(latest) > 0) latest = key;
+      }
+      cursor = page.optString("cursor");
+      if (stopped.getAsBoolean()) throw new InterruptedIOException();
+    } while (!cursor.isEmpty());
+    if (latest.isEmpty()) throw new R2Exception("GALLERY_RECOVERY_NOT_FOUND");
+    return latest;
+  }
+
+  /** Pure read-only validation: no index, staged restore, credential or object writes. */
+  static int verifySnapshot(
+      R2Transport client,
+      byte[] keys,
+      String snapshot,
+      java.util.function.BooleanSupplier stopped,
+      VerificationProgress progress)
+      throws Exception {
+    JSONObject manifest = get(client, keys, snapshot);
+    validateManifest(manifest);
+    JSONArray refs = manifest.getJSONArray("photos");
+    progress.update(0, refs.length());
+    for (int i = 0; i < refs.length(); i++) {
+      if (stopped.getAsBoolean()) throw new InterruptedIOException();
+      JSONObject ref = refs.getJSONObject(i), photo = get(client, keys, ref.getString("key"));
+      if (!"life-atlas-gallery-photo".equals(photo.optString("format"))
+          || photo.optInt("version") != 1
+          || !ref.getString("hash").equals(photo.optString("hash")))
+        throw new R2Exception("INVALID_GALLERY_RECOVERY");
+      namespacePending(photo.getJSONObject("row"), ref.getString("hash"), new HashMap<>());
+      progress.update(i + 1, refs.length());
+    }
+    return refs.length();
+  }
+
+  static void verify(Context context, java.util.function.BooleanSupplier stopped) throws Exception {
+    R2Repository repo = new R2Repository(context);
+    GalleryIntelligence service = new GalleryIntelligence(context);
+    if (!repo.store.snapshot().optBoolean("recoveryVerified"))
+      throw new R2Exception("RECOVERY_VERIFICATION_REQUIRED");
+    R2Credentials credentials = repo.store.credentials("private");
+    String scope = R2Duplicates.scope(credentials);
+    byte[] keys = repo.keyset();
+    try {
+      R2Client client = new R2Client(credentials);
+      java.util.function.BooleanSupplier cancelled =
+          () -> stopped.getAsBoolean() || !samePrivateScope(repo, scope);
+      int count =
+          verifySnapshot(
+              client,
+              keys,
+              latestSnapshot(client, keys, cancelled),
+              () -> stopped.getAsBoolean() || !samePrivateScope(repo, scope),
+              (done, total) -> progress(service, "verifying", done, total, ""));
+      synchronized (GalleryIntelligence.STATE_LOCK) {
+        if (stopped.getAsBoolean() || !samePrivateScope(repo, scope))
+          throw new InterruptedIOException();
+        try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
+          JSONObject state = db.choice("recovery-settings");
+          state
+              .put("state", "verified")
+              .put("lastVerified", System.currentTimeMillis())
+              .put("verifiedRecords", count)
+              .put("error", "");
+          db.choice("recovery-settings", state);
+        }
+      }
+    } finally {
+      Arrays.fill(keys, (byte) 0);
+    }
+  }
+
+  static boolean samePrivateScope(R2Repository repo, String scope) {
+    try {
+      return scope.equals(R2Duplicates.scope(repo.store.credentials("private")));
+    } catch (Exception changed) {
+      return false;
+    }
+  }
+
   static void restore(Context context, boolean faces, java.util.function.BooleanSupplier stopped)
       throws Exception {
     R2Repository repo = new R2Repository(context);
@@ -401,20 +498,7 @@ final class GalleryRecovery {
     byte[] keys = repo.keyset();
     try (GallerySearchStore db = new GallerySearchStore(service.secure)) {
       R2Client client = new R2Client(repo.store.credentials("private"));
-      String cursor = "", latest = "";
-      int seen = 0;
-      do {
-        JSONObject page = client.list(prefix(keys) + "snapshots/", cursor);
-        JSONArray items = page.getJSONArray("objects");
-        for (int i = 0; i < items.length(); i++) {
-          if (++seen > 20000) throw new R2Exception("GALLERY_RECOVERY_LIMIT");
-          String k = items.getJSONObject(i).getString("key");
-          if (k.endsWith(".atlas") && k.compareTo(latest) > 0) latest = k;
-        }
-        cursor = page.optString("cursor");
-        if (stopped.getAsBoolean()) throw new InterruptedIOException();
-      } while (!cursor.isEmpty());
-      if (latest.isEmpty()) throw new R2Exception("GALLERY_RECOVERY_NOT_FOUND");
+      String latest = latestSnapshot(client, keys, stopped);
       JSONObject manifest = get(client, keys, latest);
       validateManifest(manifest);
       if (!faces) manifest.getJSONObject("choices").remove("people");

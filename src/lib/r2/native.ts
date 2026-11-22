@@ -116,7 +116,7 @@ interface R2Plugin {
     enabled: boolean;
   }): Promise<import("../gallery/collections").GalleryRecoveryStatus>;
   controlGalleryRecovery(input: {
-    action: "backup" | "restore" | "cancel";
+    action: "backup" | "restore" | "cancel" | "verify";
     peopleApproved?: boolean;
   }): Promise<void>;
   getGalleryMediaPreferences(): Promise<{ favorites?: string[] }>;
@@ -140,6 +140,13 @@ interface R2Plugin {
   editGalleryCollection(
     input: import("../gallery/collections").CollectionEdit,
   ): Promise<void>;
+  getGalleryAnalysisHealth(): Promise<
+    import("../gallery/intelligence").GalleryAnalysisReport
+  >;
+  prioritizeGalleryAnalysis(input: {
+    id: string;
+  }): Promise<{ queued: number; reason?: string }>;
+  resetGalleryAnalysisMetrics(): Promise<void>;
   getGalleryIntelligence(): Promise<
     import("../gallery/intelligence").GalleryIntelligenceStatus
   >;
@@ -150,7 +157,7 @@ interface R2Plugin {
     },
   ): Promise<import("../gallery/intelligence").GalleryIntelligenceStatus>;
   controlGalleryIntelligence(input: {
-    action: "pause" | "resume" | "scan" | "clear";
+    action: "pause" | "resume" | "scan" | "clear" | "retry";
   }): Promise<import("../gallery/intelligence").GalleryIntelligenceStatus>;
   prepareGallerySearch(): Promise<void>;
   searchGalleryIntelligence(input: {
@@ -253,10 +260,7 @@ interface R2Plugin {
     to?: number;
   }): Promise<import("../gallery/types").DevicePage>;
   getGalleryAlbums(): Promise<{ albums: { name: string; count: number }[] }>;
-  openNativeGalleryViewer(input: {
-    ids: string[];
-    selected: string;
-  }): Promise<{
+  openNativeGalleryViewer(input: { ids: string[]; selected: string }): Promise<{
     id?: string;
     action: "close" | "share" | "whatsapp" | "favourite" | "info" | "more";
   }>;

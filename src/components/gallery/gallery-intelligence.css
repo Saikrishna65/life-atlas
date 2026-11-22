@@ -168,3 +168,57 @@
   font-size: 14px;
   line-height: 1.6;
 }
+
+.gi-health {
+  padding: 18px 0;
+  border-block: 1px solid #dce5de;
+  margin: 18px 0;
+}
+.gi-health h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.gi-health p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #52675b;
+}
+.gi-health summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-size: 13px;
+}
+.gi-health dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e7ece7;
+  font-size: 12px;
+}
+.gi-health dd {
+  text-align: right;
+  margin: 0;
+}
+.gi-health small {
+  display: block;
+  padding-top: 8px;
+}
+.gi-health button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #cdded2;
+  border-radius: 13px;
+  background: #eaf3ed;
+  color: #234d3b;
+  cursor: pointer;
+}
+.gi-health button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.gi-health button:focus-visible {
+  outline: 2px solid #317454;
+  outline-offset: 3px;
+}

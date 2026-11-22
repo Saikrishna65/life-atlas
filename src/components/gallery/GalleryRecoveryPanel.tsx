@@ -43,7 +43,7 @@ export default function GalleryRecoveryPanel({
     };
   }, []);
   const act = async (
-    action: "enable" | "disable" | "backup" | "restore" | "cancel",
+    action: "enable" | "disable" | "backup" | "restore" | "cancel" | "verify",
   ) => {
     if (
       action === "restore" &&
@@ -73,6 +73,8 @@ export default function GalleryRecoveryPanel({
     waiting: "Waiting for Wi-Fi, charging and enough battery",
     saving: "Saving privately",
     restoring: "Restoring your organisation",
+    verifying: "Checking saved encrypted metadata",
+    verified: "Saved metadata verified",
     matching: "Finding matching photos",
     saved: "Organisation saved",
     restored: "Restore finished",
@@ -98,6 +100,43 @@ export default function GalleryRecoveryPanel({
         need the same kit on a replacement phone. This saves organisation; photo
         backup is a separate choice.
       </p>
+      <section className="gsmart-rehearsal">
+        <h3>Check your saved organisation</h3>
+        <p>
+          {status.pending
+            ? "Recent changes are waiting to be saved."
+            : status.lastSaved
+              ? "Your organisation has a saved snapshot."
+              : "Create a metadata backup before checking it."}
+        </p>
+        <p>
+          This reads and decrypts the latest snapshot and its photo records. It
+          does not import names, change your index or write to cloud storage.
+          Original photo availability is a separate check. This uses your
+          existing charging and unmetered Wi-Fi rules for organisation backups.
+        </p>
+        <button
+          disabled={
+            busy ||
+            [
+              "waiting",
+              "saving",
+              "restoring",
+              "matching",
+              "verifying",
+            ].includes(status.state || "")
+          }
+          onClick={() => void act("verify")}
+        >
+          Verify saved metadata without restoring
+        </button>
+        {status.lastVerified && (
+          <p role="status">
+            Last verified {new Date(status.lastVerified).toLocaleString()} ·{" "}
+            {status.verifiedRecords ?? 0} photo records checked.
+          </p>
+        )}
+      </section>
       <section className="gsmart-rehearsal">
         <h3>Check your saved recovery kit</h3>
         <p>
