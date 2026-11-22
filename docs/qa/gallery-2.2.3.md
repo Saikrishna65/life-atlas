@@ -37,9 +37,36 @@ one installation and one data store.
   grid pinching, page scroll restoration, zoom/pan, long-press text hit versus
   subject fallback, worker-error UI, and centered desktop/phone extraction panels.
 - Places and Library browser suites: pass, using native fixtures.
+- Mobile bundle (168 assets) and Capacitor sync: pass. Production Next.js build
+  exits successfully; the local PostgreSQL fixture was unavailable, so the build
+  logged connection warnings and used its existing slug-query fallback. This does
+  not validate database-backed public content.
 - Android debug source and unit-test compilation: pass before the final packaging
   pass; signed CI also runs debug unit tests and debug/preview APK builds.
 - Physical-device gesture smoothness, Google Play services segmentation, launcher
   confirmation and reproduction of the reported crash require testing on a phone.
 
-Release/build evidence will be recorded after the signed workflow finishes.
+Local Robolectric execution could not fetch its instrumented Android framework:
+a workspace-home retry reached an HTTP 403 from the environment's Maven proxy.
+CI execution is recorded below separately; native compilation passed locally.
+
+## Signed release evidence
+
+- [CI run 44918712089](https://github.com/Saikrishna65/life-atlas/actions/runs/44918712089):
+  `install-update` successful; the job with live personal-cloud checks was skipped.
+  Debug and preview native unit suites and both APK assemblies passed.
+- APK application source: `b57299fffeea44486d29536a5eb98360b28a3438`.
+- [Atlas 2.2.3 APK](https://github.com/Saikrishna65/life-atlas/releases/download/atlas-install-update-44918712089/atlas.apk):
+  package `com.lifeatlas.app.next`, version code 39, 73,594,486 bytes.
+- SHA-256: `af0201a771f4277ecb3367fe3945ad78980aed32405f62f19f97d6501be6e9f0`.
+- Verified APK signer SHA-256:
+  `2f19571f9d6a4a3b4c7250397b7618f04e047beeeaa0023713e2a6c0a745af7d`.
+  Package, bytes and checksum match the public updater manifest.
+- Additional isolated browser scenario:
+  `GALLERY_SCROLL_ONLY=1 node tests/gallery/gallery-browser.mjs` passes for a deep
+  Favourites page, native Back to Collections and a cached revisit of Favourites.
+
+Test on a phone by opening a photo, zooming and swiping down repeatedly, holding
+both text and a foreground subject, and returning from scrolled People/Favourites
+pages. Confirm the pinned shortcut opens Gallery without creating another app.
+No physical-device test was performed in this environment.
