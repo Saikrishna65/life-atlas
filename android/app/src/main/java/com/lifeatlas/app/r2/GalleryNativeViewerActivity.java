@@ -265,7 +265,11 @@ public final class GalleryNativeViewerActivity extends Activity {
           video.setControllerAutoShow(false);
           video.setControllerShowTimeoutMs(2500);
           video.setOnTouchListener((v, e) -> gesture(e));
-          frame.addView(video, new FrameLayout.LayoutParams(-1, -1));
+          // Reserve the action bar's area so the player's seek/fullscreen controls
+          // remain visible and touchable; photo pages keep their full-height canvas.
+          FrameLayout.LayoutParams videoLayout = new FrameLayout.LayoutParams(-1, -1);
+          videoLayout.bottomMargin = dp(64);
+          frame.addView(video, videoLayout);
         }
         active(at == pager.getCurrentItem());
       } catch (Exception unavailable) {

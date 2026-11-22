@@ -1,6 +1,6 @@
-Atlas 2.2.7 — Places, photo quality and viewer improvements
+Atlas 2.2.8 — Places, photo quality and viewer improvements
 
-Install atlas.apk over Atlas; do not uninstall. Version code 43.
+Install atlas.apk over Atlas; do not uninstall. Version code 44.
 Package and signing identity are unchanged. Your local and cloud data stay in place.
 
 • Places opens as a photo collection. Browse saved places, switch to Map, or
@@ -14,6 +14,7 @@ Package and signing identity are unchanged. Your local and cloud data stay in pl
   previews, video timeline frames and motion clips.
 • Web photo opening animates the decoded original through the whole transition
   without exchanging it for another bitmap at the end. App updates is centered.
+• Native video controls reserve their own space above Gallery actions.
 • Optional native viewer: Gallery settings → Photo viewer → Try the native
   Android viewer. Uses tiled original photos and native video controls. This
   remains experimental pending physical-phone testing. Info/More and share or

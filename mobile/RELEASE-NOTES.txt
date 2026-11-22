@@ -1,9 +1,10 @@
-Gallery 2.2.7
+Gallery 2.2.8
 • A new photo-first Places page with saved collections and a Map switch.
 • Adjustable preview quality: Saver, Balanced, High and custom controls.
 • Size-aware previews and batched cache cleanup; originals stay untouched.
 • Cache usage now separates previews, video frames and motion clips.
 • Original photos animate through opening without a final bitmap swap.
 • Centered app-update dialog.
+• Native video controls stay above Gallery actions.
 • Optional native Android viewer for local photos and videos (experimental).
 Install over Atlas without uninstalling. Native viewer gestures need phone testing.
