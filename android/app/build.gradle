@@ -25,7 +25,11 @@ android {
     }
     testOptions {
         unitTests.includeAndroidResources = true
-        unitTests.all { testLogging { events "failed"; exceptionFormat "full" } }
+        unitTests.all {
+            // Canonical Maven Central endpoint; repo1 rate-limits Android test SDK downloads.
+            systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
+            testLogging { events "failed"; exceptionFormat "full" }
+        }
     }
     kotlinOptions { jvmTarget = '17' }
     // CI loads the existing private key; never rely on a runner-generated debug key.
