@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import YouTubeShareModal from "@/components/music/YouTubeShareModal";
+import dynamic from "next/dynamic";
+const YouTubeShareModal = dynamic(
+  () => import("@/components/music/YouTubeShareModal"),
+);
 import { isSecretAccessGranted } from "@/lib/deviceAuth";
 
 export default function GlobalYouTubeShareHandler() {
@@ -10,22 +13,29 @@ export default function GlobalYouTubeShareHandler() {
   const pathname = usePathname();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [targetUrl, setTargetUrl] = useState("");
+  const [visited, setVisited] = useState(false);
 
-  const handleOpenShare = useCallback((url: string = "") => {
-    setTargetUrl(url);
-    setIsModalOpen(false);
-    setTimeout(() => {
-      setIsModalOpen(true);
-    }, 10);
-    // Navigate to Music Vault if not already on /secret/music
-    if (pathname && !pathname.startsWith("/secret/music")) {
-      router.push("/secret/music");
-    }
-  }, [pathname, router]);
+  const handleOpenShare = useCallback(
+    (url: string = "") => {
+      setVisited(true);
+      setTargetUrl(url);
+      setIsModalOpen(false);
+      setTimeout(() => {
+        setIsModalOpen(true);
+      }, 10);
+      // Navigate to Music Vault if not already on /secret/music
+      if (pathname && !pathname.startsWith("/secret/music")) {
+        router.push("/secret/music");
+      }
+    },
+    [pathname, router],
+  );
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      (window as unknown as { __openYouTubeModal?: (url?: string) => void }).__openYouTubeModal = handleOpenShare;
+      (
+        window as unknown as { __openYouTubeModal?: (url?: string) => void }
+      ).__openYouTubeModal = handleOpenShare;
     }
   }, [handleOpenShare]);
 
@@ -46,7 +56,10 @@ export default function GlobalYouTubeShareHandler() {
     // 2. Check URL query parameters (e.g. /secret?youtube_url=...)
     try {
       const params = new URLSearchParams(window.location.search);
-      const queryUrl = params.get("youtube_url") || params.get("share_url") || params.get("yt");
+      const queryUrl =
+        params.get("youtube_url") ||
+        params.get("share_url") ||
+        params.get("yt");
       if (queryUrl) {
         // Strip the query parameters cleanly so they don't re-trigger on subsequent navigations
         const newUrl = new URL(window.location.href);
@@ -65,7 +78,7 @@ export default function GlobalYouTubeShareHandler() {
 
   useEffect(() => {
     // Check pending share on mount
-    checkPendingShare();
+    queueMicrotask(checkPendingShare);
 
     // When the vault is unlocked via biometric fingerprint, check for queued share URLs
     const handleVaultUnlocked = () => {
@@ -74,7 +87,10 @@ export default function GlobalYouTubeShareHandler() {
 
     // Listen for direct custom event from Android native BridgeActivity or MusicNav buttons
     const handleCustomShareEvent = (e: Event) => {
-      const customEvent = e as CustomEvent<{ url?: string; requireAuth?: boolean }>;
+      const customEvent = e as CustomEvent<{
+        url?: string;
+        requireAuth?: boolean;
+      }>;
       const sharedUrl = customEvent?.detail?.url;
       if (typeof sharedUrl === "string" && sharedUrl.trim().length > 0) {
         if (!isSecretAccessGranted()) {
@@ -93,11 +109,14 @@ export default function GlobalYouTubeShareHandler() {
 
     return () => {
       window.removeEventListener("vault-unlocked", handleVaultUnlocked);
-      window.removeEventListener("lifeatlas_youtube_share", handleCustomShareEvent);
+      window.removeEventListener(
+        "lifeatlas_youtube_share",
+        handleCustomShareEvent,
+      );
     };
   }, [checkPendingShare, handleOpenShare]);
 
-  return (
+  return isModalOpen || visited ? (
     <YouTubeShareModal
       isOpen={isModalOpen}
       onClose={() => {
@@ -109,6 +128,5 @@ export default function GlobalYouTubeShareHandler() {
         window.dispatchEvent(new CustomEvent("lifeatlas_tracks_updated"));
       }}
     />
-  );
+  ) : null;
 }
-

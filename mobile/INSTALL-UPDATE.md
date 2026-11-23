@@ -1,3 +1,26 @@
+Atlas 2.3.1 — Faster opening and less startup work
+
+Install atlas.apk over Atlas without uninstalling. Version code 47.
+Package identity, signing key and saved data are unchanged.
+
+• Opening Atlas no longer waits for publishing or hosted-worker cleanup.
+• A one-time migration unregisters only the obsolete local /sw.js worker;
+  it preserves gallery caches, IndexedDB, credentials and all user files.
+• Shared CSS loads once instead of loading duplicate styles for every screen.
+• Music layout, Now Playing, YouTube import UI, trip frame and voice-command
+  processing load on demand. Playback and native voice listeners remain active.
+• Links preload screen code on touch, keyboard focus or pointer intent;
+  this never preloads your photos, videos, AI models or every destination.
+• Removed the empty workspace loading gate and first-page Gallery delay.
+• Existing Now Playing sleep/queue state survives closing its overlay.
+
+Measured raw bundled startup resources: CSS 1,907,131 → 506,863 bytes;
+JavaScript for boot, shell and home 718,791 → approximately 542 KB.
+These are build-resource measurements, not physical-phone timing or battery data.
+The phone is unavailable for testing. No new models or services were added.
+
+Historical release notes below.
+
 Atlas 2.3.0 — Gallery analysis health and recovery checks
 
 Install atlas.apk over Atlas without uninstalling. Version code 46.

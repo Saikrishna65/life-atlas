@@ -6,7 +6,11 @@ import {createPortal} from 'react-dom';
 import {useMusicPlayer} from '@/lib/music/MusicPlayerContext';
 import {canShowAtlasLauncher} from '@/lib/atlas-ai/visibility';
 import {createReminder} from '@/lib/atlas-ai/reminders';
-import {getVoiceCloudConfig, getVoiceCloudConsent, processVoiceTurn} from '@/lib/atlas-ai/voice-assistant';
+import {getVoiceCloudConfig, getVoiceCloudConsent} from '@/lib/atlas-ai/voice-preferences';
+const processVoiceTurn: typeof import('@/lib/atlas-ai/voice-assistant').processVoiceTurn = async (...args) => {
+  const engine = await import('@/lib/atlas-ai/voice-assistant');
+  return engine.processVoiceTurn(...args);
+};
 import {
   atlasWakeWordBridge,
   interruptVoiceSpeakingNative,

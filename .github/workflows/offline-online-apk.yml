@@ -43,7 +43,8 @@ jobs:
           npm ci
           npx prisma generate
           npx tsc --noEmit
-          node --test tests/mobile/apkUpdate.test.mjs tests/mobile/updateManifest.test.mjs
+          node --test tests/mobile/*.test.mjs
+          node --import tsx --test tests/mobile/startup.test.ts
           node --import tsx --test tests/r2/*.test.ts
           node --import tsx --test tests/studio/*.test.ts tests/gallery/*.test.ts tests/music/*.test.ts tests/vault/websitePayload.test.ts tests/public/public-loading.test.ts tests/public/globe-trip-pins.test.ts
           node --import tsx --test tests/cloud-vault/signingAuthorization.test.ts

@@ -1,3 +1,4 @@
+export {getVoiceCloudConsent, getVoiceCloudConfig} from "./voice-preferences";
 import { createLocalAdapters, type LocalPlayback } from "./local-adapters";
 import type { LocalAdapter } from "./gateway";
 import { runConversationTurn } from "./conversation";
@@ -8,7 +9,6 @@ import {
   saveVoiceCloudConfigNative,
 } from "../wakeword/atlasWakeWord";
 import {
-  getVolatileWebApiKey,
   getWebCloudConsent,
   getWebCloudProvider,
   purgeLegacyPlaintextApiKey,
@@ -42,10 +42,6 @@ export interface VoiceAssistantReply {
   confirmationDescription?: string;
 }
 
-export function getVoiceCloudConsent(): boolean {
-  return getWebCloudConsent();
-}
-
 export function setVoiceCloudConsent(enabled: boolean): void {
   setWebCloudConsent(enabled);
   purgeLegacyPlaintextApiKey();
@@ -55,14 +51,6 @@ export function setVoiceCloudConsent(enabled: boolean): void {
       cloudProvider: getWebCloudProvider(),
     }).catch(() => {});
   }
-}
-
-export function getVoiceCloudConfig(): { provider: CloudAiProvider; apiKey: string } {
-  purgeLegacyPlaintextApiKey();
-  return {
-    provider: getWebCloudProvider(),
-    apiKey: getVolatileWebApiKey(),
-  };
 }
 
 export async function setVoiceCloudConfig(provider: CloudAiProvider, apiKey: string): Promise<void> {

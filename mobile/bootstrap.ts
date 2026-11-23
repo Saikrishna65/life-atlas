@@ -1,20 +1,20 @@
-import { installMobileNetwork } from './network';
-import { installNativeDownloads } from './downloads';
-import { ensureCleanStart } from '../src/lib/cloud-vault/clean-start';
+import { installMobileNetwork } from "./network";
+import { installNativeDownloads } from "./downloads";
+
 async function start() {
-  await ensureCleanStart();
-  // No old hosted cache or remote music library can refill the clean local databases.
-  if ('serviceWorker' in navigator) for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
-  if ('caches' in window) for (const key of await caches.keys()) await caches.delete(key);
-  if (!location.pathname.startsWith('/secret')) history.replaceState({}, '', '/secret');
+  if (!location.pathname.startsWith("/secret"))
+    history.replaceState({}, "", "/secret");
   installMobileNetwork();
   installNativeDownloads();
-  const { flushStudioEntries } = await import('./studio-storage');
-  window.addEventListener('online', () => { void flushStudioEntries(); });
-  window.addEventListener('atlas-cloud-restored', () => { void flushStudioEntries(); });
-  void flushStudioEntries();
-  await import('./App');
+  // Render local content first. Publishing and obsolete hosted-cache cleanup
+  // must never block opening Atlas, including when the network is unavailable.
+  const { mountApp } = await import("./App");
+  mountApp();
+  void import("./startup-maintenance")
+    .then(({ scheduleStartupMaintenance }) => scheduleStartupMaintenance())
+    .catch(() => {});
 }
-start().catch(error => {
-  document.body.textContent = `Atlas could not initialize storage: ${error.message}. Close and reopen the app to retry.`;
+start().catch(() => {
+  document.body.textContent =
+    "Atlas could not open. Close and reopen the app to retry. Your saved data is unchanged.";
 });

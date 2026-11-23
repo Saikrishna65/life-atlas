@@ -1,9 +1,7 @@
-Gallery 2.3.0
-• Analysis health: checked, remaining, queued and failed photos.
-• Targeted retries preserve completed work and the scan cursor.
-• Opened photos receive debounced priority without bypassing battery rules.
-• Local aggregate search/batch timings, cache sizes and performance-history clear.
-• One-at-a-time people match review and clearer reference guidance.
-• Read-only encrypted metadata verification without restoring your index.
-No new models. Existing media, names, corrections, credentials and cloud data stay.
-Install over Atlas without uninstalling. Physical-phone validation is still needed.
+Atlas 2.3.1
+• Faster opening: publishing and obsolete worker cleanup no longer block screens.
+• Startup CSS reduced by 73%; home-screen JavaScript reduced by about 25%.
+• Unrelated music, trip UI and voice-command processing load on demand.
+• Screen code warms on touch/focus; local Gallery requests start without a delay.
+• Removed the no-op workspace loader. User caches and all saved data are retained.
+Install over Atlas without uninstalling. Physical-phone timings remain unverified.

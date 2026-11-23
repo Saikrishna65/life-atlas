@@ -648,14 +648,14 @@ export default function PhotoGallery() {
           setLoading(false);
         } else void requestDevice("");
       },
-      saved || searchMode === "smart" ? 0 : 120,
+      !saved && query.trim() && searchMode !== "smart" ? 120 : 0,
     );
     return () => {
       clearTimeout(timer);
       generation.current++;
       searchToken.current = "";
     };
-  }, [requestDevice, revision, view, pageCache, pageKey, searchMode]);
+  }, [requestDevice, revision, view, pageCache, pageKey, searchMode, query]);
   const requestCloud = useCallback(
     async (next: string, append = false) => {
       if (!supported) return;

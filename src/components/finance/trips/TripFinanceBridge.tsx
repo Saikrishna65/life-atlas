@@ -8,7 +8,7 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { getAllTrips, saveTrip } from '@/lib/vault/storage';
 import type { TripRecord } from '@/lib/vault/types';
-import { IndexedDBUnitOfWork } from '@/lib/finance';
+import { IndexedDBUnitOfWork } from '@/lib/finance/storage/indexeddb/unitOfWork';
 import { TripFinanceService } from '@/lib/finance/trips/service';
 import { defaultTripSettings, needsTripConfirmation, tripReminderAt } from '@/lib/finance/trips/policy';
 import './trips.css';

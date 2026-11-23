@@ -1,4 +1,8 @@
 "use client";
-import {useEffect,useState,type ReactNode} from 'react';
-import {ensureCleanStart} from '@/lib/cloud-vault/clean-start';
-export default function DataEpochGate({children}:{children:ReactNode}){const [ready,setReady]=useState(false),[error,setError]=useState('');useEffect(()=>{let active=true;ensureCleanStart().then(()=>{if(active)setReady(true);}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;};},[]);if(!ready)return <div className="p-8" role="status">{error||'Opening your Atlas workspace…'}</div>;return <>{children}</>;}
+import type { ReactNode } from "react";
+
+// Historical storage epochs no longer perform migrations. Keep the wrapper for
+// compatibility without flashing a loading screen on every workspace mount.
+export default function DataEpochGate({ children }: { children: ReactNode }) {
+  return <>{children}</>;
+}
