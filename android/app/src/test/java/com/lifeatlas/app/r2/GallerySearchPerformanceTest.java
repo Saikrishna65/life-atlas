@@ -68,11 +68,20 @@ public class GallerySearchPerformanceTest {
   }
 
   @Test
+  public void searchMemoryBudgetAdaptsWithoutGrowingBeyondTheExistingCap() {
+    assertEquals(4L * 1024 * 1024, GallerySearchHotCache.budgetForHeap(64L * 1024 * 1024));
+    assertEquals(8L * 1024 * 1024, GallerySearchHotCache.budgetForHeap(256L * 1024 * 1024));
+    assertEquals(16L * 1024 * 1024, GallerySearchHotCache.budgetForHeap(512L * 1024 * 1024));
+    assertEquals(GallerySearchHotCache.LIMIT, GallerySearchHotCache.budgetForHeap(Long.MAX_VALUE));
+    assertEquals(4L * 1024 * 1024, GallerySearchHotCache.budgetForHeap(-1));
+  }
+
+  @Test
   public void cacheEvictsToItsMemoryBudget() throws Exception {
     String text = "x".repeat(100000);
     for (int i = 0; i < 100; i++)
       GallerySearchHotCache.get(
           "one", "photo" + i, new byte[] {1}, false, () -> row().put("text", text));
-    assertTrue(GallerySearchHotCache.bytes() <= GallerySearchHotCache.LIMIT);
+    assertTrue(GallerySearchHotCache.bytes() <= GallerySearchHotCache.budget());
   }
 }

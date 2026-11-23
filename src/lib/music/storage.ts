@@ -204,6 +204,28 @@ export async function getAllTracks(): Promise<MusicTrack[]> {
   });
 }
 
+/** Dashboard counts only: do not retain the library's audio blobs in React state. */
+export async function getMusicLibrarySummary(): Promise<{total: number; favorites: number; offline: number}> {
+  const db = await getMusicDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('tracks', 'readonly');
+    const summary = {total: 0, favorites: 0, offline: 0};
+    const request = tx.objectStore('tracks').openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      const track = cursor.value as MusicTrack;
+      summary.total++;
+      if (track.isFavorite) summary.favorites++;
+      if (track.audioBlob && track.audioBlob.size > 0) summary.offline++;
+      cursor.continue();
+    };
+    tx.oncomplete = () => resolve(summary);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('Music summary interrupted'));
+  });
+}
+
 export async function deleteTrack(id: string, deleteOnline: boolean = true): Promise<void> {
   const db = await getMusicDB();
   await new Promise<void>((resolve, reject) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -13,16 +13,13 @@ import {
   Disc3,
   Shuffle,
   HardDriveDownload,
-  Volume2,
-  Sliders,
 } from "lucide-react";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
-import { getAllTracks } from "@/lib/music/storage";
-import { MusicTrack } from "@/lib/music/types";
+import { getAllTracks, getMusicLibrarySummary } from "@/lib/music/storage";
+
 import {
   Artwork,
   Equalizer,
-  SpectrumBars,
   formatTime,
   gradientFor,
   hasLocalAudio,
@@ -44,57 +41,102 @@ export default function MusicDashboardWidget() {
     setIsNowPlayingOpen,
   } = useMusicPlayer();
 
-  const [tracks, setTracks] = useState<MusicTrack[]>([]);
-  const [loaded, setLoaded] = useState(false);
-
-  const load = async () => {
+  const [summary, setSummary] = useState({
+    total: 0,
+    favorites: 0,
+    offline: 0,
+  });
+  const [loadError, setLoadError] = useState("");
+  const active = useRef(true),
+    reading = useRef(false),
+    repeatRead = useRef(false),
+    playingAction = useRef(false);
+  const load = useCallback(async function refresh() {
+    if (reading.current) {
+      repeatRead.current = true;
+      return;
+    }
+    reading.current = true;
     try {
-      const all = await getAllTracks();
-      setTracks(all);
+      const counts = await getMusicLibrarySummary();
+      if (active.current) setSummary(counts);
     } catch {
       // offline fallback
     } finally {
-      setLoaded(true);
+      reading.current = false;
+      if (active.current && repeatRead.current) {
+        repeatRead.current = false;
+        void refresh();
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
-    load();
-  }, []);
+    active.current = true;
+    queueMicrotask(() => {
+      if (active.current) void load();
+    });
+    return () => {
+      active.current = false;
+    };
+  }, [load]);
   useLibraryRefresh(load);
 
-  const offlineCount = useMemo(() => tracks.filter(hasLocalAudio).length, [tracks]);
-  const favoritesCount = useMemo(() => tracks.filter((t) => t.isFavorite).length, [tracks]);
-
-  const handlePlayShuffle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!tracks.length) return;
-    triggerHaptic("tap");
-    const shuffled = [...tracks].sort(() => Math.random() - 0.5);
-    playTrack(shuffled[0], shuffled, { type: "LIBRARY", title: "Shuffle all" });
+  const offlineCount = summary.offline,
+    favoritesCount = summary.favorites;
+  const startCollection = async (
+    event: React.MouseEvent,
+    mode: "all" | "favorites" | "offline",
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (playingAction.current) return;
+    playingAction.current = true;
+    setLoadError("");
+    try {
+      // Read full tracks only for an explicit playback action, never at dashboard opening.
+      const all = await getAllTracks();
+      if (!active.current) return;
+      const selected =
+        mode === "favorites"
+          ? all.filter((track) => track.isFavorite)
+          : mode === "offline"
+            ? all.filter(hasLocalAudio)
+            : all;
+      if (!selected.length) return;
+      if (mode === "all") {
+        for (let i = selected.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [selected[i], selected[j]] = [selected[j], selected[i]];
+        }
+      }
+      triggerHaptic("tap");
+      await playTrack(selected[0], selected, {
+        type: mode === "favorites" ? "SMART_PLAYLIST" : "LIBRARY",
+        title:
+          mode === "favorites"
+            ? "Favorites"
+            : mode === "offline"
+              ? "Offline Sanctuary"
+              : "Shuffle all",
+      });
+    } catch {
+      if (active.current)
+        setLoadError("Could not open this collection. Try again.");
+    } finally {
+      playingAction.current = false;
+    }
   };
-
-  const handlePlayFavorites = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const favs = tracks.filter((t) => t.isFavorite);
-    if (!favs.length) return;
-    triggerHaptic("tap");
-    playTrack(favs[0], favs, { type: "SMART_PLAYLIST", title: "Favorites" });
-  };
-
-  const handlePlayOffline = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const off = tracks.filter(hasLocalAudio);
-    if (!off.length) return;
-    triggerHaptic("tap");
-    playTrack(off[0], off, { type: "LIBRARY", title: "Offline Sanctuary" });
-  };
+  const handlePlayShuffle = (e: React.MouseEvent) =>
+    void startCollection(e, "all");
+  const handlePlayFavorites = (e: React.MouseEvent) =>
+    void startCollection(e, "favorites");
+  const handlePlayOffline = (e: React.MouseEvent) =>
+    void startCollection(e, "offline");
 
   const total = duration || currentTrack?.duration || 0;
-  const progressPct = total > 0 ? Math.min(100, (currentTime / total) * 100) : 0;
+  const progressPct =
+    total > 0 ? Math.min(100, (currentTime / total) * 100) : 0;
   const isOfflineTrack = currentTrack ? hasLocalAudio(currentTrack) : false;
 
   return (
@@ -105,6 +147,7 @@ export default function MusicDashboardWidget() {
       }}
       className="relative rounded-3xl border border-cyan-500/25 bg-surface/90 hover:border-cyan-400/40 p-5 sm:p-6 transition-all duration-300 shadow-soft overflow-hidden group cursor-pointer active:scale-[0.99]"
     >
+      {loadError && <p role="status">{loadError}</p>}
       {/* Ambient reactive background glow */}
       <div
         className={`absolute -top-16 -right-16 w-56 h-56 rounded-full blur-3xl pointer-events-none transition-all duration-700 ${
@@ -144,7 +187,7 @@ export default function MusicDashboardWidget() {
                 ? isPlaying
                   ? "Live Playback Active"
                   : "Paused · Ready"
-                : `${tracks.length} tracks in vault`}
+                : `${summary.total} tracks in vault`}
             </p>
           </div>
         </Link>
@@ -176,13 +219,15 @@ export default function MusicDashboardWidget() {
               {/* Rotating vinyl grooves behind artwork */}
               <div
                 className={`absolute -right-2 inset-y-1 w-14 rounded-full vinyl-grooves border border-white/10 shadow-md flex items-center justify-center transition-transform duration-700 ${
-                  isPlaying ? "translate-x-1 animate-vinyl opacity-80" : "translate-x-0 opacity-40"
+                  isPlaying
+                    ? "translate-x-1 animate-vinyl opacity-80"
+                    : "translate-x-0 opacity-40"
                 }`}
                 aria-hidden="true"
               >
                 <div
                   className={`w-4 h-4 rounded-full bg-gradient-to-br ${gradientFor(
-                    currentTrack.id
+                    currentTrack.id,
                   )} border-2 border-black`}
                 />
               </div>
@@ -210,7 +255,9 @@ export default function MusicDashboardWidget() {
               <h3 className="text-sm font-semibold text-foreground truncate">
                 {currentTrack.title}
               </h3>
-              <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {currentTrack.artist}
+              </p>
             </div>
           </div>
 
@@ -239,7 +286,9 @@ export default function MusicDashboardWidget() {
                   toggleFavorite(currentTrack.id);
                 }}
                 className="w-10 h-10 rounded-xl bg-background/60 hover:bg-background border border-muted/50 flex items-center justify-center text-muted-foreground hover:text-rose-400 active:scale-90 transition-all cursor-pointer"
-                title={currentTrack.isFavorite ? "Remove favorite" : "Mark favorite"}
+                title={
+                  currentTrack.isFavorite ? "Remove favorite" : "Mark favorite"
+                }
               >
                 <Heart
                   className={`w-4 h-4 ${
@@ -275,12 +324,16 @@ export default function MusicDashboardWidget() {
                 {isPlaying ? (
                   <>
                     <Pause className="w-4 h-4 fill-current" />
-                    <span className="text-xs uppercase tracking-wider">Pause</span>
+                    <span className="text-xs uppercase tracking-wider">
+                      Pause
+                    </span>
                   </>
                 ) : (
                   <>
                     <Play className="w-4 h-4 fill-current ml-0.5" />
-                    <span className="text-xs uppercase tracking-wider">Play</span>
+                    <span className="text-xs uppercase tracking-wider">
+                      Play
+                    </span>
                   </>
                 )}
               </button>
@@ -304,21 +357,26 @@ export default function MusicDashboardWidget() {
         /* Empty / Idle State with Instant-Launch Quick Actions */
         <div className="relative z-10 space-y-4 pt-1">
           <p className="font-body text-muted-foreground text-xs sm:text-sm leading-relaxed">
-            Your private offline audio sanctuary. Background playback, continuous lock-screen audio, and direct cloud sync.
+            Your private offline audio sanctuary. Background playback,
+            continuous lock-screen audio, and direct cloud sync.
           </p>
 
           <div className="grid grid-cols-3 gap-2 pt-1">
             <button
               type="button"
               onClick={handlePlayShuffle}
-              disabled={tracks.length === 0}
+              disabled={summary.total === 0}
               className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl bg-background/60 hover:bg-background/90 border border-muted/40 hover:border-cyan-500/40 text-center active:scale-95 transition-all cursor-pointer disabled:opacity-40"
             >
               <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
                 <Shuffle className="w-4 h-4" />
               </div>
-              <span className="text-[11px] font-semibold text-foreground">Shuffle All</span>
-              <span className="text-[9px] font-mono text-muted-foreground">{tracks.length} tracks</span>
+              <span className="text-[11px] font-semibold text-foreground">
+                Shuffle All
+              </span>
+              <span className="text-[9px] font-mono text-muted-foreground">
+                {summary.total} tracks
+              </span>
             </button>
 
             <button
@@ -330,8 +388,12 @@ export default function MusicDashboardWidget() {
               <div className="w-8 h-8 rounded-full bg-rose-500/10 flex items-center justify-center text-rose-400">
                 <Heart className="w-4 h-4 fill-rose-500/30 text-rose-500" />
               </div>
-              <span className="text-[11px] font-semibold text-foreground">Favorites</span>
-              <span className="text-[9px] font-mono text-muted-foreground">{favoritesCount} songs</span>
+              <span className="text-[11px] font-semibold text-foreground">
+                Favorites
+              </span>
+              <span className="text-[9px] font-mono text-muted-foreground">
+                {favoritesCount} songs
+              </span>
             </button>
 
             <button
@@ -343,8 +405,12 @@ export default function MusicDashboardWidget() {
               <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
                 <HardDriveDownload className="w-4 h-4" />
               </div>
-              <span className="text-[11px] font-semibold text-foreground">On Phone</span>
-              <span className="text-[9px] font-mono text-muted-foreground">{offlineCount} offline</span>
+              <span className="text-[11px] font-semibold text-foreground">
+                On Phone
+              </span>
+              <span className="text-[9px] font-mono text-muted-foreground">
+                {offlineCount} offline
+              </span>
             </button>
           </div>
         </div>

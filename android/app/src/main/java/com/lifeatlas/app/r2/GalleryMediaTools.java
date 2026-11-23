@@ -162,9 +162,10 @@ final class GalleryMediaTools {
         if (image != null) image.recycle();
         retriever.release();
       }
+      GalleryPreviewSettings.pruneIfDue(dir, 16L * 1024 * 1024, file);
     }
-    file.setLastModified(System.currentTimeMillis());
-    prune(dir, 16L * 1024 * 1024);
+    if (System.currentTimeMillis() - file.lastModified() >= 60000)
+      file.setLastModified(System.currentTimeMillis());
     return file.getAbsolutePath();
   }
 
@@ -191,10 +192,19 @@ final class GalleryMediaTools {
     }
   }
 
+  static long categoryLimit(String directory, int photoMiB) {
+    return (directory.equals("device-gallery")
+            ? photoMiB
+            : directory.equals("gallery-motion") ? 64L : 16L)
+        * 1024
+        * 1024;
+  }
+
   static JSONObject cacheReport(Context context, R2SecureStore secure) throws Exception {
     long bytes = 0;
     int count = 0;
     JSONObject categories = new JSONObject();
+    GalleryPreviewSettings settings = GalleryPreviewSettings.read(secure);
     for (String directory : List.of("device-gallery", "gallery-filmstrip", "gallery-motion")) {
       long categoryBytes = 0;
       int categoryFiles = 0;
@@ -208,9 +218,12 @@ final class GalleryMediaTools {
       bytes += categoryBytes;
       count += categoryFiles;
       categories.put(
-          directory, new JSONObject().put("bytes", categoryBytes).put("files", categoryFiles));
+          directory,
+          new JSONObject()
+              .put("bytes", categoryBytes)
+              .put("files", categoryFiles)
+              .put("limitBytes", categoryLimit(directory, settings.limitMiB)));
     }
-    GalleryPreviewSettings settings = GalleryPreviewSettings.read(secure);
     return new JSONObject()
         .put("bytes", bytes)
         .put("files", count)
@@ -240,11 +253,7 @@ final class GalleryMediaTools {
     for (String directory : List.of("device-gallery", "gallery-filmstrip", "gallery-motion"))
       prune(
           cache(context, directory),
-          input.optBoolean("clear")
-              ? 0
-              : (directory.equals("device-gallery")
-                  ? (long) size * 1024 * 1024
-                  : 16L * 1024 * 1024));
+          input.optBoolean("clear") ? 0 : categoryLimit(directory, size));
   }
 
   static long cacheLimit(R2SecureStore secure) throws Exception {

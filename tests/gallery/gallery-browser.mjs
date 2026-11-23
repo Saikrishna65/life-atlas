@@ -41,7 +41,7 @@ const fixture=`window.media=${JSON.stringify(media)};window.media[94].album='Arc
  trashDeviceMedia:async input=>{window.calls.trash=input;window.media=window.media.filter(m=>!input.ids.includes(m.id));return {approved:true}},getSelectionPreview:async()=>({thumbnail:'/thumb/mock.webp'}),getPublicCatalog:async()=>({catalog:{items:[]}}),publishTripMedia:async input=>{const job=window.jobs.find(j=>j.id===input.transferId);return {item:{id:job.id,key:job.key,url:location.origin+'/'+job.key,title:input.title,description:'',tags:input.tags,category:input.category,collection:input.collection,mimeType:job.mimeType,size:job.totalBytes,publishedAt:'2026-11-19',metadataPolicy:'retained',thumbnailUrl:location.origin+'/thumb/mock.webp'}}},
  getConfigurationSummary:async()=>({public:{configured:true,publicBaseUrl:location.origin,revision:'fixture'},private:{configured:true,revision:'fixture'},recoveryVerified:true}),
  listDeviceMedia:async({cursor,query,kind,album,order})=>{window.calls.listOrder=order;let rows=window.media.filter(m=>(!query||m.name.toLowerCase().includes(query.toLowerCase()))&&(kind==='all'||m.kind===kind)&&(!album||m.album===album));if(order==='oldest')rows.reverse();if(order==='largest')rows.sort((a,b)=>b.size-a.size);const offset=Number(cursor||0),items=rows.slice(offset,offset+40);return {items,cursor:offset+40<rows.length?String(offset+40):'',complete:offset+40>=rows.length}},
- getGalleryAlbums:async()=>({albums:[{name:'Camera',count:47},{name:'Travel',count:47},{name:'Archive',count:1}]}),getDeviceThumbnail:async({id})=>{window.calls.thumbs.push(id);return {path:'/thumb/'+id.split(':').pop()+'.webp'}},
+ getGalleryAlbums:async()=>{window.calls.albums=(window.calls.albums||0)+1;return {albums:[{name:'Camera',count:47},{name:'Travel',count:47},{name:'Archive',count:1}]};},getDeviceThumbnail:async({id})=>{window.calls.thumbs.push(id);return {path:'/thumb/'+id.split(':').pop()+'.webp'}},
  registerDeviceMedia:async(input)=>{window.calls.register.push(input);return {files:input.ids.map(id=>{const m=window.media.find(m=>m.id===id);if(input.versions[id]!==m.size+':'+m.modifiedAt)throw Error('SOURCE_CHANGED');const file={id:'selection-'+id,name:m.name,size:m.size,mimeType:m.mimeType,persistent:true};window.picks[file.id]=m;return file})}},
  checkDeviceCloud:async({ids})=>{window.calls.checks.push(ids);return {items:ids.map(id=>({id,copies:{public:{state:'verified',key:'galleries/originals/a.bin',checkedAt:Date.now()},private:{state:'not-found',checkedAt:Date.now()}}}))}},
  getTransferProgress:async()=>({transfers:window.jobs}),
@@ -50,7 +50,7 @@ const fixture=`window.media=${JSON.stringify(media)};window.media[94].album='Arc
  listObjects:async({slot})=>({objects:[{key:slot==='public'?'galleries/originals/a.bin':'encrypted/photos/a.atlasenc',size:12345,modifiedAt:'2026-11-19',etag:'x'}],cursor:'',complete:true}),getObjectMetadata:async()=>({mimeType:'image/jpeg'}),
  openGalleryCloudPreview:async()=>({token:'11111111-1111-4111-8111-111111111111',path:'/full/private.webp',mimeType:'image/jpeg',name:'Private original.jpg'}),releaseGalleryPreview:async({token})=>{window.calls.releases.push(token)},downloadObject:async()=>({}),pauseTransfer:async({id})=>{window.jobs=window.jobs.map(j=>j.id===id?{...j,status:'paused'}:j)},resumeTransfer:async({id})=>{window.jobs=window.jobs.map(j=>j.id===id?{...j,status:'queued'}:j)},cancelTransfer:async({id})=>{window.jobs=window.jobs.map(j=>j.id===id?{...j,status:'cancelled'}:j)}
 };`;
-const entry=`import React from 'react';import {createRoot} from 'react-dom/client';import Gallery from './src/components/gallery/PhotoGallery';import {savePastTrip} from './src/lib/studio/store';import {addTripPlace} from './src/lib/studio/trip-places';import {getAllTrips} from './src/lib/vault/storage';async function start(){if(!(await getAllTrips()).length){const a=await savePastTrip({title:'The Himalayan journal',destination:'Uttarakhand',startDate:'',endDate:'',mapLocation:{latitude:30,longitude:79}});await addTripPlace(a.id,'The lake');}window.trips=getAllTrips;createRoot(document.getElementById('root')).render(<Gallery/>);}start();`;
+const entry=`import {thumbnail,cachedThumbnail} from './src/components/gallery/GalleryThumbnail';window.previewProbe={thumbnail,cachedThumbnail};import React from 'react';import {createRoot} from 'react-dom/client';import Gallery from './src/components/gallery/PhotoGallery';import {savePastTrip} from './src/lib/studio/store';import {addTripPlace} from './src/lib/studio/trip-places';import {getAllTrips} from './src/lib/vault/storage';async function start(){if(!(await getAllTrips()).length){const a=await savePastTrip({title:'The Himalayan journal',destination:'Uttarakhand',startDate:'',endDate:'',mapLocation:{latitude:30,longitude:79}});await addTripPlace(a.id,'The lake');}window.trips=getAllTrips;createRoot(document.getElementById('root')).render(<Gallery/>);}start();`;
 const bundle=await build({stdin:{contents:entry,resolveDir:process.cwd(),loader:'tsx'},write:false,bundle:true,format:'iife',jsx:'automatic',loader:{'.css':'empty'},define:{'process.env':'{"NODE_ENV":"production"}'},plugins:[{name:'gallery-fixture',setup(b){b.onResolve({filter:/.*/},args=>{const name=args.path==='@/lib/r2/native'||(args.path==='../r2/native'&&args.importer.includes('/lib/gallery/'))?'native':args.path.includes('tripWidgetSync')?'widget':args.path;return mocks[name]?{path:name,namespace:'fixture'}:undefined;});b.onLoad({filter:/.*/,namespace:'fixture'},a=>({contents:mocks[a.path],loader:'tsx',resolveDir:process.cwd()}));}}]});
 const css=(await Promise.all(['src/components/trip-vault/trip-vault.css','src/components/studio/creator-studio.css','src/components/gallery/gallery.css','src/components/gallery/photos.css','src/components/gallery/gallery-workspace.css','src/components/gallery/gallery-intelligence.css','src/components/gallery/smart-collections.css','src/components/gallery/gallery-wizard.css','src/components/gallery/photo-viewer.css','src/components/gallery/gallery-extraction.css','src/components/media/journal-viewer.css'].map(p=>readFile(p,'utf8')))).join('\n');
 let releaseOriginals;const originalGate=new Promise(resolve=>{releaseOriginals=resolve});let publicMedia=[];const server=createServer(async(req,res)=>{const path=new URL(req.url,'http://local').pathname;if(path==='/release-originals'){releaseOriginals();res.end('ok');return;}if(path==='/film.mp4'){res.setHeader('content-type','video/mp4');res.setHeader('accept-ranges','bytes');if(req.headers.range){const [,a,b]=req.headers.range.match(/bytes=(\d+)-(\d*)/)||[];const start=Number(a||0),end=Math.min(Number(b||film.length-1),film.length-1);res.writeHead(206,{'content-range':`bytes ${start}-${end}/${film.length}`,'content-length':end-start+1});res.end(film.subarray(start,end+1));}else res.end(film);return;}if(path.startsWith('/full/')||path.startsWith('/thumb/')||path.startsWith('/galleries/')){if(process.env.GALLERY_SLOW_ORIGINAL==='1'&&path.startsWith('/full/'))await originalGate;res.setHeader('content-type','image/webp');res.end(photo);return;}if(path.startsWith('/api/vault/export')){res.setHeader('content-type','application/json');if(req.method==='POST'){let body='';for await(const part of req)body+=part;publicMedia=JSON.parse(body).publicMedia||publicMedia;res.end(JSON.stringify({success:true,slug:'himalayan-journal',publicUrl:'/trips/himalayan-journal'}));}else res.end(JSON.stringify({media:publicMedia}));return;}res.setHeader('content-type','text/html');res.end(`<html><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{--font-sans:Arial}body{margin:0;font-family:Arial;background:#e8ede4}*{box-sizing:border-box}.sr-only{position:absolute;clip:rect(0,0,0,0)}${css}</style><div id="root"></div><script>${fixture}</script><script>${bundle.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></html>`);});
@@ -64,7 +64,36 @@ try{
  await page.getByRole('button',{name:'Choose more photos',exact:true}).click();await page.waitForFunction(()=>window.permission==='full');await page.locator('.pg-tile').nth(39).waitFor();
 
 
- if(process.env.GALLERY_HEALTH_ONLY==='1'){
+ if(process.env.GALLERY_CACHE_ONLY==='1'){
+ assert.equal(await page.evaluate(()=>window.calls.albums||0),0,'Opening Photos does not enumerate every album');
+ await page.evaluate(async()=>{
+  const {thumbnail,cachedThumbnail}=window.previewProbe;
+  const count=()=>window.calls.thumbs.filter(id=>id==='image:external:900001').length;
+  await Promise.all([thumbnail('image:external:900001',()=>true,300,'v1'),thumbnail('image:external:900001',()=>true,330,'v1')]);
+  if(count()!==1)throw Error('Identical pixel buckets must share native work');
+  window.dispatchEvent(new Event('atlas:gallery-analysis'));
+  await thumbnail('image:external:900001',()=>true,300,'v1');
+  if(count()!==1)throw Error('AI labels must not invalidate unchanged display files');
+  await thumbnail('image:external:900001',()=>true,300,'v2');
+  if(count()!==2)throw Error('Changed source metadata must invalidate its cached thumbnail');
+  const original=window.galleryNative.getDeviceThumbnail;
+  let release;
+  const gate=new Promise(resolve=>release=resolve);
+  window.galleryNative.getDeviceThumbnail=async input=>{await gate;return original(input);};
+  try{
+   const pending=thumbnail('image:external:900002',()=>true,768,'v1').then(()=>false,()=>true);
+   await new Promise(resolve=>setTimeout(resolve,0));
+   window.dispatchEvent(new Event('atlas:gallery-preview-settings'));
+   release();
+   if(!await pending)throw Error('Old quality request must be rejected');
+   if(cachedThumbnail('image:external:900002'))throw Error('Old quality result must never refill the cache');
+  }finally{window.galleryNative.getDeviceThumbnail=original;release();}
+ });
+ await page.getByRole('button',{name:'Organize collections',exact:true}).click();
+ await page.waitForFunction(()=>window.calls.albums>0);
+ assert.deepEqual(errors,[]);
+ console.log('PASS: album enumeration deferred; native thumbnail coalescing; AI labels preserve previews; changed media and quality epochs invalidate safely. Native fixtures only.');
+ }else if(process.env.GALLERY_HEALTH_ONLY==='1'){
  await page.evaluate(()=>{window.analysisHealth={failed:2,queued:1,checked:5,indexed:20,passTotal:25,remaining:20,indexBytes:2048,decodedSearchBytes:1024,passWorkMs:5000,metrics:{'search-cached':{count:2,totalMs:100,lastMs:40,maxMs:60}}};});
  await page.getByRole('button',{name:'Organize collections',exact:true}).click();await page.locator('.gsmart-shortcuts').getByRole('button',{name:/Similar photos/}).click();await page.getByRole('button',{name:'Find similar photos',exact:true}).click();
  let analysis=page.getByRole('dialog',{name:'Find more in your photos'});await analysis.getByRole('button',{name:'Find similar photos',exact:true}).click();

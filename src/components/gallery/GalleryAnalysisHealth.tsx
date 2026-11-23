@@ -128,7 +128,11 @@ export default function GalleryAnalysisHealth({
             <p>
               {bytes(health.indexBytes ?? 0)} encrypted index files ·
               approximately {bytes(health.decodedSearchBytes ?? 0)} decoded
-              search cache in memory.
+              search cache in memory
+              {health.decodedSearchBudgetBytes
+                ? ` (up to ${bytes(health.decodedSearchBudgetBytes)} on this device)`
+                : ""}
+              .
             </p>
             {cache && (
               <p>

@@ -8,6 +8,7 @@ import org.json.*;
 /** Foreground-only, bounded decoded index. Ciphertext remains the sole persistent index. */
 final class GallerySearchHotCache {
   static final long LIMIT = 24L * 1024 * 1024;
+  private static final long HEAP_BUDGET = budgetForHeap(Runtime.getRuntime().maxMemory());
   private static final LinkedHashMap<String, Entry> entries = new LinkedHashMap<>(16, .75f, true);
   private static long bytes;
   private static boolean enabled = true;
@@ -39,6 +40,14 @@ final class GallerySearchHotCache {
       recognizedText = (fileText + " " + row.optString("text")).toLowerCase(Locale.ROOT);
       bytes = 2048L + row.toString().length() * 4L + (vector == null ? 0 : 2048);
     }
+  }
+
+  static long budgetForHeap(long heapBytes) {
+    return Math.max(4L * 1024 * 1024, Math.min(LIMIT, Math.max(0, heapBytes) / 32));
+  }
+
+  static long budget() {
+    return HEAP_BUDGET;
   }
 
   static synchronized void touch() {
@@ -78,10 +87,11 @@ final class GallerySearchHotCache {
       bytes -= old.bytes;
     }
     Entry fresh = new Entry(loader.read(), digest);
-    if (fresh.bytes <= LIMIT) {
+    long limit = budget();
+    if (fresh.bytes <= limit) {
       entries.put(key, fresh);
       bytes += fresh.bytes;
-      while (bytes > LIMIT || entries.size() > 12000) {
+      while (bytes > limit || entries.size() > 12000) {
         String first = entries.keySet().iterator().next();
         bytes -= entries.remove(first).bytes;
       }

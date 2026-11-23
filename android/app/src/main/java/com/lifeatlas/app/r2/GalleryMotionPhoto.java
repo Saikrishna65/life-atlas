@@ -85,9 +85,10 @@ final class GalleryMotionPhoto {
               file.delete();
               throw failure;
             }
+            GalleryPreviewSettings.pruneIfDue(dir, 64L * 1024 * 1024, file);
           }
-          file.setLastModified(System.currentTimeMillis());
-          GalleryMediaTools.prune(dir, 64L * 1024 * 1024);
+          if (System.currentTimeMillis() - file.lastModified() >= 60000)
+            file.setLastModified(System.currentTimeMillis());
           result.put("path", file.getAbsolutePath());
         }
       }

@@ -4,7 +4,14 @@ export class GalleryPageCache {
   private pages = new Map<string, { page: DevicePage; revision: number }>();
   get(key: string, revision: number) {
     const value = this.pages.get(key);
-    return value?.revision === revision ? value.page : undefined;
+    if (!value) return;
+    if (value.revision !== revision) {
+      this.pages.delete(key);
+      return;
+    }
+    this.pages.delete(key);
+    this.pages.set(key, value);
+    return value.page;
   }
   put(key: string, page: DevicePage, revision: number) {
     this.pages.delete(key);

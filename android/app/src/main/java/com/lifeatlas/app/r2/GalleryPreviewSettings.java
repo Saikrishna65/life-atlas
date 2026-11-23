@@ -8,7 +8,13 @@ import org.json.JSONObject;
 /** Rebuildable display copies only. Never changes original media or analysis settings. */
 final class GalleryPreviewSettings {
   final int quality, maxEdge, limitMiB;
-  private static long lastPrune;
+  private static final java.util.LinkedHashMap<String, PruneState> pruning =
+      new java.util.LinkedHashMap<>();
+
+  private static final class PruneState {
+    long at, written;
+  }
+
   private static GalleryPreviewSettings memo;
   private static String memoPath;
   private static long memoAt;
@@ -44,9 +50,15 @@ final class GalleryPreviewSettings {
 
   static synchronized void pruneIfDue(File root, long limit, File keep) {
     long now = System.currentTimeMillis();
-    // Batch directory enumeration, rather than sorting the entire cache for each photo.
-    if (now - lastPrune < 5000) return;
-    lastPrune = now;
+    String path = root.getAbsolutePath();
+    PruneState state = pruning.computeIfAbsent(path, ignored -> new PruneState());
+    if (pruning.size() > 16) pruning.remove(pruning.keySet().iterator().next());
+    state.written += keep.length();
+    // Bound bursts as well as time. A busy import must not grow the cache freely
+    // for five seconds. Each directory keeps its own maintenance clock.
+    if (now - state.at < 5000 && state.written < 4L * 1024 * 1024) return;
+    state.at = now;
+    state.written = 0;
     File[] files = root.listFiles(f -> f.isFile() && !f.getName().endsWith(".new"));
     if (files == null) return;
     Arrays.sort(files, Comparator.comparingLong(File::lastModified));

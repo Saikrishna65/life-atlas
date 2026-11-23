@@ -5,9 +5,14 @@ import { Film, ImageIcon } from "lucide-react";
 import type { GalleryAsset } from "@/lib/gallery/types";
 import { R2 } from "@/lib/r2/native";
 import { gallerySource } from "@/lib/gallery/actions";
-// Native thumbnails only, bounded concurrency. No full originals fetched by the grid.
-let active = 0;
-const waiting: (() => void)[] = [];
+import {
+  galleryMediaRequests,
+  thumbnailPixels,
+} from "@/lib/gallery/media-requests";
+import { mediaStamp } from "@/lib/gallery/model";
+// Device thumbnail paths only, with one bounded queue shared by all grids.
+const versions = new Map<string, string>();
+const invalidations = new Map<string, number>();
 const cached = new Map<string, { path: string }>();
 const variants = new Map<string, number>();
 let previewEpoch = 0;
@@ -16,15 +21,17 @@ if (typeof window !== "undefined")
     previewEpoch++;
     cached.clear();
     variants.clear();
-  });
-if (typeof window !== "undefined")
-  window.addEventListener("atlas:gallery-analysis", () => {
-    cached.clear();
-    variants.clear();
+    versions.clear();
   });
 export function invalidateThumbnail(id: string) {
   cached.delete(id);
   variants.delete(id);
+  versions.delete(id);
+  invalidations.set(id, (invalidations.get(id) || 0) + 1);
+  if (invalidations.size > 240) {
+    previewEpoch++;
+    invalidations.clear();
+  }
   if (typeof window !== "undefined")
     window.dispatchEvent(
       new CustomEvent("atlas:gallery-thumbnail", { detail: id }),
@@ -32,39 +39,70 @@ export function invalidateThumbnail(id: string) {
 }
 export function cachedThumbnail(id: string) {
   const value = cached.get(id);
+  if (value) {
+    cached.delete(id);
+    cached.set(id, value);
+  }
   return value ? gallerySource(value.path) : undefined;
 }
 export async function thumbnail(
   id: string,
   stillNeeded: () => boolean,
   pixels = 768,
+  version?: string,
+  priority = 1,
 ) {
-  const epoch = previewEpoch;
-  if (cached.has(id) && (variants.get(id) || 0) >= pixels)
-    return cached.get(id)!;
-  await new Promise<void>((resolve) => {
-    if (active < 3) {
-      active++;
-      resolve();
-    } else waiting.push(resolve);
-  });
-  try {
-    if (!stillNeeded()) throw Error("Thumbnail no longer visible");
-    const result = await R2.getDeviceThumbnail({ id, pixels });
-    if (epoch !== previewEpoch) throw Error("Preview settings changed");
-    variants.set(id, pixels);
-    cached.set(id, result);
-    if (cached.size > 240) {
-      const oldest = cached.keys().next().value!;
+  pixels = thumbnailPixels(pixels);
+  const epoch = previewEpoch,
+    invalidation = invalidations.get(id) || 0;
+  if (version && versions.get(id) !== version) {
+    cached.delete(id);
+    variants.delete(id);
+    versions.set(id, version);
+    if (versions.size > 480) {
+      const oldest = versions.keys().next().value!;
+      versions.delete(oldest);
       cached.delete(oldest);
       variants.delete(oldest);
     }
-    return result;
-  } finally {
-    const next = waiting.shift();
-    if (next) next();
-    else active--;
   }
+  const previous = cached.get(id);
+  if (previous && (variants.get(id) || 0) >= pixels) {
+    cached.delete(id);
+    cached.set(id, previous);
+    return previous;
+  }
+  const result = await galleryMediaRequests.run(
+    JSON.stringify([
+      "device",
+      id,
+      pixels,
+      epoch,
+      invalidation,
+      version || versions.get(id),
+    ]),
+    stillNeeded,
+    () => R2.getDeviceThumbnail({ id, pixels }),
+    priority,
+  );
+  if (
+    epoch !== previewEpoch ||
+    invalidation !== (invalidations.get(id) || 0) ||
+    (version && versions.get(id) !== version)
+  )
+    throw Error("Preview changed");
+  if (!cached.has(id) || (variants.get(id) || 0) <= pixels) {
+    variants.set(id, pixels);
+    cached.delete(id);
+    cached.set(id, result);
+  }
+  while (cached.size > 240) {
+    const oldest = cached.keys().next().value!;
+    cached.delete(oldest);
+    variants.delete(oldest);
+    versions.delete(oldest);
+  }
+  return result;
 }
 
 export default function GalleryThumbnail({
@@ -80,11 +118,24 @@ export default function GalleryThumbnail({
     [source, setSource] = useState(asset.thumbnail || ""),
     [failed, setFailed] = useState(false),
     [revision, setRevision] = useState(0);
+  const identity = asset.device
+    ? JSON.stringify([asset.id, mediaStamp(asset.device)])
+    : JSON.stringify([asset.id, asset.thumbnail]);
+  const [displayedIdentity, setDisplayedIdentity] = useState(identity);
+  if (displayedIdentity !== identity) {
+    setDisplayedIdentity(identity);
+    setSource(asset.thumbnail || "");
+    setFailed(false);
+  }
+  useEffect(() => {
+    retried.current = false;
+  }, [identity]);
   useEffect(() => {
     const change = (event: Event) => {
       if ((event as CustomEvent<string>).detail === asset.id) {
         setSource("");
         setFailed(false);
+        setRevision((n) => n + 1);
         retried.current = false;
       }
     };
@@ -125,7 +176,13 @@ export default function GalleryThumbnail({
         Math.min(devicePixelRatio || 1, 3) *
         Math.min(ratio, 2),
     );
-    void thumbnail(asset.device.id, () => mounted, pixels)
+    void thumbnail(
+      asset.device.id,
+      () => mounted,
+      pixels,
+      mediaStamp(asset.device),
+      bounds && bounds.bottom > 0 && bounds.top < innerHeight ? 0 : 1,
+    )
       .then((result) => {
         if (mounted) {
           setFailed(false);

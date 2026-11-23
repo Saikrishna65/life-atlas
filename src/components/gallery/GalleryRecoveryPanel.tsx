@@ -61,8 +61,10 @@ export default function GalleryRecoveryPanel({
           : R2.controlGalleryRecovery({ action, peopleApproved: faces }),
       );
       setStatus(await R2.getGalleryRecovery());
-      if (action === "restore")
+      if (action === "restore") {
         window.dispatchEvent(new Event("atlas:gallery-analysis"));
+        window.dispatchEvent(new Event("atlas:gallery-preview-settings"));
+      }
     } catch (e) {
       setError(storageError(e));
     } finally {

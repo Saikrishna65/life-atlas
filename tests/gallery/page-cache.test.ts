@@ -46,3 +46,17 @@ test("scroll positions belong to individual pages and do not grow without bounds
   for (let i = 0; i < 41; i++) positions.remember("page-" + i, i);
   assert.equal(positions.read("photos"), 0);
 });
+test("reading a collection protects it from eviction and invalid revisions release metadata", () => {
+  const cache = new GalleryPageCache();
+  for (let i = 0; i < 6; i++) cache.put(String(i), page(10), 1);
+  cache.get("0", 1);
+  cache.put("new", page(10), 1);
+  assert.ok(cache.get("0", 1));
+  assert.equal(cache.get("1", 1), undefined);
+  assert.equal(cache.get("0", 2), undefined);
+  assert.equal(
+    cache.get("0", 1),
+    undefined,
+    "stale records are released, not resurrected",
+  );
+});

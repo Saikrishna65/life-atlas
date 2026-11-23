@@ -374,7 +374,17 @@ export default function PhotoGallery() {
     return () => clearInterval(timer);
   }, [supported, reloadJobs, drawer, jobs]);
   useEffect(() => {
-    if (!supported || access.status === "denied") return;
+    if (
+      !supported ||
+      access.status === "denied" ||
+      !(
+        workspace === "organize" ||
+        searchOpen ||
+        intelligenceOpen ||
+        albumSelection
+      )
+    )
+      return;
     let alive = true;
     void R2.getGalleryAlbums()
       .then((v) => {
@@ -384,7 +394,15 @@ export default function PhotoGallery() {
     return () => {
       alive = false;
     };
-  }, [supported, access.status, revision]);
+  }, [
+    supported,
+    access.status,
+    revision,
+    workspace,
+    searchOpen,
+    intelligenceOpen,
+    albumSelection,
+  ]);
   useEffect(() => {
     const trip = trips.find((t) => t.id === tripFilter);
     if (!trip?.publishedSlug || checkedPublications.current.has(trip.id))

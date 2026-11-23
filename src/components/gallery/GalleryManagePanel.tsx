@@ -259,7 +259,10 @@ export default function GalleryManagePanel({
                     "gallery-motion": "Motion clips",
                   }[key] || key}
                 </dt>
-                <dd>{bytes(value.bytes)}</dd>
+                <dd>
+                  {bytes(value.bytes)}
+                  {value.limitBytes ? ` / ${bytes(value.limitBytes)}` : ""}
+                </dd>
               </div>
             ))}
           </dl>

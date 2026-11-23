@@ -37,5 +37,8 @@ export interface GalleryCacheReport {
   limitMiB: number;
   previewQuality?: number;
   previewMaxEdge?: number;
-  categories?: Record<string, { bytes: number; files: number }>;
+  categories?: Record<
+    string,
+    { bytes: number; files: number; limitBytes?: number }
+  >;
 }

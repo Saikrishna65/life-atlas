@@ -4,8 +4,7 @@ import { Film, ImageIcon } from "lucide-react";
 import { R2 } from "@/lib/r2/native";
 import { gallerySource } from "@/lib/gallery/actions";
 import type { LibraryItem } from "@/lib/gallery/library";
-let active = 0;
-const waiting: (() => void)[] = [];
+import { galleryMediaRequests } from "@/lib/gallery/media-requests";
 export default function LibraryThumbnail({
   item,
   session,
@@ -14,8 +13,10 @@ export default function LibraryThumbnail({
   session: string;
 }) {
   const root = useRef<HTMLDivElement>(null),
-    [url, setUrl] = useState(""),
+    [preview, setPreview] = useState<{ key: string; url: string }>(),
     [near, setNear] = useState(false);
+  const previewKey = JSON.stringify([session, item.id]);
+  const url = preview?.key === previewKey ? preview.url : "";
   useEffect(() => {
     if (!root.current) return;
     const observer = new IntersectionObserver(
@@ -26,40 +27,33 @@ export default function LibraryThumbnail({
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    if (!near || !item.hasThumbnail) return;
+    if (!near || !item.hasThumbnail || url) return;
     let live = true;
     void (async () => {
-      await new Promise<void>((resolve) => {
-        if (active < 4) {
-          active++;
-          resolve();
-        } else waiting.push(resolve);
-      });
       try {
         if (!live) return;
-        const result = await R2.libraryThumbnail({ id: item.id, session });
-        if (live) setUrl(result.url || gallerySource(result.path!));
-      } catch {
-      } finally {
-        const next = waiting.shift();
-        if (next) next();
-        else active--;
-      }
+        const result = await galleryMediaRequests.run(
+          JSON.stringify(["private-library", session, item.id]),
+          () => live,
+          () => R2.libraryThumbnail({ id: item.id, session }),
+        );
+        if (live)
+          setPreview({
+            key: previewKey,
+            url: result.url || gallerySource(result.path!),
+          });
+      } catch {}
     })();
     return () => {
       live = false;
     };
-  }, [near, item.id, item.hasThumbnail, session]);
+  }, [near, item.id, item.hasThumbnail, session, url, previewKey]);
   return (
     <div ref={root} className="gl-thumb">
-      {url ? (
+      {near && url ? (
         // Native foreground-only file URL; Next image optimization cannot serve it.
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={url}
-          alt=""
-          loading="lazy"
-        />
+        <img src={url} alt="" loading="lazy" decoding="async" />
       ) : item.kind === "video" ? (
         <Film />
       ) : (

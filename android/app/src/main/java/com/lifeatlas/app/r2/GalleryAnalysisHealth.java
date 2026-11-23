@@ -225,7 +225,9 @@ final class GalleryAnalysisHealth {
         for (String suffix : new String[] {"", "-wal", "-shm", "-journal"})
           indexBytes +=
               new java.io.File(service.secure.directory(), "gallery-search.db" + suffix).length();
-        out.put("indexBytes", indexBytes).put("decodedSearchBytes", GallerySearchHotCache.bytes());
+        out.put("indexBytes", indexBytes)
+            .put("decodedSearchBytes", GallerySearchHotCache.bytes())
+            .put("decodedSearchBudgetBytes", GallerySearchHotCache.budget());
         int total = state.optInt("passTotal", -1);
         out.put("passTotal", total);
         out.put("remaining", total < 0 ? -1 : Math.max(0, total - config.optInt("checked")));

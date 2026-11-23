@@ -65,6 +65,45 @@ public class GalleryAdvancedToolsTest {
   }
 
   @Test
+  public void previewPruningTracksEachDirectoryAndBoundsFastWriteBursts() throws Exception {
+    File parent =
+        new File(RuntimeEnvironment.getApplication().getCacheDir(), "prune-" + UUID.randomUUID());
+    File first = new File(parent, "first"), second = new File(parent, "second");
+    first.mkdirs();
+    second.mkdirs();
+    File a = new File(first, "a.jpg"),
+        b = new File(second, "b.jpg"),
+        keep = new File(second, "keep.jpg");
+    try (RandomAccessFile file = new RandomAccessFile(a, "rw")) {
+      file.setLength(1);
+    }
+    try (RandomAccessFile file = new RandomAccessFile(b, "rw")) {
+      file.setLength(1);
+    }
+    try (RandomAccessFile file = new RandomAccessFile(keep, "rw")) {
+      file.setLength(1);
+    }
+    GalleryPreviewSettings.pruneIfDue(first, 0, a);
+    GalleryPreviewSettings.pruneIfDue(second, 1, keep);
+    assertFalse(b.exists());
+    assertTrue(keep.exists());
+    File large = new File(second, "large.jpg");
+    try (RandomAccessFile file = new RandomAccessFile(large, "rw")) {
+      file.setLength(4L * 1024 * 1024);
+    }
+    GalleryPreviewSettings.pruneIfDue(second, 4L * 1024 * 1024, large);
+    assertFalse(keep.exists());
+    assertTrue(large.exists());
+  }
+
+  @Test
+  public void cacheCategoryBudgetsAgreeWithTheGenerators() {
+    assertEquals(32L * 1024 * 1024, GalleryMediaTools.categoryLimit("device-gallery", 32));
+    assertEquals(16L * 1024 * 1024, GalleryMediaTools.categoryLimit("gallery-filmstrip", 32));
+    assertEquals(64L * 1024 * 1024, GalleryMediaTools.categoryLimit("gallery-motion", 32));
+  }
+
+  @Test
   public void qualityChangesKeepCacheLimitAndReportOnlyRebuildableFiles() throws Exception {
     var context = RuntimeEnvironment.getApplication();
     var repo = R2TripQueueTest.repository();

@@ -87,6 +87,7 @@ export interface GalleryAnalysisReport {
   passWorkMs?: number;
   indexBytes?: number;
   decodedSearchBytes?: number;
+  decodedSearchBudgetBytes?: number;
   checked: number;
   indexed: number;
   passTotal: number;

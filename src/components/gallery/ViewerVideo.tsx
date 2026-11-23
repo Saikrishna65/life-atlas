@@ -104,8 +104,13 @@ export default function ViewerVideo({
   }, [mediaId, browse]);
   useEffect(() => {
     const v = video.current!;
-    void v.play().catch(() => setWaiting(false));
+    if (!document.hidden) void v.play().catch(() => setWaiting(false));
+    const visibility = () => {
+      if (document.hidden) v.pause();
+    };
+    document.addEventListener("visibilitychange", visibility);
     return () => {
+      document.removeEventListener("visibilitychange", visibility);
       persist(v.currentTime, v.readyState >= 1);
       v.pause();
     };
