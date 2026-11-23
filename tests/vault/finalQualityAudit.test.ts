@@ -147,24 +147,12 @@ describe("Trip Vault Phase 15: Security, Website Isolation & Android Build Quali
     assert.strictEqual(invalidResult, false, "Invalid PIN must be rejected");
     assert.strictEqual(isSecretAccessGranted(), false, "Session must remain locked on failed PIN");
 
-    // 3. Valid Guardian PIN unlock
-    const validResult = verifyPasscode(DEFAULT_GUARDIAN_PIN);
-    assert.strictEqual(validResult, true, "Default guardian PIN (1984) must unlock vault");
-    assert.strictEqual(isSecretAccessGranted(), true, "Session should be authenticated");
-
-    // 4. Custom PIN update and verification
-    const updateSuccess = updateGuardianPasscode("5678");
-    assert.strictEqual(updateSuccess, true, "PIN update should succeed");
-    revokeSecretAccess();
-    assert.strictEqual(isSecretAccessGranted(), false, "Session must be revoked");
-
-    // Old PIN fails, new PIN succeeds
-    assert.strictEqual(verifyPasscode("1984"), false, "Old PIN should now fail");
-    assert.strictEqual(verifyPasscode("5678"), true, "New PIN should succeed");
-    assert.strictEqual(isSecretAccessGranted(), true, "Session authenticated with new PIN");
-
-    // Reset back to default
-    updateGuardianPasscode(DEFAULT_GUARDIAN_PIN);
+    // Custom/default app PINs are retired. Only the optional native policy grants access.
+    assert.strictEqual(verifyPasscode(DEFAULT_GUARDIAN_PIN), false);
+    assert.strictEqual(updateGuardianPasscode("5678"), false);
+    assert.strictEqual(verifyPasscode("1984"), false);
+    assert.strictEqual(verifyPasscode("5678"), false);
+    assert.strictEqual(isSecretAccessGranted(), false);
 
     // 5. Explicit grant and Vault Lock action revokes session instantly
     grantSecretAccess();

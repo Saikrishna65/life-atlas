@@ -42,7 +42,7 @@ try{
  await page.getByRole('button',{name:'Scan now',exact:true}).click();await page.waitForFunction(()=>window.calls.scan===true);
  await page.getByRole('button',{name:'Restore index from R2'}).click();await page.waitForFunction(()=>window.calls.tasks.length===1);
  await page.screenshot({path:'work/qa-gallery/library-backup-desktop.png',fullPage:true});
- await page.getByRole('button',{name:'Cloud photos',exact:true}).click();await page.getByRole('button',{name:'Unlock cloud library'}).click();
+ await page.getByRole('button',{name:'Cloud photos',exact:true}).click();await page.getByRole('button',{name:'Open cloud library'}).click();
  await page.getByRole('checkbox',{name:'Select Mountain.jpg',exact:true}).waitFor();
  await page.getByRole('checkbox',{name:'Select Mountain.jpg',exact:true}).check();page.once('dialog',d=>d.accept());
  await page.getByRole('button',{name:'Move cloud copies to trash'}).click();await page.waitForFunction(()=>window.calls.trash.length===1);

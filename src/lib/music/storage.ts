@@ -227,6 +227,7 @@ export async function getMusicLibrarySummary(): Promise<{total: number; favorite
 }
 
 export async function deleteTrack(id: string, deleteOnline: boolean = true): Promise<void> {
+  const {authorize}=await import('../security/authentication');await authorize('deletion');
   const db = await getMusicDB();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(["tracks", "playlists"], "readwrite");
@@ -554,6 +555,7 @@ export function exportPlaylistM3U(playlist: MusicPlaylist, tracks: MusicTrack[])
 }
 
 export async function exportLibraryJSON(): Promise<string> {
+  const {authorize}=await import('../security/authentication');await authorize('backups');
   const tracks = await getAllTracks();
   const playlists = await getAllPlaylists();
 

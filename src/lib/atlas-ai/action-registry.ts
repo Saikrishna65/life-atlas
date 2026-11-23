@@ -11,11 +11,7 @@ import {
   evaluateActionPolicy,
   type PolicyEvaluation,
 } from "./policy";
-import {
-  deleteReminder,
-  restoreReminder,
-  updateReminder,
-} from "./reminders";
+import { deleteReminder, restoreReminder, updateReminder } from "./reminders";
 
 export type AtlasActionCategory =
   | "music"
@@ -40,7 +36,12 @@ export interface ActionAuditEntry {
   actionId: string;
   category: AtlasActionCategory;
   sessionId: string;
-  status: "executed" | "blocked_locked" | "confirmation_required" | "failed" | "rolled_back";
+  status:
+    | "executed"
+    | "blocked_locked"
+    | "confirmation_required"
+    | "failed"
+    | "rolled_back";
   reason?: string;
   at: string;
 }
@@ -80,15 +81,13 @@ function spec(
   id: AtlasAction["kind"],
   category: AtlasActionCategory,
   description: string,
-  undoable = false
+  undoable = false,
 ): AtlasActionSpec {
   return {
     id,
     category,
     description,
-    requiredPermission: permissionFor(
-      minimalActionForPermission(id)
-    ),
+    requiredPermission: permissionFor(minimalActionForPermission(id)),
     lockScreenAllowed: LOCK_SCREEN_SAFE_ACTION_IDS.has(id),
     requiresConfirmation: CONFIRMATION_REQUIRED_ACTION_IDS.has(id),
     undoable,
@@ -118,7 +117,12 @@ function minimalActionForPermission(kind: AtlasAction["kind"]): AtlasAction {
     case "finance.searchExpenses":
       return { kind: "finance.searchExpenses", query: "stub" };
     case "finance.expense":
-      return { kind: "finance.expense", accountId: "a", amountPaise: 100, description: "stub" };
+      return {
+        kind: "finance.expense",
+        accountId: "a",
+        amountPaise: 100,
+        description: "stub",
+      };
     case "finance.categorize":
       return { kind: "finance.categorize", id: "t", categoryId: "c" };
     case "trips.list":
@@ -153,43 +157,167 @@ function minimalActionForPermission(kind: AtlasAction["kind"]): AtlasAction {
   }
 }
 
-export const ATLAS_ACTION_REGISTRY: Record<AtlasAction["kind"], AtlasActionSpec> = {
-  "music.search": spec("music.search", "music", "Search local offline music tracks by title, artist, album, or genre"),
-  "music.play": spec("music.play", "music", "Play a downloaded local music track"),
-  "music.playlist": spec("music.playlist", "music", "Open and play downloaded tracks from a saved playlist"),
+export const ATLAS_ACTION_REGISTRY: Record<
+  AtlasAction["kind"],
+  AtlasActionSpec
+> = {
+  "music.search": spec(
+    "music.search",
+    "music",
+    "Search local offline music tracks by title, artist, album, or genre",
+  ),
+  "music.play": spec(
+    "music.play",
+    "music",
+    "Play a downloaded local music track",
+  ),
+  "music.playlist": spec(
+    "music.playlist",
+    "music",
+    "Open and play downloaded tracks from a saved playlist",
+  ),
   "music.pause": spec("music.pause", "music", "Pause current audio playback"),
   "music.resume": spec("music.resume", "music", "Resume paused audio playback"),
-  "music.next": spec("music.next", "music", "Skip to the next downloaded track in queue"),
-  "music.previous": spec("music.previous", "music", "Go back to the previous track in queue"),
-  "music.state": spec("music.state", "music", "Report the currently playing track and playback settings"),
-  "music.setPlaybackRate": spec("music.setPlaybackRate", "music", "Adjust audio playback speed between 0.5x and 2.0x"),
-  "music.toggleShuffle": spec("music.toggleShuffle", "music", "Toggle shuffle mode on the music player"),
-  "music.cycleRepeat": spec("music.cycleRepeat", "music", "Cycle repeat mode (Off, All, One)"),
+  "music.next": spec(
+    "music.next",
+    "music",
+    "Skip to the next downloaded track in queue",
+  ),
+  "music.previous": spec(
+    "music.previous",
+    "music",
+    "Go back to the previous track in queue",
+  ),
+  "music.state": spec(
+    "music.state",
+    "music",
+    "Report the currently playing track and playback settings",
+  ),
+  "music.setPlaybackRate": spec(
+    "music.setPlaybackRate",
+    "music",
+    "Adjust audio playback speed between 0.5x and 2.0x",
+  ),
+  "music.toggleShuffle": spec(
+    "music.toggleShuffle",
+    "music",
+    "Toggle shuffle mode on the music player",
+  ),
+  "music.cycleRepeat": spec(
+    "music.cycleRepeat",
+    "music",
+    "Cycle repeat mode (Off, All, One)",
+  ),
 
-  "trips.list": spec("trips.list", "trips", "List upcoming and saved trips in Trip Vault"),
-  "trips.search": spec("trips.search", "trips", "Search trips by title or destination"),
+  "trips.list": spec(
+    "trips.list",
+    "trips",
+    "List upcoming and saved trips in Trip Vault",
+  ),
+  "trips.search": spec(
+    "trips.search",
+    "trips",
+    "Search trips by title or destination",
+  ),
   "trips.open": spec("trips.open", "trips", "Open a trip's itinerary view"),
-  "trips.itinerary": spec("trips.itinerary", "trips", "Read a trip's day-by-day itinerary"),
-  "trips.getDetails": spec("trips.getDetails", "trips", "Inspect dates, budget, and notes for a trip"),
-  "trips.editTitle": spec("trips.editTitle", "trips", "Rename an itinerary day title (confirmation required)"),
-  "trips.addNote": spec("trips.addNote", "trips", "Append a note to an existing trip (confirmation required)"),
-  "trips.createReminder": spec("trips.createReminder", "trips", "Create a packing or departure reminder linked to a trip", true),
+  "trips.itinerary": spec(
+    "trips.itinerary",
+    "trips",
+    "Read a trip's day-by-day itinerary",
+  ),
+  "trips.getDetails": spec(
+    "trips.getDetails",
+    "trips",
+    "Inspect dates, budget, and notes for a trip",
+  ),
+  "trips.editTitle": spec(
+    "trips.editTitle",
+    "trips",
+    "Rename an itinerary day title (confirmation required)",
+  ),
+  "trips.addNote": spec(
+    "trips.addNote",
+    "trips",
+    "Append a note to an existing trip (confirmation required)",
+  ),
+  "trips.createReminder": spec(
+    "trips.createReminder",
+    "trips",
+    "Create a packing or departure reminder linked to a trip",
+    true,
+  ),
 
-  "finance.summary": spec("finance.summary", "finance", "Summarize active accounts, balances, categories, and recent expenses"),
-  "finance.searchExpenses": spec("finance.searchExpenses", "finance", "Search recent expenses and transactions"),
-  "finance.explainCategories": spec("finance.explainCategories", "finance", "Break down spending totals across expense categories"),
-  "finance.budgetHelp": spec("finance.budgetHelp", "finance", "Inspect configured monthly/period budgets (read-only advice unless confirmed)"),
-  "finance.expense": spec("finance.expense", "finance", "Record a new outflow expense (confirmation required)"),
-  "finance.categorize": spec("finance.categorize", "finance", "Recategorize an existing transaction (confirmation required)"),
+  "finance.summary": spec(
+    "finance.summary",
+    "finance",
+    "Summarize active accounts, balances, categories, and recent expenses",
+  ),
+  "finance.searchExpenses": spec(
+    "finance.searchExpenses",
+    "finance",
+    "Search recent expenses and transactions",
+  ),
+  "finance.explainCategories": spec(
+    "finance.explainCategories",
+    "finance",
+    "Break down spending totals across expense categories",
+  ),
+  "finance.budgetHelp": spec(
+    "finance.budgetHelp",
+    "finance",
+    "Inspect configured monthly/period budgets (read-only advice unless confirmed)",
+  ),
+  "finance.expense": spec(
+    "finance.expense",
+    "finance",
+    "Record a new outflow expense (confirmation required)",
+  ),
+  "finance.categorize": spec(
+    "finance.categorize",
+    "finance",
+    "Recategorize an existing transaction (confirmation required)",
+  ),
 
-  "reminder.create": spec("reminder.create", "reminders", "Create a reminder with optional due phrase and trip link", true),
-  "reminder.list": spec("reminder.list", "reminders", "List active pending reminders"),
-  "reminder.update": spec("reminder.update", "reminders", "Update an existing reminder's title or due time", true),
-  "reminder.complete": spec("reminder.complete", "reminders", "Mark a reminder completed", true),
-  "reminder.delete": spec("reminder.delete", "reminders", "Delete a reminder permanently (confirmation required, undoable in-session)", true),
+  "reminder.create": spec(
+    "reminder.create",
+    "reminders",
+    "Create a reminder with optional due phrase and trip link",
+    true,
+  ),
+  "reminder.list": spec(
+    "reminder.list",
+    "reminders",
+    "List active pending reminders",
+  ),
+  "reminder.update": spec(
+    "reminder.update",
+    "reminders",
+    "Update an existing reminder's title or due time",
+    true,
+  ),
+  "reminder.complete": spec(
+    "reminder.complete",
+    "reminders",
+    "Mark a reminder completed",
+    true,
+  ),
+  "reminder.delete": spec(
+    "reminder.delete",
+    "reminders",
+    "Delete a reminder permanently (confirmation required, undoable in-session)",
+    true,
+  ),
 
-  "control.status": spec("control.status", "control", "Check wake-word, restore, and Cloud AI consent status"),
-  "navigate": spec("navigate", "navigation", "Navigate to a Life Atlas workspace section"),
+  "control.status": spec(
+    "control.status",
+    "control",
+    "Check wake-word, restore, and Cloud AI consent status",
+  ),
+  navigate: spec(
+    "navigate",
+    "navigation",
+    "Navigate to a Life Atlas workspace section",
+  ),
 };
 
 export function listRegisteredActions(): AtlasActionSpec[] {
@@ -218,7 +346,10 @@ export async function executeRegisteredAction<T = unknown>(options: {
     explicitlyConfirmed: options.explicitlyConfirmed,
   });
 
-  if (options.grantedPermissions && !options.grantedPermissions.has(actionSpec.requiredPermission)) {
+  if (
+    options.grantedPermissions &&
+    !options.grantedPermissions.has(actionSpec.requiredPermission)
+  ) {
     const deniedPolicy: PolicyEvaluation = {
       allowed: false,
       requiresUnlock: false,
@@ -232,7 +363,12 @@ export async function executeRegisteredAction<T = unknown>(options: {
       status: "failed",
       reason: deniedPolicy.reason,
     });
-    return { ok: false, action, policy: deniedPolicy, error: deniedPolicy.reason };
+    return {
+      ok: false,
+      action,
+      policy: deniedPolicy,
+      error: deniedPolicy.reason,
+    };
   }
 
   if (!policy.allowed) {
@@ -240,7 +376,9 @@ export async function executeRegisteredAction<T = unknown>(options: {
       actionId: action.kind,
       category: actionSpec.category,
       sessionId: options.sessionId,
-      status: policy.requiresUnlock ? "blocked_locked" : "confirmation_required",
+      status: policy.requiresUnlock
+        ? "blocked_locked"
+        : "confirmation_required",
       reason: policy.reason,
     });
     return { ok: false, action, policy, error: policy.reason };
@@ -253,6 +391,15 @@ export async function executeRegisteredAction<T = unknown>(options: {
   };
 
   try {
+    if (typeof window !== "undefined") {
+      const { Capacitor } = await import("@capacitor/core");
+      if (Capacitor.isNativePlatform()) {
+        const { authorize } = await import("../security/authentication");
+        await authorize("app");
+        await authorize("privateSections");
+        await authorize("aiActions");
+      }
+    }
     let result: unknown;
     if (
       action.kind === "finance.expense" ||
@@ -266,7 +413,13 @@ export async function executeRegisteredAction<T = unknown>(options: {
     }
 
     let undoFn: (() => Promise<void>) | undefined;
-    if ((action.kind === "reminder.create" || action.kind === "trips.createReminder") && result && typeof result === "object" && "reminder" in result) {
+    if (
+      (action.kind === "reminder.create" ||
+        action.kind === "trips.createReminder") &&
+      result &&
+      typeof result === "object" &&
+      "reminder" in result
+    ) {
       const created = (result as { reminder?: { id?: string } }).reminder;
       if (created?.id) {
         const createdId = created.id;
@@ -279,8 +432,15 @@ export async function executeRegisteredAction<T = unknown>(options: {
       undoFn = async () => {
         updateReminder(id, { completed: false });
       };
-    } else if (action.kind === "reminder.delete" && result && typeof result === "object" && "snapshot" in result) {
-      const snap = (result as { snapshot?: Parameters<typeof restoreReminder>[0] }).snapshot;
+    } else if (
+      action.kind === "reminder.delete" &&
+      result &&
+      typeof result === "object" &&
+      "snapshot" in result
+    ) {
+      const snap = (
+        result as { snapshot?: Parameters<typeof restoreReminder>[0] }
+      ).snapshot;
       if (snap) {
         undoFn = async () => {
           restoreReminder(snap);
@@ -320,7 +480,11 @@ export async function executeRegisteredAction<T = unknown>(options: {
   }
 }
 
-export function recordRollbackAudit(sessionId: string, actionId: string, reason: string): void {
+export function recordRollbackAudit(
+  sessionId: string,
+  actionId: string,
+  reason: string,
+): void {
   const existing = ATLAS_ACTION_REGISTRY[actionId as AtlasAction["kind"]];
   recordAudit({
     actionId,

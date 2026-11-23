@@ -15,9 +15,9 @@ export interface AuthResult {
 }
 
 const SESSION_AUTH_KEY = "life_atlas_secret_unlocked";
-const CREDENTIAL_STORAGE_KEY = "life_atlas_passkey_cred_id";
-const PASSCODE_STORAGE_KEY = "life_atlas_guardian_pin";
-export const DEFAULT_GUARDIAN_PIN = "1984";
+
+/** Legacy source compatibility only. Custom Atlas PINs have been retired. */
+export const DEFAULT_GUARDIAN_PIN = "";
 
 let isSessionUnlockedInProcess = false;
 
@@ -45,7 +45,10 @@ export function setSystemPickerActive(active: boolean): void {
  * Opens a hidden <input type="file"> while keeping the vault from auto-locking,
  * and reports if Android returned no file (cancelled or picker failure).
  */
-export function openFilePicker(input: HTMLInputElement | null, onNoResult: () => void): void {
+export function openFilePicker(
+  input: HTMLInputElement | null,
+  onNoResult: () => void,
+): void {
   if (typeof window === "undefined" || !input) return;
   const win = window as VaultWindow & { __pickerGotFile?: boolean };
   win.__pickerGotFile = false;
@@ -65,36 +68,13 @@ export function openFilePicker(input: HTMLInputElement | null, onNoResult: () =>
 
 export function markPickerGotFile(): void {
   if (typeof window === "undefined") return;
-  (window as VaultWindow & { __pickerGotFile?: boolean }).__pickerGotFile = true;
+  (window as VaultWindow & { __pickerGotFile?: boolean }).__pickerGotFile =
+    true;
   setSystemPickerActive(false);
 }
 
 export function shouldSuppressAutoLock(): boolean {
   return true;
-}
-
-/**
- * Converts ArrayBuffer to Base64
- */
-function bufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-/**
- * Converts Base64 to ArrayBuffer
- */
-function base64ToBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes.buffer;
 }
 
 /**
@@ -117,7 +97,8 @@ export function playBiometricAudio(type: "scan" | "success" | "error"): void {
   try {
     const AudioContextClass =
       window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
     if (!AudioContextClass) return;
 
     const ctx = new AudioContextClass();
@@ -191,13 +172,20 @@ export function triggerHaptic(type: "tap" | "success" | "error"): void {
  */
 export async function checkBiometricSupport(): Promise<BiometricCheckResult> {
   if (typeof window === "undefined") {
-    return { available: false, type: "none", label: "Unavailable", hasHardware: false };
+    return {
+      available: false,
+      type: "none",
+      label: "Unavailable",
+      hasHardware: false,
+    };
   }
 
   // 1. Capacitor Native Platform (Android / iOS)
   if (Capacitor.isNativePlatform()) {
     try {
-      const { BiometricAuth } = await import("@aparajita/capacitor-biometric-auth");
+      const { BiometricAuth } = await import(
+        "@aparajita/capacitor-biometric-auth"
+      );
       const check = await BiometricAuth.checkBiometry();
       return {
         available: check.isAvailable || check.deviceIsSecure,
@@ -211,10 +199,18 @@ export async function checkBiometricSupport(): Promise<BiometricCheckResult> {
   }
 
   // 2. Web Authentication API (Passkeys / Biometrics)
-  if (window.isSecureContext && window.PublicKeyCredential && isValidRpId(window.location.hostname)) {
+  if (
+    window.isSecureContext &&
+    window.PublicKeyCredential &&
+    isValidRpId(window.location.hostname)
+  ) {
     try {
-      if (typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function") {
-        const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if (
+        typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable ===
+        "function"
+      ) {
+        const available =
+          await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
         return {
           available,
           type: "webauthn",
@@ -230,241 +226,45 @@ export async function checkBiometricSupport(): Promise<BiometricCheckResult> {
   return {
     available: false,
     type: "none",
-    label: "Passcode Guardian",
+    label: "Device verification unavailable",
     hasHardware: false,
   };
 }
 
 /**
- * Initiates device fingerprint or biometric verification.
- * Automatically delegates to Capacitor native BiometricPrompt or W3C WebAuthn platform authenticator.
- * Enforces an 8-second safety timeout with AbortController so authentication never hangs.
+ * Compatibility entry point for optional native app verification.
+ * Disabled checks grant access without enrolling a passkey or requesting a PIN.
  */
 export async function authenticateWithDevice(): Promise<AuthResult> {
-  if (typeof window === "undefined") {
-    return { success: false, error: "Window is undefined" };
-  }
-
-  // 1. Native Capacitor Biometrics (Android / iOS)
-  if (Capacitor.isNativePlatform()) {
-    const win = window as VaultWindow;
-    win.__isBiometricPromptActive = true;
-    try {
-      const { BiometricAuth, AndroidBiometryStrength } = await import(
-        "@aparajita/capacitor-biometric-auth"
-      );
-
-      await BiometricAuth.authenticate({
-        androidTitle: "Atlas Vault",
-        androidSubtitle: "Touch fingerprint sensor",
-        reason: "Scan fingerprint to access Private Vault",
-        cancelTitle: "Cancel",
-        allowDeviceCredential: true, // Native biometric prompt with device credential fallback
-        androidConfirmationRequired: false, // Instant unlock upon fingerprint touch - zero lag
-        androidBiometryStrength: AndroidBiometryStrength.weak,
-        iosFallbackTitle: "",
-      });
-
-      win.__lastUnlockTimestamp = Date.now();
-      grantSecretAccess();
-      triggerHaptic("success");
-      return { success: true, method: "native-biometric" };
-    } catch (err: unknown) {
-      const errorObj = err as { code?: string; message?: string };
-      if (
-        errorObj?.code === "userCancel" ||
-        errorObj?.message?.toLowerCase().includes("cancel")
-      ) {
-        return { success: false, cancelled: true };
-      }
-      console.warn("Native biometric authentication failed:", err);
-      return {
-        success: false,
-        error: errorObj?.message || "Native biometric authentication failed",
-      };
-    } finally {
-      setTimeout(() => {
-        win.__isBiometricPromptActive = false;
-      }, 1500);
-    }
-  }
-
-  // 2. Web Browser Environment (Android Chrome / WebAuthn / Desktop)
-  if (
-    window.isSecureContext &&
-    window.PublicKeyCredential &&
-    isValidRpId(window.location.hostname)
-  ) {
-    try {
-      const isAvailable =
-        typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === "function"
-          ? await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-          : false;
-
-      if (isAvailable) {
-        const challenge = crypto.getRandomValues(new Uint8Array(32));
-        const storedCredId = localStorage.getItem(CREDENTIAL_STORAGE_KEY);
-
-        if (storedCredId) {
-          try {
-            const rawId = base64ToBuffer(storedCredId);
-            const assertion = await navigator.credentials.get({
-              publicKey: {
-                challenge,
-                rpId: window.location.hostname,
-                allowCredentials: [
-                  {
-                    id: rawId,
-                    type: "public-key",
-                    transports: ["internal"],
-                  },
-                ],
-                userVerification: "required",
-                timeout: 30000,
-              },
-            });
-
-            if (assertion) {
-              grantSecretAccess();
-              playBiometricAudio("success");
-              triggerHaptic("success");
-              return { success: true, method: "webauthn" };
-            }
-          } catch (e: unknown) {
-            const err = e as { name?: string };
-            if (err?.name === "NotAllowedError") {
-              return { success: false, cancelled: true };
-            }
-          }
-        }
-
-        const newCred = (await navigator.credentials.create({
-          publicKey: {
-            challenge,
-            rp: {
-              name: "Life Atlas",
-              id: window.location.hostname,
-            },
-            user: {
-              id: new Uint8Array([108, 105, 102, 101, 97, 116, 108, 97, 115]),
-              name: "guardian@lifeatlas.app",
-              displayName: "Atlas Guardian",
-            },
-            pubKeyCredParams: [
-              { alg: -7, type: "public-key" },
-              { alg: -257, type: "public-key" },
-            ],
-            authenticatorSelection: {
-              authenticatorAttachment: "platform",
-              userVerification: "required",
-            },
-            timeout: 30000,
-            attestation: "none",
-          },
-        })) as PublicKeyCredential;
-
-        if (newCred && newCred.rawId) {
-          localStorage.setItem(CREDENTIAL_STORAGE_KEY, bufferToBase64(newCred.rawId));
-          grantSecretAccess();
-          playBiometricAudio("success");
-          triggerHaptic("success");
-          return { success: true, method: "webauthn" };
-        }
-      }
-    } catch (err: unknown) {
-      const errorObj = err as { name?: string };
-      if (errorObj?.name === "NotAllowedError") {
-        return { success: false, cancelled: true };
-      }
-      console.warn("WebAuthn platform biometric attempt failed:", err);
-    }
-  }
-
-  // 3. Fallback for Desktop Browsers / Environments without biometric hardware
-  grantSecretAccess();
-  playBiometricAudio("success");
-  triggerHaptic("success");
-  return { success: true, method: "native-biometric" };
-}
-
-/**
- * Optional user-initiated enrollment of a WebAuthn platform passkey credential on this device.
- */
-export async function enrollDevicePasskey(): Promise<boolean> {
-  if (
-    typeof window === "undefined" ||
-    !window.isSecureContext ||
-    !window.PublicKeyCredential ||
-    !isValidRpId(window.location.hostname)
-  ) {
-    return false;
-  }
-
+  if (typeof window === "undefined")
+    return { success: false, error: "Window is unavailable" };
   try {
-    const challenge = crypto.getRandomValues(new Uint8Array(32));
-    const newCred = (await navigator.credentials.create({
-      publicKey: {
-        challenge,
-        rp: {
-          name: "Life Atlas",
-          id: window.location.hostname,
-        },
-        user: {
-          id: new Uint8Array([108, 105, 102, 101, 97, 116, 108, 97, 115]),
-          name: "guardian@lifeatlas.app",
-          displayName: "Atlas Guardian",
-        },
-        pubKeyCredParams: [
-          { alg: -7, type: "public-key" },
-          { alg: -257, type: "public-key" },
-        ],
-        authenticatorSelection: {
-          authenticatorAttachment: "platform",
-          userVerification: "preferred",
-          residentKey: "preferred",
-        },
-        timeout: 10000,
-        attestation: "none",
-      },
-    })) as PublicKeyCredential;
-
-    if (newCred && newCred.rawId) {
-      localStorage.setItem(CREDENTIAL_STORAGE_KEY, bufferToBase64(newCred.rawId));
-      return true;
-    }
-  } catch (err) {
-    console.warn("Passkey enrollment failed:", err);
+    const { authorize } = await import("./security/authentication");
+    await authorize("app");
+    grantSecretAccess();
+    return { success: true };
+  } catch {
+    return {
+      success: false,
+      cancelled: true,
+      error: "Device verification did not complete.",
+    };
   }
+}
+/** @deprecated Device authentication is configured in Control Room. */
+export async function enrollDevicePasskey(): Promise<boolean> {
   return false;
 }
 
-/**
- * Verifies guardian passcode (fallback when fingerprint hardware is not present or user prefers PIN)
- */
+/** @deprecated Atlas uses optional device verification, never an app-specific PIN. */
 export function verifyPasscode(input: string): boolean {
-  if (typeof window === "undefined") return false;
-  const stored = localStorage.getItem(PASSCODE_STORAGE_KEY) || DEFAULT_GUARDIAN_PIN;
-  const isValid = input.trim() === stored.trim();
-
-  if (isValid) {
-    grantSecretAccess();
-    playBiometricAudio("success");
-    triggerHaptic("success");
-  } else {
-    playBiometricAudio("error");
-    triggerHaptic("error");
-  }
-
-  return isValid;
+  void input;
+  return false;
 }
-
-/**
- * Updates the guardian passcode
- */
+/** @deprecated A custom Atlas PIN cannot be configured. */
 export function updateGuardianPasscode(newPin: string): boolean {
-  if (typeof window === "undefined" || !newPin || newPin.length < 4) return false;
-  localStorage.setItem(PASSCODE_STORAGE_KEY, newPin.trim());
-  return true;
+  void newPin;
+  return false;
 }
 
 /**
@@ -491,7 +291,9 @@ function isTestEnvironment(): boolean {
       process.env.npm_lifecycle_event === "test" ||
       (Array.isArray(process.argv) &&
         process.argv.some(
-          (arg) => typeof arg === "string" && (arg.includes("test") || arg.includes("tsx"))
+          (arg) =>
+            typeof arg === "string" &&
+            (arg.includes("test") || arg.includes("tsx")),
         )))
   );
 }
@@ -516,7 +318,9 @@ export function revokeSecretAccess(): void {
 
 // Expose revoke function globally on window for native Android BridgeActivity hooks
 if (typeof window !== "undefined") {
-  (window as unknown as { __revokeLifeAtlasSecretAccess?: () => void }).__revokeLifeAtlasSecretAccess = revokeSecretAccess;
+  (
+    window as unknown as { __revokeLifeAtlasSecretAccess?: () => void }
+  ).__revokeLifeAtlasSecretAccess = revokeSecretAccess;
 }
 
 /**
@@ -526,7 +330,10 @@ export function isSecretAccessGranted(): boolean {
   if (isTestEnvironment()) {
     if (typeof window === "undefined") return isSessionUnlockedInProcess;
     try {
-      return isSessionUnlockedInProcess || sessionStorage.getItem(SESSION_AUTH_KEY) === "true";
+      return (
+        isSessionUnlockedInProcess ||
+        sessionStorage.getItem(SESSION_AUTH_KEY) === "true"
+      );
     } catch {
       return isSessionUnlockedInProcess;
     }

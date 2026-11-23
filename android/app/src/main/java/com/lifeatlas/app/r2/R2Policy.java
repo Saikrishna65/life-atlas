@@ -11,6 +11,15 @@ import java.util.UUID;
 public final class R2Policy {
   private R2Policy() {}
 
+  public static boolean recoveryMaterial(String name, byte[] prefix) {
+    if (name != null && name.toLowerCase(Locale.ROOT).endsWith(".atlasr2key")) return true;
+    if (prefix == null) return false;
+    String json = new String(prefix, java.nio.charset.StandardCharsets.UTF_8).trim();
+    return json.startsWith("{")
+        && (json.contains("\"atlas-recovery-file\"")
+            || json.contains("\"life-atlas-r2-recovery\""));
+  }
+
   public static String account(String value) {
     if (value == null || !value.matches("[a-fA-F0-9]{32}"))
       throw new IllegalArgumentException("INVALID_ACCOUNT");

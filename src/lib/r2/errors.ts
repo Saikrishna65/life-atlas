@@ -1,4 +1,12 @@
 const messages: Record<string, string> = {
+  RECOVERY_FILE_NOT_MEDIA:
+    "Recovery keys are not media. Keep your recovery file separate; Atlas will not upload it.",
+  RECOVERY_APPROVAL_REQUIRED:
+    "Confirm that you will keep the recovery file safe before exporting it.",
+  ASSISTANT_STORAGE_UNAVAILABLE:
+    "Assistant storage could not open. Your saved conversations have not been reset.",
+  SECURITY_POLICY_UNAVAILABLE:
+    "Authentication settings could not be read. Your saved data is unchanged.",
   EXTRACTION_BUSY:
     "Finish the current text or sticker extraction, then try again.",
   SUBJECT_NOT_FOUND:

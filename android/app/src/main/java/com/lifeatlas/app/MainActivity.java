@@ -33,6 +33,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(com.lifeatlas.app.security.AtlasSecurityPlugin.class);
         registerPlugin(AtlasModelsPlugin.class);
         registerPlugin(AtlasLocalAIPlugin.class);
         registerPlugin(AtlasUpdatesPlugin.class);

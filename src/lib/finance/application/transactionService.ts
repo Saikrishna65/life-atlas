@@ -445,6 +445,7 @@ export class TransactionService {
    * Deletes a transaction while safely restoring any pocket allocation.
    */
   async deleteTransaction(id: ID): Promise<void> {
+    const {authorize}=await import('../../security/authentication');await authorize('deletion');
     const existing = await this.uow.transactions.getById(id);
     if (!existing) return;
 

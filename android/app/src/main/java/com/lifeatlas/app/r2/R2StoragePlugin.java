@@ -10,10 +10,6 @@ import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.view.WindowManager;
 import androidx.activity.result.ActivityResult;
-import androidx.annotation.NonNull;
-import androidx.biometric.BiometricManager;
-import androidx.biometric.BiometricPrompt;
-import androidx.core.content.ContextCompat;
 import androidx.work.WorkManager;
 import com.getcapacitor.*;
 import com.getcapacitor.annotation.*;
@@ -48,9 +44,7 @@ public class R2StoragePlugin extends Plugin {
 
   private final java.util.concurrent.atomic.AtomicLong gallerySearchGeneration =
       new java.util.concurrent.atomic.AtomicLong();
-  private boolean authenticating = false;
   private final R2PublicationSession publicationSession = new R2PublicationSession();
-  private Task pendingAuth;
   private char[] recoveryPassword;
   private String recoveryMode;
   private byte[] pendingKit;
@@ -99,66 +93,21 @@ public class R2StoragePlugin extends Plugin {
       fail(call, error);
       return;
     }
-    getActivity()
-        .runOnUiThread(
-            () -> {
-              if (authenticating) {
-                call.reject("AUTHENTICATION_BUSY", "AUTHENTICATION_BUSY");
-                return;
-              }
-              authenticating = true;
-              if (Build.VERSION.SDK_INT < 30) {
-                KeyguardManager manager =
-                    (KeyguardManager) getContext().getSystemService(Context.KEYGUARD_SERVICE);
-                Intent intent =
-                    manager.createConfirmDeviceCredentialIntent(
-                        "Life Atlas cloud storage", "Verify your device lock to continue");
-                if (intent == null) {
-                  authenticating = false;
-                  call.reject("DEVICE_LOCK_REQUIRED", "DEVICE_LOCK_REQUIRED");
-                  return;
-                }
-                pendingAuth = task;
-                startActivityForResult(call, intent, "deviceAuthenticated");
-                return;
-              }
-              int allowed =
-                  BiometricManager.Authenticators.BIOMETRIC_STRONG
-                      | BiometricManager.Authenticators.DEVICE_CREDENTIAL;
-              if (BiometricManager.from(getContext()).canAuthenticate(allowed)
-                  != BiometricManager.BIOMETRIC_SUCCESS) {
-                authenticating = false;
-                call.reject("DEVICE_LOCK_REQUIRED", "DEVICE_LOCK_REQUIRED");
-                return;
-              }
-              BiometricPrompt prompt =
-                  new BiometricPrompt(
-                      getActivity(),
-                      ContextCompat.getMainExecutor(getContext()),
-                      new BiometricPrompt.AuthenticationCallback() {
-                        @Override
-                        public void onAuthenticationSucceeded(
-                            @NonNull BiometricPrompt.AuthenticationResult result) {
-                          authenticating = false;
-                          work(call, task);
-                        }
-
-                        @Override
-                        public void onAuthenticationError(int code, @NonNull CharSequence text) {
-                          authenticating = false;
-                          call.reject("AUTHENTICATION_CANCELLED", "AUTHENTICATION_CANCELLED");
-                        }
-                      });
-              prompt.authenticate(
-                  new BiometricPrompt.PromptInfo.Builder()
-                      .setTitle("Life Atlas cloud storage")
-                      .setSubtitle(
-                          "beginTripPublication".equals(call.getMethodName())
-                              ? "Approve this trip’s selected photos and videos"
-                              : "Confirm this storage operation")
-                      .setAllowedAuthenticators(allowed)
-                      .build());
-            });
+    String slot = call.getString("slot", "public");
+    try {
+      if (Set.of("startMultipartUpload", "uploadMultipartPart", "completeMultipartUpload")
+          .contains(call.getMethodName()))
+        slot = repository().job(call.getString("id")).optString("slot", "public");
+    } catch (Exception error) {
+      fail(call, error);
+      return;
+    }
+    com.lifeatlas.app.security.AtlasSecurity.require(
+        getActivity(),
+        com.lifeatlas.app.security.AtlasSecurity.storageScope(call.getMethodName(), slot),
+        false,
+        () -> work(call, task),
+        code -> call.reject(code, code));
   }
 
   /** Only explicitly enumerated public trip operations may reuse this batch authentication. */
@@ -1296,16 +1245,6 @@ public class R2StoragePlugin extends Plugin {
         });
   }
 
-  @ActivityCallback
-  private void deviceAuthenticated(PluginCall call, ActivityResult result) {
-    Task task = pendingAuth;
-    pendingAuth = null;
-    authenticating = false;
-    if (call == null) return;
-    if (result.getResultCode() == Activity.RESULT_OK && task != null) work(call, task);
-    else call.reject("AUTHENTICATION_CANCELLED", "AUTHENTICATION_CANCELLED");
-  }
-
   @PluginMethod
   public void setSensitiveScreen(PluginCall call) {
     try {
@@ -1574,6 +1513,8 @@ public class R2StoragePlugin extends Plugin {
                 if (!cursor.isNull(1)) size = cursor.getLong(1);
               }
             }
+            if (R2Policy.recoveryMaterial(name, null))
+              throw new R2Exception("RECOVERY_FILE_NOT_MEDIA");
             String mime = getContext().getContentResolver().getType(uri);
             JSONObject item =
                 new JSONObject()
@@ -1871,6 +1812,172 @@ public class R2StoragePlugin extends Plugin {
   }
 
   @PluginMethod
+  public void createRecoveryFile(PluginCall call) {
+    if (!Boolean.TRUE.equals(call.getBoolean("approved"))) {
+      call.reject("RECOVERY_APPROVAL_REQUIRED");
+      return;
+    }
+    authenticated(
+        call,
+        () -> {
+          if (pendingKit != null) throw new R2Exception("SELECTION_BUSY");
+          R2Repository repo = repository();
+          if (!repo.store.snapshot().has("keyset")) {
+            byte[] created = R2Crypto.newKeyset();
+            try {
+              repo.store.edit(
+                  value ->
+                      value
+                          .put("keyset", Base64.getEncoder().encodeToString(created))
+                          .put("recoveryVerified", false));
+            } finally {
+              Arrays.fill(created, (byte) 0);
+            }
+          }
+          byte[] keys = repo.keyset();
+          try {
+            pendingKit = R2Crypto.recoveryFile(keys);
+          } finally {
+            Arrays.fill(keys, (byte) 0);
+          }
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    Intent intent =
+                        new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                            .addCategory(Intent.CATEGORY_OPENABLE)
+                            .setType("application/json");
+                    intent.putExtra(Intent.EXTRA_TITLE, "atlas-recovery.atlasr2key");
+                    startActivityForResult(call, intent, "recoverySaved");
+                  });
+        });
+  }
+
+  @PluginMethod
+  public void restoreRecoveryFile(PluginCall call) {
+    authenticated(
+        call,
+        () -> {
+          if (recoveryPassword != null) throw new R2Exception("SELECTION_BUSY");
+          recoveryMode = "file";
+          recoveryPassword = new char[0];
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    Intent intent =
+                        new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                            .addCategory(Intent.CATEGORY_OPENABLE)
+                            .setType("*/*");
+                    startActivityForResult(call, intent, "recoveryOpened");
+                  });
+        });
+  }
+
+  @PluginMethod
+  public void exportAssistantArchive(PluginCall call) {
+    authenticated(
+        call,
+        () -> {
+          if (pendingKit != null) throw new R2Exception("SELECTION_BUSY");
+          R2Repository repo = repository();
+          if (!repo.store.snapshot().optBoolean("recoveryVerified"))
+            throw new R2Exception("RECOVERY_REQUIRED");
+          JSONObject data =
+              new com.lifeatlas.app.security.AtlasDeviceStore(getContext())
+                  .read()
+                  .optJSONObject("data");
+          if (data == null) throw new R2Exception("ASSISTANT_STORAGE_UNAVAILABLE");
+          byte[] plain = data.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+              keys = repo.keyset();
+          try {
+            ByteArrayOutputStream encrypted = new ByteArrayOutputStream();
+            R2Envelope.encrypt(
+                new ByteArrayInputStream(plain),
+                encrypted,
+                keys,
+                "atlas-assistant-archive-v1",
+                new JSONObject().put("size", plain.length).put("sha256", R2Policy.digest(plain)));
+            pendingKit = encrypted.toByteArray();
+          } finally {
+            Arrays.fill(plain, (byte) 0);
+            Arrays.fill(keys, (byte) 0);
+          }
+          getActivity()
+              .runOnUiThread(
+                  () -> {
+                    Intent intent =
+                        new Intent(Intent.ACTION_CREATE_DOCUMENT)
+                            .addCategory(Intent.CATEGORY_OPENABLE)
+                            .setType("application/octet-stream");
+                    intent.putExtra(Intent.EXTRA_TITLE, "atlas-conversations.atlasai");
+                    startActivityForResult(call, intent, "recoverySaved");
+                  });
+        });
+  }
+
+  @PluginMethod
+  public void importAssistantArchive(PluginCall call) {
+    authenticated(
+        call,
+        () ->
+            getActivity()
+                .runOnUiThread(
+                    () -> {
+                      Intent intent =
+                          new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                              .addCategory(Intent.CATEGORY_OPENABLE)
+                              .setType("*/*");
+                      startActivityForResult(call, intent, "assistantArchiveOpened");
+                    }));
+  }
+
+  @ActivityCallback
+  private void assistantArchiveOpened(PluginCall call, ActivityResult result) {
+    if (call == null) return;
+    work(
+        call,
+        () -> {
+          Uri uri = result.getData() == null ? null : result.getData().getData();
+          if (result.getResultCode() != Activity.RESULT_OK || uri == null)
+            throw new R2Exception("RECOVERY_IMPORT_CANCELLED");
+          byte[] keys = repository().keyset();
+          ByteArrayOutputStream plain =
+              new ByteArrayOutputStream() {
+                public void close() {
+                  Arrays.fill(buf, (byte) 0);
+                  reset();
+                }
+              };
+          OutputStream limited =
+              new OutputStream() {
+                public void write(int value) throws IOException {
+                  if (plain.size() >= 16 * 1024 * 1024) throw new IOException("ARCHIVE_TOO_LARGE");
+                  plain.write(value);
+                }
+
+                public void write(byte[] data, int offset, int length) throws IOException {
+                  if ((long) plain.size() + length > 16 * 1024 * 1024)
+                    throw new IOException("ARCHIVE_TOO_LARGE");
+                  plain.write(data, offset, length);
+                }
+              };
+          try (InputStream input = getContext().getContentResolver().openInputStream(uri)) {
+            if (input == null) throw new R2Exception("SOURCE_UNAVAILABLE");
+            R2Envelope.decrypt(input, limited, keys, "atlas-assistant-archive-v1");
+            JSONObject incoming = new JSONObject(plain.toString("UTF-8"));
+            if (incoming.optInt("version") != 1
+                || incoming.optJSONArray("conversations") == null
+                || incoming.optJSONArray("memories") == null)
+              throw new R2Exception("INVALID_ASSISTANT_DATA");
+            call.resolve(js(new JSONObject().put("data", incoming)));
+          } finally {
+            Arrays.fill(keys, (byte) 0);
+            plain.close();
+          }
+        });
+  }
+
+  @PluginMethod
   public void createRecoveryKit(PluginCall call) {
     char[] password = call.getString("passphrase", "").toCharArray();
     call.getData().remove("passphrase");
@@ -1940,6 +2047,7 @@ public class R2StoragePlugin extends Plugin {
         call,
         () -> {
           if (recoveryPassword != null) Arrays.fill(recoveryPassword, '\0');
+          recoveryMode = "legacy";
           recoveryPassword = password;
           getActivity()
               .runOnUiThread(
@@ -1959,7 +2067,9 @@ public class R2StoragePlugin extends Plugin {
         call,
         () -> {
           char[] password = recoveryPassword;
+          String mode = recoveryMode;
           recoveryPassword = null;
+          recoveryMode = null;
           try {
             Uri uri = result.getData() == null ? null : result.getData().getData();
             if (result.getResultCode() != Activity.RESULT_OK || uri == null || password == null)
@@ -1967,7 +2077,10 @@ public class R2StoragePlugin extends Plugin {
             byte[] keyset;
             try (InputStream input = getContext().getContentResolver().openInputStream(uri)) {
               if (input == null) throw new R2Exception("SOURCE_UNAVAILABLE");
-              keyset = R2Crypto.restoreKit(R2Io.read(input, 65536), password);
+              keyset =
+                  "file".equals(mode)
+                      ? R2Crypto.restoreFile(R2Io.read(input, 65536))
+                      : R2Crypto.restoreKit(R2Io.read(input, 65536), password);
             }
             try {
               R2Repository repository = repository();
@@ -2723,7 +2836,7 @@ public class R2StoragePlugin extends Plugin {
 
   @PluginMethod
   public void trashDeviceMedia(PluginCall call) {
-    work(
+    authenticated(
         call,
         () -> {
           if (Build.VERSION.SDK_INT < 30) throw new R2Exception("ANDROID_11_REQUIRED");

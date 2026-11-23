@@ -137,6 +137,9 @@ public final class R2TransferWorker extends Worker {
             j.remove("duplicateCheck");
           });
       check(repository, id);
+      if (!job.optString("direction").equals("download")
+          && R2Policy.recoveryMaterial(job.optString("name"), null))
+        throw new R2Exception("RECOVERY_FILE_NOT_MEDIA");
       if (job.optString("direction").equals("download")) {
         download(repository, job);
         notifyFinished(id, true);
@@ -473,6 +476,20 @@ public final class R2TransferWorker extends Worker {
       } catch (Exception ignored) {
       }
     Uri uri = Uri.parse(job.getString("source"));
+    try (InputStream input = getApplicationContext().getContentResolver().openInputStream(uri)) {
+      if (input == null) throw new R2Exception("SOURCE_UNAVAILABLE");
+      byte[] prefix = new byte[8192];
+      int count = 0, n;
+      try {
+        while (count < prefix.length && (n = input.read(prefix, count, prefix.length - count)) > 0)
+          count += n;
+        if (R2Policy.recoveryMaterial(
+            job.optString("name"), java.util.Arrays.copyOf(prefix, count)))
+          throw new R2Exception("RECOVERY_FILE_NOT_MEDIA");
+      } finally {
+        java.util.Arrays.fill(prefix, (byte) 0);
+      }
+    }
     boolean encrypted = job.getString("slot").equals("private");
     if (staged.exists() && !staged.delete()) throw new R2Exception("LOCAL_STORAGE_UNAVAILABLE");
     try {

@@ -38,7 +38,7 @@ import {
   storageError,
   systemAction,
 } from "@/lib/r2/native";
-import {transferScheduleText,sortTransfers} from "@/lib/r2/transfer-status";
+import { transferScheduleText, sortTransfers } from "@/lib/r2/transfer-status";
 import type {
   BucketSlot,
   CloudObject,
@@ -267,7 +267,7 @@ function ConfigurationForm({
         {saved?.configured
           ? "To rotate or replace a token, enter both new keys. Saved keys are never returned to this form."
           : "Use an object read/write token scoped only to this bucket."}{" "}
-        Android device verification is required.
+        Device verification follows your Control Room authentication settings.
       </p>
       <footer>
         <button className="r2-primary" type="submit">
@@ -332,7 +332,7 @@ export default function CloudStorage() {
     [websiteUrl, setWebsiteUrl] = useState(""),
     [catalogUrl, setCatalogUrl] = useState(""),
     [publishing, setPublishing] = useState<Transfer | null>(null);
-  const [recoveredCount,setRecoveredCount]=useState<number|null>(null);
+  const [recoveredCount, setRecoveredCount] = useState<number | null>(null);
   const [price, setPrice] = useState("0.015");
   const mounted = useRef(true),
     actionLock = useRef(false);
@@ -355,10 +355,7 @@ export default function CloudStorage() {
       if (document.visibilityState === "visible" && !actionLock.current)
         void R2.getTransferProgress()
           .then((result) => {
-            if (mounted.current)
-              setTransfers(
-                sortTransfers(result.transfers),
-              );
+            if (mounted.current) setTransfers(sortTransfers(result.transfers));
           })
           .catch(() => {});
     }, 1800);
@@ -1030,8 +1027,25 @@ export default function CloudStorage() {
           <>
             <div className="r2-section-heading">
               <h3>Your upload queue.</h3>
-              <button className="r2-primary" disabled={!!busy} onClick={()=>void run('Resume approved uploads',async()=>{const result=await R2.recoverTripUploads();setRecoveredCount(result.recovered);})}>Resume approved uploads</button>
-              {recoveredCount!==null&&<p role="status">{recoveredCount?`${recoveredCount} stopped uploads restored using their saved files.`:"No missing upload jobs needed recovery. Check the status shown below for Android scheduling or file errors."}</p>}
+              <button
+                className="r2-primary"
+                disabled={!!busy}
+                onClick={() =>
+                  void run("Resume approved uploads", async () => {
+                    const result = await R2.recoverTripUploads();
+                    setRecoveredCount(result.recovered);
+                  })
+                }
+              >
+                Resume approved uploads
+              </button>
+              {recoveredCount !== null && (
+                <p role="status">
+                  {recoveredCount
+                    ? `${recoveredCount} stopped uploads restored using their saved files.`
+                    : "No missing upload jobs needed recovery. Check the status shown below for Android scheduling or file errors."}
+                </p>
+              )}
               <p>
                 One foreground transfer at a time. Large uploads use persisted
                 multipart parts. Android may stop background work; resume
@@ -1054,7 +1068,10 @@ export default function CloudStorage() {
             <div className="r2-transfers">
               {transfers.map((transfer) => {
                 const total = transfer.totalBytes || transfer.size || 0,
-                  sent = (transfer.status==='verifying'?transfer.verifiedBytes:transfer.uploadedBytes)||0;
+                  sent =
+                    (transfer.status === "verifying"
+                      ? transfer.verifiedBytes
+                      : transfer.uploadedBytes) || 0;
                 return (
                   <article key={transfer.id}>
                     <div className="r2-transfer-icon">
@@ -1072,7 +1089,10 @@ export default function CloudStorage() {
                         </span>
                       </header>
                       <p>
-                        {transfer.slot} · {transfer.reused ? `existing copy · ${bytes(total)}` : `${transfer.direction} · ${bytes(sent)} / ${bytes(total)}`}
+                        {transfer.slot} ·{" "}
+                        {transfer.reused
+                          ? `existing copy · ${bytes(total)}`
+                          : `${transfer.direction} · ${bytes(sent)} / ${bytes(total)}`}
                         {transfer.speed
                           ? ` · ${bytes(transfer.speed)}/s · ~${transfer.eta ?? 0}s left`
                           : ""}
@@ -1082,9 +1102,27 @@ export default function CloudStorage() {
                         max={total || 1}
                         aria-label={`${transfer.name} progress`}
                       />
-                      {transferScheduleText(transfer)&&<p role="status">{transferScheduleText(transfer)}</p>}
-                      {transfer.nextAttemptAt&&transfer.retryScheduled&&<small>Next retry no earlier than {new Date(transfer.nextAttemptAt).toLocaleTimeString()} · attempt {transfer.attempts||0}</small>}
-                      {transfer.status==='verifying'&&<small>{transfer.duplicateCheck?'Checking existing copy.':'Upload sent.'} Verifying {bytes(transfer.verifiedBytes)} / {bytes(transfer.verificationTotalBytes||total)}</small>}
+                      {transferScheduleText(transfer) && (
+                        <p role="status">{transferScheduleText(transfer)}</p>
+                      )}
+                      {transfer.nextAttemptAt && transfer.retryScheduled && (
+                        <small>
+                          Next retry no earlier than{" "}
+                          {new Date(
+                            transfer.nextAttemptAt,
+                          ).toLocaleTimeString()}{" "}
+                          · attempt {transfer.attempts || 0}
+                        </small>
+                      )}
+                      {transfer.status === "verifying" && (
+                        <small>
+                          {transfer.duplicateCheck
+                            ? "Checking existing copy."
+                            : "Upload sent."}{" "}
+                          Verifying {bytes(transfer.verifiedBytes)} /{" "}
+                          {bytes(transfer.verificationTotalBytes || total)}
+                        </small>
+                      )}
                       {transfer.error && (
                         <p className="r2-transfer-error">
                           {storageError({ code: transfer.error })}
@@ -1199,96 +1237,97 @@ export default function CloudStorage() {
                 <em>Keep the memories.</em>
               </h3>
               <p>
-                Android Keystore keys do not travel to a new device. Your
-                passphrase-encrypted recovery kit contains the separate
-                streaming-encryption key, and no R2 credentials.
+                Your phone secures encryption keys automatically. Save a
+                recovery file somewhere independent of this phone; it contains
+                the key for private media and encrypted assistant archives, but
+                no R2 access credentials.
               </p>
               <span className="r2-badge">
                 {summary?.recoveryVerified
-                  ? "Recovery kit verified"
-                  : "Private uploads disabled until verified"}
+                  ? "Recovery verified"
+                  : "Private uploads wait for recovery verification"}
               </span>
             </div>
             <div>
               <ol>
-                <li>Use a unique passphrase of at least 16 characters.</li>
                 <li>
-                  Export the encrypted recovery kit through Android’s document
-                  picker. Save it somewhere independent of this phone.
+                  Save the recovery file somewhere safe, away from your cloud
+                  media and archives.
                 </li>
                 <li>
-                  Reopen the saved kit with its passphrase to test restoration.
-                  Only then are private uploads enabled.
+                  Reopen that file to verify it before private backups are
+                  enabled.
                 </li>
                 <li>
-                  On a new phone, configure the private bucket and import the
-                  same kit. Do not lose both the kit and its passphrase.
+                  On a replacement phone, import the same file. No password to
+                  create or type.
                 </li>
               </ol>
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  const form = e.currentTarget,
-                    input = form.elements.namedItem(
-                      "passphrase",
-                    ) as HTMLInputElement;
-                  const passphrase = input.value;
-                  input.value = "";
-                  void run("Export recovery kit", () =>
-                    systemAction(() => R2.createRecoveryKit({ passphrase })),
+                  void run("Save recovery file", () =>
+                    systemAction(() =>
+                      R2.createRecoveryFile({ approved: true }),
+                    ),
                   );
                 }}
               >
                 <label>
-                  Recovery passphrase
-                  <input
-                    name="passphrase"
-                    type="password"
-                    autoComplete="new-password"
-                    minLength={16}
-                    maxLength={1024}
-                    required
-                  />
+                  <input type="checkbox" required /> I understand anyone with
+                  this recovery file can decrypt my private backups. I will keep
+                  it separate and safe.
                 </label>
                 <button className="r2-primary">
-                  <Download size={16} />
-                  Create / export recovery kit
+                  <Download size={16} /> Save recovery file
                 </button>
               </form>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const input = e.currentTarget.elements.namedItem(
-                    "passphrase",
-                  ) as HTMLInputElement;
-                  const passphrase = input.value;
-                  input.value = "";
-                  void run("Verify / restore recovery kit", () =>
-                    systemAction(() => R2.restoreRecoveryKit({ passphrase })),
-                  );
-                }}
+              <button
+                className="r2-secondary"
+                onClick={() =>
+                  void run("Verify / restore recovery file", () =>
+                    systemAction(() => R2.restoreRecoveryFile({})),
+                  )
+                }
               >
-                <label>
-                  Saved kit’s passphrase
-                  <input
-                    name="passphrase"
-                    type="password"
-                    autoComplete="off"
-                    minLength={16}
-                    maxLength={1024}
-                    required
-                  />
-                </label>
-                <button className="r2-secondary">
-                  <KeyRound size={16} />
-                  Verify / restore saved kit
-                </button>
-              </form>
+                <KeyRound size={16} /> Verify / restore recovery file
+              </button>
+              <details>
+                <summary>Import an older password-protected kit</summary>
+                <p>
+                  Only for a kit you created in an earlier version. New recovery
+                  files need no password.
+                </p>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const input = e.currentTarget.elements.namedItem(
+                      "legacyPassword",
+                    ) as HTMLInputElement;
+                    const passphrase = input.value;
+                    input.value = "";
+                    void run("Import older kit", () =>
+                      systemAction(() => R2.restoreRecoveryKit({ passphrase })),
+                    );
+                  }}
+                >
+                  <label>
+                    Older kit’s existing password
+                    <input
+                      name="legacyPassword"
+                      type="password"
+                      autoComplete="off"
+                      required
+                    />
+                  </label>
+                  <button className="r2-secondary">Import older kit</button>
+                </form>
+              </details>
               <p className="r2-note">
                 Key fingerprint: {summary?.keyId || "Not created"}. A different
-                kit never silently replaces an existing key. Automatic private
-                vault backups remain disabled; this integration uploads only
-                files you explicitly choose.
+                recovery file never silently replaces an existing key. Reopen a
+                newly exported file to verify that copy. Automatic backup
+                follows your separate album, network and charging settings.
               </p>
             </div>
           </div>
@@ -1527,9 +1566,10 @@ export default function CloudStorage() {
               )}
             </div>
             <p className="r2-note">
-              Private previews decrypt on this device after Android
-              authentication. Unsupported formats remain available as original
-              downloads. Previews never modify an original.
+              Private previews decrypt on this device. Optional verification
+              follows your Control Room settings. Unsupported formats remain
+              available as original downloads. Previews never modify an
+              original.
             </p>
           </div>
         </Modal>

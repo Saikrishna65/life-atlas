@@ -53,6 +53,34 @@ public final class R2Crypto {
     return R2Policy.digest(keyset).substring(0, 24);
   }
 
+  public static byte[] recoveryFile(byte[] keyset) throws Exception {
+    aead(keyset);
+    return new JSONObject()
+        .put("format", "atlas-recovery-file")
+        .put("version", 1)
+        .put("keyset", Base64.getEncoder().encodeToString(keyset))
+        .put("keyId", keyId(keyset))
+        .toString()
+        .getBytes(StandardCharsets.UTF_8);
+  }
+
+  public static byte[] restoreFile(byte[] file) throws Exception {
+    if (file.length > 65536) throw new R2Exception("INVALID_RECOVERY_KIT");
+    JSONObject value = new JSONObject(new String(file, StandardCharsets.UTF_8));
+    if (!"atlas-recovery-file".equals(value.optString("format")) || value.optInt("version") != 1)
+      throw new R2Exception("INVALID_RECOVERY_KIT");
+    byte[] keyset = Base64.getDecoder().decode(value.getString("keyset"));
+    try {
+      if (keyset.length > 8192 || !keyId(keyset).equals(value.getString("keyId")))
+        throw new R2Exception("INVALID_RECOVERY_KIT");
+      aead(keyset);
+      return keyset;
+    } catch (Exception error) {
+      Arrays.fill(keyset, (byte) 0);
+      throw error;
+    }
+  }
+
   private static SecretKey recoveryKey(char[] password, byte[] salt) throws Exception {
     if (password.length < 16 || password.length > 1024)
       throw new R2Exception("RECOVERY_PASSPHRASE_TOO_SHORT");

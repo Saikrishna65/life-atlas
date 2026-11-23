@@ -48,7 +48,7 @@ test('missing local runtime and browser biometrics fail honestly without network
   try {
     assert.equal((await runtimeStatus()).available,false);
     await assert.rejects(()=>generateLocal('Private synthetic prompt',new AbortController().signal,()=>{throw new Error('Unexpected token');}),/unavailable/);
-    await assert.rejects(()=>requireNativeTrust(),/Android device authentication/);
+    await assert.rejects(()=>requireNativeTrust(),/Android app/);
   } finally {globalThis.fetch = original;}
 });
 

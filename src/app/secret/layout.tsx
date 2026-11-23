@@ -25,8 +25,8 @@ export const metadata: Metadata = {
 export default function SecretLayout({ children }: { children: ReactNode }) {
   return (
     <DataEpochGate>
-      <SecretAppGuard>
-        <MusicPlayerProvider>
+      <MusicPlayerProvider>
+        <SecretAppGuard>
           <div className="atlas-private-shell min-h-screen bg-surface text-foreground font-body selection:bg-amber-500/20 selection:text-foreground relative overflow-x-hidden">
             {/* Subtle Cartographic & Audiophile Ambient Wash */}
             <div
@@ -46,8 +46,8 @@ export default function SecretLayout({ children }: { children: ReactNode }) {
             <NowPlayingOverlay />
             <GlobalYouTubeShareHandler />
           </div>
-        </MusicPlayerProvider>
-      </SecretAppGuard>
+        </SecretAppGuard>
+      </MusicPlayerProvider>
     </DataEpochGate>
   );
 }

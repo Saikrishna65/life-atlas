@@ -571,6 +571,7 @@ export async function getTripsByStatus(status: TripStatus): Promise<TripRecord[]
  * Guarantees zero orphaned bookings, documents, or itineraries.
  */
 export async function deleteTripCascade(tripId: ID): Promise<boolean> {
+  const {authorize}=await import('../security/authentication');await authorize('deletion');
   const db = await getVaultDB();
 
   return new Promise((resolve, reject) => {

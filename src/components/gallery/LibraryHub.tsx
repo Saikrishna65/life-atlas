@@ -548,7 +548,7 @@ export default function LibraryHub() {
                       })
                     }
                   >
-                    <LockKeyhole size={17} /> Unlock cloud library
+                    <LockKeyhole size={17} /> Open cloud library
                   </button>
                 ) : (
                   <button
@@ -728,7 +728,7 @@ export default function LibraryHub() {
                               );
                               setSession("");
                               setNotice(
-                                "Original download queued. Unlock the library again after the system picker.",
+                                "Original download queued. Reopen the library after the system picker.",
                               );
                             })
                           }

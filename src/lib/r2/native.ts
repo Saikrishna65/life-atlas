@@ -13,6 +13,16 @@ import type {
   Transfer,
 } from "./types";
 interface R2Plugin {
+  createRecoveryFile(input: {
+    approved: boolean;
+  }): Promise<{ saved: boolean; verified: boolean }>;
+  restoreRecoveryFile(input?: {
+    verifyOnly?: boolean;
+  }): Promise<{ verified: boolean }>;
+  exportAssistantArchive(): Promise<unknown>;
+  importAssistantArchive(): Promise<{
+    data: import("../atlas-ai/storage").AtlasData;
+  }>;
   extractGalleryText(input: { id: string }): Promise<{
     text: string;
     blocks: {

@@ -18,6 +18,7 @@ import android.view.KeyEvent
 import androidx.core.app.NotificationCompat
 import com.lifeatlas.app.MainActivity
 import com.lifeatlas.app.R
+import com.lifeatlas.app.security.AtlasSecurity
 import com.lifeatlas.app.wakeword.AtlasWakeWordPlugin
 import org.json.JSONArray
 import org.json.JSONObject
@@ -737,6 +738,13 @@ class AtlasVoiceCoordinator(
         if (lower.contains("date") || lower.contains("day is it")) {
             val today = SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()).format(Date())
             return "Today is $today." to false
+        }
+
+        // Background fallback never opens a biometric sheet. Optional action protection
+        // requires returning to the foreground; default-off keeps existing voice behavior.
+        if (!AtlasSecurity.allowedWithoutPrompt(context, "aiActions") ||
+            !AtlasSecurity.allowedWithoutPrompt(context, "privateSections")) {
+            return "Open Atlas and verify your device before using your protected assistant actions." to true
         }
 
         // Media controls via Android system media keys
