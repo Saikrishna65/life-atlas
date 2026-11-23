@@ -46,3 +46,11 @@ test('an orphaned approved upload is repaired once and reuses its existing ID',a
  const done=await waitForTripTransfer('saved-video',controls({transfers:async()=>[reads++===0?{...job('uploading'),workerState:'MISSING',canRecover:true}:job('complete',true)],recover:async()=>{repairs++;}}));
  assert.equal(repairs,1);assert.equal(done.id,'saved-video');
 });
+
+test('a cancelled native transfer stops immediately even if its worker is still unwinding',async()=>{
+ let resumed=0,waited=0;
+ for(const status of ['cancelled','cancelling'] as const){
+  await assert.rejects(waitForTripTransfer('saved-video',controls({transfers:async()=>[{...job(status),workerState:'RUNNING'}],resume:async()=>{resumed++;},delay:async()=>{waited++;throw Error('must not poll cancellation');}})),/cancelled in Cloud Storage/);
+ }
+ assert.equal(resumed,0);assert.equal(waited,0);
+});

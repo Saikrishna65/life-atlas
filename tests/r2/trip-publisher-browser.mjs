@@ -28,14 +28,14 @@ export const R2={
  },
  endTripPublication:async()=>{fixture.session=null},
  uploadObject:async()=>{throw Error('The UI must never wait for one file before enqueueing the next')},
- getTransferProgress:async()=>({transfers:Object.values(fixture.jobs).map(job=>job.id==='job-second'&&fixture.release?{...job,status:'complete',verified:true}:job)}),
+ getTransferProgress:async input=>{if(!input||input.ids.length!==1)throw Error('Publishing must request only its current transfer');fixture.polls.push(input.ids);return {transfers:Object.values(fixture.jobs).filter(job=>input.ids.includes(job.id)).map(job=>job.id==='job-second'&&fixture.release?{...job,status:'complete',verified:true}:job)};},
  resumeTransfer:async()=>{throw Error('Already running or complete; do not restart')},
  publishTripMedia:async input=>{if(fixture.replaceNextSession){fixture.replaceNextSession=false;throw {code:'PUBLICATION_SESSION_REQUIRED'}}if(input.publicationSession!==fixture.session)throw Error('Missing batch grant');fixture.records++;return {item:{id:input.transferId,key:'galleries/'+input.transferId,url:'https://media.example/'+input.transferId+'.jpg',mimeType:'image/jpeg',tags:input.tags,collection:input.collection}}},
 };`;
 const aliases=new Set(['@/lib/vault/storage','@/lib/vault/publishTrip','@/lib/studio/trip-places','@/lib/vault/website-payload','@/lib/r2/native']);
 const result=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import Publisher from './src/components/trip-vault/TripWebsitePublisher';createRoot(document.getElementById('root')).render(<Publisher tripId="fixture" organized/>);`,resolveDir:process.cwd(),loader:'tsx'},bundle:true,write:false,format:'iife',jsx:'automatic',define:{'process.env.NODE_ENV':'"production"'},plugins:[{name:'synthetic-native',setup(b){b.onResolve({filter:/^@\//},args=>aliases.has(args.path)?{path:'fixture',namespace:'fixture'}:undefined);b.onLoad({filter:/.*/,namespace:'fixture'},()=>({contents:mock,loader:'js'}));}}]});
 const css=await readFile('src/components/trip-vault/trip-vault.css','utf8');
-const fixture={trip:{id:'fixture',title:'Synthetic trip',destination:'Test place',websitePlaces:[{id:'lake',name:'Lake',files:[{id:'first',name:'first.jpg'},{id:'second',name:'second.jpg'}],publishedMedia:[],transferIds:{}}]},replaceNextSession:false,auth:0,batches:[],uploads:0,records:0,posts:0,jobs:{},release:false};
+const fixture={trip:{id:'fixture',title:'Synthetic trip',destination:'Test place',websitePlaces:[{id:'lake',name:'Lake',files:[{id:'first',name:'first.jpg'},{id:'second',name:'second.jpg'}],publishedMedia:[],transferIds:{}}]},replaceNextSession:false,auth:0,polls:[],batches:[],uploads:0,records:0,posts:0,jobs:{},release:false};
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end(`<html><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:Arial;margin:0}*{box-sizing:border-box}${css}</style><div id="root"></div><script>window.fixture=${JSON.stringify(fixture)}</script><script>${result.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></html>`)});
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 let browser;

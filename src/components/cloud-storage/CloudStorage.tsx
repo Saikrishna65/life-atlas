@@ -50,6 +50,13 @@ import type {
   StorageSummary,
   Transfer,
 } from "@/lib/r2/types";
+import {
+  cloudObjectRole,
+  cloudPageRequest,
+  emptyCloudListing,
+  mergeCloudPage,
+  type CloudListing,
+} from "@/lib/r2/storage-layout";
 import "./cloud-storage.css";
 const sections = [
   "Library",
@@ -309,12 +316,11 @@ export default function CloudStorage() {
       private: "Not tested",
     });
   const [slot, setSlot] = useState<BucketSlot>("public"),
-    [pages, setPages] = useState<Record<BucketSlot, CloudObject[]>>({
-      public: [],
-      private: [],
+    [listings, setListings] = useState<Record<BucketSlot, CloudListing>>({
+      public: emptyCloudListing(),
+      private: emptyCloudListing(),
     }),
-    [cursor, setCursor] = useState(""),
-    [allLoaded, setAllLoaded] = useState(false),
+    [objectView, setObjectView] = useState("Originals"),
     [prefix, setPrefix] = useState("");
   const [query, setQuery] = useState(""),
     [sort, setSort] = useState("Newest"),
@@ -336,6 +342,14 @@ export default function CloudStorage() {
   const [price, setPrice] = useState("0.015");
   const mounted = useRef(true),
     actionLock = useRef(false);
+  const listingScopes = useRef<Record<BucketSlot, string>>({
+    public: "",
+    private: "",
+  });
+  const listingVersions = useRef<Record<BucketSlot, number>>({
+    public: 0,
+    private: 0,
+  });
   const refresh = useCallback(async () => {
     if (!native) return;
     const [config, progress] = await Promise.all([
@@ -343,6 +357,29 @@ export default function CloudStorage() {
       R2.getTransferProgress(),
     ]);
     if (!mounted.current) return;
+    const changed = (["public", "private"] as const).filter((bucket) => {
+      const scope = JSON.stringify([
+        config[bucket].configured,
+        config[bucket].endpoint,
+        config[bucket].bucket,
+        config[bucket].storageScope,
+      ]);
+      if (listingScopes.current[bucket] === scope) return false;
+      listingScopes.current[bucket] = scope;
+      listingVersions.current[bucket]++;
+      return true;
+    });
+    if (changed.length) {
+      setListings((old) => {
+        const next = { ...old };
+        for (const bucket of changed) next[bucket] = emptyCloudListing();
+        return next;
+      });
+      setSelected(new Set());
+      setDetail(null);
+      setMetadata(null);
+      setPreview("");
+    }
     setSummary(config);
     setTransfers(sortTransfers(progress.transfers));
   }, [native]);
@@ -412,10 +449,13 @@ export default function CloudStorage() {
         ? "Videos"
         : "Other";
   }
-  const items = pages[slot]
+  const listing = listings[slot];
+  const items = listing.objects
     .filter(
       (object) =>
-        !object.key.startsWith("atlas/catalog/") &&
+        (objectView === "Originals"
+          ? cloudObjectRole(slot, object.key) === "original"
+          : cloudObjectRole(slot, object.key) !== "original") &&
         `${object.key} ${jobsByKey.get(object.key)?.name ?? ""}`
           .toLowerCase()
           .includes(query.toLowerCase()) &&
@@ -431,17 +471,14 @@ export default function CloudStorage() {
           : b.modifiedAt.localeCompare(a.modifiedAt),
     );
   async function list(target: BucketSlot, more = false) {
-    const page = await R2.listObjects({
-      slot: target,
-      prefix,
-      cursor: more ? cursor : "",
-    });
-    setPages((old) => ({
+    const request = cloudPageRequest(listings[target], prefix, more);
+    const version = ++listingVersions.current[target];
+    const page = await R2.listObjects({ slot: target, ...request });
+    if (!mounted.current || listingVersions.current[target] !== version) return;
+    setListings((old) => ({
       ...old,
-      [target]: more ? [...old[target], ...page.objects] : page.objects,
+      [target]: mergeCloudPage(old[target], page, request.prefix, more),
     }));
-    setCursor(page.cursor);
-    setAllLoaded(page.complete);
     setSelected(new Set());
   }
   async function choose(picker: "photos" | "documents") {
@@ -469,8 +506,8 @@ export default function CloudStorage() {
   }
   const pending = transfers.filter((t) => !completed.has(t.status));
   const stored = {
-    public: pages.public.reduce((sum, item) => sum + item.size, 0),
-    private: pages.private.reduce((sum, item) => sum + item.size, 0),
+    public: listings.public.objects.reduce((sum, item) => sum + item.size, 0),
+    private: listings.private.objects.reduce((sum, item) => sum + item.size, 0),
   };
   if (!native)
     return (
@@ -513,11 +550,15 @@ export default function CloudStorage() {
             key={bucket}
             className={slot === bucket ? "active" : ""}
             onClick={() => {
+              if (bucket === slot) return;
               setSlot(bucket);
-              setCursor("");
+              setConsent(false);
+              setPublishing(null);
               setSelected(new Set());
-              setAllLoaded(false);
-              setPrefix("");
+              setPrefix(listings[bucket].prefix);
+              setDetail(null);
+              setMetadata(null);
+              setPreview("");
             }}
           >
             <span className={`r2-bucket-dot ${bucket}`} />
@@ -847,6 +888,13 @@ export default function CloudStorage() {
                 Open folder prefix
               </button>
             </form>
+            {listing.loaded && listing.prefix !== prefix.trim() && (
+              <p className="r2-note">
+                Showing {listing.prefix || "all folders"}. Open the folder above
+                to apply your changed prefix; Load next continues the folder
+                already shown.
+              </p>
+            )}
             <div className="r2-toolbar">
               <label className="r2-search">
                 <Search size={16} />
@@ -857,6 +905,17 @@ export default function CloudStorage() {
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </label>
+              <select
+                aria-label="Cloud storage view"
+                value={objectView}
+                onChange={(event) => {
+                  setObjectView(event.target.value);
+                  setSelected(new Set());
+                }}
+              >
+                <option>Originals</option>
+                <option>Previews &amp; system files</option>
+              </select>
               <select
                 aria-label="Filter cloud file type"
                 value={type}
@@ -890,6 +949,13 @@ export default function CloudStorage() {
                 <List size={17} />
               </button>
             </div>
+            {objectView !== "Originals" && (
+              <p className="r2-note">
+                Previews and recovery/catalog records support your library and
+                website. They are shown for inspection; manage them through
+                Gallery recovery or website publishing.
+              </p>
+            )}
             {selected.size > 0 && (
               <div className="r2-selection-bar">
                 <span>{selected.size} selected</span>
@@ -927,6 +993,9 @@ export default function CloudStorage() {
                       <input
                         aria-label={`Select ${job?.name ?? object.key}`}
                         type="checkbox"
+                        disabled={
+                          cloudObjectRole(slot, object.key) !== "original"
+                        }
                         checked={selected.has(object.key)}
                         onChange={(e) =>
                           setSelected((old) => {
@@ -955,17 +1024,19 @@ export default function CloudStorage() {
                       }}
                     >
                       <div className="r2-media-placeholder">
-                        {slot === "public" && job?.thumbnailUrl && (
-                          <img
-                            src={job.thumbnailUrl}
-                            alt={`Thumbnail of ${job.name}`}
-                            loading="lazy"
-                            decoding="async"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                            }}
-                          />
-                        )}
+                        {slot === "public" &&
+                          cloudObjectRole(slot, object.key) === "original" &&
+                          job?.thumbnailUrl && (
+                            <img
+                              src={job.thumbnailUrl}
+                              alt={`Thumbnail of ${job.name}`}
+                              loading="lazy"
+                              decoding="async"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          )}
                         {kind === "Images" ? (
                           <ImageIcon />
                         ) : kind === "Videos" ? (
@@ -974,9 +1045,13 @@ export default function CloudStorage() {
                           <File />
                         )}
                         <span>
-                          {slot === "private"
-                            ? "ENCRYPTED ORIGINAL"
-                            : "ORIGINAL MEDIA"}
+                          {cloudObjectRole(slot, object.key) === "system"
+                            ? "SYSTEM RECORD"
+                            : cloudObjectRole(slot, object.key) === "preview"
+                              ? "PREVIEW COPY"
+                              : slot === "private"
+                                ? "ENCRYPTED ORIGINAL"
+                                : "ORIGINAL MEDIA"}
                         </span>
                       </div>
                       <div>
@@ -1004,13 +1079,13 @@ export default function CloudStorage() {
             )}
             <footer className="r2-library-foot">
               <span>
-                {pages[slot].length} loaded objects ·{" "}
-                {allLoaded
+                {items.length} shown · {listing.objects.length} loaded objects ·{" "}
+                {listing.loaded && listing.complete
                   ? "All pages loaded"
                   : "Page totals; not the complete bucket"}
                 . Previews load only on request.
               </span>
-              {cursor && (
+              {listing.cursor && (
                 <button
                   className="r2-secondary"
                   onClick={() =>
@@ -1493,7 +1568,9 @@ export default function CloudStorage() {
             <div className="r2-details-actions">
               <button
                 className="r2-secondary"
-                disabled={!!busy}
+                disabled={
+                  !!busy || cloudObjectRole(slot, detail.key) === "system"
+                }
                 onClick={() =>
                   void run("Load preview", async () =>
                     setPreview(
@@ -1543,27 +1620,28 @@ export default function CloudStorage() {
                   Copy public URL
                 </button>
               )}
-              {slot === "private" && (
-                <button
-                  className="r2-secondary"
-                  disabled={!!busy}
-                  onClick={() =>
-                    void run("Prepare separate public copy", async () => {
-                      const file = await systemAction(() =>
-                        R2.createPublicCopy({ key: detail.key }),
-                      );
-                      setPicks([file]);
-                      setThumbs({});
-                      setSlot("public");
-                      setConsent(false);
-                      setDetail(null);
-                      setSection("Library");
-                    })
-                  }
-                >
-                  Prepare public copy <ArrowUpRight size={16} />
-                </button>
-              )}
+              {slot === "private" &&
+                cloudObjectRole(slot, detail.key) === "original" && (
+                  <button
+                    className="r2-secondary"
+                    disabled={!!busy}
+                    onClick={() =>
+                      void run("Prepare separate public copy", async () => {
+                        const file = await systemAction(() =>
+                          R2.createPublicCopy({ key: detail.key }),
+                        );
+                        setPicks([file]);
+                        setThumbs({});
+                        setSlot("public");
+                        setConsent(false);
+                        setDetail(null);
+                        setSection("Library");
+                      })
+                    }
+                  >
+                    Prepare public copy <ArrowUpRight size={16} />
+                  </button>
+                )}
             </div>
             <p className="r2-note">
               Private previews decrypt on this device. Optional verification

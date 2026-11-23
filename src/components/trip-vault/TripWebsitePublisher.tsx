@@ -24,7 +24,7 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
  async function choose(){setProblem('');try{const result=await systemAction(()=>R2.pickMedia({picker:'documents'}));setFiles(previous=>[...new Map([...previous,...result.files.filter(file=>/^(image|video)\//.test(file.mimeType))].map(file=>[file.id,file])).values()]);for(const file of result.files){void R2.getSelectionPreview({id:file.id}).then(result=>setPreviews(previous=>({...previous,[file.id]:result.thumbnail}))).catch(()=>{});}}catch(error){setProblem(storageError(error));}}
  async function waitForTransfer(job:Transfer,publicationSession?:string){
   return waitForTripTransfer(job.id,{
-   transfers:async()=>(await R2.getTransferProgress()).transfers,
+   transfers:async()=>(await R2.getTransferProgress({ids:[job.id]})).transfers,
    recover:()=>R2.recoverTripUploads(),
    resume:id=>R2.resumeTransfer({id,publicationSession}),
    paused:()=>cancelled.current,
@@ -60,7 +60,7 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
      await checkPaused();
      let job:Transfer|undefined;
      const savedId=group.transferIds[file.id];
-     if(savedId)job=(await R2.getTransferProgress()).transfers.find(item=>item.id===savedId);
+     if(savedId)job=(await R2.getTransferProgress({ids:[savedId]})).transfers.find(item=>item.id===savedId);
      if(savedId&&!job)throw Error('A saved upload is unavailable. Check Cloud Storage before selecting this file again.');
      if(!job)throw Error('This approved upload is unavailable in Cloud Storage. Your selected original remains saved.');
      job=await waitForTransfer(job,publicationSession);await checkPaused();setProgress(`Publishing ${group.name} · ${file.name}`);
@@ -70,7 +70,7 @@ export default function TripWebsitePublisher({tripId,organized=false}:{tripId:st
     }
    }
 
-   for(const file of files){await checkPaused();const id=queuedTransfers[file.id]||jobs[file.id]?.id;let job=(await R2.getTransferProgress()).transfers.find(item=>item.id===id);if(!job)throw Error('This approved upload is unavailable in Cloud Storage. Your selected original remains saved.');setJobs(previous=>({...previous,[file.id]:job!}));job=await waitForTransfer(job,publicationSession);await checkPaused();setProgress(`Linking ${file.name} to this journey…`);const result=await R2.publishTripMedia({publicationSession,transferId:job.id,title:title.trim(),description:'',tags:place.trim()?[`place:${place.trim().slice(0,54)}`]:[],category:'expedition',collection:websiteSlug(trip),acknowledgeMetadata:true});const item=result.item;if(item)selected.push(item);else throw Error('The publication record did not confirm this file. Retry without deleting its original.');}
+   for(const file of files){await checkPaused();const id=queuedTransfers[file.id]||jobs[file.id]?.id;let job=(await R2.getTransferProgress({ids:id?[id]:[]})).transfers.find(item=>item.id===id);if(!job)throw Error('This approved upload is unavailable in Cloud Storage. Your selected original remains saved.');setJobs(previous=>({...previous,[file.id]:job!}));job=await waitForTransfer(job,publicationSession);await checkPaused();setProgress(`Linking ${file.name} to this journey…`);const result=await R2.publishTripMedia({publicationSession,transferId:job.id,title:title.trim(),description:'',tags:place.trim()?[`place:${place.trim().slice(0,54)}`]:[],category:'expedition',collection:websiteSlug(trip),acknowledgeMetadata:true});const item=result.item;if(item)selected.push(item);else throw Error('The publication record did not confirm this file. Retry without deleting its original.');}
    await checkPaused();
    setProgress('Updating your website journal…');const result=await publishTripToWebsite(tripId,{title,description,memoryIds:ids,includeItinerary:includeDays,includeRoute,publicMedia:[...new Map(selected.map(item=>[item.id,item])).values()],appendExistingMedia:organized||!!latest.websitePlaces?.length});setUrl(result.publicUrl);setProgress('Published. Your local originals and cloud backups are unchanged.');
   }catch(error){

@@ -209,6 +209,8 @@ const messages: Record<string, string> = {
     "The public catalog could not be verified. Its existing contents were preserved; do not delete or reset it.",
   CATALOG_DELETE_BLOCKED:
     "Catalog objects are managed through Publish to Website.",
+  SYSTEM_OBJECT_PROTECTED:
+    "This preview or recovery record supports your cloud library. Manage it through Gallery recovery or website publishing, not original-file deletion.",
   PUBLISHED_OBJECT: "Unpublish this item before deleting its public object.",
   PREVIEW_UNAVAILABLE:
     "A small preview is not supported for this format. Download the authenticated original to view it.",

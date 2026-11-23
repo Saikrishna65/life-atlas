@@ -7,6 +7,7 @@ test('missing jobs, blocked serial work, retries and Android quotas have distinc
  assert.match(transferScheduleText(job({workerState:'BLOCKED'})),/preceding transfer/);
  assert.match(transferScheduleText(job({retryScheduled:true})),/automatic retry/);
  assert.match(transferScheduleText(job({androidWait:'QUOTA'})),/quota/);
+ assert.match(transferScheduleText(job({androidWait:'TIME_LIMIT'})),/Saved upload parts/);
  assert.match(transferScheduleText(job({status:'verifying',workerState:'RUNNING'})),/Checking uploaded bytes/);
  assert.equal(transferScheduleText(job({status:'complete',canRecover:true})), '');
 });

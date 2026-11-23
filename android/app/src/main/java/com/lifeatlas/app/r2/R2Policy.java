@@ -118,6 +118,15 @@ public final class R2Policy {
     return result.toString();
   }
 
+  /** Support records have dedicated lifecycle APIs; raw media deletion must not remove them. */
+  public static boolean managedSupportObject(String key) {
+    key(key);
+    return key.startsWith("atlas/catalog/")
+        || key.startsWith("encrypted/catalog/")
+        || key.startsWith("galleries/previews/")
+        || key.startsWith("encrypted/previews/");
+  }
+
   public static String objectKey(String slot, String mime) {
     slot(slot);
     String kind =

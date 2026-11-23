@@ -7,6 +7,17 @@ import org.junit.Test;
 
 public class R2PolicyTest {
   @Test
+  public void managedRecoveryAndPreviewRecordsCannotBeDeletedAsOriginals() {
+    for (String key : List.of("atlas/catalog/current.json", "atlas/catalog/publications/job/item.json",
+        "encrypted/catalog/library/key/item.atlas", "encrypted/catalog/gallery-ai/key/snapshot.atlas",
+        "galleries/previews/photo.jpg", "encrypted/previews/photo.atlas")) {
+      assertTrue(R2Policy.managedSupportObject(key));
+    }
+    for (String key : List.of("galleries/originals/photo.jpg", "encrypted/photos/photo.atlasenc", "travel/old-photo.jpg"))
+      assertFalse(R2Policy.managedSupportObject(key));
+  }
+
+  @Test
   public void endpointAndTokenBoundaries() {
     String id = "0123456789abcdef0123456789abcdef";
     assertEquals("https://" + id + ".r2.cloudflarestorage.com", R2Policy.endpoint(id, ""));

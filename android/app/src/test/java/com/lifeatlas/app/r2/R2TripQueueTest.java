@@ -50,6 +50,17 @@ public class R2TripQueueTest {
   }
 
   @Test
+  public void progressProjectionReturnsOnlyRequestedJobsWithoutRemovingHistory() throws Exception {
+    R2Repository repo = repository();
+    repo.job(new JSONObject().put("id", "one").put("status", "complete"));
+    repo.job(new JSONObject().put("id", "two").put("status", "uploading"));
+    assertEquals(1, repo.jobs(Set.of("two")).length());
+    assertEquals("two", repo.jobs(Set.of("two")).getJSONObject(0).getString("id"));
+    assertEquals(0, repo.jobs(Set.of("missing")).length());
+    assertEquals(2, repo.jobs().length());
+  }
+
+  @Test
   public void everyApprovedFileHasADurableNativeJobBeforeTheFirstFileFinishes() throws Exception {
     R2Repository repository = repository();
     JSONObject queue =

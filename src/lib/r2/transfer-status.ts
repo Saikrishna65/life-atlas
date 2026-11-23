@@ -5,8 +5,9 @@ export function transferScheduleText(job:Transfer){
  if(['complete','cancelled','cancelling','paused'].includes(job.status))return '';
  if(job.canRecover)return 'No active Android job. Resume approved uploads to restore this transfer.';
  if(job.androidWait==='QUOTA')return 'Android upload quota reached. Waiting for Android to allow work again.';
- if(job.androidWait==='BACKGROUND')return 'Android is restricting background work. Open Atlas Next to continue.';
+ if(job.androidWait==='BACKGROUND')return 'Android is restricting background work. Open Atlas to continue.';
  if(job.androidWait==='NETWORK')return 'Android is waiting for a network connection.';
+ if(job.androidWait==='TIME_LIMIT')return 'Android ended the background work window. Saved upload parts are retained; check the queued job or resume approved uploads.';
  if(job.retryScheduled)return 'Android scheduled an automatic retry. Your saved upload will be reused.';
  if(job.workerState==='BLOCKED')return 'Waiting for the preceding transfer to finish or retry.';
  if(job.workerState==='ENQUEUED')return 'Queued with Android. Waiting for network or scheduling.';

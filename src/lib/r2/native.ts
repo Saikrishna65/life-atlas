@@ -338,7 +338,7 @@ interface R2Plugin {
     name: string;
   }): Promise<Transfer | { cancelled: true }>;
   recoverTripUploads(): Promise<{ recovered: number }>;
-  getTransferProgress(): Promise<{ transfers: Transfer[] }>;
+  getTransferProgress(input?: { ids: string[] }): Promise<{ transfers: Transfer[] }>;
   cancelTransfer(input: { id: string }): Promise<void>;
   pauseTransfer(input: { id: string }): Promise<void>;
   resumeTransfer(input: {

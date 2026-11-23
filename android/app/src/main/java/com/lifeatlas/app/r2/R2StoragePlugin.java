@@ -1431,8 +1431,10 @@ public class R2StoragePlugin extends Plugin {
         () -> {
           String slot = R2Policy.slot(call.getString("slot")),
               key = R2Policy.key(call.getString("key"));
-          if (slot.equals("public") && key.startsWith("atlas/catalog/"))
+          if (key.startsWith("atlas/catalog/"))
             throw new R2Exception("CATALOG_DELETE_BLOCKED");
+          if (R2Policy.managedSupportObject(key))
+            throw new R2Exception("SYSTEM_OBJECT_PROTECTED");
           if (slot.equals("public")
               && (new R2Catalog(repository().store.credentials(slot)).references(key)
                   || R2Publication.references(
@@ -1646,11 +1648,27 @@ public class R2StoragePlugin extends Plugin {
     work(
         call,
         () -> {
+          JSONArray input = call.getArray("ids");
+          Set<String> ids = null;
+          if (input != null) {
+            if (input.length() > 250) throw new R2Exception("INVALID_SELECTION");
+            ids = new LinkedHashSet<>();
+            for (int i = 0; i < input.length(); i++) {
+              String id = input.getString(i);
+              if (!id.matches("[a-f0-9-]{36}")) throw new R2Exception("INVALID_TRANSFER_ID");
+              ids.add(id);
+            }
+            if (ids.isEmpty()) {
+              call.resolve(new JSObject().put("transfers", new JSONArray()));
+              return;
+            }
+          }
           R2Repository repository = repository();
+          // One-file polling does not query scheduler history for every previous upload.
+          String tag = ids != null && ids.size() == 1 ? "atlas-r2-" + ids.iterator().next() : "atlas-r2";
           Map<String, List<androidx.work.WorkInfo>> scheduled =
-              R2QueueState.index(
-                  WorkManager.getInstance(getContext()).getWorkInfosByTag("atlas-r2").get());
-          JSONArray stored = repository.jobs(), safe = new JSONArray();
+              R2QueueState.index(WorkManager.getInstance(getContext()).getWorkInfosByTag(tag).get());
+          JSONArray stored = repository.jobs(ids), safe = new JSONArray();
           for (int i = 0; i < stored.length(); i++) {
             JSONObject job = stored.getJSONObject(i), value = repository.safeJob(job);
             JSONObject state =
@@ -2217,6 +2235,7 @@ public class R2StoragePlugin extends Plugin {
           for (int i = 0; i < keys.length(); i++) {
             String key = R2Policy.key(keys.getString(i));
             if (key.startsWith("atlas/catalog/")) throw new R2Exception("CATALOG_DELETE_BLOCKED");
+            if (R2Policy.managedSupportObject(key)) throw new R2Exception("SYSTEM_OBJECT_PROTECTED");
             if (published.contains(key)
                 || (slot.equals("public")
                     && R2Publication.references(repository(), credentials, key)))

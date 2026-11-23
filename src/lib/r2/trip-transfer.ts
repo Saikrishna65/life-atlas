@@ -31,6 +31,7 @@ export async function waitForTripTransfer(id:string, controls:TripTransferContro
    if(!current.verified)throw Error('This upload did not pass integrity verification.');
    return current;
   }
+  if(['cancelled','cancelling'].includes(current.status))throw Error('This upload was cancelled in Cloud Storage. Your selected original remains saved; check the transfer before retrying.');
   if(controls.offline())throw new PublicationPaused();
   if(current.retryScheduled||current.workerState==='BLOCKED'||current.workerState==='ENQUEUED'||current.workerState==='RUNNING'){
    await (controls.delay?.()??new Promise(resolve=>setTimeout(resolve,1000)));continue;
@@ -42,8 +43,6 @@ export async function waitForTripTransfer(id:string, controls:TripTransferContro
   if(['paused','interrupted','failed'].includes(current.status)){
    if(resumed)throw Error('This upload could not resume. Check its details in Cloud Storage; completed uploads and selected originals are saved.');
    await controls.resume(id);resumed=true;
-  }else if(['cancelled','cancelling'].includes(current.status)){
-   throw Error('This upload was cancelled in Cloud Storage. Your selected original remains saved; check the transfer before retrying.');
   }
   await (controls.delay?.()??new Promise(resolve=>setTimeout(resolve,1000)));
  }

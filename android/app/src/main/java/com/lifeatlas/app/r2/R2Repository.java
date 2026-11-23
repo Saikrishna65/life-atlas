@@ -88,11 +88,19 @@ public final class R2Repository {
   }
 
   public JSONArray jobs() throws Exception {
+    return jobs(null);
+  }
+
+  /** Read one sealed snapshot, then project only the requested transfer records. */
+  public JSONArray jobs(Set<String> ids) throws Exception {
     JSONObject jobs = store.snapshot().optJSONObject("transfers");
     JSONArray values = new JSONArray();
     if (jobs != null) {
       Iterator<String> keys = jobs.keys();
-      while (keys.hasNext()) values.put(jobs.getJSONObject(keys.next()));
+      while (keys.hasNext()) {
+        String id = keys.next();
+        if (ids == null || ids.contains(id)) values.put(jobs.getJSONObject(id));
+      }
     }
     return values;
   }
