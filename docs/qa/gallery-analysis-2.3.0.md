@@ -74,3 +74,24 @@ then clear only performance history. Review a face pair, skip, correct and undo.
 With private storage/kit configured, explicitly verify saved metadata, then confirm
 that your current names, favourites and index are unchanged. Development did not
 perform any personal cloud reads/writes, uploads, restoration or data reset.
+
+## Final verification and signed release
+
+- 497 JavaScript/TypeScript unit tests passed. Seven signing/update checks passed.
+- Full local Android debug and preview suites each passed 186 tests, with no
+  failures or skips. Native tests include failed-epoch restart and periodic
+  registration, cursor preservation and completion-summary privacy checks.
+- [CI run 45011262052](https://github.com/Saikrishna65/life-atlas/actions/runs/45011262052)
+  succeeded. Install-update job 137173883578 ran native suites, built both APKs and
+  checked signing compatibility. Personal-cloud job 137173884574 was skipped.
+- Application source: `bf3221d688e67fdc0911ce4c979038a5b516c940`.
+- [Atlas 2.3.0 APK](https://github.com/Saikrishna65/life-atlas/releases/download/atlas-install-update-45011262052/atlas.apk):
+  package `com.lifeatlas.app.next`, version code 46, 74,339,919 bytes.
+- SHA-256: `27668eaea94bcf33f9d71a779196ee4ee04a683fe2e3aa4eca7d306a953c4c6c`.
+- Verified signer SHA-256:
+  `2f19571f9d6a4a3b4c7250397b7618f04e047beeeaa0023713e2a6c0a745af7d`.
+- Downloaded public APK checked locally with apksigner and aapt. Package/version,
+  bytes and checksum match the public updater manifest. Existing signing identity
+  is preserved; install over Atlas without uninstalling. APK growth from 2.2.9 is
+  12,626 bytes; no new model or runtime dependency was added. This is a package-size
+  measurement, not a physical-phone performance or battery benchmark.
