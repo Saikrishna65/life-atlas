@@ -36,11 +36,11 @@ export function syncTripWidget(data: TripWidgetData): void {
  * Derives the optimal home screen widget data from local Trip Vault records
  * and broadcasts it to the native Android home screen widget.
  */
-export async function syncActiveTripToWidget(preferredTripId?: string): Promise<TripWidgetData | null> {
+export async function syncActiveTripToWidget(preferredTripId?: string, suppliedTrips?: TripRecord[]): Promise<TripWidgetData | null> {
   if (!isIndexedDBAvailable()) return null;
 
   try {
-    const allTrips = await getAllTrips();
+    const allTrips = suppliedTrips ?? await getAllTrips();
     if (!allTrips || allTrips.length === 0) {
       const idleData: TripWidgetData = {
         tripId: "",

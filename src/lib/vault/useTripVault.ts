@@ -1,22 +1,14 @@
 "use client";
 import { defaultTripSettings } from "../finance/trips/policy";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSyncExternalStore, useCallback, useMemo } from "react";
 import {
-  TripRecord,
-  TripStatus,
-  ID,
-} from "./types";
-import {
-  getAllTrips,
-  getTrip,
-  saveTrip,
-  deleteTripCascade,
-  isIndexedDBAvailable,
-} from "./storage";
-import { syncActiveTripToWidget } from "./tripWidgetSync";
-
-const VAULT_CHANGE_EVENT = "life_atlas_vault_change";
+  tripListSession,
+  subscribeTripList,
+  VAULT_CHANGE_EVENT,
+} from "./trip-list-session";
+import { TripRecord, TripStatus, ID } from "./types";
+import { getTrip, saveTrip, deleteTripCascade } from "./storage";
 
 /**
  * Triggers a custom window event to sync state across mounted components
@@ -28,73 +20,15 @@ export function notifyVaultChange(): void {
 }
 
 export function useTripVault() {
-  const [trips, setTrips] = useState<TripRecord[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadTrips = useCallback(async () => {
-    if (!isIndexedDBAvailable()) {
-      setError("IndexedDB storage is not supported in this environment.");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setError(null);
-      const data = await getAllTrips();
-      setTrips(data);
-      void syncActiveTripToWidget();
-    } catch (err) {
-      console.error("Failed loading trips from vault:", err);
-      setError("Unable to load expeditions from local storage.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchInitial = async () => {
-      if (!isIndexedDBAvailable()) {
-        if (mounted) {
-          setError("IndexedDB storage is not supported in this environment.");
-          setIsLoading(false);
-        }
-        return;
-      }
-
-      try {
-        const data = await getAllTrips();
-        if (mounted) {
-          setTrips(data);
-          setError(null);
-          void syncActiveTripToWidget();
-        }
-      } catch (err) {
-        if (mounted) {
-          console.error("Failed loading trips from vault:", err);
-          setError("Unable to load expeditions from local storage.");
-        }
-      } finally {
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchInitial();
-
-    const handleChange = () => {
-      loadTrips();
-    };
-
-    window.addEventListener(VAULT_CHANGE_EVENT, handleChange);
-    return () => {
-      mounted = false;
-      window.removeEventListener(VAULT_CHANGE_EVENT, handleChange);
-    };
-  }, [loadTrips]);
+  const snapshot = useSyncExternalStore(
+    subscribeTripList,
+    tripListSession.snapshot,
+    tripListSession.serverSnapshot,
+  );
+  const trips = snapshot.value;
+  const isLoading = !snapshot.ready;
+  const error = snapshot.error;
+  const loadTrips = tripListSession.refresh;
 
   // Compute active trip: First trip marked ACTIVE, or the next upcoming trip
   const activeTrip = useMemo(() => {
@@ -107,32 +41,38 @@ export function useTripVault() {
   // Create a new trip
   const createTrip = useCallback(
     async (
-      tripData: Omit<TripRecord, "id" | "createdAt" | "updatedAt"> & { id?: ID }
+      tripData: Omit<TripRecord, "id" | "createdAt" | "updatedAt"> & {
+        id?: ID;
+      },
     ): Promise<TripRecord> => {
       const now = new Date().toISOString();
       const newTrip: TripRecord = {
         ...tripData,
-        id: tripData.id || `trip-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id:
+          tripData.id ||
+          `trip-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         createdAt: now,
         updatedAt: now,
       };
 
-      newTrip.finance = newTrip.finance || defaultTripSettings(newTrip) || undefined;
+      newTrip.finance =
+        newTrip.finance || defaultTripSettings(newTrip) || undefined;
       const saved = await saveTrip(newTrip);
       notifyVaultChange();
-      void syncActiveTripToWidget();
       return saved;
     },
-    []
+    [],
   );
 
   // Update existing trip
-  const updateTrip = useCallback(async (trip: TripRecord): Promise<TripRecord> => {
-    const saved = await saveTrip(trip);
-    notifyVaultChange();
-    void syncActiveTripToWidget();
-    return saved;
-  }, []);
+  const updateTrip = useCallback(
+    async (trip: TripRecord): Promise<TripRecord> => {
+      const saved = await saveTrip(trip);
+      notifyVaultChange();
+      return saved;
+    },
+    [],
+  );
 
   // Update status (e.g. from PLANNING -> ACTIVE -> COMPLETED)
   const changeTripStatus = useCallback(
@@ -150,10 +90,9 @@ export function useTripVault() {
 
       const saved = await saveTrip(updated);
       notifyVaultChange();
-      void syncActiveTripToWidget();
       return saved;
     },
-    []
+    [],
   );
 
   // Atomic cascade delete
@@ -161,7 +100,6 @@ export function useTripVault() {
     const success = await deleteTripCascade(tripId);
     if (success) {
       notifyVaultChange();
-      void syncActiveTripToWidget();
     }
     return success;
   }, []);

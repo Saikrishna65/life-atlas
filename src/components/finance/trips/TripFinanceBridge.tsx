@@ -18,7 +18,7 @@ export default function TripFinanceBridge(){
  const [due,setDue]=useState<TripRecord[]>([]),[error,setError]=useState(''),[busy,setBusy]=useState('');
  const running=useRef(false);const router=useRouter();
  const refresh=useCallback(async()=>{
-  if(isControlRestoreActive() || running.current || !window.indexedDB || new URLSearchParams(location.search).get('demo')==='1')return;running.current=true;
+  if(document.hidden || isControlRestoreActive() || running.current || !window.indexedDB || new URLSearchParams(location.search).get('demo')==='1')return;running.current=true;
   try{
    const trips=await getAllTrips();setDue(trips.filter(t=>needsTripConfirmation(t)));
    if(await new TripFinanceService(new IndexedDBUnitOfWork()).reconcile())window.dispatchEvent(new Event('finance-trips-updated'));
@@ -37,8 +37,8 @@ export default function TripFinanceBridge(){
    }
   }catch(e){console.warn('Trip Finance refresh failed',e);}finally{running.current=false;}
  },[]);
- useEffect(()=>{void refresh();const listener=()=>{void refresh();};const visible=()=>{if(document.visibilityState==='visible')void refresh();};const timer=setInterval(listener,60000);window.addEventListener('life_atlas_vault_change',listener);window.addEventListener('atlas-control-settings',listener);document.addEventListener('visibilitychange',visible);window.addEventListener('focus',listener);
-  let disposed=false;let remove:(()=>Promise<void>)|undefined;
+ useEffect(()=>{let disposed=false;queueMicrotask(()=>{if(!disposed)void refresh();});const listener=()=>{void refresh();};const visible=()=>{if(document.visibilityState==='visible')void refresh();};const timer=setInterval(listener,60000);window.addEventListener('life_atlas_vault_change',listener);window.addEventListener('atlas-control-settings',listener);document.addEventListener('visibilitychange',visible);window.addEventListener('focus',listener);
+  let remove:(()=>Promise<void>)|undefined;
   if(Capacitor.isNativePlatform()&&Capacitor.isPluginAvailable('LocalNotifications'))void LocalNotifications.addListener('localNotificationActionPerformed',event=>{if(event.notification.extra?.kind==='trip-finance'){router.push(`/secret/finance?trip=${encodeURIComponent(event.notification.extra.tripId)}`);window.dispatchEvent(new CustomEvent('open-finance-trips',{detail:{tripId:event.notification.extra.tripId}}));}}).then(handle=>{if(disposed)void handle.remove();else remove=()=>handle.remove();});
   return()=>{disposed=true;if(remove)void remove();clearInterval(timer);window.removeEventListener('life_atlas_vault_change',listener);window.removeEventListener('atlas-control-settings',listener);window.removeEventListener('focus',listener);document.removeEventListener('visibilitychange',visible);};
  },[refresh,router]);

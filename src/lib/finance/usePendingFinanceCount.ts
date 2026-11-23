@@ -1,46 +1,75 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Capacitor, registerPlugin } from "@capacitor/core";
-import { KotakNotificationParser } from "./infrastructure/kotakNotificationParser";
+import { SessionResource } from "../performance/session-resource";
 import type { RawNotificationEvent } from "./domain/notificationModels";
-
 interface InboxPlugin {
   getPendingNotifications(): Promise<{ notifications: RawNotificationEvent[] }>;
-  addListener(name: "notificationReceived", callback: () => void): Promise<{ remove(): void }>;
+  addListener(
+    name: "notificationReceived",
+    callback: () => void,
+  ): Promise<{ remove(): void }>;
 }
-
-export function usePendingFinanceCount() {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!Capacitor.isPluginAvailable("KotakNotificationTracker")) return;
-    const plugin = registerPlugin<InboxPlugin>("KotakNotificationTracker");
-    let alive = true;
-    const refresh = async () => {
-      try {
-        const { notifications } = await plugin.getPendingNotifications();
-        const fingerprints = new Set(notifications.flatMap((event) => {
-          const parsed = KotakNotificationParser.parse(event).transaction;
-          return parsed ? [parsed.normalizedFingerprint] : [];
-        }));
-        if (alive) setCount(fingerprints.size);
-      } catch { /* Older APKs do not expose the inbox. */ }
+// Cache only the number, never notification bodies or parsed financial records.
+const pendingCount = new SessionResource(
+  async () => {
+    if (!Capacitor.isPluginAvailable("KotakNotificationTracker")) return 0;
+    const [{ notifications }, { KotakNotificationParser }] = await Promise.all([
+      registerPlugin<InboxPlugin>(
+        "KotakNotificationTracker",
+      ).getPendingNotifications(),
+      import("./infrastructure/kotakNotificationParser"),
+    ]);
+    return new Set(
+      notifications.flatMap((event) => {
+        const parsed = KotakNotificationParser.parse(event).transaction;
+        return parsed ? [parsed.normalizedFingerprint] : [];
+      }),
+    ).size;
+  },
+  0,
+  "Unable to refresh pending payments.",
+);
+let users = 0;
+let detach: (() => void) | undefined;
+function subscribe(listener: () => void) {
+  const unsubscribe = pendingCount.subscribe(listener);
+  if (users++ === 0) {
+    const plugin = Capacitor.isPluginAvailable("KotakNotificationTracker")
+      ? registerPlugin<InboxPlugin>("KotakNotificationTracker")
+      : undefined;
+    let disposed = false;
+    const refresh = () => {
+      if (disposed) return;
+      pendingCount.invalidate();
+      if (!document.hidden) void pendingCount.refresh();
     };
-    const visible = () => { if (document.visibilityState === "visible") void refresh(); };
-    const listener = plugin.addListener("notificationReceived", refresh);
+    const handle = plugin?.addListener("notificationReceived", refresh);
+    void handle?.catch(() => {});
     window.addEventListener("finance-notifications-updated", refresh);
-    window.addEventListener("focus", visible);
-    document.addEventListener("visibilitychange", visible);
-    const timer = window.setInterval(visible, 10000);
-    void refresh();
-    return () => {
-      alive = false;
-      window.clearInterval(timer);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    void pendingCount.refresh();
+    detach = () => {
+      disposed = true;
       window.removeEventListener("finance-notifications-updated", refresh);
-      window.removeEventListener("focus", visible);
-      document.removeEventListener("visibilitychange", visible);
-      void listener.then((handle) => handle.remove());
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+      void handle?.then((value) => value.remove()).catch(() => {});
     };
-  }, []);
-  return count;
+  }
+  return () => {
+    unsubscribe();
+    if (--users === 0) {
+      detach?.();
+      detach = undefined;
+    }
+  };
+}
+export function usePendingFinanceCount() {
+  return useSyncExternalStore(
+    subscribe,
+    pendingCount.snapshot,
+    pendingCount.serverSnapshot,
+  ).value;
 }

@@ -1,4 +1,4 @@
-import { beginNavigation } from "../src/lib/performance/metrics";
+import { navigationState, saveRouteScroll } from "./scroll-restoration";
 import { prefetchRoute } from "./route-prefetch";
 import React, { createContext, useContext, useSyncExternalStore } from "react";
 const subscribe = (fn: () => void) => {
@@ -13,14 +13,14 @@ export function navigate(href: string, replace = false, scroll = true) {
     location.assign(href);
     return;
   }
-  if (url.pathname !== location.pathname) beginNavigation();
+  saveRouteScroll();
   history[replace ? "replaceState" : "pushState"](
-    {},
+    navigationState(scroll ? 0 : window.scrollY),
     "",
     url.pathname + url.search + url.hash,
   );
   window.dispatchEvent(new PopStateEvent("popstate"));
-  if (scroll) window.scrollTo(0, 0);
+  // Scroll is applied after the destination commits, never to the outgoing screen.
 }
 const router = {
   push: (href: string, options?: { scroll?: boolean }) =>

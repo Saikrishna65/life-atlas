@@ -61,6 +61,7 @@ export default function AppUpdates() {
     )
       return;
     const timer = setInterval(() => {
+      if (document.hidden) return;
       void Updates.getStatus()
         .then(apply)
         .catch(() => {});

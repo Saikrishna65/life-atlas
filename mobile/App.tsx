@@ -1,5 +1,7 @@
-import React, { lazy, Suspense, useEffect } from "react";
-import { finishScreen, navigationToken } from "../src/lib/performance/metrics";
+import React, { lazy, Suspense } from "react";
+import { navigationToken } from "../src/lib/performance/metrics";
+import { installRouteScroll } from "./scroll-restoration";
+import ScreenReady from "./ScreenReady";
 import { createRoot } from "react-dom/client";
 import SecretLayout from "../src/app/secret/layout";
 const loadMusicLayout = reusableLoad(
@@ -268,13 +270,6 @@ class ScreenError extends React.Component<
     );
   }
 }
-function ScreenReady({ token }: { token: number }) {
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => finishScreen(token));
-    return () => cancelAnimationFrame(frame);
-  }, [token]);
-  return null;
-}
 function App() {
   const path = usePathname();
   const route = routes.find((r) => r.pattern.test(path));
@@ -333,6 +328,7 @@ function App() {
   );
 }
 export function mountApp() {
+  installRouteScroll();
   // Start the intended screen and its layout together, including direct launch.
   void prefetchRoute(location.pathname);
   createRoot(document.getElementById("root")!).render(<App />);
