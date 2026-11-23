@@ -53,7 +53,7 @@ Unit coverage checks one-time worker migration, preservation of caches and unrel
 workers, reusable prefetch/retry, CSS coverage and graph accounting. Existing Gallery
 browser coverage checks local/public/private workflows, consent and viewer cleanup.
 
-No personal cloud reads, uploads, restores or deletion were performed. No models,
+No private cloud reads, uploads, restores or deletion were performed. No models,
 network services or dependencies were added. The user's phone is being repaired;
 physical Android startup, touch/frame performance and battery behavior remain untested.
 
@@ -69,3 +69,23 @@ physical Android startup, touch/frame performance and battery behavior remain un
   with native fixtures. Browser screenshots were captured and inspected.
 - Native source changes are limited to version metadata. Native suites and signed
   APK validation will also run in the install-update CI job; no live cloud job.
+
+## Signed release verification
+
+- Application source: `bcf81c0ec9797d8bd9ddc1ca09984028fbbbc561`.
+- [CI run 45117026485](https://github.com/Saikrishna65/life-atlas/actions/runs/45117026485)
+  succeeded. Install-update job 137502087288 ran the debug and preview native test
+  suites, built both APKs, and verified update compatibility. Live personal-cloud
+  job 137502088976 was skipped.
+- [Atlas 2.3.1 APK](https://github.com/Saikrishna65/life-atlas/releases/download/atlas-install-update-45117026485/atlas.apk)
+  is package `com.lifeatlas.app.next`, version code 47.
+- Downloaded APK size: 74,381,025 bytes. SHA-256:
+  `394a986e60a21e1bc00e43e61193e2a9ccd00b7ca031158c6801bebe4bc4c0be`.
+- Preserved signer SHA-256:
+  `2f19571f9d6a4a3b4c7250397b7618f04e047beeeaa0023713e2a6c0a745af7d`.
+- Verified the downloaded public APK locally with apksigner and aapt. Manifest
+  package, version, size and checksum match. Install over Atlas; do not uninstall.
+  APK size increased by 41,106 bytes from 2.3.0; startup resource savings do not
+  imply a smaller overall APK. No new model or dependency was introduced.
+- Physical Android timing, frame pacing and battery consumption remain unverified
+  while the user's phone is at repair.
