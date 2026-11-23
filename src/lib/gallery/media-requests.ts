@@ -14,6 +14,18 @@ const cancelled = () =>
   new DOMException("Media no longer visible", "AbortError");
 export class MediaRequestQueue {
   private active = 0;
+  private deferPrefetch = false;
+  private suspended = false;
+  setDeferPrefetch(value: boolean) {
+    if (this.deferPrefetch === value) return;
+    this.deferPrefetch = value;
+    this.pump();
+  }
+  setSuspended(value: boolean) {
+    if (this.suspended === value) return;
+    this.suspended = value;
+    this.pump();
+  }
   private scheduled = false;
   private waiting: Request<unknown>[] = [];
   private requests = new Map<string, Request<unknown>>();
@@ -46,18 +58,21 @@ export class MediaRequestQueue {
     });
   }
   private pump() {
-    this.waiting.sort((a, b) => a.priority - b.priority);
-    while (this.active < this.concurrency && this.waiting.length) {
-      const request = this.waiting.shift()!;
+    this.waiting = this.waiting.filter((request) => {
       request.consumers = request.consumers.filter((consumer) => {
         if (consumer.needed()) return true;
         consumer.reject(cancelled());
         return false;
       });
-      if (!request.consumers.length) {
-        this.requests.delete(request.key);
-        continue;
-      }
+      if (request.consumers.length) return true;
+      this.requests.delete(request.key);
+      return false;
+    });
+    this.waiting.sort((a, b) => a.priority - b.priority);
+    if (this.suspended) return;
+    while (this.active < this.concurrency && this.waiting.length) {
+      if (this.deferPrefetch && this.waiting[0].priority > 0) return;
+      const request = this.waiting.shift()!;
       this.active++;
       void Promise.resolve()
         .then(request.work)

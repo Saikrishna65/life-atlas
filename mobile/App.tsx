@@ -1,4 +1,5 @@
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
+import { finishScreen, navigationToken } from "../src/lib/performance/metrics";
 import { createRoot } from "react-dom/client";
 import SecretLayout from "../src/app/secret/layout";
 const loadMusicLayout = reusableLoad(
@@ -267,6 +268,13 @@ class ScreenError extends React.Component<
     );
   }
 }
+function ScreenReady({ token }: { token: number }) {
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => finishScreen(token));
+    return () => cancelAnimationFrame(frame);
+  }, [token]);
+  return null;
+}
 function App() {
   const path = usePathname();
   const route = routes.find((r) => r.pattern.test(path));
@@ -294,6 +302,7 @@ function App() {
             Screen not found. <a href="/secret">Return home</a>
           </p>
         )}
+        <ScreenReady token={navigationToken()} />
         {path === "/secret/studio" && (
           <Suspense fallback={null}>
             <SavedStudioEntries />

@@ -1,3 +1,4 @@
+import { beginNavigation } from "../src/lib/performance/metrics";
 import { prefetchRoute } from "./route-prefetch";
 import React, { createContext, useContext, useSyncExternalStore } from "react";
 const subscribe = (fn: () => void) => {
@@ -12,6 +13,7 @@ export function navigate(href: string, replace = false, scroll = true) {
     location.assign(href);
     return;
   }
+  if (url.pathname !== location.pathname) beginNavigation();
   history[replace ? "replaceState" : "pushState"](
     {},
     "",

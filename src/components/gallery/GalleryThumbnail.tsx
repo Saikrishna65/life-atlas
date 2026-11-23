@@ -1,4 +1,5 @@
 "use client";
+import { observeGalleryVisibility } from "@/lib/gallery/visibility";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Film, ImageIcon } from "lucide-react";
@@ -9,6 +10,7 @@ import {
   galleryMediaRequests,
   thumbnailPixels,
 } from "@/lib/gallery/media-requests";
+import { localPerformance, measureOperation } from "@/lib/performance/metrics";
 import { mediaStamp } from "@/lib/gallery/model";
 // Device thumbnail paths only, with one bounded queue shared by all grids.
 const versions = new Map<string, string>();
@@ -68,6 +70,7 @@ export async function thumbnail(
   }
   const previous = cached.get(id);
   if (previous && (variants.get(id) || 0) >= pixels) {
+    localPerformance.record("thumbnail-cache", 0);
     cached.delete(id);
     cached.set(id, previous);
     return previous;
@@ -82,7 +85,10 @@ export async function thumbnail(
       version || versions.get(id),
     ]),
     stillNeeded,
-    () => R2.getDeviceThumbnail({ id, pixels }),
+    () =>
+      measureOperation("thumbnail-native", () =>
+        R2.getDeviceThumbnail({ id, pixels }),
+      ),
     priority,
   );
   if (
@@ -114,7 +120,10 @@ export default function GalleryThumbnail({
 }) {
   const root = useRef<HTMLDivElement>(null),
     retried = useRef(false);
-  const [near, setNear] = useState(false),
+  const [{ near, visible }, setVisibility] = useState({
+      near: false,
+      visible: false,
+    }),
     [source, setSource] = useState(asset.thumbnail || ""),
     [failed, setFailed] = useState(false),
     [revision, setRevision] = useState(0);
@@ -155,12 +164,7 @@ export default function GalleryThumbnail({
   useEffect(() => {
     const node = root.current;
     if (!node) return;
-    const observer = new IntersectionObserver(
-      (entries) => setNear(entries[0].isIntersecting),
-      { rootMargin: "240px" },
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
+    return observeGalleryVisibility(node, setVisibility);
   }, []);
   useEffect(() => {
     if (paused || !near || source || !asset.device) return;
@@ -181,7 +185,7 @@ export default function GalleryThumbnail({
       () => mounted,
       pixels,
       mediaStamp(asset.device),
-      bounds && bounds.bottom > 0 && bounds.top < innerHeight ? 0 : 1,
+      visible ? 0 : 1,
     )
       .then((result) => {
         if (mounted) {
@@ -197,6 +201,7 @@ export default function GalleryThumbnail({
     };
   }, [
     near,
+    visible,
     source,
     asset.device,
     asset.device?.width,

@@ -1,3 +1,5 @@
+import { beginAppStartup } from "../src/lib/performance/metrics";
+beginAppStartup();
 import { installMobileNetwork } from "./network";
 import { installNativeDownloads } from "./downloads";
 

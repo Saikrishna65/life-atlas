@@ -1,4 +1,5 @@
 "use client";
+import {useGalleryActivity} from '@/lib/gallery/use-gallery-activity';
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -37,6 +38,7 @@ import LibraryThumbnail from "./LibraryThumbnail";
 import PhoneTrash from "./PhoneTrash";
 import "./library-hub.css";
 export default function LibraryHub() {
+  useGalleryActivity();
   const supported = nativeR2Available(),
     [tab, setTab] = useState<"backup" | "library" | "trash" | "import">(() => {
       const hash =

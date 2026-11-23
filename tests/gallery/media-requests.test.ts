@@ -97,3 +97,23 @@ test("nearby thumbnail measurements share physical pixel buckets", () => {
   assert.equal(thumbnailPixels(-1), 256);
   assert.equal(thumbnailPixels(NaN), 768);
 });
+test('gesture pressure defers speculation while visible requests continue', async()=>{
+ const queue=new MediaRequestQueue(2),started:string[]=[];
+ queue.setDeferPrefetch(true);
+ const near=queue.run('near',()=>true,async()=>{started.push('near');return 1;},1);
+ const visible=queue.run('visible',()=>true,async()=>{started.push('visible');return 2;},0);
+ assert.equal(await visible,2);assert.deepEqual(started,['visible']);
+ queue.setDeferPrefetch(false);assert.equal(await near,1);assert.deepEqual(started,['visible','near']);
+});
+test('a hidden Gallery suspends all new decoding and safely discards cancelled work',async()=>{
+ const queue=new MediaRequestQueue(2);queue.setSuspended(true);
+ let live=true,started=false;
+ const task=queue.run('private',()=>live,async()=>{started=true;return 'private-path';},0).catch(error=>error.name);
+ await tick();assert.equal(started,false);live=false;queue.setSuspended(false);assert.equal(await task,'AbortError');assert.equal(started,false);
+});
+test('an offscreen request promoted into view can start during ongoing gestures',async()=>{
+ const queue=new MediaRequestQueue(1);queue.setDeferPrefetch(true);let calls=0;
+ const work=async()=>++calls;
+ const near=queue.run('image',()=>true,work,1);const visible=queue.run('image',()=>true,work,0);
+ assert.deepEqual(await Promise.all([near,visible]),[1,1]);assert.equal(calls,1);
+});

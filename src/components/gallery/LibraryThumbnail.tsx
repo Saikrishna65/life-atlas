@@ -1,4 +1,5 @@
 "use client";
+import { observeGalleryVisibility } from "@/lib/gallery/visibility";
 import { useEffect, useRef, useState } from "react";
 import { Film, ImageIcon } from "lucide-react";
 import { R2 } from "@/lib/r2/native";
@@ -14,17 +15,15 @@ export default function LibraryThumbnail({
 }) {
   const root = useRef<HTMLDivElement>(null),
     [preview, setPreview] = useState<{ key: string; url: string }>(),
-    [near, setNear] = useState(false);
+    [{ near, visible }, setVisibility] = useState({
+      near: false,
+      visible: false,
+    });
   const previewKey = JSON.stringify([session, item.id]);
   const url = preview?.key === previewKey ? preview.url : "";
   useEffect(() => {
     if (!root.current) return;
-    const observer = new IntersectionObserver(
-      (e) => setNear(e[0].isIntersecting),
-      { rootMargin: "150px" },
-    );
-    observer.observe(root.current);
-    return () => observer.disconnect();
+    return observeGalleryVisibility(root.current, setVisibility);
   }, []);
   useEffect(() => {
     if (!near || !item.hasThumbnail || url) return;
@@ -36,6 +35,7 @@ export default function LibraryThumbnail({
           JSON.stringify(["private-library", session, item.id]),
           () => live,
           () => R2.libraryThumbnail({ id: item.id, session }),
+          visible ? 0 : 1,
         );
         if (live)
           setPreview({
@@ -47,7 +47,7 @@ export default function LibraryThumbnail({
     return () => {
       live = false;
     };
-  }, [near, item.id, item.hasThumbnail, session, url, previewKey]);
+  }, [near, visible, item.id, item.hasThumbnail, session, url, previewKey]);
   return (
     <div ref={root} className="gl-thumb">
       {near && url ? (

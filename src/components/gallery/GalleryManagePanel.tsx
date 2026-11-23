@@ -12,6 +12,7 @@ import {
   readGalleryPreference,
   saveGalleryPreference,
 } from "@/lib/gallery/store";
+import PerformanceDetails from "@/components/performance/PerformanceDetails";
 import { useGalleryBack } from "@/lib/gallery/navigation";
 const launcher = registerPlugin<{
   pinGalleryShortcut(): Promise<{ supported: boolean; requested: boolean }>;
@@ -94,6 +95,9 @@ export default function GalleryManagePanel({
       onClose={onClose}
     >
       <h2>Your Gallery, your way.</h2>
+      <section>
+        <PerformanceDetails />
+      </section>
       {Capacitor.isNativePlatform() && (
         <section>
           <h3>Open Gallery directly</h3>

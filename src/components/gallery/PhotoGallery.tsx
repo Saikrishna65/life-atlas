@@ -1,5 +1,11 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useGalleryActivity } from "@/lib/gallery/use-gallery-activity";
+import {
+  localPerformance,
+  performanceNow,
+  measureOperation,
+} from "@/lib/performance/metrics";
 import { useGalleryScroll } from "@/lib/gallery/use-gallery-scroll";
 import { GalleryPageCache } from "@/lib/gallery/page-cache";
 import Link from "next/link";
@@ -109,6 +115,7 @@ const initialAccess: GalleryAccess = {
   limited: false,
 };
 export default function PhotoGallery() {
+  useGalleryActivity();
   const supported = nativeR2Available(),
     { trips } = useTripVault();
   const [access, setAccess] = useState(initialAccess),
@@ -541,6 +548,7 @@ export default function PhotoGallery() {
         return;
       }
       setLoading(true);
+      const requestedAt = performanceNow();
       try {
         const smart =
           ((searchMode === "smart" && !!query.trim()) || !!personFilter) &&
@@ -557,10 +565,9 @@ export default function PhotoGallery() {
             to: dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : 0,
           };
           // Saved text/labels appear first. Only a settled query invokes the visual encoder.
-          const quick = await R2.searchGalleryIntelligence({
-            ...input,
-            textOnly: true,
-          });
+          const quick = await measureOperation("search-local", () =>
+            R2.searchGalleryIntelligence({ ...input, textOnly: true }),
+          );
           if (
             generation !== deviceGeneration.current ||
             !query.trim() ||
@@ -572,7 +579,7 @@ export default function PhotoGallery() {
           setNotice("Looking for visual matches…");
           await new Promise((resolve) => setTimeout(resolve, 250));
           if (generation !== deviceGeneration.current) return quick;
-          return R2.searchGalleryIntelligence(input);
+          return measureOperation("search-visual", () => R2.searchGalleryIntelligence(input));
         };
         const page = favoritesOnly
           ? await R2.listGalleryFavorites({ offset: next ? Number(next) : 0 })
@@ -608,6 +615,10 @@ export default function PhotoGallery() {
                   to: dateTo ? new Date(dateTo + "T23:59:59.999").getTime() : 0,
                 });
         if (generation !== deviceGeneration.current) return;
+        localPerformance.record(
+          view === "curated" ? "collection" : append ? "gallery-next-page" : "gallery-first-page",
+          performanceNow() - requestedAt,
+        );
         setItems((old) => {
           const records = append
             ? [
@@ -842,6 +853,7 @@ export default function PhotoGallery() {
         kind !== "video"
       ),
     view + String(filtersOpen) + workspace + String(collectionOpen),
+    !!viewer,
   );
   const chosen = selected.flatMap((id) => {
       const record = selectionMedia[id] || items.find((m) => m.id === id);
