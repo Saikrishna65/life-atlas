@@ -18,6 +18,7 @@ import {
   saveVoiceCloudConfigNative,
   type VoiceSessionStateName,
 } from '@/lib/wakeword/atlasWakeWord';
+import {voiceActivation} from '@/lib/wakeword/activation';
 import styles from './atlas-launcher.module.css';
 
 const subscribeHydration = () => () => {};
@@ -93,6 +94,14 @@ export default function AtlasLauncher() {
     if (!isWakeWordNativeSupported()) return;
     let disposed = false;
     const handles: Array<{ remove: () => Promise<void> }> = [];
+    let voiceHandlersReady = false;
+    const activateGoogle = () => {
+      if (!disposed && voiceHandlersReady) void voiceActivation.consume().catch(() => {});
+    };
+    void voiceActivation.onRequest(activateGoogle).then(handle => {
+      if (!handle) return;
+      if (disposed) void handle.remove(); else handles.push(handle);
+    }).catch(() => {});
 
     const syncNativePrefsAndReminders = () => {
       const consent = getVoiceCloudConsent();
@@ -115,15 +124,15 @@ export default function AtlasLauncher() {
     };
     syncNativePrefsAndReminders();
     const onVis = () => {
-      if (document.visibilityState === 'visible') syncNativePrefsAndReminders();
+      if (document.visibilityState === 'visible') { syncNativePrefsAndReminders(); activateGoogle(); }
     };
     document.addEventListener('visibilitychange', onVis);
 
-    void atlasWakeWordBridge.getVoiceSessionStatus().then((st) => {
+    const initialReady = atlasWakeWordBridge.getVoiceSessionStatus().then((st) => {
       if (!disposed) setVoiceState(st.state);
     });
 
-    void atlasWakeWordBridge
+    const stateReady = atlasWakeWordBridge
       .addVoiceSessionStateListener((ev) => {
         if (disposed) return;
         setVoiceState(ev.state);
@@ -141,7 +150,7 @@ export default function AtlasLauncher() {
         else if (h) handles.push(h);
       });
 
-    void atlasWakeWordBridge
+    const transcriptReady = atlasWakeWordBridge
       .addVoiceTranscriptListener((ev) => {
         if (disposed) return;
         if (ev.text) setVoiceText(ev.text);
@@ -151,7 +160,7 @@ export default function AtlasLauncher() {
         else if (h) handles.push(h);
       });
 
-    void atlasWakeWordBridge
+    const commandReady = atlasWakeWordBridge
       .addVoiceCommandListener((ev) => {
         if (disposed) return;
         setActiveSessionId(ev.sessionId);
@@ -189,6 +198,12 @@ export default function AtlasLauncher() {
         if (disposed) void h?.remove();
         else if (h) handles.push(h);
       });
+
+    void Promise.all([initialReady, stateReady, transcriptReady, commandReady]).then(() => {
+      if (disposed) return;
+      voiceHandlersReady = true;
+      activateGoogle();
+    }).catch(() => {});
 
     return () => {
       disposed = true;

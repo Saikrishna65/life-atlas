@@ -1,5 +1,7 @@
 package com.lifeatlas.app.wakeword
 
+import com.lifeatlas.app.wakeword.activation.AtlasActivationPreferences
+import com.lifeatlas.app.wakeword.activation.AtlasActivationRuntime
 import android.Manifest
 import android.app.Activity
 import android.app.NotificationManager
@@ -151,14 +153,17 @@ class AtlasWakeWordPlugin : Plugin() {
     override fun handleOnResume() {
         super.handleOnResume()
         appInForeground = true
+        if (AtlasActivationRuntime.hasPendingInApp()) emitEvent("activationRequested", JSONObject().put("requested", true))
     }
 
     override fun handleOnPause() {
+        AtlasActivationRuntime.leaving(activity)
         appInForeground = false
         super.handleOnPause()
     }
 
     override fun handleOnDestroy() {
+        AtlasActivationRuntime.leaving(activity)
         appInForeground = false
         val current = activePluginRef?.get()
         if (current === this) {
@@ -186,26 +191,107 @@ class AtlasWakeWordPlugin : Plugin() {
     }
 
     private fun startServiceInternal(call: PluginCall) {
-        val useAssistantSession = call.getBoolean("useAssistantSession", false) ?: false
-        val intent = Intent(context, AtlasWakeWordService::class.java).apply {
-            action = AtlasWakeWordService.ACTION_START
-            putExtra(AtlasWakeWordService.EXTRA_USE_ASSISTANT_SESSION, useAssistantSession)
-        }
-        try {
-            ContextCompat.startForegroundService(context, intent)
-            call.resolve(JSObject.fromJSONObject(buildListeningStatusJson(context)))
-        } catch (e: Exception) {
-            call.reject("Failed to start wake-word foreground service: ${e.message}", e)
+        AtlasActivationRuntime.switch(context, AtlasActivationPreferences.MICROPHONE,
+            call.getBoolean("useAssistantSession", false) == true) { error ->
+            if (error != null) call.reject(error)
+            else call.resolve(JSObject.fromJSONObject(buildListeningStatusJson(context)))
         }
     }
 
     @PluginMethod
     fun stopListening(call: PluginCall) {
-        val intent = Intent(context, AtlasWakeWordService::class.java).apply {
-            action = AtlasWakeWordService.ACTION_STOP
+        AtlasActivationRuntime.switch(context, AtlasActivationPreferences.OFF) { error ->
+            if (error != null) call.reject(error)
+            else call.resolve(JSObject.fromJSONObject(buildListeningStatusJson(context)))
         }
-        context.startService(intent)
-        call.resolve(JSObject.fromJSONObject(buildListeningStatusJson(context)))
+    }
+
+    @PluginMethod
+    fun getActivationStatus(call: PluginCall) {
+        activity.runOnUiThread {
+            try { call.resolve(JSObject.fromJSONObject(AtlasActivationRuntime.status(context))) }
+            catch (_: Exception) { call.reject("ACTIVATION_STATUS_UNAVAILABLE") }
+        }
+    }
+
+    @PluginMethod
+    fun setActivationMode(call: PluginCall) {
+        val mode = call.getString("mode")
+        if (mode !in setOf(AtlasActivationPreferences.MICROPHONE, AtlasActivationPreferences.GOOGLE, AtlasActivationPreferences.OFF)) {
+            call.reject("INVALID_ACTIVATION_MODE"); return
+        }
+        if (mode == AtlasActivationPreferences.GOOGLE && !AtlasActivationPreferences.consent(context) && call.getBoolean("acknowledgeBridge", false) != true) {
+            call.reject("BRIDGE_DISCLOSURE_REQUIRED"); return
+        }
+        if (mode != AtlasActivationPreferences.OFF && !hasMicPermission()) {
+            requestPermissionForAlias("microphone", call, "onMicPermissionForActivation"); return
+        }
+        applyActivationMode(call, mode!!)
+    }
+
+    @PermissionCallback
+    private fun onMicPermissionForActivation(call: PluginCall) {
+        if (!hasMicPermission()) { call.reject("MICROPHONE_PERMISSION_REQUIRED"); return }
+        val mode = call.getString("mode") ?: AtlasActivationPreferences.OFF
+        if (mode !in setOf(AtlasActivationPreferences.MICROPHONE, AtlasActivationPreferences.GOOGLE, AtlasActivationPreferences.OFF)) {
+            call.reject("INVALID_ACTIVATION_MODE"); return
+        }
+        applyActivationMode(call, mode)
+    }
+
+    private fun applyActivationMode(call: PluginCall, mode: String) {
+        if (mode == AtlasActivationPreferences.GOOGLE) {
+            if (!AtlasActivationPreferences.consent(context) && call.getBoolean("acknowledgeBridge", false) != true) {
+                call.reject("BRIDGE_DISCLOSURE_REQUIRED"); return
+            }
+            runCatching { AtlasActivationPreferences.acknowledge(context) }.onFailure { call.reject("ACTIVATION_SETTINGS_FAILED"); return }
+        }
+        AtlasActivationRuntime.switch(context, mode) { error ->
+            if (error != null) call.reject(error)
+            else call.resolve(JSObject.fromJSONObject(AtlasActivationRuntime.status(context)))
+        }
+    }
+
+    @PluginMethod
+    fun configureGoogleBridge(call: PluginCall) {
+        activity.runOnUiThread {
+            val observeOnly = call.getBoolean("observeOnly", true) == true
+            val pkg = call.getString("packageName") ?: ""
+            val cls = call.getString("className") ?: ""
+            if (!observeOnly && (call.getBoolean("confirmOverlay", false) != true ||
+                    pkg != AtlasActivationRuntime.observedPackage || cls != AtlasActivationRuntime.observedClass)) {
+                call.reject("OBSERVED_OVERLAY_REQUIRED"); return@runOnUiThread
+            }
+            try {
+                AtlasActivationRuntime.stopBridge()
+                AtlasActivationPreferences.configure(context, observeOnly, pkg, cls)
+                call.resolve(JSObject.fromJSONObject(AtlasActivationRuntime.status(context)))
+            } catch (_: Exception) { call.reject("INVALID_OVERLAY_CLASS") }
+        }
+    }
+
+    @PluginMethod
+    fun openActivationAccessibilitySettings(call: PluginCall) {
+        activity.runOnUiThread {
+            try { activity.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); call.resolve(JSObject().put("opened", true)) }
+            catch (_: Exception) { call.reject("ACCESSIBILITY_SETTINGS_UNAVAILABLE") }
+        }
+    }
+
+    @PluginMethod
+    fun consumeGoogleActivation(call: PluginCall) {
+        activity.runOnUiThread {
+            try { call.resolve(JSObject().put("started", AtlasActivationRuntime.consumeInApp(activity))) }
+            catch (_: Exception) { AtlasActivationRuntime.stopBridge(); call.reject("VOICE_SESSION_UNAVAILABLE") }
+        }
+    }
+
+    @PluginMethod
+    fun clearActivationMetrics(call: PluginCall) {
+        activity.runOnUiThread {
+            AtlasActivationRuntime.resetMetrics()
+            call.resolve(JSObject.fromJSONObject(AtlasActivationRuntime.status(context)))
+        }
     }
 
     @PluginMethod
@@ -223,6 +309,9 @@ class AtlasWakeWordPlugin : Plugin() {
 
     @PluginMethod
     fun resumeListening(call: PluginCall) {
+        if (AtlasActivationPreferences.mode(context) != AtlasActivationPreferences.MICROPHONE) {
+            startListening(call); return
+        }
         if (!AtlasWakeWordService.isServiceRunning) {
             call.reject("Wake-word service is not running.")
             return
@@ -386,30 +475,13 @@ class AtlasWakeWordPlugin : Plugin() {
     }
 
     private fun startOvernightTestInternal(call: PluginCall, isBaseline: Boolean) {
-        if (isBaseline) {
-            if (AtlasWakeWordService.isServiceRunning) {
-                val stopIntent = Intent(context, AtlasWakeWordService::class.java).apply {
-                    action = AtlasWakeWordService.ACTION_STOP
-                }
-                context.startService(stopIntent)
-            }
-        } else {
-            val useAssistantSession = call.getBoolean("useAssistantSession", false) ?: false
-            if (!AtlasWakeWordService.isServiceRunning) {
-                val startIntent = Intent(context, AtlasWakeWordService::class.java).apply {
-                    action = AtlasWakeWordService.ACTION_START
-                    putExtra(AtlasWakeWordService.EXTRA_USE_ASSISTANT_SESSION, useAssistantSession)
-                }
-                try {
-                    ContextCompat.startForegroundService(context, startIntent)
-                } catch (e: Exception) {
-                    call.reject("Failed to start wake-word service for overnight test: ${e.message}", e)
-                    return
-                }
-            }
+        AtlasActivationRuntime.switch(context,
+            if (isBaseline) AtlasActivationPreferences.OFF else AtlasActivationPreferences.MICROPHONE,
+            call.getBoolean("useAssistantSession", false) == true) { error ->
+            if (error != null) { call.reject(error); return@switch }
+            OvernightTestManager.startTest(context, isBaseline)
+            call.resolve(JSObject.fromJSONObject(OvernightTestManager.getReport(context)))
         }
-        OvernightTestManager.startTest(context, isBaseline)
-        call.resolve(JSObject.fromJSONObject(OvernightTestManager.getReport(context)))
     }
 
     @PluginMethod
@@ -452,20 +524,20 @@ class AtlasWakeWordPlugin : Plugin() {
             call.reject("sessionId and turnId are required.")
             return
         }
-        AtlasWakeWordService.activeVoiceCoordinator?.submitJsReply(sessionId, turnId, replyText, endSession)
+        AtlasActivationRuntime.voiceCoordinator()?.submitJsReply(sessionId, turnId, replyText, endSession)
         call.resolve(JSObject().put("accepted", true))
     }
 
     @PluginMethod
     fun stopVoiceSession(call: PluginCall) {
-        AtlasWakeWordService.activeVoiceCoordinator?.stopSession("Stopped from Atlas UI")
+        AtlasActivationRuntime.voiceCoordinator()?.stopSession("Stopped from Atlas UI")
         call.resolve(JSObject.fromJSONObject(buildVoiceSessionStatusJson()))
     }
 
     @PluginMethod
     fun startManualVoiceSession(call: PluginCall) {
-        val coord = AtlasWakeWordService.activeVoiceCoordinator
-        if (coord == null || !AtlasWakeWordService.isServiceRunning) {
+        val coord = AtlasActivationRuntime.voiceCoordinator()
+        if (coord == null || (coord !== AtlasActivationRuntime.bridgeCoordinator && !AtlasWakeWordService.isServiceRunning)) {
             call.reject("Wake-word service must be running to start a voice session.")
             return
         }
@@ -484,10 +556,10 @@ class AtlasWakeWordPlugin : Plugin() {
             AtlasWakeWordService.voiceAssistantEnabled = enabled
         }
         call.getBoolean("allowOnlineSpeechFallback")?.let { allow ->
-            AtlasWakeWordService.activeVoiceCoordinator?.setAllowOnlineSpeechFallback(allow)
+            AtlasActivationRuntime.voiceCoordinator()?.setAllowOnlineSpeechFallback(allow)
         }
         call.getBoolean("greetOnWake")?.let { greet ->
-            AtlasWakeWordService.activeVoiceCoordinator?.greetOnWake = greet
+            AtlasActivationRuntime.voiceCoordinator()?.greetOnWake = greet
         }
         val hasConsent = call.data.has("cloudConsent")
         val hasProvider = call.data.has("cloudProvider")
@@ -511,7 +583,7 @@ class AtlasWakeWordPlugin : Plugin() {
 
     @PluginMethod
     fun interruptVoiceSpeaking(call: PluginCall) {
-        AtlasWakeWordService.activeVoiceCoordinator?.interruptSpeaking()
+        AtlasActivationRuntime.voiceCoordinator()?.interruptSpeaking()
         call.resolve(JSObject.fromJSONObject(buildVoiceSessionStatusJson()))
     }
 
@@ -618,7 +690,7 @@ class AtlasWakeWordPlugin : Plugin() {
 
     @PluginMethod
     fun getVoiceLatencyMetrics(call: PluginCall) {
-        val json = AtlasWakeWordService.activeVoiceCoordinator?.getLatencyMetricsJson()
+        val json = AtlasActivationRuntime.voiceCoordinator()?.getLatencyMetricsJson()
             ?: JSONObject()
                 .put("wakeToGreetingMs", -1L)
                 .put("greetingToListenMs", -1L)
@@ -662,7 +734,7 @@ class AtlasWakeWordPlugin : Plugin() {
     }
 
     private fun buildVoiceSessionStatusJson(): JSONObject {
-        val coord = AtlasWakeWordService.activeVoiceCoordinator
+        val coord = AtlasActivationRuntime.voiceCoordinator()
         val caps = coord?.getSpeechCapabilities() ?: AtlasVoiceSpeechManager(context).checkCapabilities()
         val overlayGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(context)
         return JSONObject()

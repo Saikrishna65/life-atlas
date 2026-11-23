@@ -1,5 +1,6 @@
 package com.lifeatlas.app.wakeword
 
+import com.lifeatlas.app.wakeword.activation.AtlasActivationPreferences
 import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
@@ -195,7 +196,8 @@ class AtlasWakeWordService : Service() {
                 }
 
                 override fun resumeWakeWordFromVoiceSession() {
-                    if (!running.get() || paused.get() || pausedForMic.get() || destroyed.get()) return
+                    if (AtlasActivationPreferences.mode(this@AtlasWakeWordService) != AtlasActivationPreferences.MICROPHONE ||
+                        !running.get() || paused.get() || pausedForMic.get() || destroyed.get()) return
                     pausedForVoiceSession.set(false)
                     isServicePaused = false
                     captureThread?.join(300L)
@@ -227,6 +229,11 @@ class AtlasWakeWordService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent != null && intent.action != ACTION_STOP &&
+            AtlasActivationPreferences.mode(this) != AtlasActivationPreferences.MICROPHONE) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         if (intent == null) {
             // Obey Android 14-16 FGS rules: do not attempt automatic background microphone restarts.
             WakeWordDiagnostics.updateServiceState(
@@ -290,6 +297,7 @@ class AtlasWakeWordService : Service() {
             }
 
             ACTION_STOP -> {
+                runCatching { AtlasActivationPreferences.mode(this, AtlasActivationPreferences.OFF) }
                 val fromNotification = intent.getBooleanExtra(EXTRA_FROM_NOTIFICATION, false)
                 stopPipeline(
                     if (fromNotification) "Stopped from notification action"
@@ -381,6 +389,7 @@ class AtlasWakeWordService : Service() {
     }
 
     private fun startCaptureLoopIfNeeded() {
+        if (AtlasActivationPreferences.mode(this) != AtlasActivationPreferences.MICROPHONE) return
         if (captureThread?.isAlive == true) return
         captureThread = Thread({
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)

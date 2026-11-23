@@ -46,7 +46,9 @@ import kotlin.math.sin
  */
 class AtlasVoiceCoordinator(
     private val context: Context,
-    private val serviceActions: ServiceActions
+    private val serviceActions: ServiceActions,
+    private val googleHandoff: Boolean = false,
+    private val stateObserver: ((State, String) -> Unit)? = null
 ) {
     companion object {
         private const val TAG = "AtlasVoiceCoordinator"
@@ -212,6 +214,10 @@ class AtlasVoiceCoordinator(
         fun isInPhoneCall(): Boolean
     }
 
+    private var googleCuePlayed = false
+    private var handoffRetries = 0
+    private var handoffRetry: Runnable? = null
+    private var handoffReadyTimeout: Runnable? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private val speechManager = AtlasVoiceSpeechManager(context)
     private val ttsManager = AtlasVoiceTtsManager(context)
@@ -328,6 +334,8 @@ class AtlasVoiceCoordinator(
             }
 
             val sessionId = UUID.randomUUID().toString()
+            handoffRetries = 0
+            googleCuePlayed = false
             currentSessionId = sessionId
             currentTurnId = null
             pendingEndSession = false
@@ -347,7 +355,9 @@ class AtlasVoiceCoordinator(
             AtlasAudioOwnershipCoordinator.awaitRelease(AtlasAudioOwnershipCoordinator.Owner.WAKE_WORD) {
                 mainHandler.post {
                     if (currentSessionId == sessionId && state == State.SESSION_STARTING) {
-                        if (speakGreeting) {
+                        if (googleHandoff) {
+                            beginListeningTurn(isFollowUp = false)
+                        } else if (speakGreeting) {
                             // Speak greeting immediately with zero chime delay
                             speakGreetingThenListen(sessionId)
                         } else {
@@ -456,12 +466,30 @@ class AtlasVoiceCoordinator(
             if (isFollowUp) "Listening for follow-up (~5s window)" else "Listening for command"
         )
 
+        if (googleHandoff && !isFollowUp && !googleCuePlayed && handoffReadyTimeout == null) {
+            val timeout = Runnable {
+                handoffReadyTimeout = null
+                if (currentSessionId == sessionId && !googleCuePlayed) {
+                    transitionTo(State.ERROR_RECOVERY, "Microphone handoff did not become ready")
+                    endSessionInternal(resumeWakeWord = false, reason = "Microphone handoff timed out")
+                }
+            }
+            handoffReadyTimeout = timeout
+            mainHandler.postDelayed(timeout, 5000L)
+        }
         speechManager.startListening(
             isFollowUp = isFollowUp,
             allowOnlineFallback = allowOnlineSpeechFallback,
             languageTag = "en-IN",
             listener = object : AtlasVoiceSpeechManager.Listener {
                 override fun onReadyForSpeech() {
+                    if (currentSessionId != sessionId) return
+                    if (googleHandoff && !isFollowUp && !googleCuePlayed) {
+                        handoffReadyTimeout?.let { mainHandler.removeCallbacks(it) }
+                        handoffReadyTimeout = null
+                        googleCuePlayed = true
+                        playActivationCue { }
+                    }
                     emitTranscriptEvent("", isFinal = false)
                 }
 
@@ -490,13 +518,26 @@ class AtlasVoiceCoordinator(
                         speechEndToTranscriptMs = transcriptFinalAtMs - speechEndedAtMs
                         emitLatencyMetrics()
                     }
-                    Log.i(TAG, "Final transcript (followUp=$isFollowUp): \"$text\"")
+                    Log.i(TAG, "Final transcript received (followUp=$isFollowUp)")
                     emitTranscriptEvent(text, isFinal = true)
                     handleRecognizedTranscript(sessionId, text, isFollowUp)
                 }
 
                 override fun onRecognitionError(errorCode: Int, message: String, isTimeoutOrNoMatch: Boolean) {
                     if (currentSessionId != sessionId) return
+                    if (googleHandoff && !isFollowUp && state != State.TRANSCRIBING && handoffRetries < 3 &&
+                        errorCode in setOf(android.speech.SpeechRecognizer.ERROR_RECOGNIZER_BUSY, android.speech.SpeechRecognizer.ERROR_AUDIO)) {
+                        val delay = 200L shl handoffRetries
+                        handoffRetries++
+                        transitionTo(State.SESSION_STARTING, "Waiting briefly for Google to release the microphone")
+                        val retry = Runnable {
+                            handoffRetry = null
+                            if (currentSessionId == sessionId && state == State.SESSION_STARTING) beginListeningTurn(false)
+                        }
+                        handoffRetry = retry
+                        mainHandler.postDelayed(retry, delay)
+                        return
+                    }
                     if (isFollowUp && isTimeoutOrNoMatch) {
                         // Silent follow-up timeout ends the conversation naturally
                         endSessionInternal(resumeWakeWord = true, reason = "Follow-up window closed")
@@ -611,7 +652,7 @@ class AtlasVoiceCoordinator(
         pendingEndSession = false
         nativeTurns.clear()
 
-        if (resumeWakeWord && !serviceActions.isInPhoneCall()) {
+        if (resumeWakeWord && serviceActions.isWakeListeningActive() && !serviceActions.isInPhoneCall()) {
             transitionTo(State.WAKE_LISTENING, "Resuming offline wake-word detection")
             serviceActions.resumeWakeWordFromVoiceSession()
             if (sessionEndingAtMs > 0L) {
@@ -627,7 +668,8 @@ class AtlasVoiceCoordinator(
     private fun transitionTo(next: State, detail: String) {
         if (state == next && next != State.THINKING && next != State.SPEAKING) return
         state = next
-        Log.i(TAG, "Voice state -> $next ($detail)")
+        Log.i(TAG, "Voice state -> $next")
+        stateObserver?.invoke(next, detail)
         val json = JSONObject()
             .put("state", next.name)
             .put("sessionId", currentSessionId ?: JSONObject.NULL)
@@ -644,6 +686,10 @@ class AtlasVoiceCoordinator(
     }
 
     private fun cancelTimers() {
+        handoffReadyTimeout?.let { mainHandler.removeCallbacks(it) }
+        handoffReadyTimeout = null
+        handoffRetry?.let { mainHandler.removeCallbacks(it) }
+        handoffRetry = null
         jsReplyTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
         jsReplyTimeoutRunnable = null
     }
@@ -844,6 +890,7 @@ class AtlasVoiceCoordinator(
                 .build()
         )
         val canLaunchFromBackground = AtlasWakeWordPlugin.isAppForeground() ||
+            (context is android.app.Activity && !context.isFinishing) ||
             (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M || Settings.canDrawOverlays(context))
         if (!canLaunchFromBackground) {
             return false

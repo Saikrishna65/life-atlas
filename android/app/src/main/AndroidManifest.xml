@@ -82,6 +82,17 @@
         <service android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync" tools:node="merge" />
 
+        <activity android:name=".wakeword.activation.AtlasGoogleBridgeActivity"
+            android:exported="false" android:excludeFromRecents="true"
+            android:theme="@style/AtlasVoiceBridgeTheme"
+            android:launchMode="singleTop" />
+        <service android:name=".wakeword.activation.AtlasGoogleBridgeService"
+            android:exported="true" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:label="@string/atlas_google_bridge_label">
+            <intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/atlas_google_bridge_accessibility" />
+        </service>
+
         <!-- Isolated Hey Atlas Wake-Word Feasibility Experiment Services -->
         <service
             android:name=".wakeword.AtlasWakeWordService"

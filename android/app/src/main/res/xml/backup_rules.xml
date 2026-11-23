@@ -3,4 +3,5 @@
     <exclude domain="sharedpref" path="bank_notification_tracker.xml" />
     <exclude domain="file" path="r2/" />
     <exclude domain="sharedpref" path="atlas_r2.xml" />
+    <exclude domain="sharedpref" path="atlas_voice_activation.xml" />
 </full-backup-content>

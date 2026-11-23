@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import VoiceActivationSettings from "./VoiceActivationSettings";
 import {
   Activity,
   AlertTriangle,
@@ -304,6 +305,7 @@ export default function HeyAtlasExperiment() {
           </div>
         )}
 
+        <VoiceActivationSettings showExperimentLink={false} />
         <section className="oc-command-card">
           <p className="oc-eyebrow">MICROPHONE FOREGROUND SERVICE</p>
           <h2>
