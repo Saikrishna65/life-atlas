@@ -62,3 +62,14 @@ Compared with implementation baseline `3015c56`. Build outputs, downloaded depen
 | A | `tests/atlas-ai/lab-browser.mjs` |
 | A | `tests/atlas-ai/lab.test.ts` |
 | M | `tests/atlas-ai/native-contract.test.ts` |
+
+## Completion pass (after b616c33)
+
+- Added `AtlasVoiceLatencyTrace.java` and its native JVM test: bounded content-free stage timing.
+- Added `AtlasModelTransferTest.java`: production transfer state-machine recovery/cancel/storage tests.
+- Added optional real-weight `AtlasRealModelTest.java`: actual JNI assertions, compiled but not executed here.
+- Added `scripts/local-ai/verify-model.py` and `smoke-native.py`: supplied-file integrity and real native smoke runner.
+- Added `MODELS.md` and `WINDOWS-TESTS.md`: all twelve candidates, exact downloadable artifacts, block reasons and reproducible local commands.
+- Updated model store/plugin/foreground transfer service, inference runtime, native engine/JNI, voice coordinator, local AI bridge, catalogue mirrors, Lab import status, CSV/benchmark initialization, session privacy and action lock checks.
+- Updated existing voice diagnostics UI/types and scoped regression/browser tests.
+- Updated Android version to 2.4.1 / 49. No model weights, credentials, build tooling or APK binary is committed.

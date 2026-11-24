@@ -5,7 +5,7 @@ No installation or device tests were performed while the phone was unavailable. 
 ## Install and open
 
 1. Use the APK linked in `VALIDATION.md`. It contains Atlas and the existing Gallery launcher, not a separate AI test app. It contains no GGUF weights.
-2. If using adb, run `adb install -r atlas-2.4.0-local-ai-debug.apk`. Otherwise open the APK on the phone and approve Android's installer prompt. The certificate must match the installed build for an in-place update. If Android rejects the signature, use the original trusted signing key; do not uninstall the app merely to bypass a mismatch with valuable local data.
+2. If using adb, run `adb install -r atlas-2.4.1-local-ai-debug.apk`. Otherwise open the APK on the phone and approve Android's installer prompt. The certificate must match the installed build for an in-place update. If Android rejects the signature, use the original trusted signing key; do not uninstall the app merely to bypass a mismatch with valuable local data.
 3. Open **Control Room → Intelligence Lab**. Check that the runtime is unloaded and no download has started by itself.
 4. On Wi-Fi choose **Dolphin 3.0 · 1B → Download**, read/accept its model license, wait for checksum verification, then **Use model**. The artifact is 807,697,440 bytes. Keep additional storage and RAM available; this is not a measured memory footprint.
 5. Alternatively choose **Import GGUF** for a model you trust. Import streams to app-private storage, calculates SHA-256 and preserves the original file. Unknown architectures/templates may fail safely at load time.
@@ -37,3 +37,13 @@ Test 2/4/6 threads and 1024/2048/4096 contexts sequentially, starting at 2 threa
 Run 15-minute conversations, then longer screen-off/background sessions. Record Android battery usage over comparable long intervals with wake mode held constant. Short integer battery-level changes are not a reliable model-efficiency benchmark. Let the phone cool between models. Check behavior under low free RAM, severe thermal status, interrupted networking and app process termination. Offline deterministic features must continue to work without a selected model.
 
 Export diagnostics/benchmark JSON from the Lab. Review any custom prompts or generated text before sharing the file. Never include cloud keys or a private vault backup in a bug report.
+
+## New recovery and privacy checks
+
+- Import a large GGUF, watch progress, cancel during the copy, and verify the original remains present. Retry from that original. Kill/reopen Atlas midway: only its orphan import partial is cleaned.
+- Interrupt Wi-Fi during a download. Observe automatic bounded retry; resume after the retry window or process restart. Free storage after a low-storage failure and retry; valid downloaded partial bytes must remain reusable.
+- Switch/remove a model while a generation is finishing. No new generation may start between unload and selection/removal. A hot resident model must refuse a new request at severe thermal status.
+- Have an unlocked conversation containing a distinctive private phrase, then lock/screen off before generation or TTS completes. The reply must stop. Start a new locked general question: no unlocked history may be present. Unlock again: the locked session must not restore the earlier private context.
+- Inspect **Atlas AI → Voice Pipeline Latency Telemetry** after a real voice turn. Recognition/router/load/prompt/token/sentence/TTS/follow-up stages should correspond to the actual path. A deterministic reply legitimately has no model stages. Callbacks are not microphone-measured audible latency.
+
+For emulator setup and actual model instrumentation, use [WINDOWS-TESTS.md](WINDOWS-TESTS.md). There is no physical-device validation yet.
