@@ -12,7 +12,8 @@ test("native voice contract has no generic recognizer, online voice fallback or 
   assert.ok(source.includes("pendingPermissionEpoch"));
   assert.ok(source.includes("AUDIO_BECOMING_NOISY"));
   assert.ok(source.includes("handleOnPause()"));
-  assert.ok(source.includes('"available", false'));
+  assert.ok(source.includes("AtlasInferenceRuntime"));
+  assert.match(source, /inference\(\)\s*\.generate\(/);
   assert.ok(!source.includes("HttpURLConnection"));
   const bridge = readFileSync("src/lib/atlas-ai/native.ts", "utf8");
   assert.match(bridge, /authorize\(["']aiActions["']\)/);

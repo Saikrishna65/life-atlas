@@ -646,8 +646,9 @@ class AtlasVoiceCoordinator(
         transitionTo(State.SESSION_ENDING, reason)
         cancelTimers()
         speechManager.stop()
-        ttsManager.stop()
+        com.lifeatlas.app.ai.AtlasInferenceRuntime.get(context).cancel("voice:$currentSessionId:$currentTurnId")
         currentSessionId = null
+        ttsManager.stop()
         currentTurnId = null
         pendingEndSession = false
         nativeTurns.clear()
@@ -720,12 +721,60 @@ class AtlasVoiceCoordinator(
             return
         }
 
+        val local = com.lifeatlas.app.ai.AtlasInferenceRuntime.get(context)
+        if (local.status().optBoolean("available")) {
+            // Existing deterministic/permission handlers above always run first. No private vault
+            // records are retrieved here; background LLM chat cannot execute tool proposals.
+            val messages = org.json.JSONArray().put(org.json.JSONObject().put("role", "system").put("content",
+                buildPersonalityPrompt(secureStore.getPersonality()) + " Reply naturally in one or two short English sentences. Never output thinking, JSON or code. Do not claim to have performed actions. You have no vault access in this conversation. For actions not already handled, ask the user to open Atlas. /no_think"))
+            val gate = com.lifeatlas.app.ai.AtlasSpeechGate()
+            val sentences = java.util.ArrayDeque<String>()
+            var speaking = false
+            var complete = false
+            var spoke = false
+            fun active() = currentSessionId == sessionId && currentTurnId == turnId
+            lateinit var drain: () -> Unit
+            drain = {
+                if (active() && !speaking) {
+                    if (sentences.isNotEmpty()) {
+                        val sentence = sentences.removeFirst()
+                        speaking = true; spoke = true
+                        transitionTo(State.SPEAKING, sentence)
+                        ttsManager.speak(sentence, object: AtlasVoiceTtsManager.Listener {
+                            override fun onSpeakStarted() { }
+                            override fun onSpeakCompleted() { mainHandler.post { if(active()){speaking=false;drain()} } }
+                            override fun onSpeakError(message:String) { local.cancel("voice:$sessionId:$turnId");mainHandler.post { if(active()){speaking=false;sentences.clear();complete=true;drain()} } }
+                        })
+                    } else if (complete) {
+                        if (spoke) beginListeningTurn(isFollowUp=true)
+                        else speakResponse("I couldn't finish a local response. Try a shorter question or check Intelligence Lab.")
+                    }
+                }
+            }
+            val localHistory = if(isLocked) listOf("user" to transcript) else nativeTurns.toList().takeLast(6)
+            for ((role,text) in localHistory) messages.put(org.json.JSONObject().put("role",role).put("content",text.take(1600)))
+            local.generate("voice:$sessionId:$turnId", messages, org.json.JSONObject().put("maxTokens",96).put("thinking",false), false) { token ->
+                val ready=gate.append(token,false)
+                mainHandler.post { if(active()){sentences.addAll(ready);drain()} }
+            }.whenComplete { response,failure ->
+                val tail=if(failure==null)gate.append("",true) else emptyList()
+                mainHandler.post {
+                    if(active()){
+                        complete=true;sentences.addAll(tail)
+                        if(failure==null)recordNativeTurn("assistant",response.optString("text"))
+                        drain()
+                    }
+                }
+            }
+            return
+        }
+
         // Check if user consented to Cloud AI and stored a Keystore-protected API key
         migrateLegacyPrefsKeyIfPresent(context, secureStore)
         val (cloudConsent, _, cloudApiKey) = secureStore.getCloudCredentialsInternal()
 
         if (cloudConsent && cloudApiKey.isNotBlank()) {
-            val historySnapshot = nativeTurns.toList()
+            val historySnapshot = if(isLocked) listOf("user" to transcript) else nativeTurns.toList()
             Thread({
                 val (_, cloudAnswer) = callSecureCloudAiSync(
                     context = context,

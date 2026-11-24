@@ -17,8 +17,8 @@ test('context budget preserves newest message and fails explicitly for oversized
  assert.ok(c.prompt.length<=1000);assert.ok(c.omittedMessages>0);assert.ok(c.prompt.includes('Latest question'));
  d.memories[0].text='memory'.repeat(1000);assert.throws(()=>assembleLocalContext(d,'s',new Set(['selected']),true,1000),/memories/);
 });
-test('catalogue remains closed until evidence is verified; structural checks do not approve synthetic entries',()=>{
- assert.equal(MODEL_CATALOGUE.length,0);assert.throws(()=>requireCataloguedModel('unreviewed'),/disabled/);
+test('only reviewed immutable models enter the catalogue; structural checks do not approve other IDs',()=>{
+ assert.ok(MODEL_CATALOGUE.length>=2);assert.throws(()=>requireCataloguedModel('unreviewed'),/disabled/);
  const synthetic={id:'synthetic-only',name:'Test',repository:'test/model',revision:'a'.repeat(40),filename:'test.gguf',sha256:'b'.repeat(64),bytes:1000,license:'test-only',licenseUrl:'https://example.invalid/license',contextTokens:1024};
  assert.ok(modelDownloadUrl(synthetic).includes('/'+synthetic.revision+'/'));assert.ok(requiredInstallBytes(synthetic)>2000);
  for(const change of [{revision:'main'},{sha256:'0'.repeat(64)},{filename:'../model.gguf'},{bytes:Infinity},{contextTokens:99999}])assert.throws(()=>validateModelEntry({...synthetic,...change}));

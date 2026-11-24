@@ -22,6 +22,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <service android:name="com.lifeatlas.app.ai.AtlasModelDownloadService" android:exported="false" android:foregroundServiceType="dataSync" />
         <activity android:name="com.lifeatlas.app.r2.GalleryNativeViewerActivity" android:exported="false" android:theme="@style/AppTheme.NoActionBar" />
         <service android:name="com.lifeatlas.app.r2.GalleryExtractionService" android:process=":gallery_extraction" android:exported="false" android:stopWithTask="true" />
         <service android:name="com.lifeatlas.app.r2.GallerySearchService" android:process=":gallery_search" android:exported="false" android:stopWithTask="true" />

@@ -3,14 +3,18 @@ apply plugin: 'kotlin-android'
 
 android {
     namespace "com.lifeatlas.app"
+    ndkVersion "27.2.12479018"
+    externalNativeBuild { cmake { path file('src/main/cpp/local-ai/CMakeLists.txt'); if (System.getenv('ATLAS_NATIVE_BUILD_DIR')) buildStagingDirectory file(System.getenv('ATLAS_NATIVE_BUILD_DIR')) } }
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.lifeatlas.app"
         manifestPlaceholders = [atlasAppLabel: "Atlas", atlasGalleryLabel:"Atlas Gallery"]
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 47
-        versionName "2.3.1"
+        ndk { abiFilters 'arm64-v8a', 'x86_64' }
+        externalNativeBuild { cmake { arguments '-DANDROID_STL=c++_shared', '-DGGML_NATIVE=OFF', '-DANDROID_PLATFORM=android-26', '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON'; cppFlags '-std=c++17' } }
+        versionCode 48
+        versionName "2.4.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

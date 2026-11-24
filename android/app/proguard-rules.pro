@@ -19,3 +19,10 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Local inference JNI entry points and the synchronous token callback are addressed by name.
+-keep class com.lifeatlas.app.ai.AtlasLlamaNative { *; }
+-keep interface com.lifeatlas.app.ai.AtlasLlamaNative$TokenSink { *; }
+-keepclassmembers class * implements com.lifeatlas.app.ai.AtlasLlamaNative$TokenSink {
+    public void onToken(java.lang.String);
+}
