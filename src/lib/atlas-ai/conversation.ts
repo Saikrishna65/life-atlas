@@ -854,6 +854,15 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
     allowCloud,
     cloudProvider: getWebCloudProvider(),
   });
+  if (providerReply?.action) {
+    const action=providerReply.action;
+    const result=await executeRegisteredAction({sessionId:session.sessionId,rawAction:action,adapter:input.adapter,isLocked:input.isLocked});
+    if(result.policy.requiresConfirmation){
+      session.pendingConfirmation={id:crypto.randomUUID(),actionId:action.kind,payload:action,description:action.kind,expiresAt:Date.now()+60000};
+      return {...finish(`Please confirm ${action.kind} before I change anything.`,false,"llm.local.proposal"),requiresConfirmation:true,confirmationDescription:action.kind};
+    }
+    return finish(result.ok?`Completed ${action.kind}.`:result.error??"That action could not run.",false,result.ok?action.kind:"action.failed");
+  }
   if (providerReply) {
     return finish(providerReply.text, false, providerReply.source);
   }

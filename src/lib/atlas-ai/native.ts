@@ -1,20 +1,47 @@
+import type {
+  ChatMessage,
+  GenerationResult,
+  InferenceConfig,
+} from "./lab/config";
 import {
   Capacitor,
   registerPlugin,
   type PluginListenerHandle,
 } from "@capacitor/core";
 export interface RuntimeStatus {
+  device?: Record<string, unknown>;
+  nativeHeapBytes?: number;
+  batteryLevel?: number;
+  batteryTemperatureC?: number;
   available: boolean;
   reason: string;
   engine: string;
+  policy?: { idleSeconds: number; keepResident: boolean; streaming: boolean };
+  state?: string;
+  selected?: string;
+  loaded?: string;
+  busy?: boolean;
+  availableMemoryBytes?: number;
+  processPssBytes?: number;
+  thermalStatus?: number;
+  options?: Partial<InferenceConfig>;
 }
 interface AtlasNativePlugin {
   runtimeStatus(): Promise<RuntimeStatus>;
+  setPolicy(options: {
+    policy: { idleSeconds: number; keepResident: boolean; streaming: boolean };
+  }): Promise<void>;
+  loadModel(): Promise<RuntimeStatus>;
+  configure(options: { options: Partial<InferenceConfig> }): Promise<void>;
+  resetContext(): Promise<void>;
   generate(options: {
     requestId: string;
-    prompt: string;
-    maxTokens: number;
-  }): Promise<void>;
+    prompt?: string;
+    messages?: ChatMessage[];
+    maxTokens?: number;
+    options?: Partial<InferenceConfig>;
+    structured?: boolean;
+  }): Promise<GenerationResult>;
   cancel(options: { requestId: string }): Promise<void>;
   unload(): Promise<void>;
   voiceStatus(): Promise<{
@@ -56,7 +83,7 @@ export async function runtimeStatus(): Promise<RuntimeStatus> {
       available: false,
       engine: "none",
       reason:
-        "On-device inference is unavailable. This build has no local model runtime; prompts stay on this device.",
+        "On-device inference is unavailable. Use Intelligence Lab in the Android app to install and select a local GGUF model.",
     };
   return AtlasNative.runtimeStatus();
 }
@@ -64,6 +91,8 @@ export async function generateLocal(
   prompt: string,
   signal: AbortSignal,
   onToken: (token: string) => void,
+  messages?: ChatMessage[],
+  structured = false,
 ) {
   if (prompt.length > 24000)
     throw new Error("Conversation context exceeds the local model limit.");
@@ -90,10 +119,20 @@ export async function generateLocal(
   signal.addEventListener("abort", cancel, { once: true });
   try {
     if (signal.aborted) throw new Error("Generation canceled.");
-    await Promise.race([
-      AtlasNative.generate({ requestId, prompt, maxTokens: 512 }),
+    const result = await Promise.race([
+      AtlasNative.generate({
+        requestId,
+        ...(messages ? { messages } : { prompt }),
+        structured,
+      }),
       canceled,
     ]);
+    if (
+      !status.policy?.streaming &&
+      status.policy?.streaming === false &&
+      result.text
+    )
+      onToken(result.text);
   } finally {
     signal.removeEventListener("abort", cancel);
     await listener.remove();

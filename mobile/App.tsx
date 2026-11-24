@@ -58,6 +58,11 @@ const routes = [
   },
 
   {
+    pattern: /^\/secret\/control-room\/intelligence\/?$/,
+    params: [],
+    Page: lazyPage(() => import("../src/app/secret/control-room/intelligence/page")),
+  },
+  {
     pattern: /^\/secret\/control-room\/experiments\/hey-atlas\/?$/,
     params: [],
     Page: lazyPage(

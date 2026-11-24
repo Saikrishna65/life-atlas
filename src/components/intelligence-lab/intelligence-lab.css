@@ -1,0 +1,519 @@
+.il {
+  --lab-bg: #f3f4ef;
+  --lab-ink: #213a32;
+  min-height: 100dvh;
+  background: var(--lab-bg);
+  color: var(--lab-ink);
+  padding: calc(env(safe-area-inset-top) + 18px) 24px
+    calc(env(safe-area-inset-bottom) + 36px);
+  font-family: Arial, sans-serif;
+}
+.il * {
+  box-sizing: border-box;
+}
+.il button,
+.il input,
+.il textarea,
+.il select {
+  font: inherit;
+}
+.il button,
+.il a {
+  touch-action: manipulation;
+}
+.il button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 10px 16px;
+  border: 1px solid #ccd5cd;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--lab-ink);
+  cursor: pointer;
+}
+.il button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.il button:focus-visible,
+.il a:focus-visible,
+.il input:focus-visible,
+.il textarea:focus-visible,
+.il select:focus-visible {
+  outline: 3px solid #4d8c72;
+  outline-offset: 3px;
+}
+.il-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1080px;
+  margin: auto;
+}
+.il-header > a {
+  color: inherit;
+  padding: 12px;
+}
+.il-header > div {
+  flex: 1;
+}
+.il-header p,
+.il-intro > p:first-child,
+.il-title p {
+  font-size: 10px;
+  letter-spacing: 0.15em;
+}
+.il h1 {
+  font-size: 22px;
+  margin: 6px 0;
+}
+.il h1 span {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 400;
+  background: #e1e7db;
+  padding: 5px 9px;
+  border-radius: 12px;
+  margin-left: 12px;
+  vertical-align: middle;
+}
+.il-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+  max-width: 1080px;
+  margin: 20px auto 0;
+  padding: 10px 0;
+  background: var(--lab-bg);
+}
+.il-tabs button {
+  border: 0;
+  background: transparent;
+  flex: 1;
+  max-width: 180px;
+}
+.il-tabs button[aria-current] {
+  background: #243e33;
+  color: white;
+}
+.il main {
+  max-width: 1080px;
+  margin: auto;
+}
+.il-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 18px 0;
+  border-bottom: 1px solid #d5ddd3;
+  font-size: 12px;
+}
+.il-status > span:last-child {
+  margin-left: auto;
+}
+.il-light {
+  height: 7px;
+  width: 7px;
+  border-radius: 50%;
+  background: #a9b3a4;
+}
+.il-light.ready {
+  background: #50976a;
+}
+.il-notice,
+.il-error {
+  padding: 16px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #e3e9dd;
+}
+.il-error {
+  background: #f7e6e0;
+  color: #862c24;
+}
+.il-intro {
+  padding: 48px 0 28px;
+  max-width: 640px;
+}
+.il-intro h2 {
+  font-size: clamp(34px, 5vw, 62px);
+  letter-spacing: -0.06em;
+  line-height: 1.06;
+  font-weight: 500;
+  margin: 18px 0;
+}
+.il-intro > p:last-child,
+.il-panel p {
+  font-size: 14px;
+  line-height: 1.7;
+  max-width: 650px;
+  color: #627067;
+}
+.il-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.il input:not([type="checkbox"]),
+.il textarea,
+.il select {
+  background: #fff;
+  border: 1px solid #cfd8ce;
+  border-radius: 12px;
+  padding: 12px;
+  color: #23382d;
+  min-width: 0;
+}
+.il-toolbar > input {
+  flex: 1;
+  min-width: 200px !important;
+}
+.il-toolbar label {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.il-models {
+  margin-top: 20px;
+}
+.il-models article {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 0;
+  border-bottom: 1px solid #d5ddd3;
+}
+.il-model-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  background: #e1e8dc;
+  display: grid;
+  place-items: center;
+}
+.il-model-info {
+  flex: 1;
+  min-width: 0;
+}
+.il-model-info > div {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.il h3 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 8px;
+}
+.il-model-info p {
+  font-size: 13px;
+  margin: 4px 0 8px;
+}
+.il small {
+  display: block;
+  font-size: 11px;
+  color: #65766a;
+  line-height: 1.6;
+}
+.il small a {
+  color: #215c41;
+  margin-left: 8px;
+}
+.il code {
+  overflow-wrap: anywhere;
+}
+.il-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.il-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.il-panel {
+  background: #e9ede4;
+  border-radius: 22px;
+  padding: 24px;
+  margin: 24px 0;
+}
+.il summary {
+  cursor: pointer;
+  line-height: 1.5;
+}
+.il-candidate {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid #d2d9ce;
+  font-size: 12px;
+}
+.il-candidate span {
+  color: #6a7368;
+  text-align: right;
+}
+.il-muted {
+  font-size: 12px !important;
+  color: #69766c;
+  line-height: 1.7;
+}
+.il-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 30px 0 20px;
+}
+.il-title h2 {
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  margin: 8px 0;
+}
+.il-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 12px;
+  margin: 18px 0;
+  max-width: 680px;
+}
+.il textarea {
+  resize: vertical;
+  min-height: 90px;
+}
+.il-chat {
+  height: min(54dvh, 500px);
+  overflow-y: auto;
+  padding: 20px 4px;
+  overscroll-behavior: contain;
+}
+.il-empty {
+  text-align: center;
+  padding: 80px 8px;
+  color: #829080;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.il-message {
+  width: fit-content;
+  max-width: 85%;
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: #e5eadf;
+  margin: 0 0 15px;
+}
+.il-message.user {
+  margin-left: auto;
+  background: #254234;
+  color: white;
+}
+.il-message.user small {
+  color: #b5ccbd;
+}
+.il-message p {
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 8px 0;
+}
+.il-message button {
+  padding: 4px 8px;
+  min-height: 30px;
+  background: transparent;
+  font-size: 11px;
+}
+.il-composer {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid #d5ddd3;
+  padding-top: 16px;
+}
+.il-composer input {
+  flex: 1;
+}
+.il-composer > button:last-child {
+  background: #254234;
+  color: white;
+}
+.il-link {
+  background: transparent !important;
+  border: 0 !important;
+  font-size: 12px !important;
+}
+.il-metrics {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  padding: 20px 0;
+  color: #556b5d;
+}
+.il-config {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.il-config label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  text-transform: capitalize;
+}
+.il-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+}
+.il-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+.il-comparison .il-panel {
+  margin: 0;
+}
+.il dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.il dd {
+  margin: 0;
+  max-width: 220px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+.il-results details {
+  padding: 16px 0;
+  border-bottom: 1px solid #d5ddd3;
+  font-size: 12px;
+}
+.il pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+  font: inherit;
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+}
+.il-results label {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.il progress {
+  width: 100%;
+  height: 6px;
+  accent-color: #527b5c;
+}
+.il-model-info progress {
+  margin-top: 10px;
+}
+@media (max-width: 640px) {
+  .il {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .il-header {
+    gap: 4px;
+  }
+  .il h1 {
+    font-size: 19px;
+  }
+  .il h1 span {
+    font-size: 9px;
+    margin-left: 6px;
+  }
+  .il-header > svg {
+    display: none;
+  }
+  .il-tabs {
+    gap: 0;
+  }
+  .il-tabs button {
+    font-size: 11px;
+    padding: 10px 8px;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .il-status {
+    font-size: 10px;
+  }
+  .il-status > span:last-child {
+    width: 100%;
+    margin-left: 17px;
+  }
+  .il-intro {
+    padding-top: 30px;
+  }
+  .il-models article {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .il-model-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 18px;
+  }
+  .il-models .il-actions {
+    width: 100%;
+    padding-left: 64px;
+  }
+  .il-model-info > div {
+    gap: 3px;
+  }
+  .il h3 {
+    font-size: 16px;
+  }
+  .il-panel {
+    padding: 20px 16px;
+  }
+  .il-candidate {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .il-candidate span {
+    text-align: left;
+  }
+  .il-config {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .il-composer {
+    gap: 5px;
+  }
+  .il-composer button {
+    padding: 10px;
+  }
+  .il-title {
+    flex-wrap: wrap;
+  }
+  .il-message {
+    max-width: 94%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .il * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
