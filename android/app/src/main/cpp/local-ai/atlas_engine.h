@@ -29,9 +29,11 @@ public:
   Engine();
   ~Engine();
   json load(const std::string &path, const Config &config);
-  json generate(const json &messages, const Config &config,
-                const std::function<void(const std::string &)> &emit,
-                bool structured = false);
+  json
+  generate(const json &messages, const Config &config,
+           const std::function<void(const std::string &)> &emit,
+           bool structured = false,
+           const std::function<void(const std::string &, double)> &stage = {});
   void begin() { canceled_.store(false); }
   void cancel() { canceled_.store(true); }
   void unload();

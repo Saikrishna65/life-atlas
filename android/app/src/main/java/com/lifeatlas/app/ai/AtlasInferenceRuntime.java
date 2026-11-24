@@ -19,12 +19,15 @@ public final class AtlasInferenceRuntime implements ComponentCallbacks2 {
 
   public interface Stream {
     void token(String token);
+
+    default void stage(String name, double elapsedRealtimeMs) {}
   }
 
   private final Context context;
   private final ExecutorService worker = Executors.newSingleThreadExecutor();
   private final ScheduledExecutorService idle = Executors.newSingleThreadScheduledExecutor();
   private final AtomicBoolean busy = new AtomicBoolean();
+  private final AtomicBoolean switching = new AtomicBoolean();
   private final AtomicLong epoch = new AtomicLong();
   private volatile String state = "unloaded", loaded = "", activeRequest = "", error = "";
   private volatile long lastUsed = SystemClock.elapsedRealtime();
@@ -96,7 +99,7 @@ public final class AtlasInferenceRuntime implements ComponentCallbacks2 {
     }
   }
 
-  public void configure(JSONObject value) throws Exception {
+  public synchronized void configure(JSONObject value) throws Exception {
     // Native Config::parse is authoritative; reject unknown controls at the bridge as well.
     String[] allowed = {
       "threads",
@@ -115,7 +118,7 @@ public final class AtlasInferenceRuntime implements ComponentCallbacks2 {
     java.util.Set<String> keys = new java.util.HashSet<>(java.util.Arrays.asList(allowed));
     for (java.util.Iterator<String> i = value.keys(); i.hasNext(); )
       if (!keys.contains(i.next())) throw new IllegalArgumentException("Unknown inference setting");
-    if (busy.get())
+    if (busy.get() || switching.get())
       throw new IllegalStateException("Wait for the current inference before changing settings");
     validate(value);
     context
@@ -240,7 +243,16 @@ public final class AtlasInferenceRuntime implements ComponentCallbacks2 {
   }
 
   private void ensureLoaded(long expected) throws Exception {
+    ensureLoaded(expected, token -> {});
+  }
+
+  private void ensureLoaded(long expected, Stream stream) throws Exception {
     guard(expected);
+    if (Build.VERSION.SDK_INT >= 29
+        && ((PowerManager) context.getSystemService(Context.POWER_SERVICE))
+                .getCurrentThermalStatus()
+            >= PowerManager.THERMAL_STATUS_SEVERE)
+      throw new IllegalStateException("Let the phone cool before running a model");
     AtlasModelStore store = AtlasModelStore.get(context);
     String selected = store.selected();
     if (selected.isEmpty())
@@ -266,7 +278,9 @@ public final class AtlasInferenceRuntime implements ComponentCallbacks2 {
     if ((!config.has("chatTemplate") || "model".equals(config.optString("chatTemplate")))
         && metadata.has("chatTemplate"))
       config.put("chatTemplate", metadata.getString("chatTemplate"));
+    stream.stage("modelLoadStart", SystemClock.elapsedRealtime());
     AtlasLlamaNative.load(file.getAbsolutePath(), config.toString());
+    stream.stage("modelLoadEnd", SystemClock.elapsedRealtime());
     try {
       guard(expected);
     } catch (Exception canceled) {
@@ -282,9 +296,9 @@ public final class AtlasInferenceRuntime implements ComponentCallbacks2 {
     return operation("", task);
   }
 
-  private <T> CompletableFuture<T> operation(String request, Callable<T> task) {
+  private synchronized <T> CompletableFuture<T> operation(String request, Callable<T> task) {
     CompletableFuture<T> result = new CompletableFuture<>();
-    if (!busy.compareAndSet(false, true)) {
+    if (switching.get() || !busy.compareAndSet(false, true)) {
       result.completeExceptionally(new IllegalStateException("Another inference is running"));
       return result;
     }
@@ -316,6 +330,47 @@ public final class AtlasInferenceRuntime implements ComponentCallbacks2 {
     return result;
   }
 
+  public CompletableFuture<Void> selectModel(String id) {
+    return changeModel(id, false);
+  }
+
+  public CompletableFuture<Void> removeModel(String id) {
+    return changeModel(id, true);
+  }
+
+  private synchronized CompletableFuture<Void> changeModel(String id, boolean remove) {
+    CompletableFuture<Void> result = new CompletableFuture<>();
+    if (!switching.compareAndSet(false, true)) {
+      result.completeExceptionally(
+          new IllegalStateException("Model switching is already in progress"));
+      return result;
+    }
+    cancel("");
+    worker.execute(
+        () -> {
+          Throwable failure = null;
+          try {
+            AtlasModelStore store = AtlasModelStore.get(context);
+            if (!remove && !id.isEmpty()) store.verifiedFile(id);
+            if (!remove || loaded.equals(id)) {
+              if (AtlasLlamaNative.AVAILABLE) AtlasLlamaNative.unload();
+              loaded = "";
+              state = "unloaded";
+            }
+            if (remove) store.remove(id);
+            else store.selected(id);
+            scheduleIdle();
+          } catch (Throwable e) {
+            failure = e;
+          } finally {
+            switching.set(false);
+          }
+          if (failure == null) result.complete(null);
+          else result.completeExceptionally(failure);
+        });
+    return result;
+  }
+
   public CompletableFuture<JSONObject> load() {
     long expected = epoch.get();
     return operation(
@@ -335,7 +390,7 @@ public final class AtlasInferenceRuntime implements ComponentCallbacks2 {
         () -> {
           AtlasLlamaNative.begin();
           guard(expected);
-          ensureLoaded(expected);
+          ensureLoaded(expected, stream);
           JSONObject config = new JSONObject(loadedOptions.toString());
           if (override != null)
             for (java.util.Iterator<String> it = override.keys(); it.hasNext(); ) {
@@ -346,6 +401,7 @@ public final class AtlasInferenceRuntime implements ComponentCallbacks2 {
           validate(config);
           state = "generating";
           guard(expected);
+          final double nativeStart = SystemClock.elapsedRealtime();
           JSONObject response =
               new JSONObject(
                   AtlasLlamaNative.generate(
@@ -355,7 +411,11 @@ public final class AtlasInferenceRuntime implements ComponentCallbacks2 {
                       event -> {
                         if (epoch.get() == expected)
                           try {
-                            stream.token(new JSONObject(event).getString("token"));
+                            JSONObject value = new JSONObject(event);
+                            if (value.has("stage"))
+                              stream.stage(
+                                  value.getString("stage"), nativeStart + value.getDouble("atMs"));
+                            else stream.token(value.getString("token"));
                           } catch (JSONException e) {
                             throw new IllegalStateException("Invalid native stream");
                           }

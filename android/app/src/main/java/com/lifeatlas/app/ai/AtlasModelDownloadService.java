@@ -37,7 +37,7 @@ public class AtlasModelDownloadService extends Service {
         8401,
         new NotificationCompat.Builder(this, "atlas-models")
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Downloading an Atlas AI model")
+            .setContentTitle("Transferring an Atlas AI model")
             .setContentText("Open Intelligence Lab to pause or check progress")
             .setContentIntent(pending)
             .setOngoing(true)

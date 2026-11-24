@@ -18,9 +18,9 @@ try{
   await page.goto('https://atlas.test/secret/control-room/intelligence');
   await page.getByRole('heading',{name:'Intelligence Lab'}).waitFor();
   await page.getByRole('heading',{name:'Dolphin 3.0 · 1B',exact:true}).waitFor();
-  assert.equal(await page.getByRole('button',{name:'Download',exact:true}).count(),4);
+  assert.equal(await page.getByRole('button',{name:'Download',exact:true}).count(),11);
   assert.ok(await page.getByRole('button',{name:'Download',exact:true}).first().isDisabled());
-  await page.getByLabel('Search models').fill('qwen');assert.equal(await page.locator('.il-models article').count(),1);await page.getByLabel('Search models').fill('');
+  await page.getByLabel('Search models').fill('Qwen3 · 1.7B');assert.equal(await page.locator('.il-models article').count(),1);await page.getByLabel('Search models').fill('');
   await fs.mkdir('docs/local-intelligence/previews',{recursive:true});
   await page.screenshot({path:`docs/local-intelligence/previews/lab-${width===390?'mobile':'desktop'}.png`,fullPage:false});
   await page.getByRole('button',{name:'Playground',exact:true}).click();await page.getByLabel('Message',{exact:true}).fill('Hello');assert.ok(await page.getByRole('button',{name:'Send',exact:true}).isDisabled());await page.getByRole('button',{name:'Clear',exact:true}).click();

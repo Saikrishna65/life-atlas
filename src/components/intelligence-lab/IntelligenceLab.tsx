@@ -54,7 +54,16 @@ import {
   loadPersonalityConfig,
 } from "@/lib/atlas-ai/personality";
 import "./intelligence-lab.css";
-const bytes = (v?:number)=>v===undefined?'—':v>=1e9?`${(v/1e9).toFixed(2)} GB`:v>=1e6?`${(v/1e6).toFixed(1)} MB`:v>=1e3?`${(v/1e3).toFixed(0)} KB`:`${Math.round(v)} B`;
+const bytes = (v?: number) =>
+  v === undefined
+    ? "—"
+    : v >= 1e9
+      ? `${(v / 1e9).toFixed(2)} GB`
+      : v >= 1e6
+        ? `${(v / 1e6).toFixed(1)} MB`
+        : v >= 1e3
+          ? `${(v / 1e3).toFixed(0)} KB`
+          : `${Math.round(v)} B`;
 const number = (v?: number | null, suffix = "") =>
   v === undefined || v === null ? "—" : `${v.toFixed(1)}${suffix}`;
 const tabs = [
@@ -154,7 +163,7 @@ export default function IntelligenceLab() {
       alive = false;
       stop();
     };
-  }, [native,stop]);
+  }, [native, stop]);
   useEffect(() => {
     let alive = true;
     if (native && tab === "bench")
@@ -406,6 +415,31 @@ export default function IntelligenceLab() {
                 Import GGUF
               </button>
             </div>
+            <div aria-live="polite">
+              {library.transfers
+                ?.filter((t) => t.kind === "import")
+                .map((t) => (
+                  <article className="il-panel" key={t.id}>
+                    <h3>{t.name}</h3>
+                    <p>
+                      {t.state} · {bytes(t.received)}
+                      {t.total ? ` / ${bytes(t.total)}` : ""}
+                    </p>
+                    <progress
+                      max={t.total || undefined}
+                      value={t.total ? t.received : undefined}
+                    />
+                    {["queued", "importing"].includes(t.state) && (
+                      <button
+                        onClick={() => void operation(async () => { await ModelStore.cancel({ id: t.id }); })}
+                      >
+                        Cancel import
+                      </button>
+                    )}
+                    {t.error && <p>{t.error}</p>}
+                  </article>
+                ))}
+            </div>
             <div className="il-models">
               {visible.map((m) => (
                 <article key={m.id}>
@@ -484,7 +518,9 @@ export default function IntelligenceLab() {
                       <>
                         <button
                           disabled={
-                            !native || busy || ["downloading","queued"].includes(m.state)
+                            !native ||
+                            busy ||
+                            ["downloading", "queued"].includes(m.state)
                           }
                           onClick={() =>
                             void operation(async () => {
@@ -504,7 +540,9 @@ export default function IntelligenceLab() {
                           <Download size={16} />
                           {m.partialBytes ? "Resume" : "Download"}
                         </button>
-                        {["downloading", "queued"].includes(m.state) && (
+                        {["downloading", "queued", "retrying"].includes(
+                          m.state,
+                        ) && (
                           <button
                             onClick={() => void ModelStore.pause({ id: m.id })}
                             aria-label="Pause download"

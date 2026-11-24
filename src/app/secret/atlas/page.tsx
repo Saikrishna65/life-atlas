@@ -1142,7 +1142,7 @@ function AtlasContent() {
                     : "Not recorded"}
                 </li>
                 <li>
-                  AI Response → First TTS Audio:{" "}
+                  AI Response → TTS start callback:{" "}
                   {latencyMetrics.aiResponseToFirstAudioMs >= 0
                     ? `${latencyMetrics.aiResponseToFirstAudioMs} ms`
                     : "Not recorded"}
@@ -1154,6 +1154,22 @@ function AtlasContent() {
                     : "Not recorded"}
                 </li>
               </ul>
+            )}
+            {!!latencyMetrics?.pipeline?.events.length && (
+              <div>
+                <p>
+                  Native pipeline timings since recognition completed. TTS
+                  callbacks do not measure audible sound.
+                </p>
+                <ul>
+                  {latencyMetrics.pipeline.events.map((event, index) => (
+                    <li key={`${event.stage}-${index}`}>
+                      {event.stage}: {Math.round(event.sinceRecognitionMs)} ms ·{" "}
+                      {event.measurement}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </details>
           <details className={styles.card}>

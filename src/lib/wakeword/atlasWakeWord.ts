@@ -238,6 +238,16 @@ export interface VoiceSessionStatus {
 }
 
 export interface VoiceLatencyMetrics {
+  pipeline?: {
+    clock: "android.elapsedRealtime";
+    acousticLatencyMeasured: false;
+    events: Array<{
+      stage: string;
+      elapsedRealtimeMs: number;
+      sinceRecognitionMs: number;
+      measurement: string;
+    }>;
+  };
   wakeToGreetingMs: number;
   greetingToListenMs: number;
   speechEndToTranscriptMs: number;

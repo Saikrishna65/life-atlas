@@ -27,6 +27,7 @@ export interface RuntimeStatus {
   options?: Partial<InferenceConfig>;
 }
 interface AtlasNativePlugin {
+  deviceState(): Promise<{ locked: boolean }>;
   runtimeStatus(): Promise<RuntimeStatus>;
   setPolicy(options: {
     policy: { idleSeconds: number; keepResident: boolean; streaming: boolean };
@@ -136,5 +137,15 @@ export async function generateLocal(
   } finally {
     signal.removeEventListener("abort", cancel);
     await listener.remove();
+  }
+}
+
+/** Fresh native privacy check; inability to verify on Android fails closed. */
+export async function deviceIsLocked(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+  try {
+    return (await AtlasNative.deviceState()).locked !== false;
+  } catch {
+    return true;
   }
 }

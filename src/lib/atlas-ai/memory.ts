@@ -42,6 +42,7 @@ export interface PendingConfirmationState {
 }
 
 export interface SessionMemory {
+  privacyLocked?: boolean;
   sessionId: string;
   currentTopic: ConversationTopic;
   turns: ConversationTurn[];
@@ -277,4 +278,20 @@ export async function resetPersistentMemories(
 
 export function getCachedPersistentMemories(): PersistentMemoryItem[] {
   return [...memoryCache];
+}
+
+export function getPrivacyScopedSessionMemory(
+  id: string,
+  locked: boolean,
+): SessionMemory {
+  let current = getOrCreateSessionMemory(id);
+  if (
+    (locked && current.privacyLocked !== true) ||
+    (!locked && current.privacyLocked === true)
+  ) {
+    sessionMap.delete(id);
+    current = getOrCreateSessionMemory(id);
+  }
+  current.privacyLocked = locked;
+  return current;
 }

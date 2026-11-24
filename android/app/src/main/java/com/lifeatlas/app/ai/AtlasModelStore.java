@@ -4,7 +4,6 @@ import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
 import android.net.Uri;
-import android.os.Build;
 import android.os.SystemClock;
 import java.io.*;
 import java.net.*;
@@ -24,6 +23,16 @@ public final class AtlasModelStore {
     return instance;
   }
 
+  interface DownloadEnvironment {
+    HttpURLConnection open(URL url) throws IOException;
+
+    boolean connected(boolean wifiOnly);
+
+    long usableSpace(File directory);
+  }
+
+  private final DownloadEnvironment environment;
+  private final JSONArray catalogueOverride;
   private final Context context;
   private final File directory;
   private final ExecutorService transfers = Executors.newSingleThreadExecutor();
@@ -37,7 +46,36 @@ public final class AtlasModelStore {
   public static final long MAX_BYTES = 3500000000L;
 
   private AtlasModelStore(Context context) {
+    this(
+        context,
+        null,
+        new DownloadEnvironment() {
+          public HttpURLConnection open(URL url) throws IOException {
+            return (HttpURLConnection) url.openConnection();
+          }
+
+          public long usableSpace(File directory) {
+            return directory.getUsableSpace();
+          }
+
+          public boolean connected(boolean wifiOnly) {
+            ConnectivityManager network =
+                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (network == null) return false;
+            NetworkCapabilities capabilities =
+                network.getNetworkCapabilities(network.getActiveNetwork());
+            return capabilities != null
+                && (!wifiOnly || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI));
+          }
+        });
+  }
+
+  // Package-private seam exercises the production transfer state machine without real model
+  // downloads.
+  AtlasModelStore(Context context, JSONArray catalogue, DownloadEnvironment environment) {
     this.context = context;
+    this.environment = environment;
+    this.catalogueOverride = catalogue;
     directory = new File(context.getNoBackupFilesDir(), "atlas-models");
     directory.mkdirs();
     // Interrupted imports have no reusable source grant. Keep resumable downloads intact.
@@ -73,10 +111,17 @@ public final class AtlasModelStore {
     }
   }
 
+  private JSONArray catalogue() throws Exception {
+    if (catalogueOverride != null) return new JSONArray(catalogueOverride.toString());
+    try (InputStream in = context.getAssets().open("atlas-model-catalogue.json")) {
+      return new JSONArray(readText(in));
+    }
+  }
+
   public synchronized JSONObject entry(String id) throws Exception {
     validId(id);
-    try (InputStream in = context.getAssets().open("atlas-model-catalogue.json")) {
-      JSONArray list = new JSONArray(readText(in));
+    {
+      JSONArray list = catalogue();
       for (int i = 0; i < list.length(); i++) {
         JSONObject item = list.getJSONObject(i);
         if (id.equals(item.getString("id"))) return item;
@@ -133,8 +178,8 @@ public final class AtlasModelStore {
   public synchronized JSONArray list() throws Exception {
     JSONArray out = new JSONArray();
     Set<String> ids = new LinkedHashSet<>();
-    try (InputStream in = context.getAssets().open("atlas-model-catalogue.json")) {
-      JSONArray catalogue = new JSONArray(readText(in));
+    {
+      JSONArray catalogue = catalogue();
       for (int i = 0; i < catalogue.length(); i++)
         ids.add(catalogue.getJSONObject(i).getString("id"));
     }
@@ -185,7 +230,11 @@ public final class AtlasModelStore {
       states.put(
           id,
           new JSONObject()
+              .put("id", id)
+              .put("name", names.getOrDefault(id, id))
+              .put("kind", id.matches("import-[a-f0-9-]{36}") ? "import" : "download")
               .put("state", status)
+              .put("updatedAt", System.currentTimeMillis())
               .put("received", received)
               .put("total", total)
               .put("remaining", Math.max(0, total - received))
@@ -195,224 +244,449 @@ public final class AtlasModelStore {
     }
   }
 
+  private final ScheduledExecutorService recovery = Executors.newSingleThreadScheduledExecutor();
+  private final ConcurrentHashMap<String, ScheduledFuture<?>> pendingRetries =
+      new ConcurrentHashMap<>();
+  private final Set<String> running = ConcurrentHashMap.newKeySet(),
+      discard = ConcurrentHashMap.newKeySet();
+  private final ConcurrentHashMap<String, InputStream> inputs = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, String> names = new ConcurrentHashMap<>();
+
+  private static final class TransientDownload extends IOException {
+    final long retrySeconds;
+
+    TransientDownload(String message) {
+      this(message, 0);
+    }
+
+    TransientDownload(String message, long retrySeconds) {
+      super(message);
+      this.retrySeconds = retrySeconds;
+    }
+  }
+
+  void closeForTests() {
+    for (String id : new ArrayList<>(jobs.keySet())) pause(id);
+    recovery.shutdownNow();
+    transfers.shutdownNow();
+  }
+
+  public JSONArray transferList() {
+    JSONArray result = new JSONArray();
+    List<String> terminal = new ArrayList<>();
+    for (Map.Entry<String, JSONObject> item : states.entrySet()) {
+      if (jobs.containsKey(item.getKey())) result.put(item.getValue());
+      else terminal.add(item.getKey());
+    }
+    terminal.sort(Comparator.comparingLong(id -> states.get(id).optLong("updatedAt")));
+    for (int i = 0; i < terminal.size(); i++) {
+      String id = terminal.get(i);
+      if (i < Math.max(0, terminal.size() - 20)) {
+        states.remove(id);
+        names.remove(id);
+      } else {
+        JSONObject value = states.get(id);
+        if (value != null) result.put(value);
+      }
+    }
+    return result;
+  }
+
+  private void closeTransfer(String id) {
+    HttpURLConnection connection = connections.remove(id);
+    if (connection != null) connection.disconnect();
+    InputStream input = inputs.remove(id);
+    if (input != null)
+      try {
+        input.close();
+      } catch (IOException ignored) {
+      }
+  }
+
   public void pause(String id) {
-    AtomicBoolean stop = stops.get(id);
-    if (stop != null) stop.set(true);
-    HttpURLConnection c = connections.get(id);
-    if (c != null) c.disconnect();
+    CompletableFuture<JSONObject> job;
+    synchronized (jobs) {
+      job = jobs.get(id);
+      AtomicBoolean stop = stops.get(id);
+      if (stop == null) return;
+      stop.set(true);
+      ScheduledFuture<?> retry = pendingRetries.remove(id);
+      if (retry != null) retry.cancel(false);
+    }
+    closeTransfer(id);
+    synchronized (jobs) {
+      if (job != null && jobs.get(id) == job && !running.contains(id))
+        finishTransfer(id, job, null, new CancellationException("Paused"));
+    }
   }
 
   public void cancel(String id) throws Exception {
+    validId(id);
+    discard.add(id);
     pause(id);
-    CompletableFuture<JSONObject> job = jobs.get(id);
-    if (job != null)
-      job.handle(
-          (value, error) -> {
-            new File(directory, id + ".part").delete();
-            return null;
-          });
-    else new File(directory, validId(id) + ".part").delete();
+    synchronized (jobs) {
+      if (!jobs.containsKey(id)) {
+        new File(directory, id + ".part").delete();
+        discard.remove(id);
+      }
+    }
+  }
+
+  private void finishTransfer(
+      String id, CompletableFuture<JSONObject> job, JSONObject value, Throwable error) {
+    synchronized (jobs) {
+      if (jobs.get(id) != job) return;
+      closeTransfer(id);
+      running.remove(id);
+      ScheduledFuture<?> retry = pendingRetries.remove(id);
+      if (retry != null) retry.cancel(false);
+      boolean canceled = discard.remove(id);
+      AtomicBoolean stop = stops.remove(id);
+      if (canceled) new File(directory, id + ".part").delete();
+      if (error != null) {
+        JSONObject previous = states.get(id);
+        long total = previous == null ? 0 : previous.optLong("total");
+        state(
+            id,
+            canceled ? "canceled" : stop != null && stop.get() ? "paused" : "failed",
+            new File(directory, id + ".part").length(),
+            total,
+            SystemClock.elapsedRealtime(),
+            0,
+            canceled ? "Canceled" : stop != null && stop.get() ? "Paused" : transferError(error));
+      }
+      jobs.remove(id);
+    }
+    if (error == null) job.complete(value);
+    else job.completeExceptionally(error);
+  }
+
+  private static String transferError(Throwable error) {
+    String message = error.getMessage() == null ? "" : error.getMessage();
+    if (message.contains("storage") || message.contains("storage budget"))
+      return "Not enough free storage. Free space and retry; downloaded partial bytes are"
+                 + " retained.";
+    if (message.contains("SHA-256") || message.contains("Corrupted partial"))
+      return "Checksum failed. The corrupted partial was removed; retry with a trusted source.";
+    if (message.contains("Not a GGUF")) return "The selected file is not a GGUF model.";
+    if (message.contains("Incomplete") || error instanceof TransientDownload)
+      return "Network recovery timed out. Retry to resume the saved download.";
+    return "Transfer stopped. Check storage, connectivity and file integrity, then retry.";
   }
 
   public CompletableFuture<JSONObject> download(String id, boolean consent, boolean wifiOnly) {
     synchronized (jobs) {
-      CompletableFuture<JSONObject> existing = jobs.get(id);
-      if (existing != null) return existing;
-      CompletableFuture<JSONObject> result = new CompletableFuture<>();
-      jobs.put(id, result);
+      if (jobs.containsKey(id)) return jobs.get(id);
+      CompletableFuture<JSONObject> job = new CompletableFuture<>();
       AtomicBoolean stop = new AtomicBoolean();
+      jobs.put(id, job);
       stops.put(id, stop);
+      discard.remove(id);
       state(id, "queued", 0, 0, SystemClock.elapsedRealtime(), 0, null);
-      transfers.execute(
-          () -> {
-            long start = SystemClock.elapsedRealtime(), initial = 0, total = 0;
-            File part = null;
-            try {
-              if (!consent) throw new IOException("Confirm the model download and license first");
-              JSONObject m = entry(id);
-              if (file(id).isFile()) {
-                verifiedFile(id);
-                result.complete(m);
-                return;
-              }
-              if (!m.optBoolean("downloadable", true))
-                throw new IOException("This candidate is not a verified downloadable artifact");
-              String repo = m.getString("repository"),
-                  rev = m.getString("revision"),
-                  name = m.getString("filename"),
-                  sha = m.getString("sha256");
-              total = m.getLong("bytes");
-              if (!repo.matches("[\\w.-]+/[\\w.-]+")
-                  || !rev.matches("[a-f0-9]{40}")
-                  || !name.matches("[\\w.-]+\\.gguf")
-                  || !sha.matches("[a-f0-9]{64}")
-                  || total <= 0
-                  || total > MAX_BYTES)
-                throw new IOException("Unverified or unsupported artifact metadata");
-              part = new File(directory, validId(id) + ".part");
-              initial = part.isFile() ? part.length() : 0;
-              if (initial > total) {
-                part.delete();
-                initial = 0;
-              }
-              if (initial == total && hash(part).equals(sha)) {
-                if (!part.renameTo(file(id))) throw new IOException("Atomic installation failed");
-                save(id, m);
-                result.complete(m);
-                return;
-              }
-              if (directory.getUsableSpace() < total - initial + 268435456L)
-                throw new IOException("Insufficient free storage");
-              ConnectivityManager network =
-                  (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-              if (network == null) throw new IOException("Network unavailable");
-              if (wifiOnly
-                  && (Build.VERSION.SDK_INT < 23
-                      || network.getActiveNetwork() == null
-                      || (network.getNetworkCapabilities(network.getActiveNetwork()) == null
-                          || !network
-                              .getNetworkCapabilities(network.getActiveNetwork())
-                              .hasTransport(NetworkCapabilities.TRANSPORT_WIFI))))
-                throw new IOException("Waiting for Wi-Fi; resume when connected");
-              URL url = new URL("https://huggingface.co/" + repo + "/resolve/" + rev + "/" + name);
-              HttpURLConnection connection = null;
-              for (int redirects = 0; redirects <= 8; redirects++) {
-                if (stop.get()) throw new IOException("Paused");
-                String host = url.getHost();
-                if (!AtlasDownloadRules.approved(url))
-                  throw new IOException("Unapproved model host");
-                connection = (HttpURLConnection) url.openConnection();
-                connections.put(id, connection);
-                connection.setInstanceFollowRedirects(false);
-                connection.setConnectTimeout(20000);
-                connection.setReadTimeout(20000);
-                if (initial > 0) connection.setRequestProperty("Range", "bytes=" + initial + "-");
-                int code = connection.getResponseCode();
-                if (code >= 300 && code < 400) {
-                  String next = connection.getHeaderField("Location");
-                  connection.disconnect();
-                  if (next == null || redirects == 8)
-                    throw new IOException("Invalid download redirect");
-                  url = new URL(url, next);
-                  continue;
-                }
-                if (code != 200 && code != 206)
-                  throw new IOException("Model server returned HTTP " + code);
-                if (code == 200) initial = 0;
-                else if (!AtlasDownloadRules.resumedRange(
-                    connection.getHeaderField("Content-Range"), initial, total))
-                  throw new IOException("Invalid resumed response");
-                break;
-              }
-              long received = initial, last = 0;
-              state(id, "downloading", received, total, start, initial, null);
-              try (InputStream in = connection.getInputStream();
-                  FileOutputStream out = new FileOutputStream(part, initial > 0)) {
-                byte[] buffer = new byte[131072];
-                int n;
-                while ((n = in.read(buffer)) != -1) {
-                  if (stop.get()) throw new IOException("Paused");
-                  received += n;
-                  if (received > total) throw new IOException("Download exceeded verified size");
-                  out.write(buffer, 0, n);
-                  long now = SystemClock.elapsedRealtime();
-                  if (now - last > 250) {
-                    state(id, "downloading", received, total, start, initial, null);
-                    last = now;
-                  }
-                }
-                out.getFD().sync();
-              }
-              if (stop.get()) throw new IOException("Paused");
-              if (part.length() != total)
-                throw new IOException("Incomplete download; resume to finish");
-              state(id, "verifying", total, total, start, initial, null);
-              if (!hash(part).equals(sha)) {
-                part.delete();
-                throw new IOException("SHA-256 mismatch; the corrupted partial file was removed");
-              }
-              File dest = file(id);
-              if (!part.renameTo(dest)) throw new IOException("Atomic installation failed");
-              save(id, m);
-              verified.remove(id);
-              state(id, "installed", total, total, start, initial, null);
-              result.complete(m);
-            } catch (Exception error) {
-              state(
-                  id,
-                  "paused",
-                  part != null && part.isFile() ? part.length() : 0,
-                  total,
-                  start,
-                  initial,
-                  stop.get() ? "Paused" : error.getMessage());
-              result.completeExceptionally(error);
-            } finally {
-              HttpURLConnection c = connections.remove(id);
-              if (c != null) c.disconnect();
-              stops.remove(id);
-              jobs.remove(id);
-            }
-          });
-      return result;
+      transfers.execute(() -> downloadAttempt(id, job, stop, consent, wifiOnly, 0));
+      return job;
     }
   }
 
+  private void downloadAttempt(
+      String id,
+      CompletableFuture<JSONObject> job,
+      AtomicBoolean stop,
+      boolean consent,
+      boolean wifiOnly,
+      int attempt) {
+    synchronized (jobs) {
+      if (jobs.get(id) != job) return;
+      if (stop.get()) {
+        finishTransfer(id, job, null, new CancellationException("Paused"));
+        return;
+      }
+      running.add(id);
+    }
+    JSONObject value = null;
+    Throwable failure = null;
+    try {
+      value = downloadOnce(id, consent, wifiOnly, stop);
+    } catch (Throwable e) {
+      failure = e;
+    } finally {
+      closeTransfer(id);
+      running.remove(id);
+    }
+    boolean retryable =
+        failure instanceof TransientDownload
+            || failure instanceof SocketException
+            || failure instanceof SocketTimeoutException
+            || failure instanceof UnknownHostException;
+    synchronized (jobs) {
+      if (jobs.get(id) != job) return;
+      if (retryable && !stop.get() && attempt < 5) {
+        long bytes = new File(directory, id + ".part").length();
+        JSONObject previous = states.get(id);
+        long total = previous == null ? 0 : previous.optLong("total");
+        state(
+            id,
+            "retrying",
+            bytes,
+            total,
+            SystemClock.elapsedRealtime(),
+            bytes,
+            "Connection interrupted. Retrying automatically.");
+        pendingRetries.put(
+            id,
+            recovery.schedule(
+                () ->
+                    transfers.execute(
+                        () -> downloadAttempt(id, job, stop, consent, wifiOnly, attempt + 1)),
+                Math.max(
+                    1L << attempt,
+                    failure instanceof TransientDownload
+                        ? ((TransientDownload) failure).retrySeconds
+                        : 0),
+                TimeUnit.SECONDS));
+        return;
+      }
+    }
+    finishTransfer(id, job, value, failure);
+  }
+
+  private JSONObject downloadOnce(String id, boolean consent, boolean wifiOnly, AtomicBoolean stop)
+      throws Exception {
+    if (!consent) throw new IOException("Download and license confirmation required");
+    if (stop.get()) throw new CancellationException("Paused");
+    JSONObject m = entry(id);
+    names.put(id, m.optString("name", id));
+    File target = file(id);
+    if (target.isFile()) {
+      verifiedFile(id);
+      state(
+          id,
+          "installed",
+          target.length(),
+          target.length(),
+          SystemClock.elapsedRealtime(),
+          target.length(),
+          null);
+      return m;
+    }
+    if (!m.optBoolean("downloadable", true))
+      throw new IOException("Artifact not approved for download");
+    String repo = m.getString("repository"),
+        rev = m.getString("revision"),
+        name = m.getString("filename"),
+        sha = m.getString("sha256");
+    long total = m.getLong("bytes");
+    if (!repo.matches("[\\w.-]+/[\\w.-]+")
+        || !rev.matches("[a-f0-9]{40}")
+        || !name.matches("[\\w.-]+\\.gguf")
+        || !sha.matches("[a-f0-9]{64}")
+        || total <= 0
+        || total > MAX_BYTES) throw new IOException("Unverified artifact metadata");
+    File part = new File(directory, validId(id) + ".part");
+    long offset = part.length(), started = SystemClock.elapsedRealtime();
+    if (offset >= total) {
+      if (offset == total && hash(part).equals(sha)) {
+        if (!part.renameTo(target)) throw new IOException("Installation failed");
+        save(id, m);
+        state(id, "installed", total, total, started, total, null);
+        return m;
+      }
+      part.delete();
+      throw new IOException("Corrupted partial removed. Retry the download.");
+    }
+    if (environment.usableSpace(directory) < total - offset + 67108864L)
+      throw new IOException("Not enough free storage");
+    if (!environment.connected(wifiOnly)) throw new TransientDownload("Waiting for network");
+    URL url = new URL("https://huggingface.co/" + repo + "/resolve/" + rev + "/" + name);
+    HttpURLConnection connection = null;
+    for (int redirects = 0; redirects <= 8; redirects++) {
+      if (stop.get()) throw new CancellationException("Paused");
+      if (!AtlasDownloadRules.approved(url)) throw new IOException("Unapproved download host");
+      connection = environment.open(url);
+      connections.put(id, connection);
+      connection.setInstanceFollowRedirects(false);
+      connection.setConnectTimeout(20000);
+      connection.setReadTimeout(20000);
+      if (offset > 0) connection.setRequestProperty("Range", "bytes=" + offset + "-");
+      int code = connection.getResponseCode();
+      if (code >= 300 && code < 400) {
+        String next = connection.getHeaderField("Location");
+        connection.disconnect();
+        if (next == null || redirects == 8) throw new IOException("Invalid redirect");
+        url = new URL(url, next);
+        continue;
+      }
+      if (code == 408 || code == 429 || code >= 500) {
+        long retrySeconds = 0;
+        try {
+          retrySeconds =
+              Math.min(120, Math.max(0, Long.parseLong(connection.getHeaderField("Retry-After"))));
+        } catch (Exception ignored) {
+        }
+        throw new TransientDownload("Temporary model server failure", retrySeconds);
+      }
+      if (code != 200 && code != 206) throw new IOException("Model server rejected request");
+      if (code == 200) offset = 0;
+      else if (!AtlasDownloadRules.resumedRange(
+          connection.getHeaderField("Content-Range"), offset, total))
+        throw new IOException("Invalid resumed response");
+      break;
+    }
+    long received = offset, last = 0;
+    state(id, "downloading", received, total, started, offset, null);
+    try (InputStream in = connection.getInputStream();
+        FileOutputStream out = new FileOutputStream(part, offset > 0)) {
+      inputs.put(id, in);
+      byte[] buffer = new byte[131072];
+      int n;
+      while ((n = readNetwork(in, buffer)) != -1) {
+        if (stop.get()) throw new CancellationException("Paused");
+        if (environment.usableSpace(directory) < n + 8388608L)
+          throw new IOException("Not enough free storage");
+        received += n;
+        if (received > total) throw new IOException("Download exceeded verified size");
+        out.write(buffer, 0, n);
+        long now = SystemClock.elapsedRealtime();
+        if (now - last > 250) {
+          state(id, "downloading", received, total, started, offset, null);
+          last = now;
+        }
+      }
+      out.getFD().sync();
+    }
+    inputs.remove(id);
+    if (stop.get()) throw new CancellationException("Paused");
+    if (part.length() != total) throw new TransientDownload("Incomplete download");
+    state(id, "verifying", total, total, started, offset, null);
+    if (!hash(part).equals(sha)) {
+      part.delete();
+      throw new IOException("SHA-256 mismatch");
+    }
+    if (stop.get()) throw new CancellationException("Paused");
+    if (!part.renameTo(target)) throw new IOException("Atomic installation failed");
+    save(id, m);
+    verified.put(id, target.length() + ":" + target.lastModified());
+    state(id, "installed", total, total, started, offset, null);
+    return m;
+  }
+
+  private static int readNetwork(InputStream input, byte[] buffer) throws IOException {
+    try {
+      return input.read(buffer);
+    } catch (IOException error) {
+      throw new TransientDownload("Network stream interrupted");
+    }
+  }
+
+  public String startImport(Uri uri, String name, boolean consent) {
+    String id = "import-" + UUID.randomUUID();
+    importFile(id, uri, name, consent);
+    return id;
+  }
+
   public CompletableFuture<JSONObject> importFile(Uri uri, String name, boolean consent) {
-    return CompletableFuture.supplyAsync(
+    return importFile("import-" + UUID.randomUUID(), uri, name, consent);
+  }
+
+  private CompletableFuture<JSONObject> importFile(
+      String transferId, Uri uri, String name, boolean consent) {
+    CompletableFuture<JSONObject> job = new CompletableFuture<>();
+    AtomicBoolean stop = new AtomicBoolean();
+    synchronized (jobs) {
+      jobs.put(transferId, job);
+      stops.put(transferId, stop);
+      names.put(transferId, name == null ? "Imported model" : name);
+      state(transferId, "queued", 0, 0, SystemClock.elapsedRealtime(), 0, null);
+    }
+    transfers.execute(
         () -> {
-          File part = new File(directory, "import-" + UUID.randomUUID() + ".part");
+          synchronized (jobs) {
+            if (jobs.get(transferId) != job) return;
+            running.add(transferId);
+          }
+          File part = new File(directory, transferId + ".part");
+          JSONObject result = null;
+          Throwable failure = null;
+          long expected = 0, received = 0, start = SystemClock.elapsedRealtime(), last = 0;
           try {
             if (!consent) throw new IOException("Import confirmation required");
+            if (stop.get()) throw new CancellationException("Import canceled");
+            try (android.database.Cursor cursor =
+                context
+                    .getContentResolver()
+                    .query(
+                        uri,
+                        new String[] {android.provider.OpenableColumns.SIZE},
+                        null,
+                        null,
+                        null)) {
+              if (cursor != null && cursor.moveToFirst() && !cursor.isNull(0))
+                expected = Math.max(0, cursor.getLong(0));
+            } catch (Exception ignored) {
+            }
+            if (expected > MAX_BYTES
+                || expected > 0 && environment.usableSpace(directory) < expected + 67108864L)
+              throw new IOException("Not enough storage for this model");
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            long total = 0;
+            state(transferId, "importing", 0, expected, start, 0, null);
             try (InputStream in = context.getContentResolver().openInputStream(uri);
                 FileOutputStream out = new FileOutputStream(part)) {
-              if (in == null) throw new IOException("Could not open chosen file");
+              if (in == null) throw new IOException("Could not open selected file");
+              inputs.put(transferId, in);
               byte[] buffer = new byte[131072];
               int n;
               while ((n = in.read(buffer)) != -1) {
-                total += n;
-                if (total > MAX_BYTES || directory.getUsableSpace() < n + 67108864L)
-                  throw new IOException("Model exceeds storage budget");
+                if (stop.get()) throw new CancellationException("Import canceled");
+                received += n;
+                if (received > MAX_BYTES || environment.usableSpace(directory) < n + 8388608L)
+                  throw new IOException("Import exceeds storage budget");
                 out.write(buffer, 0, n);
                 digest.update(buffer, 0, n);
+                if (SystemClock.elapsedRealtime() - last > 250) {
+                  state(transferId, "importing", received, expected, start, 0, null);
+                  last = SystemClock.elapsedRealtime();
+                }
               }
               out.getFD().sync();
             }
+            if (stop.get()) throw new CancellationException("Import canceled");
+            if (expected > 0 && received != expected)
+              throw new IOException("Selected file changed or is incomplete");
             try (InputStream in = new FileInputStream(part)) {
               byte[] magic = new byte[4];
               if (in.read(magic) != 4 || !Arrays.equals(magic, new byte[] {'G', 'G', 'U', 'F'}))
-                throw new IOException("The selected file is not GGUF");
+                throw new IOException("Not a GGUF model");
             }
-            StringBuilder sha = new StringBuilder();
-            for (byte b : digest.digest()) sha.append(String.format(Locale.ROOT, "%02x", b));
-            String hash = sha.toString(), id = "import-" + hash;
-            JSONObject m =
+            StringBuilder value = new StringBuilder();
+            for (byte b : digest.digest()) value.append(String.format(Locale.ROOT, "%02x", b));
+            String sha = value.toString(), id = "import-" + sha;
+            result =
                 new JSONObject()
                     .put("id", id)
                     .put("name", name == null ? "Imported GGUF" : name)
-                    .put("sha256", hash)
-                    .put("bytes", total)
+                    .put("sha256", sha)
+                    .put("bytes", received)
                     .put("integrity", "locally-calculated")
                     .put("downloadable", false)
                     .put("license", "User imported; source/license not independently verified")
                     .put("architecture", "runtime-detected")
                     .put("quantization", "runtime-detected");
-            File dest = new File(directory, hash + ".gguf");
+            File dest = new File(directory, sha + ".gguf");
             if (dest.isFile()) {
-              if (!hash(dest).equals(hash))
-                throw new IOException("Existing duplicate failed checksum");
+              if (!hash(dest).equals(sha)) throw new IOException("Existing duplicate is corrupted");
               part.delete();
             } else if (!part.renameTo(dest)) throw new IOException("Atomic import failed");
-            save(id, m);
-            return m;
-          } catch (Exception e) {
-            part.delete();
-            throw new CompletionException(e);
+            save(id, result);
+            verified.put(id, dest.length() + ":" + dest.lastModified());
+            state(transferId, "installed", received, received, start, 0, null);
+          } catch (Throwable error) {
+            failure = error;
+          } finally {
+            if (part.exists()) part.delete();
+            finishTransfer(transferId, job, result, failure);
           }
-        },
-        transfers);
+        });
+    return job;
   }
 
   public synchronized void remove(String id) throws Exception {

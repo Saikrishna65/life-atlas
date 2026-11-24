@@ -216,6 +216,13 @@ public class AtlasLocalAIPlugin extends Plugin {
   }
 
   @PluginMethod
+  public void deviceState(PluginCall call) {
+    android.app.KeyguardManager keyguard =
+        (android.app.KeyguardManager) getContext().getSystemService(Context.KEYGUARD_SERVICE);
+    call.resolve(new JSObject().put("locked", keyguard == null || keyguard.isKeyguardLocked()));
+  }
+
+  @PluginMethod
   public void runtimeStatus(PluginCall call) {
     call.resolve(inferenceJson(inference().status()));
   }

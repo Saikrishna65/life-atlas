@@ -23,7 +23,18 @@ export interface StoredModel {
     error?: string;
   };
 }
+export interface ModelTransfer {
+  id: string;
+  name: string;
+  kind: string;
+  state: string;
+  received: number;
+  total: number;
+  bytesPerSecond: number;
+  error?: string;
+}
 export interface ModelLibrary {
+  transfers?: ModelTransfer[];
   models: StoredModel[];
   selected: string;
   availableBytes: number;
@@ -42,7 +53,7 @@ export const ModelStore = registerPlugin<{
   cancel(o: { id: string }): Promise<void>;
   select(o: { id: string }): Promise<void>;
   remove(o: { id: string; confirm: boolean }): Promise<void>;
-  importModel(o: { consent: boolean }): Promise<StoredModel>;
+  importModel(o: { consent: boolean }): Promise<{ transferId: string }>;
 }>("AtlasModels");
 export const supportsLab = () =>
   Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("AtlasLocalAI");

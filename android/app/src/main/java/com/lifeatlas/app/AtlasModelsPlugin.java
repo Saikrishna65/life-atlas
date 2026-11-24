@@ -34,6 +34,7 @@ public class AtlasModelsPlugin extends Plugin {
             call.resolve(
                 new JSObject()
                     .put("models", store().list())
+                    .put("transfers", store().transferList())
                     .put("selected", store().selected())
                     .put("availableBytes", getContext().getNoBackupFilesDir().getUsableSpace()));
           } catch (Exception e) {
@@ -89,9 +90,7 @@ public class AtlasModelsPlugin extends Plugin {
         () -> {
           try {
             String id = call.getString("id", "");
-            if (!id.isEmpty()) store().verifiedFile(id);
-            AtlasInferenceRuntime.get(getContext()).unload().get();
-            store().selected(id);
+            AtlasInferenceRuntime.get(getContext()).selectModel(id).get();
             call.resolve();
           } catch (Exception e) {
             call.reject("Select a complete, checksum-verified model");
@@ -109,9 +108,7 @@ public class AtlasModelsPlugin extends Plugin {
         () -> {
           try {
             String id = call.getString("id", "");
-            if (store().selected().equals(id))
-              AtlasInferenceRuntime.get(getContext()).unload().get();
-            store().remove(id);
+            AtlasInferenceRuntime.get(getContext()).removeModel(id).get();
             call.resolve();
           } catch (Exception e) {
             call.reject("Pause the download or inference before removing the model");
@@ -154,14 +151,17 @@ public class AtlasModelsPlugin extends Plugin {
       if (cursor != null && cursor.moveToFirst()) name = cursor.getString(0);
     } catch (Exception ignored) {
     }
-    store()
-        .importFile(uri, name.substring(0, Math.min(120, name.length())), true)
-        .whenComplete(
-            (v, e) -> {
-              if (e != null)
-                call.reject("Import failed. Choose a valid GGUF within the storage budget.");
-              else call.resolve(json(v));
-            });
+    try {
+      androidx.core.content.ContextCompat.startForegroundService(
+          getContext(), new Intent(getContext(), AtlasModelDownloadService.class));
+    } catch (Exception e) {
+      call.reject("Return to Atlas to import a model");
+      return;
+    }
+    if (name == null || name.trim().isEmpty()) name = "Imported GGUF";
+    String transfer =
+        store().startImport(uri, name.substring(0, Math.min(120, name.length())), true);
+    call.resolve(new JSObject().put("transferId", transfer));
   }
 
   @PluginMethod

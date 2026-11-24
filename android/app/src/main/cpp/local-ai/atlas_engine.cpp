@@ -183,9 +183,10 @@ static std::string takeUtf8(std::string &pending) {
   pending.erase(0, complete);
   return result;
 }
-json Engine::generate(const json &messages, const Config &c,
-                      const std::function<void(const std::string &)> &emit,
-                      bool structured) {
+json Engine::generate(
+    const json &messages, const Config &c,
+    const std::function<void(const std::string &)> &emit, bool structured,
+    const std::function<void(const std::string &, double)> &stage) {
   std::lock_guard<std::mutex> guard(mutex_);
   check(model_ && context_, "No initialized model");
   check(!c.thinking ||
@@ -264,6 +265,8 @@ json Engine::generate(const json &messages, const Config &c,
   llama_memory_clear(llama_get_memory(context_), true);
   llama_set_n_threads(context_, c.threads, c.threads);
   llama_perf_context_reset(context_);
+  if (stage)
+    stage("promptProcessingStart", ms(start));
   const auto prefillStart = Clock::now();
   for (int i = 0; i < count; i += c.batch) {
     check(!canceled_, "Generation canceled");
@@ -273,6 +276,8 @@ json Engine::generate(const json &messages, const Config &c,
           canceled_ ? "Generation canceled" : "Prompt evaluation failed");
   }
   const double prefill = ms(prefillStart);
+  if (stage)
+    stage("promptProcessingEnd", ms(start));
   std::unique_ptr<llama_sampler, decltype(&llama_sampler_free)> sampler(
       llama_sampler_chain_init(llama_sampler_chain_default_params()),
       llama_sampler_free);
@@ -339,6 +344,8 @@ ws ::= | " " | "\n" [ \t]{0,20}
     }
     check(size >= 0, "Token conversion failed");
     generated++;
+    if (generated == 1 && stage)
+      stage("firstGeneratedToken", ms(start));
     pending.append(piece.data(), size);
     const auto delta = takeUtf8(pending);
     if (!delta.empty()) {
@@ -358,6 +365,8 @@ ws ::= | " " | "\n" [ \t]{0,20}
     }
   }
   const double generation = ms(generationStart);
+  if (stage)
+    stage(canceled_ ? "inferenceCanceled" : "generationComplete", ms(start));
   json metrics = {
       {"omittedMessages", omitted},
       {"promptTokens", count},

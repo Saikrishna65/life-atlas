@@ -24,7 +24,6 @@ export interface BenchmarkRun {
   at: string;
   runtime: string;
   device: string;
-  deviceDetails?:Record<string,unknown>;
   nativeDevice?: Record<string, unknown>;
   config: Partial<InferenceConfig>;
   modelHashes: Record<string, string>;
@@ -32,6 +31,8 @@ export interface BenchmarkRun {
     string,
     {
       loadMs: number;
+      loadWallMs?: number;
+      coldGenerationFirstTokenMs?: number | null;
       coldFirstTokenMs: number | null;
       warmFirstTokenMs: number | null;
     }
@@ -92,7 +93,6 @@ export async function runBenchmark(input: {
     at: new Date().toISOString(),
     runtime: status.engine,
     device: typeof navigator === "undefined" ? "unknown" : navigator.userAgent,
-    deviceDetails:status.device,
     config: input.config,
     nativeDevice: status.device,
     modelHashes: {},
@@ -113,12 +113,18 @@ export async function runBenchmark(input: {
       await AtlasNative.unload();
       await ModelStore.select({ id });
       await AtlasNative.configure({ options: input.config });
+      const coldStart = performance.now();
       await AtlasNative.loadModel();
+      const loadWallMs = performance.now() - coldStart;
+      let observedColdToken: number | null = null;
       // A real warm-up is excluded from ranked rows; its output never executes anything.
       const cold = await generateChat(
         [{ role: "user", content: "Reply briefly: hello." }],
         input.signal,
-        () => {},
+        () => {
+          if (observedColdToken === null)
+            observedColdToken = performance.now() - coldStart;
+        },
         input.config,
       );
       const warm = await generateChat(
@@ -129,7 +135,9 @@ export async function runBenchmark(input: {
       );
       run.initialization![id] = {
         loadMs: cold.metrics.loadMs,
-        coldFirstTokenMs: cold.metrics.firstTokenMs,
+        loadWallMs,
+        coldGenerationFirstTokenMs: cold.metrics.firstTokenMs,
+        coldFirstTokenMs: observedColdToken,
         warmFirstTokenMs: warm.metrics.firstTokenMs,
       };
       for (const c of input.cases) {
@@ -152,11 +160,13 @@ export async function runBenchmark(input: {
             sampling = true;
             void AtlasNative.runtimeStatus()
               .then((s) => {
-                row.peakPssBytes = Math.max(
-                  row.peakPssBytes ?? 0,
-                  s.processPssBytes ?? 0,
-                );
+                if (s.processPssBytes !== undefined)
+                  row.peakPssBytes = Math.max(
+                    row.peakPssBytes ?? 0,
+                    s.processPssBytes ?? row.peakPssBytes ?? 0,
+                  );
               })
+              .catch(() => {})
               .finally(() => {
                 sampling = false;
               });
@@ -231,7 +241,7 @@ export function weightedScore(
     if (w === 0) continue;
     total += w;
     const value = scores[key];
-    if (value === null) {
+    if (value === null || value === undefined) {
       missing++;
       continue;
     }
@@ -249,10 +259,20 @@ export function weightedScore(
 export function csv(run: BenchmarkRun): string {
   const escape = (v: unknown) => {
     const s = String(v ?? "");
-    return '"' + (/^[=+@\-]/.test(s) ? "'" + s : s).replaceAll('"', '""') + '"';
+    return (
+      '"' +
+      (/^[\t\r\n ]*[=+@\-]/.test(s) ? "'" + s : s).replaceAll('"', '""') +
+      '"'
+    );
   };
   return [
     [
+      "runtime",
+      "model_sha256",
+      "device",
+      "configuration",
+      "run_id",
+      "timestamp",
       "model",
       "case",
       "repetition",
@@ -260,12 +280,23 @@ export function csv(run: BenchmarkRun): string {
       "manual_1_to_5",
       "first_token_ms",
       "tokens_per_second",
+      "prompt_tokens_per_second",
+      "prompt_ms",
+      "generation_ms",
+      "first_sentence_estimate_ms",
+      "initialization",
       "total_ms",
       "peak_pss_bytes",
       "response",
       "error",
     ],
     ...run.rows.map((r) => [
+      run.runtime,
+      run.modelHashes?.[r.modelId],
+      JSON.stringify(run.nativeDevice ?? run.device),
+      JSON.stringify(run.config),
+      run.id,
+      run.at,
       r.modelId,
       r.caseId,
       r.repetition,
@@ -273,6 +304,11 @@ export function csv(run: BenchmarkRun): string {
       r.manualRating,
       r.result?.metrics.firstTokenMs,
       r.result?.metrics.tokensPerSecond,
+      r.result?.metrics.promptTokensPerSecond,
+      r.result?.metrics.promptMs,
+      r.result?.metrics.generationMs,
+      r.result?.metrics.firstSentenceMs,
+      JSON.stringify(run.initialization?.[r.modelId]),
       r.result?.metrics.totalMs,
       r.peakPssBytes,
       r.response,

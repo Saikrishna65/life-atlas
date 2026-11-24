@@ -13,8 +13,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         ndk { abiFilters 'arm64-v8a', 'x86_64' }
         externalNativeBuild { cmake { arguments '-DANDROID_STL=c++_shared', '-DGGML_NATIVE=OFF', '-DANDROID_PLATFORM=android-26', '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON'; cppFlags '-std=c++17' } }
-        versionCode 48
-        versionName "2.4.0"
+        versionCode 49
+        versionName "2.4.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

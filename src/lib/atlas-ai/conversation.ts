@@ -1,8 +1,9 @@
+import { deviceIsLocked } from "./native";
 import { executeRegisteredAction } from "./action-registry";
 import type { AtlasSection, LocalAdapter } from "./gateway";
 import {
   appendSessionTurn,
-  getOrCreateSessionMemory,
+  getPrivacyScopedSessionMemory,
   savePersistentMemory,
   summarizeSessionMemory,
   type PersistentMemoryItem,
@@ -148,7 +149,8 @@ function isNegative(lower: string): boolean {
 }
 
 export async function runConversationTurn(input: ConversationTurnInput): Promise<ConversationTurnOutput> {
-  const session: SessionMemory = getOrCreateSessionMemory(input.sessionId);
+  input = { ...input, isLocked: input.isLocked || await deviceIsLocked() };
+  const session: SessionMemory = getPrivacyScopedSessionMemory(input.sessionId, input.isLocked);
   const personality = input.personality ?? loadPersonalityConfig();
   const raw = input.transcript.trim();
   const lower = raw.toLowerCase();

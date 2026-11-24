@@ -1,3 +1,4 @@
+import { deviceIsLocked } from "./native";
 import {
   parseAction,
   permissionFor,
@@ -342,7 +343,7 @@ export async function executeRegisteredAction<T = unknown>(options: {
 
   const policy = evaluateActionPolicy({
     actionId: action.kind,
-    isLocked: options.isLocked,
+    isLocked: options.isLocked || (await deviceIsLocked()),
     explicitlyConfirmed: options.explicitlyConfirmed,
   });
 

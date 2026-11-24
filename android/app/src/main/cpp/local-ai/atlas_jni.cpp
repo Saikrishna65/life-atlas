@@ -66,7 +66,18 @@ Java_com_lifeatlas_app_ai_AtlasLlamaNative_generate(JNIEnv *env, jclass,
             throw std::runtime_error("Token listener failed");
           }
         },
-        structured);
+        structured,
+        [&](const std::string &name, double atMs) {
+          auto event =
+              jsonString(env, atlas::json{{"stage", name}, {"atMs", atMs}});
+          env->CallVoidMethod(sink, method, event);
+          env->DeleteLocalRef(event);
+          if (env->ExceptionCheck()) {
+            engine.cancel();
+            env->ExceptionClear();
+            throw std::runtime_error("Stage listener failed");
+          }
+        });
     env->DeleteLocalRef(cls);
     return jsonString(env, result);
   } catch (const std::exception &e) {

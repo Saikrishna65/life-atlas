@@ -3,6 +3,8 @@ package com.lifeatlas.app.wakeword.voice
 import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
@@ -15,6 +17,7 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
+import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
 import com.lifeatlas.app.MainActivity
 import com.lifeatlas.app.R
@@ -238,6 +241,44 @@ class AtlasVoiceCoordinator(
     var greetOnWake: Boolean = true
     private var jsReplyTimeoutRunnable: Runnable? = null
     private val nativeTurns = mutableListOf<Pair<String, String>>()
+    @Volatile private var voiceTrace = com.lifeatlas.app.ai.AtlasVoiceLatencyTrace(0.0)
+    private var turnStartedLocked = true
+    private var privacyReceiverRegistered = false
+
+    private fun lockedNow(): Boolean =
+        (context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)?.isKeyguardLocked ?: true
+
+    private fun guardTurnPrivacy(): Boolean {
+        if (!turnStartedLocked && lockedNow()) {
+            nativeTurns.clear()
+            if (currentSessionId != null) {
+                endSessionInternal(true, "Device locked; previous context discarded")
+            }
+            return false
+        }
+        return true
+    }
+
+    private val privacyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) mainHandler.post {
+                nativeTurns.clear()
+                if (currentSessionId != null && !turnStartedLocked) {
+                    endSessionInternal(true, "Screen off; unlocked context discarded")
+                }
+            }
+        }
+    }
+
+    init {
+        runCatching {
+            ContextCompat.registerReceiver(
+                context, privacyReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF),
+                ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+            privacyReceiverRegistered = true
+        }
+    }
 
     // Monotonic pipeline latency markers (elapsedRealtime ms)
     private var wakeDetectedAtMs = 0L
@@ -261,6 +302,7 @@ class AtlasVoiceCoordinator(
         .put("transcriptToAiResponseMs", transcriptToAiResponseMs)
         .put("aiResponseToFirstAudioMs", aiResponseToFirstAudioMs)
         .put("sessionEndToWakeMs", sessionEndToWakeMs)
+        .put("pipeline", voiceTrace.snapshot())
         .put("updatedAt", System.currentTimeMillis())
 
     private fun emitLatencyMetrics() {
@@ -290,8 +332,9 @@ class AtlasVoiceCoordinator(
         mainHandler.post {
             cancelTimers()
             speechManager.stop()
-            ttsManager.stop()
+            com.lifeatlas.app.ai.AtlasInferenceRuntime.get(context).cancel("voice:$currentSessionId:$currentTurnId")
             currentSessionId = null
+            ttsManager.stop()
             currentTurnId = null
             pendingEndSession = false
             nativeTurns.clear()
@@ -432,7 +475,7 @@ class AtlasVoiceCoordinator(
 
     fun submitJsReply(sessionId: String, turnId: String, replyText: String, endSession: Boolean) {
         mainHandler.post {
-            if (currentSessionId != sessionId || currentTurnId != turnId) {
+            if (currentSessionId != sessionId || currentTurnId != turnId || !guardTurnPrivacy()) {
                 Log.w(TAG, "Discarding stale JS voice reply (expected=$currentSessionId/$currentTurnId, got=$sessionId/$turnId)")
                 return@post
             }
@@ -443,6 +486,7 @@ class AtlasVoiceCoordinator(
     }
 
     fun releaseResources() {
+        if(privacyReceiverRegistered){runCatching{context.unregisterReceiver(privacyReceiver)};privacyReceiverRegistered=false}
         mainHandler.post {
             cancelTimers()
             speechManager.stop()
@@ -484,6 +528,7 @@ class AtlasVoiceCoordinator(
             listener = object : AtlasVoiceSpeechManager.Listener {
                 override fun onReadyForSpeech() {
                     if (currentSessionId != sessionId) return
+                    if(isFollowUp){voiceTrace.mark("followUpListeningStart",SystemClock.elapsedRealtime().toDouble(),"recognizerCallback");emitLatencyMetrics()}
                     if (googleHandoff && !isFollowUp && !googleCuePlayed) {
                         handoffReadyTimeout?.let { mainHandler.removeCallbacks(it) }
                         handoffReadyTimeout = null
@@ -556,6 +601,10 @@ class AtlasVoiceCoordinator(
     }
 
     private fun handleRecognizedTranscript(sessionId: String, transcript: String, isFollowUp: Boolean) {
+        voiceTrace = com.lifeatlas.app.ai.AtlasVoiceLatencyTrace(transcriptFinalAtMs.toDouble())
+        voiceTrace.mark("recognitionComplete", transcriptFinalAtMs.toDouble(), "recognizerCallback")
+        voiceTrace.mark("routerEntry", SystemClock.elapsedRealtime().toDouble(), "application")
+
         val normalized = transcript.trim().lowercase(Locale.ROOT)
         if (isExplicitStopPhrase(normalized)) {
             pendingEndSession = true
@@ -563,10 +612,12 @@ class AtlasVoiceCoordinator(
             return
         }
 
-        transitionTo(State.THINKING, "Processing: \"$transcript\"")
+        transitionTo(State.THINKING, "Processing speech")
 
         val km = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-        val isLocked = km?.isKeyguardLocked ?: false
+        val isLocked = km?.isKeyguardLocked ?: true
+        turnStartedLocked = isLocked
+        if (isLocked) nativeTurns.clear()
 
         val turnId = UUID.randomUUID().toString()
         currentTurnId = turnId
@@ -612,8 +663,10 @@ class AtlasVoiceCoordinator(
         }
 
         transitionTo(State.SPEAKING, clean)
+        voiceTrace.mark("ttsEnqueue",SystemClock.elapsedRealtime().toDouble(),"application")
         ttsManager.speak(clean, object : AtlasVoiceTtsManager.Listener {
             override fun onSpeakStarted() {
+                voiceTrace.mark("ttsPlaybackStart",SystemClock.elapsedRealtime().toDouble(),"ttsCallback")
                 if (aiResponseReadyAtMs > 0L) {
                     aiResponseToFirstAudioMs = SystemClock.elapsedRealtime() - aiResponseReadyAtMs
                     emitLatencyMetrics()
@@ -622,6 +675,7 @@ class AtlasVoiceCoordinator(
 
             override fun onSpeakCompleted() {
                 if (currentSessionId != sessionId) return
+                voiceTrace.mark("ttsComplete",SystemClock.elapsedRealtime().toDouble(),"ttsCallback")
                 if (pendingEndSession) {
                     endSessionInternal(resumeWakeWord = true, reason = "Session completed")
                 } else {
@@ -727,12 +781,13 @@ class AtlasVoiceCoordinator(
             // records are retrieved here; background LLM chat cannot execute tool proposals.
             val messages = org.json.JSONArray().put(org.json.JSONObject().put("role", "system").put("content",
                 buildPersonalityPrompt(secureStore.getPersonality()) + " Reply naturally in one or two short English sentences. Never output thinking, JSON or code. Do not claim to have performed actions. You have no vault access in this conversation. For actions not already handled, ask the user to open Atlas. /no_think"))
+            val trace = voiceTrace
             val gate = com.lifeatlas.app.ai.AtlasSpeechGate()
             val sentences = java.util.ArrayDeque<String>()
             var speaking = false
             var complete = false
             var spoke = false
-            fun active() = currentSessionId == sessionId && currentTurnId == turnId
+            fun active() = currentSessionId == sessionId && currentTurnId == turnId && guardTurnPrivacy()
             lateinit var drain: () -> Unit
             drain = {
                 if (active() && !speaking) {
@@ -740,9 +795,10 @@ class AtlasVoiceCoordinator(
                         val sentence = sentences.removeFirst()
                         speaking = true; spoke = true
                         transitionTo(State.SPEAKING, sentence)
+                        trace.mark("ttsEnqueue",SystemClock.elapsedRealtime().toDouble(),"application")
                         ttsManager.speak(sentence, object: AtlasVoiceTtsManager.Listener {
-                            override fun onSpeakStarted() { }
-                            override fun onSpeakCompleted() { mainHandler.post { if(active()){speaking=false;drain()} } }
+                            override fun onSpeakStarted() { trace.mark("ttsPlaybackStart",SystemClock.elapsedRealtime().toDouble(),"ttsCallback");emitLatencyMetrics() }
+                            override fun onSpeakCompleted() { trace.mark("ttsComplete",SystemClock.elapsedRealtime().toDouble(),"ttsCallback");mainHandler.post { if(active()){speaking=false;drain()} } }
                             override fun onSpeakError(message:String) { local.cancel("voice:$sessionId:$turnId");mainHandler.post { if(active()){speaking=false;sentences.clear();complete=true;drain()} } }
                         })
                     } else if (complete) {
@@ -753,15 +809,36 @@ class AtlasVoiceCoordinator(
             }
             val localHistory = if(isLocked) listOf("user" to transcript) else nativeTurns.toList().takeLast(6)
             for ((role,text) in localHistory) messages.put(org.json.JSONObject().put("role",role).put("content",text.take(1600)))
-            local.generate("voice:$sessionId:$turnId", messages, org.json.JSONObject().put("maxTokens",96).put("thinking",false), false) { token ->
-                val ready=gate.append(token,false)
-                mainHandler.post { if(active()){sentences.addAll(ready);drain()} }
-            }.whenComplete { response,failure ->
-                val tail=if(failure==null)gate.append("",true) else emptyList()
+            local.generate(
+                "voice:$sessionId:$turnId", messages,
+                org.json.JSONObject().put("maxTokens", 96).put("thinking", false), false,
+                object : com.lifeatlas.app.ai.AtlasInferenceRuntime.Stream {
+                    override fun stage(name: String, atMs: Double) {
+                        trace.mark(name, atMs, "nativeInstrumentation")
+                    }
+                    override fun token(token: String) {
+                        val ready = gate.append(token, false)
+                        if (ready.isNotEmpty()) {
+                            trace.mark("firstSpeakableSentence", SystemClock.elapsedRealtime().toDouble(), "sentenceGate")
+                        }
+                        mainHandler.post {
+                            if (active()) {
+                                sentences.addAll(ready)
+                                drain()
+                            }
+                        }
+                    }
+                }
+            ).whenComplete { response, failure ->
+                val tail = if (failure == null) gate.append("", true) else emptyList()
+                if (tail.isNotEmpty()) {
+                    trace.mark("firstSpeakableSentence", SystemClock.elapsedRealtime().toDouble(), "sentenceGate")
+                }
                 mainHandler.post {
-                    if(active()){
-                        complete=true;sentences.addAll(tail)
-                        if(failure==null)recordNativeTurn("assistant",response.optString("text"))
+                    if (active()) {
+                        complete = true
+                        sentences.addAll(tail)
+                        if (failure == null) recordNativeTurn("assistant", response.optString("text"))
                         drain()
                     }
                 }
@@ -781,7 +858,8 @@ class AtlasVoiceCoordinator(
                     turns = historySnapshot
                 )
                 mainHandler.post {
-                    if (currentSessionId != sessionId || currentTurnId != turnId) return@post
+                    if (currentSessionId != sessionId || currentTurnId != turnId || !guardTurnPrivacy()) return@post
+                    if (!secureStore.getCloudCredentialsInternal().first) return@post
                     if (!cloudAnswer.isNullOrBlank()) {
                         recordNativeTurn("assistant", cloudAnswer)
                         pendingEndSession = false
