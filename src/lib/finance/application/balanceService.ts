@@ -1,16 +1,17 @@
 /**
  * Life Atlas Finance: Balance & Reporting Application Service
- * 
+ *
  * Computes deterministic account balances, net worth, cash flow reports,
  * category spending breakdowns, and cash flow trend timelines.
  */
 
 import { IUnitOfWork } from "../storage/interfaces";
-import { ID, Paise } from "../domain/models";
+import { ID, Paise, FinanceAccount, Transaction } from "../domain/models";
 import {
   computeAccountBalances,
   calculateNetWorthPaise,
   computeCashFlow,
+  realizedCashMovement,
   AccountBalanceComputation,
   CashFlowSummary,
 } from "../domain/ledger";
@@ -35,6 +36,29 @@ export interface CashFlowTimelinePoint {
   netPaise: Paise;
 }
 
+/** Cached balances are derived data; reporting never trusts a possibly interrupted older write. */
+export async function readPostedAccounts(
+  uow: IUnitOfWork,
+): Promise<FinanceAccount[]> {
+  const [accounts, transactions] = await Promise.all([
+    uow.accounts.getAll("active"),
+    uow.transactions.query({}),
+  ]);
+  const groups = new Map<string, Transaction[]>();
+  for (const row of transactions) {
+    const group = groups.get(row.accountId) || [];
+    group.push(row);
+    groups.set(row.accountId, group);
+  }
+  return accounts.map((account) => ({
+    ...account,
+    currentBalancePaise: computeAccountBalances(
+      account,
+      groups.get(account.id) || [],
+    ).postedBalancePaise,
+  }));
+}
+
 export class BalanceService {
   constructor(private uow: IUnitOfWork) {}
 
@@ -44,7 +68,10 @@ export class BalanceService {
   async getAccountBalances(accountId: ID): Promise<AccountBalanceComputation> {
     const account = await this.uow.accounts.getById(accountId);
     if (!account) {
-      throw new FinanceError(`Account ${accountId} not found`, "INVALID_ACCOUNT");
+      throw new FinanceError(
+        `Account ${accountId} not found`,
+        "INVALID_ACCOUNT",
+      );
     }
 
     const txns = await this.uow.transactions.query({ accountId });
@@ -60,54 +87,66 @@ export class BalanceService {
     totalLiabilitiesPaise: Paise;
     netWorthPaise: Paise;
   }> {
-    const accounts = await this.uow.accounts.getAll("active");
-    return calculateNetWorthPaise(accounts);
+    const accounts = await readPostedAccounts(this.uow);
+    return calculateNetWorthPaise(accounts.filter((a) => a.currency === "INR"));
   }
 
   /**
    * Computes realized cash flow metrics for a given date range
    * Transfers between user accounts are strictly excluded from income and expenses.
    */
-  async getCashFlow(startDate: string, endDate: string): Promise<CashFlowSummary> {
+  async getCashFlow(
+    startDate: string,
+    endDate: string,
+  ): Promise<CashFlowSummary> {
     const [txns, categories] = await Promise.all([
       this.uow.transactions.query({ startDate, endDate }),
       this.uow.categories.getAll(),
     ]);
 
     const transferCategoryIds = new Set(
-      categories.filter((c) => c.type === "transfer").map((c) => c.id)
+      categories.filter((c) => c.type === "transfer").map((c) => c.id),
     );
 
-    return computeCashFlow(txns, transferCategoryIds);
+    return computeCashFlow(
+      txns.filter((t) => t.currency === "INR"),
+      transferCategoryIds,
+    );
   }
 
   /**
    * Computes spending breakdown grouped by category for a period
    * Transfers and reversed transactions are strictly excluded.
    */
-  async getCategorySpendingBreakdown(startDate: string, endDate: string): Promise<CategorySpendingItem[]> {
+  async getCategorySpendingBreakdown(
+    startDate: string,
+    endDate: string,
+  ): Promise<CategorySpendingItem[]> {
     const [txns, categories] = await Promise.all([
-      this.uow.transactions.query({ startDate, endDate, status: "posted", direction: "outflow" }),
+      this.uow.transactions.query({ startDate, endDate, status: "posted" }),
       this.uow.categories.getAll(),
     ]);
 
     const catMap = new Map(categories.map((c) => [c.id, c]));
     const transferCategoryIds = new Set(
-      categories.filter((c) => c.type === "transfer").map((c) => c.id)
+      categories.filter((c) => c.type === "transfer").map((c) => c.id),
     );
 
     const spendMap = new Map<ID, Paise>();
     let totalSpend = 0;
 
     for (const txn of txns) {
+      if (txn.currency !== "INR") continue;
       if (txn.status === "reversed") continue;
       if (txn.transferGroupId) continue; // Exclude transfers
       if (txn.categoryId && transferCategoryIds.has(txn.categoryId)) continue;
 
+      const expense = realizedCashMovement(txn, transferCategoryIds).expense;
+      if (!expense) continue;
       const catId = txn.categoryId || "cat_uncategorized";
       const current = spendMap.get(catId) || 0;
-      spendMap.set(catId, addPaise(current, txn.amountPaise));
-      totalSpend = addPaise(totalSpend, txn.amountPaise);
+      spendMap.set(catId, addPaise(current, expense));
+      totalSpend = addPaise(totalSpend, expense);
     }
 
     const items: CategorySpendingItem[] = [];
@@ -117,7 +156,8 @@ export class BalanceService {
       const name = cat?.name || "Uncategorized";
       const color = cat?.color || "#94A3B8";
       const icon = cat?.icon || "MoreHorizontal";
-      const percentage = totalSpend > 0 ? Math.round((amount / totalSpend) * 100) : 0;
+      const percentage =
+        totalSpend > 0 ? Math.round((amount / totalSpend) * 100) : 0;
 
       items.push({
         categoryId: catId,
@@ -137,20 +177,24 @@ export class BalanceService {
   /**
    * Computes income vs expense timeline aggregated by day or month across the selected date range
    */
-  async getCashFlowTimeline(startDate: string, endDate: string): Promise<CashFlowTimelinePoint[]> {
+  async getCashFlowTimeline(
+    startDate: string,
+    endDate: string,
+  ): Promise<CashFlowTimelinePoint[]> {
     const [txns, categories] = await Promise.all([
       this.uow.transactions.query({ startDate, endDate, status: "posted" }),
       this.uow.categories.getAll(),
     ]);
 
     const transferCategoryIds = new Set(
-      categories.filter((c) => c.type === "transfer").map((c) => c.id)
+      categories.filter((c) => c.type === "transfer").map((c) => c.id),
     );
 
     // Group by YYYY-MM-DD
     const pointMap = new Map<string, { income: Paise; expense: Paise }>();
 
     for (const txn of txns) {
+      if (txn.currency !== "INR") continue;
       if (txn.status === "reversed") continue;
       if (txn.transferGroupId) continue;
       if (txn.categoryId && transferCategoryIds.has(txn.categoryId)) continue;
@@ -158,11 +202,9 @@ export class BalanceService {
       const dateKey = localFinanceDateKey(txn.occurredAt);
       const entry = pointMap.get(dateKey) || { income: 0, expense: 0 };
 
-      if (txn.direction === "inflow") {
-        entry.income = addPaise(entry.income, txn.amountPaise);
-      } else {
-        entry.expense = addPaise(entry.expense, txn.amountPaise);
-      }
+      const movement = realizedCashMovement(txn, transferCategoryIds);
+      entry.income = addPaise(entry.income, movement.income);
+      entry.expense = addPaise(entry.expense, movement.expense);
 
       pointMap.set(dateKey, entry);
     }
@@ -172,7 +214,10 @@ export class BalanceService {
       const val = pointMap.get(k)!;
       // Format readable date label (e.g. "Oct 24")
       const parsed = new Date(`${k}T12:00:00`);
-      const label = parsed.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const label = parsed.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
 
       return {
         dateKey: k,

@@ -1,3 +1,4 @@
+import { realizedCashMovement } from "../domain/ledger";
 /**
  * Life Atlas Finance: Budget-Aware Forecasting & Scenario Service
  * 
@@ -6,7 +7,7 @@
  */
 
 import { IUnitOfWork } from "../storage/interfaces";
-import { CategoryBudgetProjection, ScenarioPlanOptions, Paise } from "../domain/models";
+import { CategoryBudgetProjection } from "../domain/models";
 
 export class BudgetProjectionService {
   constructor(private readonly uow: IUnitOfWork) {}
@@ -49,14 +50,14 @@ export class BudgetProjectionService {
     const spentByCategory = new Map<string, number>();
     for (const t of txns) {
       if (
-        t.direction === "outflow" &&
+        t.currency === "INR" && (t.direction === "outflow" || t.paymentKind === "refund") &&
         t.categoryId &&
         t.categoryId !== "cat_transfer" &&
         !t.transferGroupId &&
         t.status !== "reversed"
       ) {
         const cur = spentByCategory.get(t.categoryId) || 0;
-        spentByCategory.set(t.categoryId, cur + t.amountPaise);
+        spentByCategory.set(t.categoryId, cur + realizedCashMovement(t).expense);
       }
     }
 

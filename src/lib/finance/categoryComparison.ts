@@ -1,3 +1,4 @@
+import { realizedCashMovement } from "./domain/ledger";
 import type { FinanceCategory,Transaction } from './domain/models';
 import {currentFinanceWeek} from './calendar';
 export type CategoryPeriod='week'|'month'|'year';
@@ -14,12 +15,13 @@ export function categoryPeriodBounds(period:CategoryPeriod,now=new Date()){
 export interface CategoryComparison {id:string;name:string;currentPaise:number;previousPaise:number;matchedPaise:number;count:number;trend:number[];budgetPaise?:number;share:number;changePercent:number|null;}
 /** Current totals, previous full totals, and a fair same-elapsed-time change. */
 export function categoryComparisons(transactions:Transaction[],categories:FinanceCategory[],period:CategoryPeriod,now=new Date()):CategoryComparison[]{
- const range=categoryPeriodBounds(period,now),categoryMap=new Map(categories.map(c=>[c.id,c]));
+ const range=categoryPeriodBounds(period,now);
+ const transfers = new Set(categories.filter(c=>c.type==='transfer').map(c=>c.id));
  const slots=period==='week'?7:period==='year'?12:8;
  const map=new Map<string,CategoryComparison>(categories.filter(c=>c.type==='expense').map(c=>[c.id,{id:c.id,name:c.name,currentPaise:0,previousPaise:0,matchedPaise:0,count:0,trend:Array(slots).fill(0),budgetPaise:period==='month'?c.budgetAmountPaise:undefined,share:0,changePercent:null}]));
- for(const t of transactions){if(t.status!=='posted'||t.direction!=='outflow'||t.transferGroupId||categoryMap.get(t.categoryId||'')?.type==='transfer')continue;const time=Date.parse(t.occurredAt);if(!Number.isFinite(time)||time<range.previousStart.getTime()||time>now.getTime())continue;const id=map.has(t.categoryId||'')?t.categoryId!:'__uncategorized';if(!map.has(id))map.set(id,{id,name:'Uncategorized',currentPaise:0,previousPaise:0,matchedPaise:0,count:0,trend:Array(slots).fill(0),share:0,changePercent:null});const row=map.get(id)!;
- if(time>=range.start.getTime()){row.currentPaise+=t.amountPaise;row.count++;const date=new Date(time);const index=period==='week'?(date.getDay()+6)%7:period==='year'?date.getMonth():Math.min(7,Math.floor((date.getDate()-1)/new Date(date.getFullYear(),date.getMonth()+1,0).getDate()*8));row.trend[index]+=t.amountPaise;}
- else {row.previousPaise+=t.amountPaise;if(time<=range.matchedEnd.getTime())row.matchedPaise+=t.amountPaise;}}
+ for(const t of transactions){const amount=realizedCashMovement(t,transfers).expense;if(!amount)continue;const time=Date.parse(t.occurredAt);if(!Number.isFinite(time)||time<range.previousStart.getTime()||time>now.getTime())continue;const id=map.has(t.categoryId||'')?t.categoryId!:'__uncategorized';if(!map.has(id))map.set(id,{id,name:'Uncategorized',currentPaise:0,previousPaise:0,matchedPaise:0,count:0,trend:Array(slots).fill(0),share:0,changePercent:null});const row=map.get(id)!;
+ if(time>=range.start.getTime()){row.currentPaise+=amount;row.count++;const date=new Date(time);const index=period==='week'?(date.getDay()+6)%7:period==='year'?date.getMonth():Math.min(7,Math.floor((date.getDate()-1)/new Date(date.getFullYear(),date.getMonth()+1,0).getDate()*8));row.trend[index]+=amount;}
+ else {row.previousPaise+=amount;if(time<=range.matchedEnd.getTime())row.matchedPaise+=amount;}}
  const total=[...map.values()].reduce((sum,c)=>sum+c.currentPaise,0);
- return [...map.values()].map(c=>({...c,share:total?c.currentPaise/total*100:0,changePercent:c.matchedPaise?Math.round((c.currentPaise-c.matchedPaise)/c.matchedPaise*100):c.currentPaise?null:0})).sort((a,b)=>b.currentPaise-a.currentPaise||b.previousPaise-a.previousPaise||a.name.localeCompare(b.name));
+ return [...map.values()].map(c=>({...c,share:total>0?Math.max(0,c.currentPaise/total*100):0,changePercent:c.matchedPaise?Math.round((c.currentPaise-c.matchedPaise)/c.matchedPaise*100):c.currentPaise?null:0})).sort((a,b)=>b.currentPaise-a.currentPaise||b.previousPaise-a.previousPaise||a.name.localeCompare(b.name));
 }

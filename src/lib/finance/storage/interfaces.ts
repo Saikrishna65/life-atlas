@@ -1,6 +1,6 @@
 /**
  * Life Atlas Finance: Storage & Repository Interfaces
- * 
+ *
  * Defines persistence contracts so domain and application services remain strictly decoupled
  * from IndexedDB, native SQLite, or cloud backends.
  */
@@ -52,7 +52,10 @@ export interface IFinanceAccountRepository {
 }
 
 export interface ITransactionRepository {
-  saveIfVersion?(transaction: Transaction, expectedVersion: number): Promise<boolean>;
+  saveIfVersion?(
+    transaction: Transaction,
+    expectedVersion: number,
+  ): Promise<boolean>;
   getById(id: ID): Promise<Transaction | null>;
   getByExternalId(externalId: string): Promise<Transaction | null>;
   getByTransferGroupId(transferGroupId: ID): Promise<Transaction[]>;
@@ -120,7 +123,11 @@ export interface ISyncOutboxRepository {
   claimPending(claimToken: string, limit?: number): Promise<SyncOperation[]>;
   markSynced(id: ID): Promise<void>;
   markFailed(id: ID, error: string): Promise<void>;
-  markFailedRetryable(id: ID, error: string, nextRetryAt: string): Promise<void>;
+  markFailedRetryable(
+    id: ID,
+    error: string,
+    nextRetryAt: string,
+  ): Promise<void>;
   markFailedPermanent(id: ID, error: string): Promise<void>;
   releaseStaleClaims(timeoutMs?: number): Promise<number>;
   retryFailed(): Promise<number>;
@@ -131,14 +138,30 @@ export interface ISyncConflictRepository {
   getById(id: ID): Promise<SyncConflict | null>;
   getAll(unresolvedOnly?: boolean): Promise<SyncConflict[]>;
   save(conflict: SyncConflict): Promise<void>;
-  resolve(id: ID, resolution: ConflictResolutionType, resolvedPayloadJson?: string): Promise<void>;
+  resolve(
+    id: ID,
+    resolution: ConflictResolutionType,
+    resolvedPayloadJson?: string,
+  ): Promise<void>;
   delete(id: ID): Promise<void>;
 }
 
 /**
  * Unit of Work interface for atomic transactional persistence operations
  */
+export interface LedgerChange {
+  transactions: Array<{
+    before: Transaction | null;
+    after: Transaction | null;
+  }>;
+  pockets: Array<{ before: SavingsGoal; after: SavingsGoal }>;
+  audit: AuditEvent[];
+  outbox: SyncOperation[];
+}
+
 export interface IUnitOfWork {
+  commitLedgerChange(change: LedgerChange): Promise<void>;
+  readDashboardRecords(): Promise<FinanceDashboardRecords>;
   accounts: IFinanceAccountRepository;
   transactions: ITransactionRepository;
   categories: IFinanceCategoryRepository;
@@ -156,3 +179,11 @@ export interface IUnitOfWork {
   runInTransaction<T>(work: () => Promise<T>): Promise<T>;
 }
 
+export interface FinanceDashboardRecords {
+  accounts: FinanceAccount[];
+  transactions: Transaction[];
+  categories: FinanceCategory[];
+  pockets: SavingsGoal[];
+  rules: RecurringRule[];
+  pendingOutboxCount: number;
+}

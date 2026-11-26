@@ -1,3 +1,5 @@
+import { readPostedAccounts } from "./balanceService";
+import { computeCashFlow } from "../domain/ledger";
 /**
  * Life Atlas Finance: Financial Runway & Affordability Service
  * 
@@ -14,7 +16,6 @@ import { IUnitOfWork } from "../storage/interfaces";
 import {
   RunwayEstimate,
   Paise,
-  UpcomingObligation,
 } from "../domain/models";
 import { ForecastService } from "./forecastService";
 
@@ -42,7 +43,7 @@ export class RunwayService {
     reserveThresholdPaise: Paise = 1000000 // default buffer: ₹10,000 (1000000 paise)
   ): Promise<RunwayEstimate> {
     const now = new Date();
-    const accounts = await this.uow.accounts.getAll("active");
+    const accounts = await readPostedAccounts(this.uow);
 
     // 1. Calculate Spendable Liquid Assets (bank + cash only; strictly positive)
     const liquidAccounts = accounts.filter(
@@ -51,7 +52,7 @@ export class RunwayService {
 
     let currentLiquidAssetsPaise: Paise = 0;
     for (const acc of liquidAccounts) {
-      if (acc.currentBalancePaise > 0) {
+      if (acc.currency === "INR") {
         currentLiquidAssetsPaise += acc.currentBalancePaise;
       }
     }
@@ -72,13 +73,11 @@ export class RunwayService {
       (t) => !t.transferGroupId && t.categoryId !== "cat_transfer" && t.status !== "reversed"
     );
 
-    const pastInflowPaise = nonTransferTxns
-      .filter((t) => t.direction === "inflow")
-      .reduce((sum, t) => sum + t.amountPaise, 0);
-
-    const pastOutflowPaise = nonTransferTxns
-      .filter((t) => t.direction === "outflow")
-      .reduce((sum, t) => sum + t.amountPaise, 0);
+    const categories = await this.uow.categories.getAll();
+    const transfers = new Set(categories.filter(c=>c.type==="transfer").map(c=>c.id));
+    const cashFlow = computeCashFlow(nonTransferTxns.filter(t=>t.currency==="INR"),transfers);
+    const pastInflowPaise = cashFlow.totalIncomePaise;
+    const pastOutflowPaise = Math.max(0,cashFlow.totalExpensesPaise);
 
     // Also factor in confirmed recurring commitments
     const confirmedRules = await this.uow.recurringRules.getAll("confirmed");
@@ -86,6 +85,7 @@ export class RunwayService {
     let monthlyRecurringInflow = 0;
 
     for (const rule of confirmedRules) {
+      if (rule.currency !== "INR") continue;
       const monthlyEquiv = this.convertToMonthlyPaise(rule.amountPaise, rule.frequency);
       if (rule.direction === "outflow") {
         monthlyRecurringOutflow += monthlyEquiv;

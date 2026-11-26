@@ -259,6 +259,13 @@ export function validateTransferLegs(
  * Transfers between user accounts (transactions with transferGroupId or category type 'transfer')
  * are strictly EXCLUDED from both Income and Expense!
  */
+/** Refunds reduce spending; own-account transfers and pending entries are not earnings. */
+export function realizedCashMovement(txn: Transaction, transferCategoryIds: Set<string> = new Set()): {income: Paise; expense: Paise} {
+  if (txn.status !== "posted" || txn.transferGroupId || (txn.categoryId && transferCategoryIds.has(txn.categoryId))) return {income:0,expense:0};
+  if (txn.direction === "outflow") return {income:0,expense:txn.amountPaise};
+  return txn.paymentKind === "refund" ? {income:0,expense:-txn.amountPaise} : {income:txn.amountPaise,expense:0};
+}
+
 export interface CashFlowSummary {
   totalIncomePaise: Paise;
   totalExpensesPaise: Paise;
@@ -274,21 +281,9 @@ export function computeCashFlow(
   let totalExpenses = 0;
 
   for (const txn of transactions) {
-    // 1. Skip reversed transactions
-    if (txn.status === "reversed") continue;
-
-    // 2. Skip pending transactions for realized cashflow (posted only)
-    if (txn.status !== "posted") continue;
-
-    // 3. Rule 1: Exclude internal transfers!
-    if (txn.transferGroupId) continue;
-    if (txn.categoryId && transferCategoryIds.has(txn.categoryId)) continue;
-
-    if (txn.direction === "inflow") {
-      totalIncome = addPaise(totalIncome, txn.amountPaise);
-    } else {
-      totalExpenses = addPaise(totalExpenses, txn.amountPaise);
-    }
+    const movement = realizedCashMovement(txn, transferCategoryIds);
+    totalIncome = addPaise(totalIncome, movement.income);
+    totalExpenses = addPaise(totalExpenses, movement.expense);
   }
 
   const netCashFlow = subtractPaise(totalIncome, totalExpenses);
@@ -325,7 +320,7 @@ export function generateTransactionFingerprint(txn: {
   }
 
   // Otherwise, normalize occurredAt to YYYY-MM-DD date boundary to catch same-day duplicate entries
-  const dateStr = txn.occurredAt.split("T")[0];
+  const dateStr = new Date(txn.occurredAt).toISOString().slice(0,10);
   const normalizedDesc = txn.description.trim().toLowerCase().replace(/\s+/g, " ");
 
   return `fp:${txn.accountId}:${dateStr}:${txn.amountPaise}:${txn.direction}:${normalizedDesc}`;

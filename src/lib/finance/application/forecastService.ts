@@ -1,3 +1,5 @@
+import { readPostedAccounts } from "./balanceService";
+import { realizedCashMovement } from "../domain/ledger";
 /**
  * Life Atlas Finance: Predictive Cash-Flow Forecasting Engine
  * 
@@ -40,20 +42,21 @@ export class ForecastService {
     const endDate = new Date(now.getTime() + horizonDays * 24 * 60 * 60 * 1000).toISOString();
 
     // 1. Calculate Starting Liquid Assets (positive balances in bank & cash accounts)
-    const accounts = await this.uow.accounts.getAll("active");
+    const accounts = await readPostedAccounts(this.uow);
     const liquidAccounts = accounts.filter(
       (a) => a.accountType === "bank" || a.accountType === "cash" || a.accountType === "savings"
     );
 
     let startingLiquidPaise: Paise = 0;
     for (const acc of liquidAccounts) {
-      if (acc.currentBalancePaise > 0) {
+      if (acc.currency === "INR") {
         startingLiquidPaise += acc.currentBalancePaise;
       }
     }
 
     // 2. Fetch Confirmed Recurring Rules
-    const confirmedRules = await this.uow.recurringRules.getAll("confirmed");
+    const confirmedRules = (await this.uow.recurringRules.getAll("confirmed")).filter(r=>r.currency==="INR");
+    const transfers = new Set((await this.uow.categories.getAll()).filter(c=>c.type==="transfer").map(c=>c.id));
 
     // 3. Analyze Historical Non-Recurring Discretionary Spending (past 30-90 days)
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
@@ -65,7 +68,7 @@ export class ForecastService {
 
     const eligiblePastExpenses = pastTransactions.filter(
       (t) =>
-        t.direction === "outflow" &&
+        t.currency === "INR" && (t.direction === "outflow" || t.paymentKind === "refund") && !transfers.has(t.categoryId||"") &&
         !t.transferGroupId &&
         t.categoryId !== "cat_transfer" &&
         t.status !== "reversed"
@@ -109,11 +112,11 @@ export class ForecastService {
     });
 
     const totalDiscretionaryPaise = discretionaryExpenses.reduce(
-      (sum, t) => sum + t.amountPaise,
+      (sum, t) => sum + realizedCashMovement(t,transfers).expense,
       0
     );
     let dailyDiscretionaryPaise =
-      observationDays >= 7 ? Math.round(totalDiscretionaryPaise / observationDays) : 0;
+      observationDays >= 7 ? Math.max(0,Math.round(totalDiscretionaryPaise / observationDays)) : 0;
 
     // Apply scenario discretionary cut if specified
     if (scenarioOptions?.discretionaryCutPercent && scenarioOptions.discretionaryCutPercent > 0) {
@@ -278,7 +281,7 @@ export class ForecastService {
     const startTime = new Date(startIso).getTime();
     const endTime = new Date(endIso).getTime();
 
-    let cur = new Date(rule.nextDueDate);
+    const cur = new Date(rule.nextDueDate);
 
     // If nextDueDate is in the past, advance it forward into range
     while (cur.getTime() < startTime) {

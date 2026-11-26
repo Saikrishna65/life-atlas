@@ -1,3 +1,4 @@
+import { realizedCashMovement } from "../domain/ledger";
 /**
  * Life Atlas Finance: Budget Application Service
  * 
@@ -104,18 +105,20 @@ export class BudgetService {
   }> {
     const [categories, txns] = await Promise.all([
       this.uow.categories.getAll(),
-      this.uow.transactions.query({ startDate, endDate, status: "posted", direction: "outflow" }),
+      this.uow.transactions.query({ startDate, endDate, status: "posted" }),
     ]);
 
     // Map spending per category (excluding transfers and reversed)
     const spentMap = new Map<ID, Paise>();
+    const transfers = new Set(categories.filter(c=>c.type==="transfer").map(c=>c.id));
     for (const txn of txns) {
+      if (txn.currency !== "INR") continue;
       if (txn.status === "reversed") continue;
       if (txn.transferGroupId) continue; // Invariant: internal transfers are NOT expenses
-      if (!txn.categoryId) continue;
+      if (!txn.categoryId || transfers.has(txn.categoryId)) continue;
 
       const current = spentMap.get(txn.categoryId) || 0;
-      spentMap.set(txn.categoryId, addPaise(current, txn.amountPaise));
+      spentMap.set(txn.categoryId, addPaise(current, realizedCashMovement(txn, transfers).expense));
     }
 
     const statuses: CategoryBudgetStatus[] = [];
@@ -123,6 +126,7 @@ export class BudgetService {
     let grandSpent = 0;
 
     for (const cat of categories) {
+      if (cat.type !== "expense") continue;
       // If category has a budget set
       const allocated = cat.budgetAmountPaise || 0;
       if (allocated <= 0 && (spentMap.get(cat.id) || 0) <= 0) {

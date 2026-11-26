@@ -1,3 +1,4 @@
+import { selectTransactions } from "../../domain/transactionQuery";
 /**
  * Life Atlas Finance: IndexedDB Transaction Repository
  * 
@@ -80,69 +81,7 @@ export class IndexedDBTransactionRepository implements ITransactionRepository {
       }
 
       req.onsuccess = () => {
-        let results = (req.result as Transaction[]) || [];
-
-        // Apply in-memory secondary filters
-        if (filters.accountIds && filters.accountIds.length > 0) {
-          const set = new Set(filters.accountIds);
-          results = results.filter((t) => set.has(t.accountId));
-        }
-
-        if (filters.categoryIds && filters.categoryIds.length > 0) {
-          const set = new Set(filters.categoryIds);
-          results = results.filter((t) => t.categoryId && set.has(t.categoryId));
-        }
-
-        if (filters.startDate) {
-          const startTime = Date.parse(filters.startDate);
-          results = results.filter((t) => Date.parse(t.occurredAt) >= startTime);
-        }
-
-        if (filters.endDate) {
-          const endTime = Date.parse(filters.endDate);
-          results = results.filter((t) => Date.parse(t.occurredAt) <= endTime);
-        }
-
-        if (filters.status) {
-          results = results.filter((t) => t.status === filters.status);
-        }
-
-        if (filters.direction) {
-          results = results.filter((t) => t.direction === filters.direction);
-        }
-
-        if (filters.source) {
-          results = results.filter((t) => t.source === filters.source);
-        }
-
-        if (filters.minAmountPaise !== undefined) {
-          results = results.filter((t) => t.amountPaise >= (filters.minAmountPaise || 0));
-        }
-
-        if (filters.maxAmountPaise !== undefined) {
-          results = results.filter((t) => t.amountPaise <= (filters.maxAmountPaise || 0));
-        }
-
-        if (filters.searchQuery && filters.searchQuery.trim()) {
-          const q = filters.searchQuery.trim().toLowerCase();
-          results = results.filter(
-            (t) =>
-              t.description.toLowerCase().includes(q) ||
-              (t.merchant && t.merchant.toLowerCase().includes(q)) ||
-              (t.notes && t.notes.toLowerCase().includes(q))
-          );
-        }
-
-        // Sort chronologically descending (newest first)
-        results.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt));
-
-        // Pagination
-        if (filters.offset || filters.limit) {
-          const offset = filters.offset || 0;
-          const limit = filters.limit ? offset + filters.limit : results.length;
-          results = results.slice(offset, limit);
-        }
-
+        const results = selectTransactions((req.result as Transaction[]) || [], filters);
         resolve(results);
       };
 
