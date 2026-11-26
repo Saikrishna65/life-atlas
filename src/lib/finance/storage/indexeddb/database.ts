@@ -6,7 +6,7 @@
  */
 
 import { StorageError } from "../../domain/errors";
-import { FINANCE_DB_NAME, FINANCE_DB_VERSION, migrateToV1, migrateToV2, migrateToV3, migrateToV4 } from "./migrations";
+import { FINANCE_DB_NAME, FINANCE_DB_VERSION, migrateToV1, migrateToV2, migrateToV3, migrateToV4, migrateToV5 } from "./migrations";
 
 let cachedDB: IDBDatabase | null = null;
 let dbOpenPromise: Promise<IDBDatabase> | null = null;
@@ -62,6 +62,7 @@ export async function getFinanceDB(): Promise<IDBDatabase> {
           if (oldVersion < 3) {
             migrateToV3(db, transaction);
           }
+          if (oldVersion < 5) migrateToV5(db);
           if (oldVersion < 4) {
             migrateToV4(db, transaction);
           }

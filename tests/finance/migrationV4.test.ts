@@ -29,8 +29,8 @@ describe("Life Atlas Finance: Database Migration V4 & Conflict Preservation", ()
 
   test("initializes sync_conflicts object store and nextRetryAt index in V4", async () => {
     const db = await getFinanceDB();
-    assert.strictEqual(db.version, 4);
-    assert.strictEqual(FINANCE_DB_VERSION, 4);
+    assert.strictEqual(db.version, FINANCE_DB_VERSION);
+    assert.strictEqual(FINANCE_DB_VERSION, 5);
 
     // Verify all 10 finance stores exist
     assert.ok(db.objectStoreNames.contains("accounts"));
@@ -111,7 +111,7 @@ describe("Life Atlas Finance: Database Migration V4 & Conflict Preservation", ()
 
     // 3. Verify V4 status and data intact
     const db = await getFinanceDB();
-    assert.strictEqual(db.version, 4);
+    assert.strictEqual(db.version, FINANCE_DB_VERSION);
 
     const fetchedAcc = await uow.accounts.getById("acc_mig_v4");
     assert.ok(fetchedAcc);

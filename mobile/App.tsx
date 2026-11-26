@@ -117,6 +117,11 @@ const routes = [
     Page: lazyPage(() => import("../src/app/secret/vault/new/page")),
   },
   {
+    pattern: new RegExp("^/secret/finance/shared/?$"),
+    params: [],
+    Page: lazyPage(() => import("../src/app/secret/finance/shared/page")),
+  },
+  {
     pattern: new RegExp("^/secret/finance/?$"),
     params: [],
     Page: lazyPage(() => import("../src/app/secret/finance/page")),

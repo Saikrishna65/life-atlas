@@ -7,7 +7,7 @@
 import { FinanceCategory, CategorizationRule } from "../../domain/models";
 
 export const FINANCE_DB_NAME = "life_atlas_finance_db";
-export const FINANCE_DB_VERSION = 4;
+export const FINANCE_DB_VERSION = 5;
 
 export const DEFAULT_FINANCE_CATEGORIES: FinanceCategory[] = [
   // Expense Categories
@@ -687,3 +687,10 @@ export function migrateToV4(db: IDBDatabase, transaction: IDBTransaction): void 
 }
 
 
+
+export function migrateToV5(db: IDBDatabase): void {
+  if (!db.objectStoreNames.contains("shared_groups")) {
+    const store = db.createObjectStore("shared_groups", { keyPath: "id" });
+    store.createIndex("updatedAt", "updatedAt");
+  }
+}

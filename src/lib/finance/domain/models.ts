@@ -536,7 +536,7 @@ export interface FieldChange {
 
 export interface AuditEvent {
   id: ID;
-  entityType: "account" | "transaction" | "category" | "goal" | "budget" | "rule" | "recurring";
+  entityType: "account" | "transaction" | "category" | "goal" | "budget" | "rule" | "recurring" | "shared_group";
   entityId: ID;
   action: AuditAction;
   changes: Record<string, FieldChange>;
