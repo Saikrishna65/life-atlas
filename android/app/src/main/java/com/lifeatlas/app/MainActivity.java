@@ -37,6 +37,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AtlasModelsPlugin.class);
         registerPlugin(AtlasLocalAIPlugin.class);
         registerPlugin(AtlasUpdatesPlugin.class);
+        registerPlugin(AtlasAppsPlugin.class);
         registerPlugin(MediaPlaybackPlugin.class);
         registerPlugin(AtlasFileExportPlugin.class);
         registerPlugin(com.lifeatlas.app.r2.R2StoragePlugin.class);

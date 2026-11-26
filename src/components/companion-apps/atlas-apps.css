@@ -1,0 +1,235 @@
+.atlas-apps {
+  max-width: 1060px;
+  margin: auto;
+  padding: 12px 0 70px;
+  color: var(--foreground);
+  font-family: var(--font-body), sans-serif;
+}
+.apps-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  font-size: 14px;
+}
+.atlas-apps header {
+  padding: 42px 0 34px;
+  max-width: 650px;
+}
+.apps-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.19em;
+  opacity: 0.6;
+  font-weight: 600;
+}
+.atlas-apps h1 {
+  font-size: clamp(42px, 7vw, 72px);
+  line-height: 1.04;
+  letter-spacing: -0.055em;
+  margin: 17px 0 20px;
+  font-weight: 500;
+}
+.atlas-apps header p,
+.companion-copy > p,
+.apps-footnote p {
+  font-size: 15px;
+  line-height: 1.7;
+  opacity: 0.72;
+}
+.companion-feature {
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  border: 1px solid color-mix(in srgb, currentColor 13%, transparent);
+  border-radius: 28px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.companion-art {
+  min-height: 380px;
+  background: #d9e8dd;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  color: #204839;
+}
+.companion-play {
+  width: 132px;
+  height: 132px;
+  border-radius: 36px;
+  background: #204839;
+  color: #eaf4ed;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 22px 45px #20483930;
+  z-index: 1;
+}
+.companion-play svg {
+  margin-left: 6px;
+}
+.companion-orbit {
+  width: 310px;
+  height: 310px;
+  border: 1px solid #20483930;
+  border-radius: 50%;
+  position: absolute;
+}
+.companion-orbit:after {
+  content: "";
+  position: absolute;
+  inset: -45px;
+  border: 1px solid #20483918;
+  border-radius: 50%;
+}
+.companion-copy {
+  padding: 38px;
+}
+.companion-copy h2 {
+  font-size: 34px;
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  margin: 12px 0;
+}
+.companion-status {
+  font-size: 12px;
+  margin: 22px 0 16px;
+  opacity: 0.75;
+}
+.companion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.companion-actions button,
+.companion-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid transparent;
+  border-radius: 100px;
+  padding: 12px 17px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  background: #204839;
+  color: #fff;
+}
+.companion-actions .apps-web,
+.companion-actions .apps-secondary {
+  background: transparent;
+  color: inherit;
+  border-color: color-mix(in srgb, currentColor 20%, transparent);
+}
+.atlas-apps button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.apps-note {
+  font-size: 13px !important;
+}
+.apps-error {
+  color: #c33;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.apps-wifi {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 12px;
+  margin-top: 22px;
+}
+.apps-transfer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  font-size: 12px;
+}
+.apps-transfer progress {
+  width: 100%;
+  accent-color: #36745b;
+}
+.apps-transfer button {
+  margin-left: auto;
+  padding: 8px 12px;
+  border: 1px solid currentColor;
+  border-radius: 20px;
+  background: none;
+  color: inherit;
+}
+.companion-copy details {
+  margin-top: 22px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.companion-copy summary {
+  cursor: pointer;
+}
+.apps-digest {
+  overflow-wrap: anywhere;
+  opacity: 0.7;
+}
+.apps-footnote {
+  display: flex;
+  gap: 18px;
+  max-width: 760px;
+  margin: 32px 0;
+}
+.apps-footnote svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.apps-footnote h3 {
+  font-size: 15px;
+  margin: 0;
+  font-weight: 500;
+}
+.apps-footnote p {
+  font-size: 13px;
+  margin: 7px 0;
+}
+.atlas-apps :focus-visible {
+  outline: 2px solid #5eaa86;
+  outline-offset: 4px;
+}
+@media (max-width: 640px) {
+  .atlas-apps header {
+    padding-top: 26px;
+  }
+  .companion-feature {
+    grid-template-columns: 1fr;
+    border-radius: 22px;
+  }
+  .companion-art {
+    min-height: 220px;
+  }
+  .companion-play {
+    width: 100px;
+    height: 100px;
+    border-radius: 28px;
+  }
+  .companion-orbit {
+    width: 230px;
+    height: 230px;
+  }
+  .companion-copy {
+    padding: 26px;
+  }
+  .companion-copy h2 {
+    font-size: 30px;
+  }
+  .companion-actions {
+    gap: 8px;
+  }
+  .companion-actions > a,
+  .companion-actions > button {
+    flex: 1;
+    white-space: nowrap;
+  }
+  .apps-footnote {
+    gap: 12px;
+  }
+}

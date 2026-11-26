@@ -34,6 +34,8 @@ const lazyPage = (
   return Page;
 };
 const routes = [
+  {pattern: /^\/secret\/apps\/?$/, params: [], Page: lazyPage(() => import("../src/app/secret/apps/page"))},
+  {pattern: /^\/secret\/video\/?$/, params: [], Page: lazyPage(() => import("../src/app/secret/video/page"))},
   {
     pattern: /^\/secret\/atlas\/?$/,
     params: [],
