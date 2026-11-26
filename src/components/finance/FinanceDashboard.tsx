@@ -1,6 +1,7 @@
 "use client";
+import { FinanceRefreshQueue } from "@/lib/finance/application/refreshQueue";
+import { loadDashboardSnapshot } from "@/lib/finance/application/dashboardSnapshot";
 import TripFinancePanel from "./trips/TripFinancePanel";
-import { TripFinanceService } from "@/lib/finance/trips/service";
 
 import { currentFinanceWeek, localFinanceDateKey } from "@/lib/finance/calendar";
 import MerchantImage from "@/components/finance/MerchantImage";
@@ -12,7 +13,7 @@ import FinanceSelect from "@/components/finance/FinanceSelect";
 
 import "@/app/secret/finance/finance.css";
 import { App } from "@capacitor/app";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -25,24 +26,19 @@ import {
   ArrowUpRight,
   Landmark,
   CreditCard,
-  CheckCircle2,
   Tag,
   Target,
   PiggyBank,
   History,
   AlertTriangle,
   ChevronRight,
-  Archive,
   Edit3,
   FileUp,
   Sparkles,
   Repeat,
-  TrendingUp,
   Cloud,
-  CloudOff,
   BellRing,
   LayoutDashboard,
-  ListFilter,
 } from "lucide-react";
 import {
   IndexedDBUnitOfWork,
@@ -61,12 +57,14 @@ import {
   Transaction,
   FinanceCategory,
   formatPaise,
+  addPaise,
+  subtractPaise,
+
   CashFlowTimelinePoint,
   CategoryBudgetStatus,
   GoalProgressView,
   SavingsPocket,
   isIndexedDBAvailable,
-  WebIndexedDBSecureStorageAdapter,
 } from "@/lib/finance";
 
 import AccountModal from "@/components/finance/AccountModal";
@@ -89,6 +87,8 @@ import CategorySpendingChart from "@/components/finance/CategorySpendingChart";
 type DashboardTab = "OVERVIEW" | "TRANSACTIONS" | "BUDGETS" | "GOALS" | "ACCOUNTS";
 type PeriodPreset = "THIS_WEEK" | "LAST_6_MONTHS" | "THIS_MONTH" | "LAST_MONTH" | "LAST_3_MONTHS" | "THIS_YEAR" | "ALL_TIME";
 
+const financeLocation = (listener: () => void) => {window.addEventListener("popstate",listener);return ()=>window.removeEventListener("popstate",listener);};
+
 export default function FinanceDashboardPage() {
   const [theme, setTheme] = useState<FinanceTheme>(() => {
     try { const saved = localStorage.getItem(THEME_STORAGE_KEY); return isFinanceTheme(saved) ? saved : "ocean"; } catch { return "ocean"; }
@@ -99,10 +99,19 @@ export default function FinanceDashboardPage() {
     return () => { delete document.documentElement.dataset.financeTheme; };
   }, [theme]);
   const realPendingCount = usePendingFinanceCount();
-  const [activeTab, setActiveTab] = useState<DashboardTab>("OVERVIEW");
-  useEffect(()=>{const value=new URLSearchParams(window.location.search).get("section")?.toUpperCase();if(["OVERVIEW","TRANSACTIONS","BUDGETS","GOALS","ACCOUNTS"].includes(value||""))setActiveTab(value as DashboardTab);},[]);
+  const searchLocation=useSyncExternalStore(financeLocation,()=>window.location.search,()=>"");
+  const routeOptions=new URLSearchParams(searchLocation);
+  const requestedTab=routeOptions.get("section")?.toUpperCase();
+  const [chosenTab,setActiveTab]=useState<DashboardTab|null>(null);
+  const activeTab:DashboardTab=chosenTab || (["OVERVIEW","TRANSACTIONS","BUDGETS","GOALS","ACCOUNTS"].includes(requestedTab||"")?requestedTab as DashboardTab:"OVERVIEW");
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("THIS_WEEK");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError,setLoadError] = useState("");
+  const [spendablePaise,setSpendablePaise] = useState(0);
+  const [pendingIncomingPaise,setPendingIncomingPaise] = useState(0);
+  const [hasLoaded,setHasLoaded] = useState(false);
+  const [activityWindow,setActivityWindow] = useState({signature:"",limit:60});
+  const [txnDirectionFilter,setTxnDirectionFilter] = useState("ALL");
 
   // Core Data
   const [accounts, setAccounts] = useState<FinanceAccount[]>([]);
@@ -126,6 +135,7 @@ export default function FinanceDashboardPage() {
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<FinanceAccount | null>(null);
 
+  const [entryDirection,setEntryDirection] = useState<"inflow"|"outflow">("outflow");
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
@@ -136,8 +146,8 @@ export default function FinanceDashboardPage() {
   const [editingBudgetId, setEditingBudgetId] = useState<string | undefined>();
 
   const [isSavingsGoalModalOpen, setIsSavingsGoalModalOpen] = useState(false);
-  const [editingGoal, setEditingGoal] = useState<GoalProgressView | null>(null);
-  const [savingsGoalMode, setSavingsGoalMode] = useState<"create_or_edit" | "contribute">("create_or_edit");
+  const [editingGoal] = useState<GoalProgressView | null>(null);
+  const [savingsGoalMode] = useState<"create_or_edit" | "contribute">("create_or_edit");
 
   // Savings Pockets State
   const [isPocketModalOpen, setIsPocketModalOpen] = useState(false);
@@ -158,8 +168,8 @@ export default function FinanceDashboardPage() {
   const [pendingOutboxCount, setPendingOutboxCount] = useState(0);
 
   // Kotak 811 Native Notification Tracking State
-  const [isKotakModalOpen, setIsKotakModalOpen] = useState(false);
-  const [kotakReviewCount, setKotakReviewCount] = useState(0);
+  const [chosenReviewOpen, setIsKotakModalOpen] = useState<boolean|undefined>(undefined);
+  const isKotakModalOpen=chosenReviewOpen ?? routeOptions.get("review")==="1";
   const [kotakTrackingActive, setKotakTrackingActive] = useState(false);
 
   // Transactions Filter State
@@ -175,7 +185,6 @@ export default function FinanceDashboardPage() {
   const uow = useMemo(() => new IndexedDBUnitOfWork(), []);
   const accountService = useMemo(() => new AccountService(uow), [uow]);
   const transactionService = useMemo(() => new TransactionService(uow), [uow]);
-  const balanceService = useMemo(() => new BalanceService(uow), [uow]);
   const budgetService = useMemo(() => new BudgetService(uow), [uow]);
   const savingsGoalService = useMemo(() => new SavingsGoalService(uow), [uow]);
   const categorizationService = useMemo(() => new CategorizationService(uow), [uow]);
@@ -187,16 +196,13 @@ export default function FinanceDashboardPage() {
     () => new NotificationTrackingService(uow, transactionService, categorizationService),
     [uow, transactionService, categorizationService]
   );
-  const secureAdapter = useMemo(() => new WebIndexedDBSecureStorageAdapter(), []);
 
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("review") === "1") setIsKotakModalOpen(true);
-  }, []);
 
   // Compute date boundaries based on period preset
   const calendarToday = localFinanceDateKey(new Date());
+  const oldestTransaction = transactions.at(-1)?.occurredAt || `${calendarToday}T00:00:00`;
   const { startDate, endDate, periodLabel } = useMemo(() => {
-    const now = new Date();
+    const now = new Date(`${calendarToday}T12:00:00`);
     let start: Date;
     let end: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     let label = "This Month";
@@ -224,7 +230,8 @@ export default function FinanceDashboardPage() {
       label = `${now.getFullYear()} Year to Date`;
     } else {
       // ALL_TIME
-      start = new Date(2020, 0, 1, 0, 0, 0, 0);
+      start = new Date(oldestTransaction);
+      start.setHours(0,0,0,0);
       label = "All Time";
     }
 
@@ -233,36 +240,44 @@ export default function FinanceDashboardPage() {
       endDate: end.toISOString(),
       periodLabel: label,
     };
-  }, [periodPreset, calendarToday]);
+  }, [periodPreset, calendarToday, oldestTransaction]);
 
   const refreshRequest = React.useRef(0);
+  const refreshQueue = React.useRef(new FinanceRefreshQueue());
+  const invalidateLoads=useCallback(()=>{refreshRequest.current++;},[]);
 
   // Main Data Refresh Callback
-  const refreshAll = useCallback(async () => {
-    const requestId = ++refreshRequest.current;
+  const latestLoader = React.useRef<((id: number) => Promise<void>) | null>(null);
+  const loadData = async (requestId: number) => {
     const isCurrent = () => requestId === refreshRequest.current;
-    if (isCurrent()) setIsLoading(true);
+    if (!isCurrent()) return;
+    setIsLoading(true);
     try {
       if (!isIndexedDBAvailable()) {
-        if (isCurrent()) setIsLoading(false);
+        if (isCurrent()) {setIsLoading(false);setLoadError("Device storage is unavailable. Open Atlas in a browser with local storage enabled.");}
         return;
       }
 
-      else await new TripFinanceService(uow).reconcile();
+      const snapshot = await loadDashboardSnapshot(uow);
+      const read = snapshot.read;
+      const reportBalances = new BalanceService(read);
+      const reportBudgets = new BudgetService(read);
+      const reportGoals = new SavingsGoalService(read);
 
       // Ensure system categories exist
-      let allCats = await uow.categories.getAll();
+      let allCats = snapshot.categories;
       if (allCats.length === 0) {
         await uow.categories.seedDefaults();
         allCats = await uow.categories.getAll();
+        snapshot.categories.splice(0,snapshot.categories.length,...allCats);
       }
       if (isCurrent()) setCategories(allCats);
 
       // Fetch accounts and net worth
-      const allAccounts = await uow.accounts.getAll();
+      const allAccounts = snapshot.accounts;
       if (isCurrent()) setAccounts(allAccounts);
 
-      const nw = await balanceService.getNetWorth();
+      const nw = await reportBalances.getNetWorth();
       if (isCurrent()) {
         setNetWorthPaise(nw.netWorthPaise);
         syncFinanceWidget({
@@ -276,56 +291,60 @@ export default function FinanceDashboardPage() {
       if (isCurrent()) setTotalLiabilitiesPaise(nw.totalLiabilitiesPaise);
 
       // Fetch period-dependent cash flow and reports
-      const flow = await balanceService.getCashFlow(startDate, endDate);
+      const flow = await reportBalances.getCashFlow(startDate, endDate);
       if (isCurrent()) setPeriodIncomePaise(flow.totalIncomePaise);
       if (isCurrent()) setPeriodExpensePaise(flow.totalExpensesPaise);
       if (isCurrent()) setPeriodNetCashFlowPaise(flow.netCashFlowPaise);
 
-      const timeline = await balanceService.getCashFlowTimeline(startDate, endDate);
+      const timeline = await reportBalances.getCashFlowTimeline(startDate, endDate);
       if (isCurrent()) setTimelinePoints(timeline);
 
       const categoryHistoryStart = new Date(new Date().getFullYear()-1,0,1).toISOString();
-      const history = await uow.transactions.query({startDate:categoryHistoryStart,endDate:new Date().toISOString(),direction:"outflow"});
+      const history = await read.transactions.query({startDate:categoryHistoryStart,endDate:new Date().toISOString()});
       if (isCurrent()) setCategoryHistory(history);
 
       // Budgets
-      const budgetReport = await budgetService.getCategoryBudgetStatuses(startDate, endDate);
+      const budgetReport = await reportBudgets.getCategoryBudgetStatuses(startDate, endDate);
       if (isCurrent()) setBudgets(budgetReport.statuses);
 
       // Savings Goals
-      const goals = await savingsGoalService.getGoalsWithProgress();
+      const goals = await reportGoals.getGoalsWithProgress();
       if (isCurrent()) setSavingsGoals(goals);
 
       // Transactions
-      const allTxns = await uow.transactions.query({});
+      const allTxns = snapshot.transactions;
       if (isCurrent()) setTransactions(allTxns);
 
       // Uncategorized review count
-      const uncategorized = await categorizationService.getUncategorizedTransactions();
+      const uncategorized = await new CategorizationService(read).getUncategorizedTransactions();
       if (isCurrent()) setUncategorizedCount(uncategorized.length);
 
       // Detected subscriptions count
-      const detectedRules = await recurringService.getRecurringRules("detected");
+      const detectedRules = await new RecurringService(read).getRecurringRules("detected");
       if (isCurrent()) setDetectedRecurringCount(detectedRules.length);
 
       // Outbox status
-      const pendingOps = await uow.outbox.getPending();
-      if (isCurrent()) setPendingOutboxCount(pendingOps.length);
+      if (isCurrent()) setPendingOutboxCount(snapshot.pendingOutboxCount);
 
+      if (isCurrent()) {setSpendablePaise(snapshot.spendablePaise);setPendingIncomingPaise(snapshot.pendingIncomingPaise);setHasLoaded(true);setLoadError("");}
       // Kotak Notification Tracking status
       try {
         const trackingStatus = await notificationTrackingService.getStatus();
         if (isCurrent()) setKotakTrackingActive(trackingStatus.enabled && trackingStatus.permissionGranted);
-        if (isCurrent()) setKotakReviewCount(trackingStatus.pendingReviewCount);
       } catch {
         // Ignored
       }
-    } catch (err) {
-      console.error("Failed to load finance data:", err);
+    } catch {
+      if (isCurrent()) setLoadError("Could not refresh your finances. Your saved records are unchanged. Try again.");
     } finally {
       if (isCurrent()) setIsLoading(false);
     }
-  }, [uow, balanceService, budgetService, savingsGoalService, categorizationService, recurringService, notificationTrackingService, startDate, endDate]);
+  };
+  useEffect(() => { latestLoader.current = loadData; });
+  const refreshAll = useCallback(() => {
+    const id=++refreshRequest.current;
+    return refreshQueue.current.request(()=>latestLoader.current?.(id) || Promise.resolve());
+  },[]);
 
   useEffect(() => {
     const resume = () => {
@@ -336,7 +355,7 @@ export default function FinanceDashboardPage() {
     document.addEventListener("visibilitychange", resume);
     window.addEventListener("focus", resume);
     const nativeResume = App.addListener("appStateChange", ({ isActive }) => { if (isActive) resume(); });
-    (async () => { await notificationTrackingService.initialize(); await refreshAll(); })().catch(console.warn);
+    (async () => { await notificationTrackingService.initialize(); })().catch(console.warn);
     return () => {
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("focus", resume);
@@ -348,18 +367,21 @@ export default function FinanceDashboardPage() {
   useEffect(() => {
     const refresh = () => { void refreshAll(); };
     window.addEventListener("finance-notifications-updated", refresh);
+    window.addEventListener("finance-ledger-updated", refresh);
     window.addEventListener("finance-trips-updated", refresh);
-    return () => {window.removeEventListener("finance-notifications-updated", refresh);window.removeEventListener("finance-trips-updated", refresh);};
-  }, [refreshAll]);
+    return () => {invalidateLoads();window.removeEventListener("finance-ledger-updated", refresh);window.removeEventListener("finance-notifications-updated", refresh);window.removeEventListener("finance-trips-updated", refresh);};
+  }, [refreshAll, invalidateLoads]);
 
   useEffect(() => {
     refreshAll();
-  }, [refreshAll]);
+  }, [refreshAll, startDate, endDate, pendingFinanceCount]);
 
   // Filtered transactions for the Transactions Tab
+  const activitySignature=JSON.stringify([txnSearchQuery,txnAccountFilter,txnCategoryFilter,txnStatusFilter,txnDirectionFilter,txnSortOrder,categoryDrilldown]);
+  const activityLimit=activityWindow.signature===activitySignature?activityWindow.limit:60;
   const filteredTransactions = useMemo(() => {
-    let result = [...(categoryDrilldown ? categoryHistory : transactions)];
-    if(categoryDrilldown) result=result.filter(t=>!t.transferGroupId&&!categories.some(c=>c.id===t.categoryId&&c.type==="transfer")&&Date.parse(t.occurredAt)>=Date.parse(categoryDrilldown.start)&&Date.parse(t.occurredAt)<=Date.parse(categoryDrilldown.end));
+    let result = [...transactions];
+    if(categoryDrilldown) result=result.filter(t=>t.currency==="INR"&&!t.transferGroupId&&!categories.some(c=>c.id===t.categoryId&&c.type==="transfer")&&Date.parse(t.occurredAt)>=Date.parse(categoryDrilldown.start)&&Date.parse(t.occurredAt)<=Date.parse(categoryDrilldown.end));
 
     if (txnSearchQuery.trim()) {
       const q = txnSearchQuery.toLowerCase();
@@ -383,6 +405,7 @@ export default function FinanceDashboardPage() {
       result = result.filter((t) => t.status === txnStatusFilter);
     }
 
+    if (txnDirectionFilter !== "ALL") result=result.filter(t=>txnDirectionFilter==="inflow"?t.direction==="inflow"&&t.paymentKind!=="refund":t.direction==="outflow"||t.paymentKind==="refund");
     // Sort
     result.sort((a, b) => {
       if (txnSortOrder === "date_desc") return Date.parse(b.occurredAt) - Date.parse(a.occurredAt);
@@ -393,7 +416,7 @@ export default function FinanceDashboardPage() {
     });
 
     return result;
-  }, [transactions, categoryHistory, categoryDrilldown, categories, txnSearchQuery, txnAccountFilter, txnCategoryFilter, txnStatusFilter, txnSortOrder]);
+  }, [transactions, categoryDrilldown, categories, txnSearchQuery, txnAccountFilter, txnCategoryFilter, txnStatusFilter, txnDirectionFilter, txnSortOrder]);
 
   const accountPocketSummaries = useMemo(() => {
     const map = new Map<string, {
@@ -404,13 +427,15 @@ export default function FinanceDashboardPage() {
       activePockets: GoalProgressView[];
     }>();
 
+    const pending=new Map<string,number>();
+    for(const t of transactions)if(t.status==="pending"&&t.direction==="outflow")pending.set(t.accountId,addPaise(pending.get(t.accountId)||0,t.amountPaise));
     for (const acc of accounts) {
       const active = savingsGoals.filter(
         (g) => g.linkedAccountId === acc.id && g.status !== "archived" && !g.isLegacyGoal
       );
       const allocated = active.reduce((sum, g) => sum + (g.allocatedPaise || 0), 0);
       const recorded = acc.currentBalancePaise;
-      const available = recorded - allocated;
+      const available = subtractPaise(subtractPaise(recorded, allocated),acc.accountType==="credit"?0:pending.get(acc.id)||0);
       const shortfall = available < 0 ? -available : 0;
 
       map.set(acc.id, {
@@ -422,7 +447,7 @@ export default function FinanceDashboardPage() {
       });
     }
     return map;
-  }, [accounts, savingsGoals]);
+  }, [accounts, savingsGoals, transactions]);
 
   const tabs = [
     { id: "OVERVIEW", label: "Overview", icon: LayoutDashboard },
@@ -432,7 +457,7 @@ export default function FinanceDashboardPage() {
     { id: "ACCOUNTS", label: "Accounts", icon: Wallet },
   ] as const;
   const newAccount = () => { setEditingAccount(null); setIsAccountModalOpen(true); };
-  const newEntry = () => { setEditingTransaction(null); setIsTransactionModalOpen(true); };
+  const newEntry = () => { if(!accounts.some(a=>a.status==="active")){newAccount();return;} setEntryDirection("outflow"); setEditingTransaction(null); setIsTransactionModalOpen(true); };
   const accountView = (all = false) => <div className={all ? "af-account-grid" : "af-account-strip"}>
     {(all ? accounts : accounts.filter(a => a.status === "active").slice(0, 4)).map((account, index) => {
       const summary = accountPocketSummaries.get(account.id);
@@ -446,23 +471,23 @@ export default function FinanceDashboardPage() {
           <button className="af-account-open" onClick={() => { setTxnAccountFilter(account.id); setActiveTab("TRANSACTIONS"); }}>
             <strong>{account.name}</strong>
             <span className="af-account-number">{account.metadata?.accountNumberLast4 ? `•••• ${account.metadata.accountNumberLast4}` : account.metadata?.institutionName || "Personal account"}</span>
-            <b>{formatPaise(summary?.availableBalancePaise ?? account.currentBalancePaise)}</b>
-            <span className="af-balance-sublabel">{isAllocated ? "Available to spend" : "Recorded balance"}</span>
+            <b>{formatPaise(summary?.availableBalancePaise ?? account.currentBalancePaise,{currency:account.currency})}</b>
+            <span className="af-balance-sublabel">{account.accountType==="credit"?"Posted card balance":isAllocated||transactions.some(t=>t.accountId===account.id&&t.status==="pending"&&t.direction==="outflow")?"Available after holds & pockets":"Recorded balance"}</span>
             <div className="af-account-breakdown">
               <div className="af-breakdown-row">
                 <span>Recorded balance:</span>
-                <strong>{formatPaise(account.currentBalancePaise)}</strong>
+                <strong>{formatPaise(account.currentBalancePaise,{currency:account.currency})}</strong>
               </div>
               {isAllocated && (
                 <div className="af-breakdown-row">
                   <span>Set aside in pockets:</span>
-                  <strong>{formatPaise(summary.allocatedPaise)}</strong>
+                  <strong>{formatPaise(summary.allocatedPaise,{currency:account.currency})}</strong>
                 </div>
               )}
               {isShortfall && (
                 <div className="af-shortfall-alert">
                   <AlertTriangle size={13} />
-                  <span>Shortfall: {formatPaise(summary.shortfallPaise)} (Allocations exceed balance)</span>
+                  <span>Shortfall: {formatPaise(summary.shortfallPaise,{currency:account.currency})} (Allocations exceed balance)</span>
                 </div>
               )}
             </div>
@@ -479,8 +504,8 @@ export default function FinanceDashboardPage() {
     const account = accounts.find(a => a.id === transaction.accountId);
     return <button key={transaction.id} className="af-activity-row" onClick={() => setSelectedTxnForDetail(transaction)}>
       <MerchantImage merchant={transaction.merchant || transaction.description} category={category?.name} direction={transaction.direction}/>
-      <span className="af-entry-description"><strong>{transaction.description}</strong><small>{transaction.tripAssignment?.tripId && transaction.tripAssignment.mode!=="excluded" ? `Travel & Leisure · ${transaction.tripAssignment.tripTitle}` : category?.name || "Uncategorized"} <span>· {account?.name || "Account"}</span></small></span>
-      <span className={`af-entry-value ${transaction.direction === "inflow" ? "is-income" : ""} ${transaction.status === "reversed" ? "is-reversed" : ""}`}><strong>{transaction.direction === "inflow" ? "+" : "−"}{formatPaise(transaction.amountPaise)}</strong><small>{new Date(transaction.occurredAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}{transaction.status !== "posted" ? ` · ${transaction.status}` : ""}</small></span>
+      <span className="af-entry-description"><strong>{transaction.description}</strong><small>{transaction.tripAssignment?.tripId && transaction.tripAssignment.mode!=="excluded" ? `Travel & Leisure · ${transaction.tripAssignment.tripTitle}` : category?.name || "Uncategorized"}{transaction.paymentKind==="refund"?" · Refund":""} <span>· {account?.name || "Account"}</span></small></span>
+      <span className={`af-entry-value ${transaction.direction === "inflow" ? "is-income" : ""} ${transaction.status === "reversed" ? "is-reversed" : ""}`}><strong>{transaction.direction === "inflow" ? "+" : "−"}{formatPaise(transaction.amountPaise,{currency:transaction.currency})}</strong><small>{new Date(transaction.occurredAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}{transaction.status !== "posted" ? ` · ${transaction.status}` : ""}</small></span>
     </button>;
   }) : <div className="af-empty"><ArrowRightLeft size={28} /><h3>A fresh start.</h3><p>Your approved transactions will appear here.</p>{accounts.length > 0 && <button className="af-primary" onClick={newEntry}>Record a transaction</button>}</div>}</div>;
 
@@ -494,17 +519,22 @@ export default function FinanceDashboardPage() {
           <button className="glass-bell" aria-label={`${pendingFinanceCount} transactions awaiting approval`} onClick={()=>setIsKotakModalOpen(true)}><BellRing size={18}/>{pendingFinanceCount>0 && <b>{pendingFinanceCount}</b>}</button>
         </header>
         <div className="glass-demo-note"><span>Personal finance</span><Link href="/secret/control-room?tab=cloud">Cloud storage<ArrowUpRight size={13}/></Link></div>
+        {accounts.some(a=>a.currency!=="INR")&&<p className="af-load-notice">Summary totals are INR only. Other currencies stay separate in your wallet and activity; no exchange rate is applied.</p>}
         <nav role="tablist" aria-label="Finance sections" className="af-navigation">{tabs.map(tab=><button key={tab.id} role="tab" aria-selected={activeTab===tab.id} onClick={()=>{setActiveTab(tab.id);window.scrollTo({top:0});}}><tab.icon size={19}/><span>{tab.label}</span></button>)}</nav>
+        {loadError&&<div className="af-load-notice" role="alert">{loadError}<button onClick={()=>void refreshAll()}>Try again</button></div>}
+        {!hasLoaded&&!loadError&&<p className="af-load-notice" role="status">Opening your saved finances…</p>}
         <main className={`af-canvas glass-view-${activeTab.toLowerCase()}`} key={activeTab}>
           {activeTab === "OVERVIEW" && <>
             <section className="glass-balance" aria-label="Account balances">
-              <span>Your total balance</span><div className="glass-balance-number"><AnimatedMoney value={netWorthPaise}/></div>
-              <p><span>Assets <b>{formatPaise(totalAssetsPaise)}</b></span><i/><span>Liabilities <b>{formatPaise(Math.abs(totalLiabilitiesPaise))}</b></span></p>
-              <div className="glass-actions"><button disabled={accounts.length<2} onClick={()=>setIsTransferModalOpen(true)}><ArrowUpRight size={16}/>Transfer</button><button className="glass-add" aria-label="Add transaction" onClick={accounts.length ? newEntry : newAccount}><Plus size={23}/></button><button onClick={()=>setIsImportModalOpen(true)}><ArrowDownRight size={16}/>Import</button></div>
+              <span>INR net worth · Assets minus debt</span><div className="glass-balance-number">{hasLoaded?<AnimatedMoney value={netWorthPaise}/>:<span>—</span>}</div>
+              <p><span>Assets <b>{formatPaise(totalAssetsPaise)}</b></span><i/><span>{totalLiabilitiesPaise<0?"Card credit":"Liabilities"} <b>{formatPaise(Math.abs(totalLiabilitiesPaise))}</b></span></p>
+              <div className="glass-actions"><button disabled={accounts.filter(a=>a.status==="active").length<2} onClick={()=>setIsTransferModalOpen(true)}><ArrowUpRight size={16}/>Transfer</button><button className="glass-add" aria-label="Add transaction" onClick={accounts.length ? newEntry : newAccount}><Plus size={20}/><span>Expense</span></button><button disabled={!accounts.some(a=>a.status==="active")} onClick={()=>{setEntryDirection("inflow");setEditingTransaction(null);setIsTransactionModalOpen(true);}}><ArrowDownRight size={16}/>Income</button><button onClick={()=>setIsImportModalOpen(true)}><ArrowDownRight size={16}/>Import</button></div>
             </section>
+            <section className="af-spendable" aria-label="Available money"><div><span>Available to spend</span><strong>{hasLoaded?formatPaise(spendablePaise):"—"}</strong><small>Posted bank, cash and savings balances minus pending payments and saved pocket allocations. Before upcoming bills.</small></div>{pendingIncomingPaise>0&&<p>{formatPaise(pendingIncomingPaise)} pending incoming · not included yet</p>}</section>
             <div className="glass-dashboard-grid">
               <div className="glass-main-column">
-                <div className="glass-flow"><button onClick={()=>{setTxnSearchQuery("");setActiveTab("TRANSACTIONS");}}><span>↙ Income <ArrowUpRight size={15}/></span><strong><AnimatedMoney value={periodIncomePaise}/></strong><small>Received this period</small></button><button onClick={()=>setActiveTab("TRANSACTIONS")}><span>↗ Expenses <ArrowUpRight size={15}/></span><strong><AnimatedMoney value={periodExpensePaise}/></strong><small>Spent this period</small></button></div>
+                <div className="glass-flow"><button onClick={()=>{setTxnSearchQuery("");setTxnAccountFilter("ALL");setTxnCategoryFilter("ALL");setCategoryDrilldown({start:startDate,end:endDate,label:periodLabel});setTxnStatusFilter("posted");setTxnDirectionFilter("inflow");setActiveTab("TRANSACTIONS");}}><span><ArrowDownRight size={15}/> Income <ArrowUpRight size={15}/></span><strong><AnimatedMoney value={periodIncomePaise}/></strong><small>Excludes marked refunds</small></button><button onClick={()=>{setTxnSearchQuery("");setTxnAccountFilter("ALL");setTxnCategoryFilter("ALL");setCategoryDrilldown({start:startDate,end:endDate,label:periodLabel});setTxnStatusFilter("posted");setTxnDirectionFilter("outflow");setActiveTab("TRANSACTIONS");}}><span><ArrowUpRight size={15}/> Expenses <ArrowUpRight size={15}/></span><strong><AnimatedMoney value={periodExpensePaise}/></strong><small>Net of marked refunds</small></button></div>
+                <p className="af-net-change">Net change {formatPaise(periodNetCashFlowPaise)} · {periodLabel}</p>
                 <button className="glass-insight" aria-label="Your approval inbox" onClick={()=>setIsKotakModalOpen(true)}><span><Sparkles size={15}/> Message insights <ArrowRightLeft size={15}/></span><strong>{pendingFinanceCount ? `${pendingFinanceCount} payments ready to review` : "Your inbox is up to date"}</strong><small>Confirm the categories. Stay in control.</small></button>
                 <section className="glass-wallet-preview"><div className="af-section-heading"><h3>Your wallet</h3><button className="af-text-button" onClick={()=>setActiveTab("ACCOUNTS")}>Open wallet <ChevronRight size={15}/></button></div>{accountView()}</section>
                 <section className="glass-recent"><div className="af-section-heading"><h3>Recent transactions</h3><button className="af-text-button" onClick={()=>setActiveTab("TRANSACTIONS")}>See all</button></div>{activityView(transactions.slice(0,5))}</section>
@@ -513,7 +543,7 @@ export default function FinanceDashboardPage() {
             </div>
           </>}
           {activeTab !== "OVERVIEW" && <header className="glass-section-title"><p>YOUR FINANCIAL SPACE</p><h2>{activeTab==="ACCOUNTS" ? "Wallet" : activeTab==="TRANSACTIONS" ? "Transactions" : activeTab==="BUDGETS" ? "Spending plan" : "Savings Pockets"}</h2><span>{activeTab === "TRANSACTIONS" && categoryDrilldown ? categoryDrilldown.label : periodLabel}</span></header>}
-          {activeTab === "TRANSACTIONS" && <section className="af-section af-paper">{categoryDrilldown && <div className="category-drilldown"><span>{categoryDrilldown.label}</span><button onClick={()=>{setCategoryDrilldown(null);setTxnCategoryFilter("ALL");setTxnStatusFilter("ALL");}}>Clear period</button></div>}<div className="af-filters"><label className="af-search"><Search size={18} /><input aria-label="Search transactions" placeholder="Find a transaction…" value={txnSearchQuery} onChange={e => setTxnSearchQuery(e.target.value)} /></label><FinanceSelect aria-label="Filter account" value={txnAccountFilter} onChange={e => setTxnAccountFilter(e.target.value)}><option value="ALL">All Accounts</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</FinanceSelect><FinanceSelect aria-label="Filter category" value={txnCategoryFilter} onChange={e => {setTxnCategoryFilter(e.target.value);setCategoryDrilldown(null);}}><option value="ALL">All categories</option><option value="__uncategorized">Uncategorized</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</FinanceSelect><FinanceSelect aria-label="Filter status" value={txnStatusFilter} onChange={e => setTxnStatusFilter(e.target.value)}><option value="ALL">Any status</option><option value="posted">Posted</option><option value="pending">Pending</option><option value="reversed">Reversed</option></FinanceSelect></div><div className="af-list-heading"><span>{filteredTransactions.length} transactions</span><FinanceSelect aria-label="Sort transactions" value={txnSortOrder} onChange={e => setTxnSortOrder(e.target.value as typeof txnSortOrder)}><option value="date_desc">Newest first</option><option value="date_asc">Oldest first</option><option value="amount_desc">Highest amount</option><option value="amount_asc">Lowest amount</option></FinanceSelect></div>{activityView(filteredTransactions)}</section>}
+          {activeTab === "TRANSACTIONS" && <section className="af-section af-paper">{categoryDrilldown && <div className="category-drilldown"><span>{categoryDrilldown.label}</span><button onClick={()=>{setCategoryDrilldown(null);setTxnCategoryFilter("ALL");setTxnStatusFilter("ALL");setTxnDirectionFilter("ALL");}}>Clear period</button></div>}<div className="af-filters"><label className="af-search"><Search size={18} /><input aria-label="Search transactions" placeholder="Find a transaction…" value={txnSearchQuery} onChange={e => setTxnSearchQuery(e.target.value)} /></label><FinanceSelect aria-label="Filter account" value={txnAccountFilter} onChange={e => setTxnAccountFilter(e.target.value)}><option value="ALL">All Accounts</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</FinanceSelect><FinanceSelect aria-label="Filter category" value={txnCategoryFilter} onChange={e => {setTxnCategoryFilter(e.target.value);setCategoryDrilldown(null);}}><option value="ALL">All categories</option><option value="__uncategorized">Uncategorized</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</FinanceSelect><FinanceSelect aria-label="Filter status" value={txnStatusFilter} onChange={e => setTxnStatusFilter(e.target.value)}><option value="ALL">Any status</option><option value="posted">Posted</option><option value="pending">Pending</option><option value="reversed">Reversed</option></FinanceSelect></div><div className="af-list-heading"><span>{filteredTransactions.length} transactions</span><button className="af-text-button" onClick={()=>{setActivityWindow({signature:"",limit:60});setTxnSearchQuery("");setTxnAccountFilter("ALL");setTxnCategoryFilter("ALL");setTxnStatusFilter("ALL");setTxnDirectionFilter("ALL");setCategoryDrilldown(null);}}>Clear filters</button><FinanceSelect aria-label="Sort transactions" value={txnSortOrder} onChange={e => setTxnSortOrder(e.target.value as typeof txnSortOrder)}><option value="date_desc">Newest first</option><option value="date_asc">Oldest first</option><option value="amount_desc">Highest amount</option><option value="amount_asc">Lowest amount</option></FinanceSelect></div>{activityView(filteredTransactions.slice(0,activityLimit))}{filteredTransactions.length>activityLimit&&<button className="af-primary" onClick={()=>setActivityWindow({signature:activitySignature,limit:activityLimit+60})}>Show next 60 transactions</button>}</section>}
           {activeTab === "BUDGETS" && <section className="af-section"><div className="af-section-heading"><h3>Your spending plan</h3><button className="af-primary" onClick={() => { setEditingBudgetId(undefined); setIsBudgetModalOpen(true); }}><Plus size={17} />Create budget</button></div>{budgets.length ? <div className="af-plan-grid">{budgets.map(b => <article className="af-plan" key={b.categoryId}><div className="af-section-heading"><span className="af-plan-icon"><Tag size={21} /></span><button className="af-icon-button" aria-label={`Edit ${b.categoryName} budget`} onClick={() => { setEditingBudgetId(b.categoryId); setIsBudgetModalOpen(true); }}><Edit3 size={17} /></button></div><h3>{b.categoryName}</h3><strong>{formatPaise(b.spentPaise)} <small>of {formatPaise(b.allocatedPaise)}</small></strong><div className={`af-progress ${b.isOverBudget ? "is-over" : ""}`} role="progressbar" aria-label={b.categoryName} aria-valuenow={Math.min(100,b.percentageUsed)} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${Math.min(100,Math.max(0,b.percentageUsed))}%` }} /></div><p>{b.isOverBudget ? `${formatPaise(Math.abs(b.remainingPaise))} over your plan` : `${formatPaise(b.remainingPaise)} left to spend`}</p></article>)}</div> : <div className="af-empty af-empty-large"><Tag size={36} /><h3>Spend with a plan.</h3><p>Create category limits to see what’s available before you spend.</p><button className="af-primary" onClick={() => setIsBudgetModalOpen(true)}>Create your first budget</button></div>}</section>}
           {activeTab === "GOALS" && (
             <section className="af-section">
@@ -757,6 +787,7 @@ export default function FinanceDashboardPage() {
       />
 
       <TransactionModal
+        defaultDirection={entryDirection}
         isOpen={isTransactionModalOpen}
         onClose={() => setIsTransactionModalOpen(false)}
         onSuccess={refreshAll}

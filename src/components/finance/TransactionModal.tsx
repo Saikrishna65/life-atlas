@@ -27,11 +27,19 @@ interface TransactionModalProps {
   categories: FinanceCategory[];
   pockets?: SavingsPocket[];
   editingTransaction?: Transaction | null;
+  defaultDirection?: TransactionDirection;
   defaultAccountId?: string;
   defaultTripId?: string;
 }
 
-export default function TransactionModal({
+export default function TransactionModal(props: TransactionModalProps) {
+  if (!props.isOpen) return null;
+  return (
+    <TransactionForm key={props.editingTransaction?.id || "new"} {...props} />
+  );
+}
+
+function TransactionForm({
   isOpen,
   onClose,
   onSuccess,
@@ -40,66 +48,74 @@ export default function TransactionModal({
   categories,
   pockets,
   editingTransaction,
+  defaultDirection = "outflow",
   defaultAccountId,
   defaultTripId,
 }: TransactionModalProps) {
-  const [tripChoice,setTripChoice]=useState("__auto");
-  const [tripOptions,setTripOptions]=useState<import("@/lib/vault/types").TripRecord[]>([]);
-  useEffect(()=>{if(isOpen)void transactionService.availableTrips().then(setTripOptions).catch(()=>setTripOptions([]));},[isOpen,transactionService]);
-  const [direction, setDirection] = useState<TransactionDirection>("outflow");
-  const [amountStr, setAmountStr] = useState("");
-  const [accountId, setAccountId] = useState("");
-  const [categoryId, setCategoryId] = useState<string>("");
-  const [pocketId, setPocketId] = useState<string>("");
-  const [description, setDescription] = useState("");
-  const [merchant, setMerchant] = useState("");
-  const [occurredAt, setOccurredAt] = useState("");
-  const [status, setStatus] = useState<TransactionStatus>("posted");
-  const [notes, setNotes] = useState("");
+  const [tripChoice, setTripChoice] = useState(
+    editingTransaction?.tripAssignment?.mode === "excluded"
+      ? "__normal"
+      : editingTransaction?.tripAssignment?.mode === "manual"
+        ? editingTransaction.tripAssignment.tripId || "__normal"
+        : defaultTripId || "__auto",
+  );
+  const [tripOptions, setTripOptions] = useState<
+    import("@/lib/vault/types").TripRecord[]
+  >([]);
+  useEffect(() => {
+    if (isOpen)
+      void transactionService
+        .availableTrips()
+        .then(setTripOptions)
+        .catch(() => setTripOptions([]));
+  }, [isOpen, transactionService]);
+  const initialAccountId =
+    defaultAccountId || accounts.find((a) => a.status === "active")?.id || "";
+  const [isRefund, setIsRefund] = useState(
+    editingTransaction?.paymentKind === "refund",
+  );
+  const [direction, setDirection] = useState<TransactionDirection>(
+    editingTransaction?.direction || defaultDirection,
+  );
+  const [amountStr, setAmountStr] = useState(
+    editingTransaction
+      ? paiseToDecimalString(editingTransaction.amountPaise)
+      : "",
+  );
+  const [accountId, setAccountId] = useState(
+    editingTransaction?.accountId || initialAccountId,
+  );
+  const [categoryId, setCategoryId] = useState<string>(
+    editingTransaction ? tripDetailCategoryId(editingTransaction) || "" : "",
+  );
+  const [pocketId, setPocketId] = useState<string>(
+    editingTransaction?.pocketId || "",
+  );
+  const [description, setDescription] = useState(
+    editingTransaction?.description || "",
+  );
+  const [merchant, setMerchant] = useState(editingTransaction?.merchant || "");
+  const [occurredAt, setOccurredAt] = useState(() => {
+    const date = editingTransaction
+      ? new Date(editingTransaction.occurredAt)
+      : new Date();
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  });
+  const [status, setStatus] = useState<TransactionStatus>(
+    editingTransaction?.status || "posted",
+  );
+  const [notes, setNotes] = useState(editingTransaction?.notes || "");
   const [correctionReason, setCorrectionReason] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    setTripChoice(editingTransaction?.tripAssignment?.mode==="excluded"?"__normal":editingTransaction?.tripAssignment?.mode==="manual"?editingTransaction.tripAssignment.tripId || "__normal":defaultTripId || "__auto");
-    if (editingTransaction) {
-      setDirection(editingTransaction.direction);
-      setAmountStr(paiseToDecimalString(editingTransaction.amountPaise));
-      setAccountId(editingTransaction.accountId);
-      setCategoryId(tripDetailCategoryId(editingTransaction) || "");
-      setPocketId(editingTransaction.pocketId || "");
-      setDescription(editingTransaction.description);
-      setMerchant(editingTransaction.merchant || "");
-      setOccurredAt(new Date(Date.parse(editingTransaction.occurredAt)-new Date(editingTransaction.occurredAt).getTimezoneOffset()*60000).toISOString().slice(0,16));
-      setStatus(editingTransaction.status);
-      setNotes(editingTransaction.notes || "");
-      setCorrectionReason("");
-    } else {
-      setDirection("outflow");
-      setAmountStr("");
-      setAccountId(defaultAccountId || accounts[0]?.id || "");
-      setCategoryId("");
-      setPocketId("");
-      setDescription("");
-      setMerchant("");
-      // Current local ISO string for datetime-local
-      const now = new Date();
-      const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-        .toISOString()
-        .slice(0, 16);
-      setOccurredAt(localIso);
-      setStatus("posted");
-      setNotes("");
-      setCorrectionReason("");
-    }
-    setErrorMessage(null);
-  }, [editingTransaction, isOpen, defaultAccountId, defaultTripId, accounts]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    if (!description.trim()) {
+    if (!description.trim() && !merchant.trim()) {
       setErrorMessage("Please enter a description or merchant name.");
       return;
     }
@@ -128,8 +144,22 @@ export default function TransactionModal({
         await transactionService.correctTransaction(
           editingTransaction.id,
           {
-            tripAssignment:tripChoice==="__auto"?{mode:"auto"}:tripChoice==="__normal"||direction==="inflow"?{mode:"excluded"}:{mode:"manual",tripId:tripChoice},
-            description: description.trim(),
+            expectedVersion: editingTransaction.version,
+            paymentKind:
+              isRefund && direction === "inflow"
+                ? "refund"
+                : editingTransaction.paymentKind === "refund"
+                  ? direction === "inflow"
+                    ? "salary"
+                    : "purchase"
+                  : editingTransaction.paymentKind,
+            tripAssignment:
+              tripChoice === "__auto"
+                ? { mode: "auto" }
+                : tripChoice === "__normal" || direction === "inflow"
+                  ? { mode: "excluded" }
+                  : { mode: "manual", tripId: tripChoice },
+            description: description.trim() || merchant.trim(),
             merchant: merchant.trim() || undefined,
             amountPaise: paise,
             direction,
@@ -137,15 +167,23 @@ export default function TransactionModal({
             status,
             notes: notes.trim() || undefined,
             occurredAt: new Date(occurredAt).toISOString(),
-            pocketId: direction === "outflow" ? (pocketId || undefined) : undefined,
+            pocketId:
+              direction === "outflow" ? pocketId || undefined : undefined,
           },
-          correctionReason.trim() || "User manual correction"
+          correctionReason.trim() || "User manual correction",
         );
       } else {
         await transactionService.recordTransaction({
           accountId,
-          tripAssignment:tripChoice==="__auto"?{mode:"auto"}:tripChoice==="__normal"||direction==="inflow"?{mode:"excluded"}:{mode:"manual",tripId:tripChoice},
-          description: description.trim(),
+          paymentKind:
+            isRefund && direction === "inflow" ? "refund" : undefined,
+          tripAssignment:
+            tripChoice === "__auto"
+              ? { mode: "auto" }
+              : tripChoice === "__normal" || direction === "inflow"
+                ? { mode: "excluded" }
+                : { mode: "manual", tripId: tripChoice },
+          description: description.trim() || merchant.trim(),
           merchant: merchant.trim() || undefined,
           amountPaise: paise,
           direction,
@@ -154,14 +192,15 @@ export default function TransactionModal({
           notes: notes.trim() || undefined,
           occurredAt: new Date(occurredAt).toISOString(),
           source: "manual",
-          pocketId: direction === "outflow" ? (pocketId || undefined) : undefined,
+          pocketId: direction === "outflow" ? pocketId || undefined : undefined,
         });
       }
 
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to save transaction";
+      const msg =
+        err instanceof Error ? err.message : "Failed to save transaction";
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -170,20 +209,31 @@ export default function TransactionModal({
 
   // Filter categories matching the selected direction (or all)
   const availableCategories = categories.filter(
-    (c) => c.type === (direction === "inflow" ? "income" : "expense")
+    (c) =>
+      c.type === (direction === "inflow" && !isRefund ? "income" : "expense"),
   );
 
   const availablePockets = (pockets || []).filter(
-    (p) => p.linkedAccountId === accountId && p.status !== "archived" && !p.isLegacyGoal
+    (p) =>
+      p.linkedAccountId === accountId &&
+      p.status !== "archived" &&
+      !p.isLegacyGoal,
   );
 
-  const tripDetail=direction==="outflow"&&tripChoice!=="__normal"&&(tripChoice!=="__auto"||!!editingTransaction?.tripAssignment?.tripId);
+  const tripDetail =
+    direction === "outflow" &&
+    tripChoice !== "__normal" &&
+    (tripChoice !== "__auto" || !!editingTransaction?.tripAssignment?.tripId);
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title={editingTransaction ? "Edit Transaction" : "Record Transaction"}
-      subtitle={editingTransaction ? "Modifications are preserved with an immutable audit log." : undefined}
+      subtitle={
+        editingTransaction
+          ? "Modifications are preserved with an immutable audit log."
+          : undefined
+      }
       maxWidthClassName="max-w-lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -197,7 +247,11 @@ export default function TransactionModal({
         <div className="grid grid-cols-2 gap-2 p-1 bg-surface rounded-xl border border-muted">
           <button
             type="button"
-            onClick={() => setDirection("outflow")}
+            disabled={!!editingTransaction?.transferGroupId}
+            onClick={() => {
+              setDirection("outflow");
+              setIsRefund(false);
+            }}
             className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               direction === "outflow"
                 ? "bg-rose-500/20 text-rose-400 border border-rose-500/30 shadow-xs"
@@ -210,6 +264,7 @@ export default function TransactionModal({
 
           <button
             type="button"
+            disabled={!!editingTransaction?.transferGroupId}
             onClick={() => setDirection("inflow")}
             className={`flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
               direction === "inflow"
@@ -222,13 +277,42 @@ export default function TransactionModal({
           </button>
         </div>
 
+        {editingTransaction?.transferGroupId && (
+          <p className="text-sm">
+            This is one side of a transfer. Reverse the transfer and recreate it
+            to change its amount or settlement status.
+          </p>
+        )}
+        {direction === "inflow" && !editingTransaction?.transferGroupId && (
+          <label className="flex gap-2 items-center text-sm">
+            <input
+              type="checkbox"
+              checked={isRefund}
+              onChange={(event) => {
+                setIsRefund(event.target.checked);
+                setCategoryId("");
+              }}
+            />
+            This is a refund · reduce spending, not income
+          </label>
+        )}
         {/* Amount Input */}
         <div className="space-y-1">
-          <label className="text-xs font-sans font-medium text-muted-foreground">Amount (₹ INR)</label>
+          <label className="text-xs font-sans font-medium text-muted-foreground">
+            Amount (
+            {accounts.find((a) => a.id === accountId)?.currency || "INR"})
+          </label>
           <div className="relative">
-            <span className="absolute left-3.5 top-2.5 text-sm font-mono text-muted-foreground">₹</span>
+            <span className="absolute left-3.5 top-2.5 text-sm font-mono text-muted-foreground">
+              {accounts.find((a) => a.id === accountId)?.currency === "INR"
+                ? "₹"
+                : accounts.find((a) => a.id === accountId)?.currency || "₹"}
+            </span>
             <input
               type="text"
+              inputMode="decimal"
+              aria-label="Amount"
+              disabled={!!editingTransaction?.transferGroupId}
               required
               autoFocus={!editingTransaction}
               placeholder="0.00"
@@ -242,23 +326,33 @@ export default function TransactionModal({
         {/* Account and Category Selectors */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">Account</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">
+              Account
+            </label>
             <FinanceSelect
               value={accountId}
               disabled={!!editingTransaction}
               onChange={(e) => setAccountId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500 disabled:opacity-60"
             >
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} ({a.accountType})
-                </option>
-              ))}
+              {accounts
+                .filter(
+                  (a) =>
+                    a.status === "active" ||
+                    a.id === editingTransaction?.accountId,
+                )
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.accountType})
+                  </option>
+                ))}
             </FinanceSelect>
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">{tripDetail?"Trip detail category":"Category"}</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">
+              {tripDetail ? "Trip detail category" : "Category"}
+            </label>
             <FinanceSelect
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
@@ -271,43 +365,57 @@ export default function TransactionModal({
                 </option>
               ))}
             </FinanceSelect>
-            {tripDetail&&<p>Finance category: Travel &amp; Leisure. This detail is kept for the trip breakdown.</p>}
+            {tripDetail && (
+              <p>
+                Finance category: Travel &amp; Leisure. This detail is kept for
+                the trip breakdown.
+              </p>
+            )}
           </div>
         </div>
 
         {/* Savings Pocket Selector (for expense/outflow only) */}
-        {direction === "outflow" && availablePockets.length > 0 && (
-          <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground flex items-center justify-between">
-              <span>Spend from Savings Pocket (Optional)</span>
-              <span className="text-[10px] text-emerald-400 font-mono">Deducts from pocket allocation</span>
-            </label>
-            <FinanceSelect
-              aria-label="Spend from savings pocket"
-              value={pocketId}
-              onChange={(e) => setPocketId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
-            >
-              <option value="">None (Spend from general unallocated funds)</option>
-              {availablePockets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · ₹{((p.allocatedPaise || 0) / 100).toFixed(2)} allocated
+        {direction === "outflow" &&
+          !editingTransaction?.transferGroupId &&
+          availablePockets.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-sans font-medium text-muted-foreground flex items-center justify-between">
+                <span>Spend from Savings Pocket (Optional)</span>
+                <span className="text-[10px] text-emerald-400 font-mono">
+                  Deducts from pocket allocation
+                </span>
+              </label>
+              <FinanceSelect
+                aria-label="Spend from savings pocket"
+                value={pocketId}
+                onChange={(e) => setPocketId(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
+              >
+                <option value="">
+                  None (Spend from general unallocated funds)
                 </option>
-              ))}
-            </FinanceSelect>
-            <p className="text-[11px] text-muted-foreground">
-              Money stays in your account. The pocket allocation will reduce by the expense amount.
-            </p>
-          </div>
-        )}
+                {availablePockets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} · ₹{((p.allocatedPaise || 0) / 100).toFixed(2)}{" "}
+                    allocated
+                  </option>
+                ))}
+              </FinanceSelect>
+              <p className="text-[11px] text-muted-foreground">
+                Money stays in your account. The pocket allocation will reduce
+                by the expense amount.
+              </p>
+            </div>
+          )}
 
         {/* Description & Merchant */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">Description</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">
+              Description
+            </label>
             <input
               type="text"
-              required
               placeholder="e.g. Groceries at Zepto, Train Ticket"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -316,7 +424,9 @@ export default function TransactionModal({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">Merchant / Payee (Optional)</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">
+              Merchant / Payee (Optional)
+            </label>
             <input
               type="text"
               placeholder="e.g. Starbucks, Uber"
@@ -330,7 +440,9 @@ export default function TransactionModal({
         {/* Date and Status */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">Date & Time</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">
+              Date & Time
+            </label>
             <input
               type="datetime-local"
               value={occurredAt}
@@ -340,9 +452,12 @@ export default function TransactionModal({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">Settlement Status</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">
+              Settlement Status
+            </label>
             <FinanceSelect
               value={status}
+              disabled={!!editingTransaction?.transferGroupId}
               onChange={(e) => setStatus(e.target.value as TransactionStatus)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
             >
@@ -354,7 +469,9 @@ export default function TransactionModal({
 
         {/* Notes */}
         <div className="space-y-1">
-          <label className="text-xs font-sans font-medium text-muted-foreground">Notes (Optional)</label>
+          <label className="text-xs font-sans font-medium text-muted-foreground">
+            Notes (Optional)
+          </label>
           <input
             type="text"
             placeholder="Add extra memo or trip tags..."
@@ -380,7 +497,27 @@ export default function TransactionModal({
           </div>
         )}
 
-        {direction==="outflow"&&<div><label>Trip assignment</label><FinanceSelect aria-label="Trip assignment" value={tripChoice} onChange={e=>setTripChoice(e.target.value)}><option value="__auto">Automatic · confirmed trip window</option><option value="__normal">Normal category · keep outside trips</option>{tripOptions.map(trip=><option key={trip.id} value={trip.id}>{trip.title} · manual / advance booking</option>)}</FinanceSelect><p>Manual choices stay attached even outside the travel dates.</p></div>}
+        {direction === "outflow" && (
+          <div>
+            <label>Trip assignment</label>
+            <FinanceSelect
+              aria-label="Trip assignment"
+              value={tripChoice}
+              onChange={(e) => setTripChoice(e.target.value)}
+            >
+              <option value="__auto">Automatic · confirmed trip window</option>
+              <option value="__normal">
+                Normal category · keep outside trips
+              </option>
+              {tripOptions.map((trip) => (
+                <option key={trip.id} value={trip.id}>
+                  {trip.title} · manual / advance booking
+                </option>
+              ))}
+            </FinanceSelect>
+            <p>Manual choices stay attached even outside the travel dates.</p>
+          </div>
+        )}
         {/* Actions */}
         <div className="flex items-center justify-end gap-2 pt-4 border-t border-muted">
           <button
@@ -399,12 +536,17 @@ export default function TransactionModal({
                 : "bg-rose-500 text-white hover:bg-rose-400"
             }`}
           >
-            {editingTransaction ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-            <span>{editingTransaction ? "Save Correction" : "Record Transaction"}</span>
+            {editingTransaction ? (
+              <Check className="w-3.5 h-3.5" />
+            ) : (
+              <Plus className="w-3.5 h-3.5" />
+            )}
+            <span>
+              {editingTransaction ? "Save Correction" : "Record Transaction"}
+            </span>
           </button>
         </div>
       </form>
     </Modal>
   );
 }
-

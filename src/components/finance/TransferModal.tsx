@@ -2,9 +2,9 @@
 
 import FinanceSelect from "@/components/finance/FinanceSelect";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Modal } from "@/components/finance/FinanceDialog";
-import { ArrowLeftRight, Check, AlertCircle, ArrowRight } from "lucide-react";
+import { ArrowLeftRight, ArrowRight } from "lucide-react";
 import {
   FinanceAccount,
   TransactionService,
@@ -21,7 +21,10 @@ interface TransferModalProps {
   defaultSourceAccountId?: string;
 }
 
-export default function TransferModal({
+export default function TransferModal(props: TransferModalProps) {
+  return props.isOpen ? <TransferForm {...props} /> : null;
+}
+function TransferForm({
   isOpen,
   onClose,
   onSuccess,
@@ -29,33 +32,34 @@ export default function TransferModal({
   accounts,
   defaultSourceAccountId,
 }: TransferModalProps) {
-  const [sourceAccountId, setSourceAccountId] = useState("");
-  const [destinationAccountId, setDestinationAccountId] = useState("");
+  const activeAccounts = accounts.filter((a) => a.status === "active");
+  const initialSource =
+    activeAccounts.find((a) => a.id === defaultSourceAccountId) ||
+    activeAccounts[0];
+  const [sourceAccountId, setSourceAccountId] = useState(
+    initialSource?.id || "",
+  );
+  const [destinationAccountId, setDestinationAccountId] = useState(
+    activeAccounts.find(
+      (a) =>
+        a.id !== initialSource?.id && a.currency === initialSource?.currency,
+    )?.id || "",
+  );
   const [amountStr, setAmountStr] = useState("");
   const [description, setDescription] = useState("");
-  const [occurredAt, setOccurredAt] = useState("");
+  const [occurredAt, setOccurredAt] = useState(() => {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (accounts.length >= 2) {
-      const src = defaultSourceAccountId || accounts[0]?.id || "";
-      const dst = accounts.find((a) => a.id !== src)?.id || accounts[1]?.id || "";
-      setSourceAccountId(src);
-      setDestinationAccountId(dst);
-    }
-    setAmountStr("");
-    setDescription("");
-    const now = new Date();
-    const localIso = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
-    setOccurredAt(localIso);
-    setErrorMessage(null);
-  }, [isOpen, accounts, defaultSourceAccountId]);
-
   const sourceAccount = accounts.find((a) => a.id === sourceAccountId);
-  const destinationAccount = accounts.find((a) => a.id === destinationAccountId);
+  const destinationAccount = accounts.find(
+    (a) => a.id === destinationAccountId,
+  );
 
   // Compute preview paise
   let previewPaise = 0;
@@ -107,7 +111,8 @@ export default function TransferModal({
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to execute transfer";
+      const msg =
+        err instanceof Error ? err.message : "Failed to execute transfer";
       setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
@@ -132,14 +137,20 @@ export default function TransferModal({
         {/* Source & Destination Account Selectors */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">From (Source)</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">
+              From (Source)
+            </label>
             <FinanceSelect
               value={sourceAccountId}
               onChange={(e) => setSourceAccountId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
             >
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id} disabled={a.id === destinationAccountId}>
+              {activeAccounts.map((a) => (
+                <option
+                  key={a.id}
+                  value={a.id}
+                  disabled={a.id === destinationAccountId}
+                >
                   {a.name} ({a.accountType})
                 </option>
               ))}
@@ -147,14 +158,23 @@ export default function TransferModal({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">To (Destination)</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">
+              To (Destination)
+            </label>
             <FinanceSelect
               value={destinationAccountId}
               onChange={(e) => setDestinationAccountId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
             >
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id} disabled={a.id === sourceAccountId}>
+              {activeAccounts.map((a) => (
+                <option
+                  key={a.id}
+                  value={a.id}
+                  disabled={
+                    a.id === sourceAccountId ||
+                    a.currency !== sourceAccount?.currency
+                  }
+                >
                   {a.name} ({a.accountType})
                 </option>
               ))}
@@ -164,15 +184,23 @@ export default function TransferModal({
 
         {/* Amount Input */}
         <div className="space-y-1">
-          <label className="text-xs font-sans font-medium text-muted-foreground">Amount (₹ INR)</label>
+          <label className="text-xs font-sans font-medium text-muted-foreground">
+            Amount ({sourceAccount?.currency || "INR"})
+          </label>
           <div className="relative">
-            <span className="absolute left-3.5 top-2.5 text-sm font-mono text-muted-foreground">₹</span>
+            <span className="absolute left-3.5 top-2.5 text-sm font-mono text-muted-foreground">
+              {sourceAccount?.currency === "INR"
+                ? "₹"
+                : sourceAccount?.currency || "₹"}
+            </span>
             <input
               type="text"
               required
               autoFocus
               placeholder="0.00"
               value={amountStr}
+              aria-label="Transfer amount"
+              inputMode="decimal"
               onChange={(e) => setAmountStr(e.target.value)}
               className="w-full pl-8 pr-3 py-2.5 rounded-lg bg-surface border border-muted text-base font-mono font-semibold text-foreground focus:outline-none focus:border-emerald-500"
             />
@@ -183,22 +211,30 @@ export default function TransferModal({
         {previewPaise > 0 && sourceAccount && destinationAccount && (
           <div className="p-3.5 rounded-xl border border-muted bg-surface/70 space-y-2 text-xs">
             <div className="flex items-center justify-between text-muted-foreground font-mono text-[11px]">
-              <span className="truncate max-w-[40%] font-semibold text-foreground">{sourceAccount.name}</span>
+              <span className="truncate max-w-[40%] font-semibold text-foreground">
+                {sourceAccount.name}
+              </span>
               <div className="flex items-center gap-1.5 text-emerald-400 font-semibold px-2 py-0.5 rounded bg-emerald-500/10">
                 <ArrowLeftRight className="w-3 h-3" />
                 <span>{formatPaise(previewPaise)}</span>
               </div>
-              <span className="truncate max-w-[40%] font-semibold text-foreground text-right">{destinationAccount.name}</span>
+              <span className="truncate max-w-[40%] font-semibold text-foreground text-right">
+                {destinationAccount.name}
+              </span>
             </div>
 
             <div className="text-[11px] text-muted-foreground leading-relaxed pt-1 border-t border-muted/50">
               {isCardRepayment ? (
                 <span className="text-emerald-400">
-                  Credit Card Settlement: Reduces bank balance and reduces outstanding debt owed by {formatPaise(previewPaise)}. Zero net worth change.
+                  Credit Card Settlement: Reduces bank balance and reduces
+                  outstanding debt owed by {formatPaise(previewPaise)}. Zero net
+                  worth change.
                 </span>
               ) : (
                 <span>
-                  Internal Reallocation: Money moves between your accounts with zero impact on overall net worth and zero income/expense inflation.
+                  Internal Reallocation: Money moves between your accounts with
+                  zero impact on overall net worth and zero income/expense
+                  inflation.
                 </span>
               )}
             </div>
@@ -208,10 +244,16 @@ export default function TransferModal({
         {/* Description & Date */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">Description (Optional)</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">
+              Description (Optional)
+            </label>
             <input
               type="text"
-              placeholder={isCardRepayment ? "Credit Card Bill Payment" : "Monthly Savings Transfer"}
+              placeholder={
+                isCardRepayment
+                  ? "Credit Card Bill Payment"
+                  : "Monthly Savings Transfer"
+              }
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
@@ -219,7 +261,9 @@ export default function TransferModal({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-sans font-medium text-muted-foreground">Date & Time</label>
+            <label className="text-xs font-sans font-medium text-muted-foreground">
+              Date & Time
+            </label>
             <input
               type="datetime-local"
               value={occurredAt}
@@ -251,4 +295,3 @@ export default function TransferModal({
     </Modal>
   );
 }
-
