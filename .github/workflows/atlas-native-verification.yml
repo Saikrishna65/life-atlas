@@ -1,0 +1,198 @@
+name: Atlas native verification (branch only)
+
+on:
+  push:
+    branches: ['feature/atlas-ai-integration']
+    paths:
+      - 'android/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'mobile/**'
+      - 'package*.json'
+      - '.github/workflows/atlas-native-verification.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: atlas-native-verification-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22.14.0'
+  JAVA_VERSION: '17.0.14+7'
+  ANDROID_PLATFORM: '34'
+  ANDROID_BUILD_TOOLS: '34.0.0'
+  NDK_VERSION: '28.2.13676358'
+  CMAKE_VERSION: '3.22.1'
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-java@v4.7.1
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '11076708'
+          packages: ''
+          log-accepted-android-sdk-licenses: false
+      - uses: actions/cache@v4.2.3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: preview-gradle-${{ runner.os }}-jdk17-${{ hashFiles('android/**/*.gradle', 'android/gradle.properties', 'android/gradle/wrapper/gradle-wrapper.properties', 'package-lock.json') }}
+          restore-keys: preview-gradle-${{ runner.os }}-jdk17-
+      - name: Initialize diagnostics
+        run: |
+          mkdir -p preview-diagnostics preview-artifacts
+          printf 'Commit: %s\nRun: %s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > preview-diagnostics/build.txt
+          node --version >> preview-diagnostics/build.txt
+          java -version 2>> preview-diagnostics/build.txt
+      - name: Install locked dependencies and check project
+        timeout-minutes: 12
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee preview-diagnostics/npm-ci.log
+          npx --no-install prisma generate
+          npx --no-install tsc --noEmit --incremental false
+          for test in tests/atlas-ai/*.test.ts tests/security/*.test.ts; do
+            node --import tsx "$test"
+          done
+          npm run build:mobile 2>&1 | tee preview-diagnostics/mobile-build.log
+      - name: Sync bundled assets and install pinned Android tools
+        run: |
+          set -o pipefail
+          npx --no-install cap sync android 2>&1 | tee preview-diagnostics/capacitor-sync.log
+          sdkmanager "platforms;android-${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}" "ndk;$NDK_VERSION" "cmake;$CMAKE_VERSION"
+          sdkmanager --list_installed > preview-diagnostics/sdk-packages.txt
+          test -f android/app/src/main/assets/public/index.html
+      - name: Run preview JVM unit tests
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          bash android/gradlew -p android --no-daemon --max-workers=2 --console=plain --stacktrace :app:testPreviewUnitTest -PatlasLocalInference=true 2>&1 | tee preview-diagnostics/gradle-unit-tests.log
+          python3 - <<'PYTEST'
+          import xml.etree.ElementTree as ET
+          report = 'android/app/build/test-results/testPreviewUnitTest/TEST-com.lifeatlas.app.AtlasModelTransferTest.xml'
+          suite = ET.parse(report).getroot()
+          assert int(suite.attrib.get('tests', 0)) >= 2, 'Expected model-transfer JVM tests did not run'
+          assert int(suite.attrib.get('failures', 0)) == 0
+          assert int(suite.attrib.get('errors', 0)) == 0
+          assert int(suite.attrib.get('skipped', 0)) == 0, 'Model-transfer tests must not be skipped'
+          PYTEST
+      - name: Build preview only
+        timeout-minutes: 20
+        run: |
+          set -o pipefail
+          bash android/gradlew -p android --version > preview-diagnostics/gradle-version.txt
+          bash android/gradlew -p android --no-daemon --max-workers=2 --console=plain --stacktrace :app:assemblePreview -PatlasLocalInference=true 2>&1 | tee preview-diagnostics/gradle-build.log
+      - name: Verify preview identity and signature
+        run: |
+          set -euo pipefail
+          apk=android/app/build/outputs/apk/preview/app-preview.apk
+          test -s "$apk"
+          unzip -l "$apk" > preview-diagnostics/apk-files.txt
+          grep -F "lib/arm64-v8a/libatlas_llama.so" preview-diagnostics/apk-files.txt
+          "$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/aapt" dump badging "$apk" > preview-diagnostics/apk-badging.txt
+          package_id=$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" preview-diagnostics/apk-badging.txt)
+          test "$package_id" = com.lifeatlas.app.next
+          "$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/apksigner" verify --verbose --print-certs "$apk" > preview-diagnostics/signature.txt
+          cp "$apk" preview-artifacts/atlas-next-preview.apk
+          sha256sum preview-artifacts/atlas-next-preview.apk > preview-artifacts/SHA256SUMS.txt
+          printf 'Preview only: com.lifeatlas.app.next\nCommit: %s\nUses ephemeral debug signing. No production signing keys.\n' "$GITHUB_SHA" > preview-artifacts/BUILD.txt
+      - name: Upload verified preview APK
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: atlas-preview-apk-${{ github.run_id }}-${{ github.run_attempt }}
+          path: preview-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: atlas-preview-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            preview-diagnostics/
+            android/app/build/reports/
+            android/app/build/test-results/testPreviewUnitTest/
+            android/app/build/outputs/logs/
+            mobile-dist/build-info.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  linux-native-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4.7.1
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+      - name: Configure and build the same JNI sources for Linux
+        run: |
+          set -euo pipefail
+          mkdir -p host-wrapper host-diagnostics
+          cat > host-wrapper/CMakeLists.txt <<'CMAKE'
+          cmake_minimum_required(VERSION 3.22.1)
+          project(atlas_host LANGUAGES C CXX)
+          find_package(JNI REQUIRED)
+          add_subdirectory("../android/app/src/main/cpp" atlas-native)
+          target_include_directories(atlas_llama PRIVATE ${JNI_INCLUDE_DIRS})
+          CMAKE
+          cmake -S host-wrapper -B host-build -DCMAKE_BUILD_TYPE=Release 2>&1 | tee host-diagnostics/configure.log
+          cmake --build host-build --target atlas_llama --parallel 2 2>&1 | tee host-diagnostics/build.log
+          test -s host-build/atlas-native/libatlas_llama.so
+      - name: Retrieve public baseline and verify exact bytes
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, subprocess, hashlib, pathlib
+          model = json.load(open("android/app/src/main/assets/atlas-model-catalogue.json"))[0]
+          assert model["repository"] == "ggml-org/gemma-3-1b-it-GGUF"
+          assert model["revision"] == "61333bac858461ec0c309b7baafdc408d7d2c381"
+          assert model["filename"] == "gemma-3-1b-it-Q4_K_M.gguf"
+          assert model["sha256"] == "8ccc5cd1f1b3602548715ae25a66ed73fd5dc68a210412eea643eb20eb75a135"
+          assert model["bytes"] == 806058240
+          url = "https://huggingface.co/" + model["repository"] + "/resolve/" + model["revision"] + "/" + model["filename"]
+          subprocess.run(["curl", "--fail", "--location", "--proto", "=https", "--proto-redir", "=https", "--retry", "2", "--max-time", "600", "-o", "baseline.gguf", url], check=True)
+          path = pathlib.Path("baseline.gguf")
+          assert path.stat().st_size == model["bytes"]
+          with path.open("rb") as f:
+              assert hashlib.file_digest(f, "sha256").hexdigest() == model["sha256"]
+          print("Verified model bytes and SHA-256")
+          PY
+      - name: Run real JNI generation and cancellation
+        run: |
+          set -euo pipefail
+          mkdir -p host-classes
+          javac -d host-classes android/app/src/main/java/com/lifeatlas/app/AtlasLlamaNative.java tests/native/AtlasNativeSmoke.java
+          timeout 300s java -Djava.library.path="$PWD/host-build/atlas-native" -cp host-classes com.lifeatlas.app.AtlasNativeSmoke baseline.gguf | tee host-diagnostics/inference.log
+      - name: Upload synthetic inference logs only
+        uses: actions/upload-artifact@v4.6.2
+        if: always()
+        with:
+          name: atlas-native-host-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: host-diagnostics/
+          if-no-files-found: warn
+          retention-days: 7
