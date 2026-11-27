@@ -1,13 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowLeft, ArrowUpRight, Play, Search, Settings2, X, LoaderCircle, Check, ShieldCheck, Compass } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Play, Search, Settings2, X, LoaderCircle, Check, ShieldCheck, Compass, Maximize2, Minimize2 } from "lucide-react";
 import { appServiceUrl } from "@/lib/appNetwork";
 import { type VideoResult } from "@/lib/video/search";
 import { directVideoId } from "@/lib/video/suggestions";
 import { useVideoSuggestions } from "@/lib/video/use-suggestions";
 import { appendVideoPage, readVideoPage } from "@/lib/video/pagination";
 import { useVideoPagination } from "@/lib/video/use-pagination";
+import YouTubePlayer from "./YouTubePlayer";
+import { usePlaybackPreferences } from "@/lib/video/playback-preferences";
 import DiscoverFeed from "./DiscoverFeed";
 import VideoGrid from "./VideoGrid";
 import PaginationFooter from "./PaginationFooter";
@@ -34,6 +36,8 @@ const suggestions = [
   { title: "Find your sound", query: "live music sessions", caption: "A moment to tune in", number: "03" },
 ];
 export default function AtlasVideoWeb({ standalone = false }: { standalone?: boolean }) {
+  const playback = usePlaybackPreferences();
+  const [theater, setTheater] = useState(false);
   const [searchOpen, setSearchOpen] = useState(true);
   const [query, setQuery] = useState("");
   const [videos, setVideos] = useState<VideoResult[]>([]);
@@ -171,17 +175,17 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
         {!busy && (videos.length > 0 || !!pagination.cursor) && <PaginationFooter hasMore={!!pagination.cursor} loading={pagination.loading} error={pagination.error} attachSentinel={pagination.attachSentinel} onLoad={pagination.loadMore}/>}
         {!busy && resultQuery && !videos.length && !pagination.cursor && !error && <div className="video-empty-results"><Search size={26}/><h2>Nothing found.</h2><p>Try a different name or a few simpler words.</p></div>}
       </>}
-      {view === "player" && selected && <section className="video-watch" data-related={playerVideos.length > 1} aria-label="Video player">
-        <div className="video-watch-main"><div className="video-watch-heading"><button aria-label="Close video" onClick={() => { setSelected(null); setView(playerOrigin); }}><X size={20}/></button></div>
-          <div className="video-player-frame"><iframe key={selected.id} title={selected.title} src={`https://www.youtube-nocookie.com/embed/${selected.id}?autoplay=1&playsinline=1&rel=0`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"/></div>
+      {view === "player" && selected && <section className="video-watch" data-related={playback.related && playerVideos.length > 1} data-theater={theater} aria-label="Video player">
+        <div className="video-watch-main"><div className="video-watch-heading"><button className="video-watch-return" aria-label="Close video" onClick={() => { setSelected(null); setView(playerOrigin); }}><ArrowLeft size={18}/><span>Back to {playerOrigin === "discover" ? "Discover" : resultQuery ? "results" : "search"}</span></button><button className="video-watch-theater" aria-label={theater ? "Exit theater view" : "Theater view"} aria-pressed={theater} onClick={() => setTheater((current) => !current)}>{theater ? <Minimize2 size={18}/> : <Maximize2 size={18}/>}</button></div>
+          <YouTubePlayer key={selected.id} id={selected.id} title={selected.title} autoplay={playback.autoplay}/>
           <div className="video-player-meta"><h1>{selected.title}</h1><p>{selected.channel || "Opened from your video link"}</p></div>
         </div>
-        {playerVideos.length > 1 && <aside className="video-up-next" aria-label={playerOrigin === "discover" ? "More from this topic" : "More from this search"}><h2>More videos</h2>{playerVideos.filter((video) => video.id !== selected.id).map((video) => <button key={video.id} onClick={() => playerOrigin === "discover" ? setSelected(video) : openVideo(video)}>
+        {playback.related && playerVideos.length > 1 && <aside className="video-up-next" aria-label={playerOrigin === "discover" ? "More from this topic" : "More from this search"}><h2>More videos</h2>{playerVideos.filter((video) => video.id !== selected.id).map((video) => <button key={video.id} onClick={() => playerOrigin === "discover" ? setSelected(video) : openVideo(video)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={video.thumbnail} alt="" loading="lazy"/><span><strong>{video.title}</strong><small>{video.channel}</small></span>
+          <div className="video-related-thumbnail"><span className="video-related-placeholder" aria-hidden="true"><Play size={20}/></span><img src={video.thumbnail} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}/>{video.duration && <small aria-hidden="true">{video.duration}</small>}</div><span><strong>{video.title}</strong><small>{video.channel}</small></span>
         </button>)}{playerOrigin === "search" && <PaginationFooter hasMore={!!pagination.cursor} loading={pagination.loading} error={pagination.error} attachSentinel={pagination.attachSentinel} onLoad={pagination.loadMore}/>}</aside>}
       </section>}
-      {view === "you" && <section className="video-account"><span className="video-eyebrow">MAKE YOURSELF AT HOME</span><h1>Your space.</h1><p>A quieter player. A look that feels like you.</p><button className="video-topic-reset" onClick={() => { setView("discover"); setSearchOpen(false); }}>Choose my Discover topic</button><fieldset><legend>Appearance</legend><div className="video-theme-grid">{[{id:"mono",name:"Mono",hint:"After hours"},{id:"paper",name:"Paper",hint:"A clean slate"},{id:"ink",name:"Ink",hint:"A deeper shade"}].map((option) => <label key={option.id} data-theme-option={option.id}><input aria-label={option.name} type="radio" name="theme" checked={theme === option.id} onChange={() => chooseTheme(option.id)}/><span className="video-theme-preview" aria-hidden="true"><i/><i/><i/></span><span><strong>{option.name}</strong><small>{option.hint}</small></span>{theme === option.id && <Check size={15}/>}</label>)}</div></fieldset><div className="video-privacy-note"><ShieldCheck size={20}/><div><h2>Just watching. No keeping track.</h2><p>Atlas saves no searches or watch history. Only your theme and explicitly chosen Discover topic are saved. Typed text is sent to YouTube for suggestions. YouTube also receives playback requests and has its own privacy policies.</p></div></div><Link className="video-android-link" href="/secret/apps"><span><strong>Take Atlas Video with you.</strong><small>Explore the Android app</small></span><ArrowUpRight size={20}/></Link></section>}
+      {view === "you" && <section className="video-account"><span className="video-eyebrow">MAKE YOURSELF AT HOME</span><h1>Your space.</h1><p>A quieter player. A look that feels like you.</p><button className="video-topic-reset" onClick={() => { setView("discover"); setSearchOpen(false); }}>Choose my Discover topic</button><fieldset><legend>Appearance</legend><div className="video-theme-grid">{[{id:"mono",name:"Mono",hint:"After hours"},{id:"paper",name:"Paper",hint:"A clean slate"},{id:"ink",name:"Ink",hint:"A deeper shade"}].map((option) => <label key={option.id} data-theme-option={option.id}><input aria-label={option.name} type="radio" name="theme" checked={theme === option.id} onChange={() => chooseTheme(option.id)}/><span className="video-theme-preview" aria-hidden="true"><i/><i/><i/></span><span><strong>{option.name}</strong><small>{option.hint}</small></span>{theme === option.id && <Check size={15}/>}</label>)}</div></fieldset><fieldset className="video-playback-settings"><legend>Playback</legend><label><span><strong>Play when opened</strong><small>Start the video when your browser allows autoplay.</small></span><input type="checkbox" checked={playback.autoplay} onChange={(event) => playback.update("autoplay", event.target.checked)}/></label><label><span><strong>Show more videos</strong><small>Display other videos from your current search or topic.</small></span><input type="checkbox" checked={playback.related} onChange={(event) => playback.update("related", event.target.checked)}/></label></fieldset><div className="video-privacy-note"><ShieldCheck size={20}/><div><h2>Just watching. No keeping track.</h2><p>Atlas saves no searches or watch history. Only your theme, playback preferences and explicitly chosen Discover topic are saved. Typed text is sent to YouTube for suggestions. YouTube also receives playback requests and has its own privacy policies.</p></div></div><Link className="video-android-link" href="/secret/apps"><span><strong>Take Atlas Video with you.</strong><small>Explore the Android app</small></span><ArrowUpRight size={20}/></Link></section>}
     </div>
     <div className="video-dock">
       {view === "search" && searchOpen && <div id={`${completionId}-search`} className="video-search-box" ref={searchBox} onBlur={(event) => {

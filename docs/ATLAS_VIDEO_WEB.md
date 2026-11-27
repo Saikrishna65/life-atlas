@@ -196,3 +196,47 @@ Vercel site failed at the environment's outbound CONNECT proxy (403); the connec
 web tool also could not access that URL. Live deployment performance and external
 playback remain unverified. No APK, mobile bundle or local production build was
 created for this change.
+
+## Playback reliability and watch view (2026-11-27)
+
+The no-cookie iframe starts immediately on video selection. In parallel, a shared,
+lazy loader fetches the official YouTube IFrame API only when a player is opened.
+No SDK dependency, undocumented message parser, playback proxy or background
+polling was added. Failed SDK loads clear their pending promise and owned script
+so explicit retry can reconnect. An SDK failure leaves the iframe's native
+controls available. Provider controls and branding remain intact.
+
+The watch view distinguishes connecting, ready, blocked autoplay, playing, paused,
+buffering, finished, slow, offline and error states. Frame readiness is never
+reported as playback. Known provider errors explain unavailable/private videos,
+owner-disabled embedding and player verification failures. A 15-second startup or
+buffering watchdog offers recovery without automatically restarting the video.
+Reload player preserves the current position when the provider exposes it; a
+changed video starts fresh. Old player callbacks are ignored after disposal.
+Timers, network listeners, API player instances and iframe nodes are cleaned up.
+
+Desktop theater view expands the player above the related list. Mobile retains
+the compact stacked layout. A back-to-feed button, stable 16:9 related thumbnails,
+duration labels and unobtrusive status/retry row keep controls usable. Playback
+settings under You control start-on-open (subject to browser autoplay rules) and
+related-video visibility. These two boolean preferences are the only new saved
+values (`atlas-video-playback`); no video IDs, queries or watch history are saved.
+
+For future live measurements, the player element exposes `data-ready-ms` and
+`data-startup-ms` for elapsed time to official API ready / first playing event.
+These measurements stay in DOM memory, reset on retry and are not transmitted or
+persisted. Provider events do not measure decoded frame quality or ad duration.
+There is no claim that provider playback latency has improved without live data.
+
+Validation: 663 unit tests passed; TypeScript and scoped ESLint passed. Source
+browser checks at 390/1280px verify lazy/reused SDK loading, failed-script retry,
+native iframe fallback, ready-vs-playing states, autoplay blocking, buffering,
+provider errors, resume on retry, stale-event isolation, offline recovery,
+timeout recovery, cleanup, theater layout and preference behavior. Existing
+search, autocomplete, Discover and scrolling/browser checks passed (including
+320/390/1280/1920px coverage across suites). Player screenshots are in
+`work/qa-video-web/player-*.png`. Responses, SDK events and playback in these
+fixtures are synthetic. Live YouTube playback, physical-device behavior and
+actual deployment startup latency were not verified. No APK, mobile bundle or
+local production build was created. Browsing with a persistent mini-player is
+still a separate follow-up; leaving the watch view currently disposes playback.
