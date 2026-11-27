@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { searchVideos } from "@/lib/video/server-search";
 import { searchQuery } from "@/lib/video/search";
 export const runtime = "nodejs";
 export const maxDuration = 20;
@@ -24,54 +25,11 @@ export async function POST(request: Request) {
     );
   }
   try {
-    const { Innertube, YTNodes } = await import("youtubei.js");
-    const signal = AbortSignal.any([
-      request.signal,
-      AbortSignal.timeout(12000),
-    ]);
-    const yt = await Innertube.create({
-      generate_session_locally: true,
-      fetch: (url, init) => fetch(url, { ...init, signal, cache: "no-store" }),
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(10000)]);
+    const { videos, setupMs, searchMs } = await searchVideos(query, signal);
+    return NextResponse.json({ videos }, {
+      headers: { ...headers, "Server-Timing": `setup;dur=${setupMs.toFixed(1)}, search;dur=${searchMs.toFixed(1)}` },
     });
-    const results = await yt.search(query, { type: "video" });
-    // YouTube currently returns both classic Video and newer LockupView renderers.
-    const videos = results.results
-      .flatMap((node) => {
-        if (node.is(YTNodes.Video)) {
-          return [
-            {
-              id: node.video_id,
-              title: node.title.toString(),
-              channel: node.author.name || "",
-              duration: node.duration.text || "",
-            },
-          ];
-        }
-        if (
-          node.is(YTNodes.LockupView) &&
-          node.content_type === "VIDEO" &&
-          node.content_id
-        ) {
-          return [
-            {
-              id: node.content_id,
-              title: node.metadata?.title?.toString() || "Video",
-              channel:
-                node.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts?.[0]?.text?.toString() ||
-                "",
-              duration: node.duration.text || "",
-            },
-          ];
-        }
-        return [];
-      })
-      .filter((video) => /^[A-Za-z0-9_-]{11}$/.test(video.id))
-      .slice(0, 24)
-      .map((video) => ({
-        ...video,
-        thumbnail: `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`,
-      }));
-    return NextResponse.json({ videos }, { headers });
   } catch {
     return NextResponse.json(
       {

@@ -38,5 +38,40 @@ iframe requests were blocked: real YouTube streaming and live search were not
 verified. Screenshots are under `work/qa-video-web/`.
 
 The environment's network proxy blocked the live Vercel inspection, so no live
-HTTP success is claimed. No production, mobile bundle or APK build was run. This
-change has not been pushed or deployed.
+HTTP success is claimed. No production, mobile bundle or APK build was run. The initial standalone route was published in commit `5979f4e`. Deployment
+completion and real playback still require checking the live service.
+
+## Browser redesign and search request reduction — 2026-11-27
+
+The player now has a bottom search dock and compact active navigation pill,
+separate discovery/results/player/appearance views, a responsive thumbnail feed,
+and a calmer player with related results from the current search. The new default
+is Paper; explicitly saved Mono/Paper/Ink preferences remain honored. Search
+remains user-submitted, with no background feed requests or search history cache.
+Suggestions submit real searches only when chosen. Primary navigation and search
+stay at the bottom; the dock adapts to visual-viewport keyboard changes.
+
+Each request previously initialized YouTube's config and JS player before searching.
+Search-only sessions now explicitly disable `retrieve_player` and
+`retrieve_innertube_config`, and keep `enable_session_cache` false. The real SDK
+was exercised with a controlled upstream transport: setup made no network calls,
+then exactly one POST search was made. Repeating a search made a fresh request,
+confirming that no query/result cache was introduced. Cancellation signals remain
+isolated per request. Session and search durations are exposed as numeric
+`Server-Timing` headers without recording queries.
+
+The browser allows replacing an in-flight request, suppresses duplicate active
+submissions, ignores stale responses, provides cancellation, and bounds waiting
+with a client deadline. The server upstream deadline is ten seconds. Direct
+YouTube links still open locally without making a search request. Cancelled
+searches return to discovery instead of reporting misleading empty results.
+
+Validation: 650 unit tests, TypeScript, scoped ESLint and the browser source
+fixture passed. Browser coverage includes mobile/desktop layout, theme-only
+storage, direct links, query replacement, stale-response rejection and
+cancellation. Desktop/mobile home screenshots were captured and inspected at
+`work/qa-video-web/video-home-1280.png` and `video-home-390.png`. The native
+packaged-app fixture was updated for the new UI but no mobile bundle/APK was built.
+Live upstream latency and real YouTube playback were not measured in this
+environment; the one-request result is a controlled SDK integration measurement,
+not a claim of instant live search. No APK build was performed.
