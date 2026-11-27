@@ -75,3 +75,44 @@ packaged-app fixture was updated for the new UI but no mobile bundle/APK was bui
 Live upstream latency and real YouTube playback were not measured in this
 environment; the one-request result is a controlled SDK integration measurement,
 not a claim of instant live search. No APK build was performed.
+
+## Search autocomplete — 2026-11-27
+
+Typing now opens up to eight YouTube suggestions above the bottom search field.
+Requests wait 250 ms after typing pauses. Tap a row to search; its separate arrow
+fills the input without searching. Up/Down selects, Enter searches, Right Arrow
+fills at the caret's end, and Escape dismisses. Tapping outside dismisses too.
+The input exposes combobox/listbox relationships and active-option IDs. Fill
+buttons sit outside listbox options so they retain separate accessible labels.
+
+IME composition defers requests until completion. Empty/oversized/control-character
+input, URLs anywhere in the text and common raw video IDs do not trigger automatic
+completion. Ordinary eleven-letter words remain searches instead of being
+mistaken for video IDs; all-letter bare IDs can still be opened with a full video
+URL. Prefix changes cancel pending timers/requests and stale responses are ignored.
+The panel scrolls independently above a simulated tall mobile keyboard.
+
+The browser sends POST bodies to `/api/video/suggestions`, not query-bearing Atlas
+URLs. That stateless endpoint requests YouTube-specific (`ds=yt`) JSON suggestions
+from Google's public suggestion service, without SDK/player initialization or
+forwarded cookies. Input and response sizes are bounded, results are validated and
+deduplicated, and all responses/upstream requests use no-store. JSONP is never
+evaluated. There is no query/result cache, logging or new browser storage. Typed
+text is received by the suggestion provider; the UI discloses this in You settings
+and labels the popup's source. Provider failures quietly hide autocomplete while
+normal search remains available.
+
+Validation: 655 unit tests passed, plus TypeScript/scoped lint. New tests cover
+normalization, provider request options, bounded/malformed responses and optional
+endpoint failure. Browser fixtures at 390px touch and 1280px desktop passed debounce,
+selection, fill-only actions, keyboard/ARIA, IME deferral, Escape/outside dismissal,
+stale-response rejection, link suppression, failure fallback and absence of stored
+history. A short visual viewport checked popup bounds and keyboard scrolling.
+Existing browser player/search tests also passed. Screenshots were inspected under
+`work/qa-video-web/autocomplete-390.png` and `autocomplete-1280.png`.
+
+Live provider verification was blocked by this environment's network proxy
+(CONNECT 403); it was not verified against the live Google service here. Production
+availability depends on that service, and typed suggestions are not guaranteed.
+No APK/mobile bundle was built. Repeat the browser check with
+`node tests/video/autocomplete-browser.mjs`.

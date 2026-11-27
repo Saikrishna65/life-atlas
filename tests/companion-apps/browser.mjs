@@ -28,7 +28,7 @@ try{
   await fs.mkdir('docs/atlas-apps/previews',{recursive:true});
   await page.screenshot({path:`docs/atlas-apps/previews/apps-${width}.png`});
   await page.getByRole('link',{name:'Open web player'}).click();await page.getByRole('heading',{name:/Something.*worth your time/ }).waitFor();
-  await page.getByRole('textbox',{name:'Search videos or paste a YouTube link'}).fill('mountains');await page.locator('form').getByRole('button',{name:'Search',exact:true}).click();
+  await page.getByRole('combobox',{name:'Search videos or paste a YouTube link'}).fill('mountains');await page.locator('form').getByRole('button',{name:'Search',exact:true}).click();
   await page.getByRole('button',{name:'UI test video fixture'}).click();await page.locator('iframe').waitFor();
   assert.match(await page.locator('iframe').getAttribute('src'),/^https:\/\/www.youtube-nocookie.com\/embed\/dQw4w9WgXcQ\?/);assert.equal(searches,1);
   await page.getByRole('button',{name:'Close video'}).click();
@@ -37,7 +37,7 @@ try{
   await page.getByRole('button',{name:'Search',exact:true}).last().click();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await page.screenshot({path:`docs/atlas-apps/previews/video-${width}.png`});
-  await page.reload();await page.getByRole('heading',{name:/Something.*worth your time/ }).waitFor();assert.equal(await page.getByRole('textbox',{name:'Search videos or paste a YouTube link'}).inputValue(),'');assert.equal(await page.locator('iframe').count(),0);
+  await page.reload();await page.getByRole('heading',{name:/Something.*worth your time/ }).waitFor();assert.equal(await page.getByRole('combobox',{name:'Search videos or paste a YouTube link'}).inputValue(),'');assert.equal(await page.locator('iframe').count(),0);
   assert.deepEqual(errors,[]);await context.close();
  }
  console.log('PASS Apps and Video UI at 390/1280px: navigation, empty release, search fixture, embed URL, themes, no history persistence, no overflow/page errors. Real YouTube streaming and Android installation not tested.');

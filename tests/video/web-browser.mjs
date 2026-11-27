@@ -32,7 +32,7 @@ try{
   assert.equal(await page.getByRole('link',{name:'Back to Atlas',exact:true}).getAttribute('href'),'/');
   await mkdir('work/qa-video-web',{recursive:true});
   await page.screenshot({path:`work/qa-video-web/video-home-${width}.png`,fullPage:true});
-  const input=page.getByRole('textbox',{name:'Search videos or paste a YouTube link'});
+  const input=page.getByRole('combobox',{name:'Search videos or paste a YouTube link'});
   await input.focus();
   await page.evaluate(()=>{Object.defineProperty(visualViewport,'height',{value:innerHeight-260,configurable:true});visualViewport.dispatchEvent(new Event('resize'));});
   assert.equal(await page.locator('.video-web').getAttribute('data-keyboard'),'true');

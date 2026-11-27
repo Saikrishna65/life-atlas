@@ -1,9 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowLeft, ArrowUpRight, Play, Search, Settings2, X, ExternalLink, LoaderCircle, Check, ShieldCheck } from "lucide-react";
 import { appServiceUrl } from "@/lib/appNetwork";
-import { youtubeId, type VideoResult } from "@/lib/video/search";
+import { type VideoResult } from "@/lib/video/search";
+import { directVideoId } from "@/lib/video/suggestions";
+import { useVideoSuggestions } from "@/lib/video/use-suggestions";
+import SearchSuggestions from "./SearchSuggestions";
 import "./video-web.css";
 let memoryTheme = "paper";
 function currentTheme() {
@@ -33,6 +36,14 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [resultQuery, setResultQuery] = useState("");
+  const [inputFocused, setInputFocused] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [composing, setComposing] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const completionId = useId();
+  const { items: completionItems, dismiss: dismissCompletions } = useVideoSuggestions(query, view === "search" && inputFocused && !dismissed && !composing && !busy);
+  const popupOpen = completionItems.length > 0;
+  const searchBox = useRef<HTMLDivElement>(null);
   const theme = useSyncExternalStore(subscribeTheme, currentTheme, () => "paper");
   const controller = useRef<AbortController | null>(null);
   const pendingQuery = useRef("");
@@ -40,6 +51,16 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
   const content = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLElement>(null);
   useEffect(() => () => { controller.current?.abort(); controller.current = null; }, []);
+  useEffect(() => {
+    if (!inputFocused) return;
+    const outside = (event: PointerEvent) => {
+      if (!searchBox.current?.contains(event.target as Node)) {
+        setInputFocused(false); setDismissed(true); dismissCompletions(); input.current?.blur();
+      }
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [inputFocused, dismissCompletions]);
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
@@ -66,8 +87,9 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
   async function search(value = query) {
     const text = value.trim();
     if (!text || (busy && pendingQuery.current === text)) return;
+    dismissCompletions(); setDismissed(true); setActiveSuggestion(-1); input.current?.blur();
     cancel(); setError(""); setView("search");
-    const id = youtubeId(text);
+    const id = directVideoId(text);
     if (id) {
       setSelected({ id, title: "YouTube video", channel: "", thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, duration: "" });
       setView("player"); input.current?.blur(); return;
@@ -96,6 +118,11 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
     }
   }
   function openVideo(video: VideoResult) { cancel(); setSelected(video); setView("player"); input.current?.blur(); }
+  function fillSuggestion(text: string) {
+    dismissCompletions(); setQuery(text); setActiveSuggestion(-1); setDismissed(false); setInputFocused(true);
+    input.current?.focus();
+    requestAnimationFrame(() => input.current?.setSelectionRange(text.length, text.length));
+  }
   const home = standalone ? "/" : "/secret/apps";
   return <main ref={root} className="video-web" data-theme={theme} data-view={view} data-standalone={standalone || undefined}>
     <header className="video-masthead"><div className="video-brand"><span className="video-brand-mark" aria-hidden="true"><Play size={15} fill="currentColor"/></span><span>atlas<span className="video-word">video</span></span></div><span className="video-private-label"><span/>No Atlas history</span></header>
@@ -120,10 +147,36 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
         {videos.length > 1 && <section className="video-up-next" aria-label="More from this search"><span className="video-eyebrow">FROM THIS SEARCH</span>{videos.filter((video) => video.id !== selected.id).slice(0, 5).map((video) => <button key={video.id} onClick={() => openVideo(video)}>{/* eslint-disable-next-line @next/next/no-img-element */}
 <img src={video.thumbnail} alt="" loading="lazy"/><span><strong>{video.title}</strong><small>{video.channel}</small></span><Play size={16}/></button>)}</section>}
       </section>}
-      {view === "you" && <section className="video-account"><span className="video-eyebrow">MAKE YOURSELF AT HOME</span><h1>Your space.</h1><p>A quieter player. A look that feels like you.</p><fieldset><legend>Appearance</legend><div className="video-theme-grid">{[{id:"mono",name:"Mono",hint:"After hours"},{id:"paper",name:"Paper",hint:"A clean slate"},{id:"ink",name:"Ink",hint:"A deeper shade"}].map((option) => <label key={option.id} data-theme-option={option.id}><input aria-label={option.name} type="radio" name="theme" checked={theme === option.id} onChange={() => chooseTheme(option.id)}/><span className="video-theme-preview" aria-hidden="true"><i/><i/><i/></span><span><strong>{option.name}</strong><small>{option.hint}</small></span>{theme === option.id && <Check size={15}/>}</label>)}</div></fieldset><div className="video-privacy-note"><ShieldCheck size={20}/><div><h2>Just watching. No keeping track.</h2><p>Atlas saves no searches or watch history. Only your theme is saved. YouTube receives playback requests and has its own privacy policies.</p></div></div><Link className="video-android-link" href="/secret/apps"><span><strong>Take Atlas Video with you.</strong><small>Explore the Android app</small></span><ArrowUpRight size={20}/></Link></section>}
+      {view === "you" && <section className="video-account"><span className="video-eyebrow">MAKE YOURSELF AT HOME</span><h1>Your space.</h1><p>A quieter player. A look that feels like you.</p><fieldset><legend>Appearance</legend><div className="video-theme-grid">{[{id:"mono",name:"Mono",hint:"After hours"},{id:"paper",name:"Paper",hint:"A clean slate"},{id:"ink",name:"Ink",hint:"A deeper shade"}].map((option) => <label key={option.id} data-theme-option={option.id}><input aria-label={option.name} type="radio" name="theme" checked={theme === option.id} onChange={() => chooseTheme(option.id)}/><span className="video-theme-preview" aria-hidden="true"><i/><i/><i/></span><span><strong>{option.name}</strong><small>{option.hint}</small></span>{theme === option.id && <Check size={15}/>}</label>)}</div></fieldset><div className="video-privacy-note"><ShieldCheck size={20}/><div><h2>Just watching. No keeping track.</h2><p>Atlas saves no searches or watch history. Only your theme is saved. Typed text is sent to YouTube for suggestions. YouTube also receives playback requests and has its own privacy policies.</p></div></div><Link className="video-android-link" href="/secret/apps"><span><strong>Take Atlas Video with you.</strong><small>Explore the Android app</small></span><ArrowUpRight size={20}/></Link></section>}
     </div>
     <div className="video-dock">
-      {view === "search" && <form className="video-search" onSubmit={(event) => { event.preventDefault(); void search(); }}><Search size={19}/><input ref={input} aria-label="Search videos or paste a YouTube link" placeholder="Search anything, or paste a link" value={query} onChange={(event) => setQuery(event.target.value)} maxLength={2048} autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false}/>{query && <button type="button" className="video-search-clear" aria-label="Clear search" onClick={() => { cancel(); setQuery(""); setResultQuery(""); setVideos([]); setError(""); input.current?.focus(); }}><X size={16}/></button>}<button className="video-search-submit" type="submit" disabled={!query.trim()} aria-label={busy ? "Search again" : "Search"}>{busy ? <LoaderCircle size={18}/> : <ArrowUpRight size={20}/>}</button></form>}
+      {view === "search" && <div className="video-search-box" ref={searchBox} onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node)) { setInputFocused(false); dismissCompletions(); setActiveSuggestion(-1); }
+      }} onKeyDown={(event) => {
+        if (event.key === "Escape" && !composing) { event.preventDefault(); setDismissed(true); setActiveSuggestion(-1); dismissCompletions(); }
+      }}>
+        {popupOpen && <SearchSuggestions id={completionId} items={completionItems} active={activeSuggestion} onActive={setActiveSuggestion} onChoose={(text) => { setQuery(text); void search(text); }} onFill={fillSuggestion}/>}
+        <form className="video-search" onSubmit={(event) => { event.preventDefault(); if (!composing) void search(); }}><Search size={19}/>
+          <input ref={input} role="combobox" aria-label="Search videos or paste a YouTube link" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded={popupOpen} aria-controls={popupOpen ? completionId : undefined}
+            aria-activedescendant={popupOpen && activeSuggestion >= 0 ? `${completionId}-${activeSuggestion}` : undefined} aria-describedby={`${completionId}-help`}
+            placeholder="Search anything, or paste a link" value={query} onChange={(event) => { setQuery(event.target.value); setActiveSuggestion(-1); setDismissed(false); }}
+            onClick={() => setDismissed(false)} onFocus={() => { setInputFocused(true); setDismissed(false); setActiveSuggestion(-1); }}
+            onCompositionStart={() => { setComposing(true); dismissCompletions(); }} onCompositionEnd={(event) => { setQuery(event.currentTarget.value); setComposing(false); setDismissed(false); }}
+            onKeyDown={(event) => {
+              if (event.nativeEvent.isComposing || composing || event.nativeEvent.keyCode === 229) return;
+              if (!popupOpen) return;
+              if (event.key === "ArrowDown") { event.preventDefault(); setActiveSuggestion((index) => (index + 1) % completionItems.length); }
+              else if (event.key === "ArrowUp") { event.preventDefault(); setActiveSuggestion((index) => index <= 0 ? completionItems.length - 1 : index - 1); }
+              else if (event.key === "Enter" && activeSuggestion >= 0) { event.preventDefault(); const text = completionItems[activeSuggestion]; setQuery(text); void search(text); }
+              else if (event.key === "ArrowRight" && activeSuggestion >= 0 && event.currentTarget.selectionStart === query.length) { event.preventDefault(); fillSuggestion(completionItems[activeSuggestion]); }
+            }} maxLength={2048} autoComplete="off" autoCorrect="off" autoCapitalize="none" spellCheck={false}/>
+          {query && <button type="button" className="video-search-clear" aria-label="Clear search" onClick={() => { dismissCompletions(); cancel(); setQuery(""); setResultQuery(""); setVideos([]); setError(""); setDismissed(false); input.current?.focus(); }}><X size={16}/></button>}
+          <button className="video-search-submit" type="submit" disabled={!query.trim()} aria-label={busy ? "Search again" : "Search"}>{busy ? <LoaderCircle size={18}/> : <ArrowUpRight size={20}/>}</button>
+        </form>
+        <span id={`${completionId}-help`} className="video-completion-sr">Use Up or Down to choose a suggestion, Enter to search, Right Arrow to fill, and Escape to dismiss.</span>
+        <span className="video-completion-sr" role="status">{popupOpen ? `${completionItems.length} search suggestions available.` : ""}</span>
+      </div>}
+
       <nav className="video-bottom" aria-label="Atlas Video navigation"><Link href={home} aria-label={standalone ? "Back to Atlas" : "Back to Atlas Apps"}><ArrowLeft size={19}/></Link><button aria-label="Search" aria-current={view === "search" ? "page" : undefined} onClick={() => { setView("search"); requestAnimationFrame(() => input.current?.focus()); }}><Search size={19}/><span>Search</span></button><button aria-label="Player" disabled={!selected} aria-current={view === "player" ? "page" : undefined} onClick={() => { cancel(); setView("player"); }}><Play size={19}/><span>Player</span></button><button aria-label="You" aria-current={view === "you" ? "page" : undefined} onClick={() => { cancel(); setView("you"); }}><Settings2 size={19}/><span>You</span></button></nav>
     </div>
   </main>;
