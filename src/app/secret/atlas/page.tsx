@@ -9,13 +9,14 @@ import AtlasOnlineRequest from '@/components/secret/AtlasOnlineRequest';
 import {useMusicPlayer} from '@/lib/music/MusicPlayerContext';
 import {isControlRestoreActive} from '@/lib/control-room/maintenance';
 import {assembleLocalContext} from '@/lib/atlas-ai/context';
+import {boundaryReply} from '@/lib/atlas-ai/companion-engine';
 import {AtlasStore, type AtlasData, type Message} from '@/lib/atlas-ai/storage';
 import {ActionGateway, type ActionProposal, type Permission} from '@/lib/atlas-ai/gateway';
 import {createLocalAdapters} from '@/lib/atlas-ai/local-adapters';
 import {AtlasNative, generateLocal, requireNativeTrust, runtimeStatus, type RuntimeStatus} from '@/lib/atlas-ai/native';
 import {resolveNativeUtility} from '@/lib/atlas-ai/native-utilities';
 import {completeReminder, createReminder, deleteReminder, listReminders, type AtlasReminder} from '@/lib/atlas-ai/reminders';
-import {loadPersonalityConfig, savePersonalityConfig, type AtlasPersonalityConfig, type ResponseLengthPref} from '@/lib/atlas-ai/personality';
+import {loadPersonalityConfig, savePersonalityConfig, type ResolvedAtlasPersonality, type ResponseLengthPref} from '@/lib/atlas-ai/personality';
 import {deletePersistentMemory, loadPersistentMemories, resetPersistentMemories, savePersistentMemory, type PersistentMemoryItem} from '@/lib/atlas-ai/memory';
 import {
   atlasWakeWordBridge,
@@ -89,7 +90,7 @@ function AtlasContent() {
   const [reminderDraft, setReminderDraft] = useState('');
   const [wakeVoiceState, setWakeVoiceState] = useState<VoiceSessionStateName>('IDLE');
   const [wakeTranscript, setWakeTranscript] = useState('');
-  const [companionTraits, setCompanionTraits] = useState<AtlasPersonalityConfig>(() => loadPersonalityConfig());
+  const [companionTraits, setCompanionTraits] = useState<ResolvedAtlasPersonality>(() => loadPersonalityConfig());
   const [keystoreMemories, setKeystoreMemories] = useState<PersistentMemoryItem[]>([]);
   const [keystoreMemDraft, setKeystoreMemDraft] = useState('');
   const [latencyMetrics, setLatencyMetrics] = useState<VoiceLatencyMetrics | null>(null);
@@ -174,7 +175,8 @@ function AtlasContent() {
     const sessionId = active;
     if (!regenerate) {setDraft(''); await store.current.append(sessionId, {role: 'user', text}); refresh();}
     // Deterministic utilities are available even when the model is unloaded.
-    const utility = !regenerate && unlocked.current ? resolveNativeUtility(text) : null;
+    const boundary = !regenerate && unlocked.current ? boundaryReply(text) : null;
+    const utility = boundary ? {text: boundary} : !regenerate && unlocked.current ? resolveNativeUtility(text) : null;
     if (utility) {
       await store.current.append(sessionId, {role: 'assistant', text: utility.text, status: 'complete'});
       refresh();
@@ -183,7 +185,7 @@ function AtlasContent() {
     }
     if (!runtime?.available) { setError(runtime?.reason ?? 'Local model unavailable. Your message was saved encrypted; no AI response was generated.'); return; }
     const abort = new AbortController(); controller.current = abort;
-    const context = assembleLocalContext(store.current.snapshot(), sessionId, selectedMemories, regenerate);
+    const context = assembleLocalContext(store.current.snapshot(), sessionId, selectedMemories, regenerate, 12000, companionTraits);
     const prompt = context.prompt;
     let output = ''; setState('thinking'); setStream('');
     try {
@@ -246,7 +248,7 @@ function AtlasContent() {
       <details className={styles.card}><summary>Personality Studio (Companion &amp; Vault)</summary>
         <div className={styles.message}>
           <strong>Companion Voice Traits</strong>
-          <p>Tune how Atlas sounds in hands-free and chat conversations. Never overrides privacy locks or confirmations.</p>
+          <p>Tune the local companion prompt and hands-free greeting. The full personality requires a working local model; deterministic actions stay factual. Never overrides privacy locks or confirmations.</p>
           {(
             [
               ['humor', 'Humor'],
@@ -255,7 +257,11 @@ function AtlasContent() {
               ['directness', 'Directness'],
               ['energy', 'Conversational Energy'],
               ['formality', 'Formality (Casual → Formal)'],
-              ['teasing', 'Playful Teasing'],
+              ['teasing', 'Legacy Playful Teasing'],
+              ['roasting', 'Roasting'],
+              ['profanity', 'Profanity'],
+              ['strictness', 'Strictness'],
+              ['expressiveness', 'Expressiveness'],
               ['proactivity', 'Proactive Follow-ups'],
             ] as const
           ).map(([key, label]) => (
@@ -284,6 +290,7 @@ function AtlasContent() {
                 if (isWakeWordNativeSupported()) void saveVoicePersonalityNative(next as unknown as Record<string, unknown>);
               }}
             >
+              <option value="adaptive">Adaptive (matches the situation)</option>
               <option value="brief">Brief (1 sentence)</option>
               <option value="balanced">Balanced (1–3 sentences)</option>
               <option value="detailed">Detailed (2–4 sentences)</option>

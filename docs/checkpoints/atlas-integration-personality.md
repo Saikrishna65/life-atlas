@@ -1,0 +1,5 @@
+# Companion personality integration
+
+The existing 0–10 settings store remains compatible. New optional fields (roasting, profanity, strictness and expressiveness) normalize legacy profiles without silently enabling strong profanity or scolding; new profiles use the requested high-intensity defaults and adaptive verbosity. The chat context and local voice provider share the contextual prompt builder. Explicit dismissal, stop-teasing and listen requests get deterministic replies; the current bounded user history informs teasing suppression. It is not a permanent cross-session boundary store. Generic roast requests ask for a topic rather than invent vulnerabilities. The Android native greeting scale and explicit dismissal handling are aligned with the TypeScript path.
+
+No model training, cloud inference, permission changes, storage migration, or deployment. This does not enable the still-unimplemented Android LLM runtime. Native background fallback remains deterministic, not a generative personality. Legacy free-text encrypted vault personality is preserved. Full TypeScript, UI, Android build and live model response quality require further verification.

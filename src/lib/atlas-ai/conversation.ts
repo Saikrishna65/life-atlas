@@ -1,4 +1,5 @@
 import { executeRegisteredAction } from "./action-registry";
+import { boundaryReply, explicitBoundary } from "./companion-engine";
 import { resolveNativeUtility } from "./native-utilities";
 import type { AtlasSection, LocalAdapter } from "./gateway";
 import {
@@ -156,6 +157,14 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
 
   appendSessionTurn(session, "user", raw);
 
+  const boundary = explicitBoundary(raw);
+  const boundaryText = boundaryReply(raw);
+  if (boundary && boundaryText) {
+    session.pendingConfirmation = null;
+    session.pendingClarification = null;
+    return finish(boundaryText, boundary === "dismissal", "conversation.boundary");
+  }
+
   // 1. Explicit end-of-conversation
   if (isExplicitEndCommand(lower) && !session.pendingConfirmation) {
     session.pendingClarification = null;
@@ -302,7 +311,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
     const reply = /\bwho are you\b/.test(lower)
       ? "I'm Atlas, your local-first companion inside Life Atlas. I can plan trips with you, manage reminders, control local music, and summarize your vaults privately."
       : lower.includes("how are you")
-        ? personality.humor >= 50
+        ? personality.humor >= 5
           ? "Running smoothly and caffeinated on local silicon! What are we tackling today?"
           : "Doing well and ready to help. What's on your mind?"
         : pickWakeGreeting(personality, session.turns.length);

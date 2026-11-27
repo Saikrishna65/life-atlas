@@ -1,6 +1,6 @@
-import { isSeriousSituation } from "./policy";
+import { classifyCompanionTurn, companionInstructions, teasingPaused } from "./companion-engine";
 
-export type ResponseLengthPref = "brief" | "balanced" | "detailed";
+export type ResponseLengthPref = "brief" | "balanced" | "detailed" | "adaptive";
 
 /**
  * Configurable companion personality traits (strictly separated from safety & permission policies).
@@ -15,31 +15,43 @@ export interface AtlasPersonalityConfig {
   formality: number; // 0..10 (0 = casual, 10 = formal)
   teasing: number; // 0..10
   proactivity: number; // 0..10
+  // Optional on legacy profiles; normalization resolves all four fields.
+  roasting?: number;
+  profanity?: number;
+  strictness?: number;
+  expressiveness?: number;
 }
+export type ResolvedAtlasPersonality = AtlasPersonalityConfig & Required<Pick<AtlasPersonalityConfig, "roasting" | "profanity" | "strictness" | "expressiveness">>;
 
-export const DEFAULT_ATLAS_PERSONALITY: AtlasPersonalityConfig = {
-  humor: 6,
+export const DEFAULT_ATLAS_PERSONALITY: ResolvedAtlasPersonality = {
+  humor: 10,
   playfulness: 7,
-  sweetness: 8,
+  sweetness: 10,
   directness: 7,
-  responseLength: "balanced",
+  responseLength: "adaptive",
   energy: 7,
   formality: 2,
   teasing: 4,
   proactivity: 6,
+  roasting: 10,
+  profanity: 10,
+  strictness: 10,
+  expressiveness: 10,
 };
 
 const STORAGE_KEY = "atlas_voice_personality_v2";
 
 export function clampTrait(value: unknown, fallback: number): number {
+  if (typeof value !== "number" && (typeof value !== "string" || !value.trim())) return fallback;
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return fallback;
   return Math.max(0, Math.min(10, Math.round(n)));
 }
 
-export function normalizePersonality(raw?: Partial<AtlasPersonalityConfig> | null): AtlasPersonalityConfig {
+export function normalizePersonality(raw?: Partial<AtlasPersonalityConfig> | null): ResolvedAtlasPersonality {
+  if (!raw) return {...DEFAULT_ATLAS_PERSONALITY};
   const len: ResponseLengthPref =
-    raw?.responseLength === "brief" || raw?.responseLength === "detailed" ? raw.responseLength : "balanced";
+    raw.responseLength === "brief" || raw.responseLength === "detailed" || raw.responseLength === "adaptive" || raw.responseLength === "balanced" ? raw.responseLength : "balanced";
   return {
     humor: clampTrait(raw?.humor, DEFAULT_ATLAS_PERSONALITY.humor),
     playfulness: clampTrait(raw?.playfulness, DEFAULT_ATLAS_PERSONALITY.playfulness),
@@ -50,10 +62,14 @@ export function normalizePersonality(raw?: Partial<AtlasPersonalityConfig> | nul
     formality: clampTrait(raw?.formality, DEFAULT_ATLAS_PERSONALITY.formality),
     teasing: clampTrait(raw?.teasing, DEFAULT_ATLAS_PERSONALITY.teasing),
     proactivity: clampTrait(raw?.proactivity, DEFAULT_ATLAS_PERSONALITY.proactivity),
+    roasting: clampTrait(raw?.roasting, clampTrait(raw?.teasing, 4)),
+    profanity: clampTrait(raw?.profanity, 0),
+    strictness: clampTrait(raw?.strictness, 0),
+    expressiveness: clampTrait(raw?.expressiveness, clampTrait(raw?.energy, 7)),
   };
 }
 
-export function loadPersonalityConfig(): AtlasPersonalityConfig {
+export function loadPersonalityConfig(): ResolvedAtlasPersonality {
   if (typeof window === "undefined") return { ...DEFAULT_ATLAS_PERSONALITY };
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -64,7 +80,7 @@ export function loadPersonalityConfig(): AtlasPersonalityConfig {
   }
 }
 
-export function savePersonalityConfig(config: Partial<AtlasPersonalityConfig>): AtlasPersonalityConfig {
+export function savePersonalityConfig(config: Partial<AtlasPersonalityConfig>): ResolvedAtlasPersonality {
   const next = normalizePersonality({ ...loadPersonalityConfig(), ...config });
   if (typeof window !== "undefined") {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -74,48 +90,21 @@ export function savePersonalityConfig(config: Partial<AtlasPersonalityConfig>): 
 
 export function buildPersonalitySystemInstructions(
   config: AtlasPersonalityConfig,
-  userUtterance = ""
+  userUtterance = "",
+  priorUserMessages: readonly string[] = []
 ): string {
-  const serious = isSeriousSituation(userUtterance);
-  const lengthRule =
-    config.responseLength === "brief"
-      ? "Keep replies to 1 short spoken sentence."
-      : config.responseLength === "detailed"
-        ? "Answer thoroughly in 2 to 4 clear spoken sentences."
-        : "Keep replies conversational in 1 to 3 concise sentences suitable for spoken audio.";
-
-  const toneDescriptors: string[] = [
-    "You are Atlas, a warm, soft, expressive female-presenting companion inside Life Atlas.",
-    config.formality <= 3
-      ? "Use relaxed, natural casual English."
-      : config.formality >= 7
-        ? "Use polite, composed English."
-        : "Use approachable conversational English.",
-    config.sweetness >= 6 ? "Sound caring, encouraging, and approachable." : "Keep warmth subtle and grounded.",
-    config.directness >= 7 ? "Get straight to the point cleanly." : "Ease gently into suggestions.",
-  ];
-
-  if (serious) {
-    toneDescriptors.push("This topic may be serious or sensitive — do NOT joke, tease, or add banter.");
-  } else {
-    if (config.playfulness >= 6 || config.humor >= 6) {
-      toneDescriptors.push("Bring light natural wit and warmth without being cheesy or intrusive.");
-    }
-    if (config.teasing >= 5) {
-      toneDescriptors.push("Gentle playful teasing is okay when context is lighthearted.");
-    }
-  }
-
-  if (config.proactivity >= 6) {
-    toneDescriptors.push("Offer a helpful next question or follow-up suggestion when natural.");
-  }
-
-  toneDescriptors.push(
-    "Admit uncertainty honestly when you don't know. Never claim an action ran unless confirmed. Personality never overrides security or privacy confirmations.",
-    lengthRule
-  );
-
-  return toneDescriptors.join(" ");
+  const profile = normalizePersonality(config);
+  const route = classifyCompanionTurn(userUtterance);
+  const base = companionInstructions(profile, route, teasingPaused(priorUserMessages, userUtterance));
+  const formality = profile.formality >= 7 ? "Use polite, composed English." : "Use relaxed, everyday English.";
+  const length = profile.responseLength === "brief"
+    ? "Use one short sentence unless essential accuracy requires more."
+    : profile.responseLength === "detailed"
+      ? "Give useful detail, not filler; use clear paragraphs for complex requests."
+      : profile.responseLength === "adaptive"
+        ? "Match length to the request: one to three short sentences in casual chat, full explanation when requested."
+        : "Usually one to three concise sentences; explain more when needed.";
+  return [base, formality, length].join(" ");
 }
 
 const WAKE_GREETINGS_VARIED = [

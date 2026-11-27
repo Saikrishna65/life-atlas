@@ -254,8 +254,8 @@ class AtlasVoiceCoordinator(
 
     private fun pickNativeGreeting(): String {
         val personality = secureStore.getPersonality()
-        val playfulness = personality?.optInt("playfulness", 75) ?: 75
-        val greetings = if (playfulness >= 65) {
+        val playfulness = (personality?.optInt("playfulness", 7) ?: 7).coerceIn(0, 10)
+        val greetings = if (playfulness >= 7) {
             listOf("Hey! What's up?", "Yes? I'm listening!", "Hey there, what are we thinking?")
         } else {
             listOf("Hello, how can I help?", "Listening.")
@@ -407,7 +407,7 @@ class AtlasVoiceCoordinator(
         val normalized = transcript.trim().lowercase(Locale.ROOT)
         if (isExplicitStopPhrase(normalized)) {
             pendingEndSession = true
-            speakResponse("Okay, going back to sleep.")
+            speakResponse("Okay.")
             return
         }
 
@@ -543,6 +543,8 @@ class AtlasVoiceCoordinator(
             "never mind", "nevermind", "bye", "bye atlas", "goodbye", "exit", "nothing"
         )
         if (exact.contains(normalized)) return true
+        val cleaned = normalized.replace(Regex("[.!?]+$"), "").trim()
+        if (Regex("^(?:(?:i said|i told you to|just|please)\\s+)?(?:fuck off|leave me alone|go away|stop talking to me|don.t talk to me|do not reply to me)$").matches(cleaned)) return true
         return normalized.startsWith("stop ") || normalized == "that is all"
     }
 

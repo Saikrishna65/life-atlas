@@ -117,7 +117,9 @@ function buildBoundedHistory(session: SessionMemory): Array<{ role: "user" | "as
 }
 
 function buildSystemPrompt(session: SessionMemory, personality: AtlasPersonalityConfig, userText: string): string {
-  const base = buildPersonalitySystemInstructions(personality, userText);
+  const turns = session.turns;
+  const prior = turns.at(-1)?.role === 'user' && turns.at(-1)?.text === userText ? turns.slice(0, -1) : turns;
+  const base = buildPersonalitySystemInstructions(personality, userText, prior.filter(t => t.role === 'user').map(t => t.text));
   const contextBits = [
     session.activeTripTitle ? `Active trip: ${session.activeTripTitle}${session.lastTripDay ? ` (Day ${session.lastTripDay})` : ""}.` : "",
     session.sessionSummary ? `Session summary: ${session.sessionSummary}.` : "",
@@ -138,6 +140,7 @@ export async function routeGenerativeReply(
   const personality = req.personality ?? loadPersonalityConfig();
   const systemPrompt = buildSystemPrompt(req.session, personality, req.userText);
   const history = buildBoundedHistory(req.session);
+  if (history.at(-1)?.role === 'user' && history.at(-1)?.text === req.userText) history.pop();
 
   // 1. Local LLM check (strictly honest; no model loaded => skipped cleanly)
   const rtFn = deps?.runtimeStatusFn ?? runtimeStatus;
