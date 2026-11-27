@@ -21,7 +21,6 @@ import {
   RecurringStatus,
   SyncOperation,
   SyncConflict,
-  AuditEvent,
   AccountType,
   AccountStatus,
   TransactionDirection,

@@ -73,21 +73,22 @@ export default function SharedExpenses() {
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
   const [visibleHistory, setVisibleHistory] = useState(50);
-  const refreshSequence = useRef(0);
+  const refreshSequence = useRef({ sequence: 0 });
   const refresh = useCallback(async () => {
-    const sequence = ++refreshSequence.current;
+    const sequence = ++refreshSequence.current.sequence;
     try {
       const records = await listSharedGroups();
-      if (sequence !== refreshSequence.current) return;
+      if (sequence !== refreshSequence.current.sequence) return;
       setGroups(records);
       setError("");
     } catch (e) {
-      if (sequence === refreshSequence.current) setError(errorText(e));
+      if (sequence === refreshSequence.current.sequence) setError(errorText(e));
     } finally {
-      if (sequence === refreshSequence.current) setLoading(false);
+      if (sequence === refreshSequence.current.sequence) setLoading(false);
     }
   }, []);
   useEffect(() => {
+    const gate = refreshSequence.current;
     const initial = setTimeout(() => {
       void refresh();
     }, 0);
@@ -108,7 +109,7 @@ export default function SharedExpenses() {
     window.addEventListener("finance-shared-updated", changed);
     document.addEventListener("visibilitychange", visible);
     return () => {
-      ++refreshSequence.current;
+      ++gate.sequence;
       clearTimeout(initial);
       channel?.close();
       window.removeEventListener("finance-shared-updated", changed);
@@ -118,23 +119,22 @@ export default function SharedExpenses() {
   const group = groups.find((g) => g.id === selected),
     b = group ? balances(group) : {},
     payments = group ? suggestions(group) : [];
-  const history = useMemo(
-    () =>
-      group
-        ? [
-            ...group.expenses.map((e) => ({ ...e, type: "expense" as const })),
-            ...group.settlements.map((s) => ({
-              ...s,
-              type: "payment" as const,
-            })),
-          ].sort(
-            (a, b) =>
-              b.date.localeCompare(a.date) ||
-              b.createdAt.localeCompare(a.createdAt),
-          )
-        : [],
-    [group],
-  );
+  const history = useMemo(() => {
+    const current = groups.find((g) => g.id === selected);
+    return current
+      ? [
+          ...current.expenses.map((e) => ({ ...e, type: "expense" as const })),
+          ...current.settlements.map((s) => ({
+            ...s,
+            type: "payment" as const,
+          })),
+        ].sort(
+          (a, b) =>
+            b.date.localeCompare(a.date) ||
+            b.createdAt.localeCompare(a.createdAt),
+        )
+      : [];
+  }, [groups, selected]);
   const name = (id: string) =>
     group?.members.find((m) => m.id === id)?.name || "Unknown person";
   async function copied() {
@@ -159,7 +159,7 @@ export default function SharedExpenses() {
     }
   }
   const finished = async (saved: SharedGroup) => {
-    ++refreshSequence.current;
+    ++refreshSequence.current.sequence;
     setGroups((current) => [
       saved,
       ...current.filter((g) => g.id !== saved.id),
@@ -402,44 +402,56 @@ export default function SharedExpenses() {
                           </ul>
                         </details>
                       )}
-                      {record.type === "expense" && record.sourceTransactionId && <small>From a bank payment · <Link href="/secret/finance">edit its amount or split in Atlas Finance</Link></small>}
+                      {record.type === "expense" &&
+                        record.sourceTransactionId && (
+                          <small>
+                            From a bank payment ·{" "}
+                            <Link href="/secret/finance">
+                              edit its amount or split in Atlas Finance
+                            </Link>
+                          </small>
+                        )}
                       {record.voidedAt && (
                         <small>Cancelled · kept in history</small>
                       )}
                     </div>
                     <div className="shared-record-end">
                       <b>{money(record.amountPaise, group.currency)}</b>
-                      {!record.voidedAt && !(record.type === "expense" && record.sourceTransactionId) && (
-                        <div>
-                          {record.type === "expense" && (
+                      {!record.voidedAt &&
+                        !(
+                          record.type === "expense" &&
+                          record.sourceTransactionId
+                        ) && (
+                          <div>
+                            {record.type === "expense" && (
+                              <button
+                                aria-label={`Edit ${record.title}`}
+                                onClick={() =>
+                                  setForm({
+                                    kind: "expense",
+                                    group,
+                                    expense: record,
+                                  })
+                                }
+                              >
+                                <Pencil size={15} />
+                              </button>
+                            )}
                             <button
-                              aria-label={`Edit ${record.title}`}
+                              aria-label={`Cancel ${record.type === "expense" ? record.title : "payment"}`}
                               onClick={() =>
                                 setForm({
-                                  kind: "expense",
+                                  kind: "void",
                                   group,
-                                  expense: record,
+                                  id: record.id,
+                                  record: record.type,
                                 })
                               }
                             >
-                              <Pencil size={15} />
+                              <Undo2 size={15} />
                             </button>
-                          )}
-                          <button
-                            aria-label={`Cancel ${record.type === "expense" ? record.title : "payment"}`}
-                            onClick={() =>
-                              setForm({
-                                kind: "void",
-                                group,
-                                id: record.id,
-                                record: record.type,
-                              })
-                            }
-                          >
-                            <Undo2 size={15} />
-                          </button>
-                        </div>
-                      )}
+                          </div>
+                        )}
                     </div>
                   </article>
                 ))}

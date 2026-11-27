@@ -11,7 +11,6 @@ import {
   Landmark,
   Tag,
   FileText,
-  ShieldCheck,
   AlertTriangle,
   ArrowLeftRight,
   PiggyBank,
