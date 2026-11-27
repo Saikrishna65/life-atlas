@@ -1,4 +1,5 @@
 "use client";
+import { coalescedTask } from "@/lib/performance/coalesced-task";
 import { tripRemindersPaused, notificationMuted } from "@/lib/control-room/store";
 import { isControlRestoreActive } from "@/lib/control-room/maintenance";
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -37,10 +38,10 @@ export default function TripFinanceBridge(){
    }
   }catch(e){console.warn('Trip Finance refresh failed',e);}finally{running.current=false;}
  },[]);
- useEffect(()=>{let disposed=false;queueMicrotask(()=>{if(!disposed)void refresh();});const listener=()=>{void refresh();};const visible=()=>{if(document.visibilityState==='visible')void refresh();};const timer=setInterval(listener,60000);window.addEventListener('life_atlas_vault_change',listener);window.addEventListener('atlas-control-settings',listener);document.addEventListener('visibilitychange',visible);window.addEventListener('focus',listener);
+ useEffect(()=>{let disposed=false;const task=coalescedTask(refresh);task.schedule();const listener=()=>{task.schedule();};const visible=()=>{if(document.visibilityState==='visible')task.schedule();};const timer=setInterval(listener,60000);window.addEventListener('life_atlas_vault_change',listener);window.addEventListener('atlas-control-settings',listener);document.addEventListener('visibilitychange',visible);window.addEventListener('focus',listener);
   let remove:(()=>Promise<void>)|undefined;
   if(Capacitor.isNativePlatform()&&Capacitor.isPluginAvailable('LocalNotifications'))void LocalNotifications.addListener('localNotificationActionPerformed',event=>{if(event.notification.extra?.kind==='trip-finance'){router.push(`/secret/finance?trip=${encodeURIComponent(event.notification.extra.tripId)}`);window.dispatchEvent(new CustomEvent('open-finance-trips',{detail:{tripId:event.notification.extra.tripId}}));}}).then(handle=>{if(disposed)void handle.remove();else remove=()=>handle.remove();});
-  return()=>{disposed=true;if(remove)void remove();clearInterval(timer);window.removeEventListener('life_atlas_vault_change',listener);window.removeEventListener('atlas-control-settings',listener);window.removeEventListener('focus',listener);document.removeEventListener('visibilitychange',visible);};
+  return()=>{disposed=true;task.dispose();if(remove)void remove();clearInterval(timer);window.removeEventListener('life_atlas_vault_change',listener);window.removeEventListener('atlas-control-settings',listener);window.removeEventListener('focus',listener);document.removeEventListener('visibilitychange',visible);};
  },[refresh,router]);
  const confirm=async(trip:TripRecord,going:boolean)=>{setBusy(trip.id);setError('');try{const latest=(await getAllTrips()).find(t=>t.id===trip.id);if(!latest)throw new Error('Trip no longer exists.');const settings=defaultTripSettings(latest);if(!settings)throw new Error('Set the trip timings first.');await saveTrip({...latest,finance:{...settings,confirmation:going?'going':'cancelled',confirmedAt:going?new Date().toISOString():undefined},updatedAt:new Date().toISOString()});await refresh();window.dispatchEvent(new Event('life_atlas_vault_change'));window.dispatchEvent(new Event('finance-trips-updated'));}catch(e){setError(e instanceof Error?e.message:'Unable to confirm trip.');}finally{setBusy('');}};
  if(!due.length)return null;

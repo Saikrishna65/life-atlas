@@ -117,3 +117,17 @@ test('an offscreen request promoted into view can start during ongoing gestures'
  const near=queue.run('image',()=>true,work,1);const visible=queue.run('image',()=>true,work,0);
  assert.deepEqual(await Promise.all([near,visible]),[1,1]);assert.equal(calls,1);
 });
+
+test("cancelled visible consumers cannot promote remaining speculative work during gestures", async () => {
+  const queue = new MediaRequestQueue(1);
+  queue.setDeferPrefetch(true);
+  let visible = true, calls = 0;
+  const a = queue.run("shared", () => visible, async () => ++calls, 0).catch(e => e.name);
+  const b = queue.run("shared", () => true, async () => ++calls, 1);
+  visible = false;
+  await tick();
+  assert.equal(await a, "AbortError");
+  assert.equal(calls, 0);
+  queue.setDeferPrefetch(false);
+  assert.equal(await b, 1);
+});

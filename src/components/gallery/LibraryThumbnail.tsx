@@ -19,6 +19,7 @@ export default function LibraryThumbnail({
       near: false,
       visible: false,
     });
+  const [failedKey, setFailedKey] = useState("");
   const previewKey = JSON.stringify([session, item.id]);
   const url = preview?.key === previewKey ? preview.url : "";
   useEffect(() => {
@@ -50,10 +51,10 @@ export default function LibraryThumbnail({
   }, [near, visible, item.id, item.hasThumbnail, session, url, previewKey]);
   return (
     <div ref={root} className="gl-thumb">
-      {near && url ? (
+      {near && url && failedKey !== previewKey ? (
         // Native foreground-only file URL; Next image optimization cannot serve it.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt="" loading="lazy" decoding="async" />
+        <img src={url} alt="" loading={visible ? "eager" : "lazy"} decoding="async" onError={() => setFailedKey(previewKey)} />
       ) : item.kind === "video" ? (
         <Film />
       ) : (

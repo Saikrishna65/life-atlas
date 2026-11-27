@@ -1,5 +1,6 @@
 /** One bounded queue for thumbnail I/O. It never retains completed private URLs. */
 interface Consumer<T> {
+  priority: number;
   needed: () => boolean;
   resolve: (value: T) => void;
   reject: (reason: Error) => void;
@@ -47,7 +48,7 @@ export class MediaRequestQueue {
         this.waiting.push(request as Request<unknown>);
       }
       request.priority = Math.min(request.priority, priority);
-      request.consumers.push({ needed, resolve, reject });
+      request.consumers.push({ needed, resolve, reject, priority });
       if (!this.scheduled) {
         this.scheduled = true;
         queueMicrotask(() => {
@@ -64,7 +65,10 @@ export class MediaRequestQueue {
         consumer.reject(cancelled());
         return false;
       });
-      if (request.consumers.length) return true;
+      if (request.consumers.length) {
+        request.priority = Math.min(...request.consumers.map((consumer) => consumer.priority));
+        return true;
+      }
       this.requests.delete(request.key);
       return false;
     });
