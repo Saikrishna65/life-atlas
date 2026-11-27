@@ -34,6 +34,7 @@ import java.util.Set;
     @Permission(alias = "microphone", strings = {Manifest.permission.RECORD_AUDIO})
 })
 public class AtlasLocalAIPlugin extends Plugin {
+    private AtlasInferenceController inference;
     private SpeechRecognizer recognizer;
     private TextToSpeech tts;
     private boolean ttsReady;
@@ -52,6 +53,7 @@ public class AtlasLocalAIPlugin extends Plugin {
     };
 
     @Override public void load() {
+        inference = new AtlasInferenceController(getContext());
         audio = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
         ContextCompat.registerReceiver(getContext(), noisy, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY), ContextCompat.RECEIVER_NOT_EXPORTED);
         getActivity().runOnUiThread(() -> {
@@ -111,11 +113,31 @@ public class AtlasLocalAIPlugin extends Plugin {
         emit("idle", null, null);
     }
     @PluginMethod public void runtimeStatus(PluginCall call) {
-        call.resolve(new JSObject().put("available", false).put("engine", "none").put("reason", "This build has no offline AI engine or verified model. Model downloads are unavailable. No prompts have left this device."));
+        call.resolve(inference.status());
     }
-    @PluginMethod public void generate(PluginCall call) { call.reject("Local inference runtime unavailable. No synthetic or cloud response is substituted."); }
-    @PluginMethod public void cancel(PluginCall call) { call.resolve(); }
-    @PluginMethod public void unload(PluginCall call) { call.resolve(); }
+    @PluginMethod public void generate(PluginCall call) {
+        if (getActivity() == null || !getActivity().hasWindowFocus()) {
+            call.reject("Return to unlocked Atlas before generating."); return;
+        }
+        android.app.KeyguardManager keyguard = (android.app.KeyguardManager)
+                getContext().getSystemService(Context.KEYGUARD_SERVICE);
+        if (keyguard == null || keyguard.isDeviceLocked()) {
+            call.reject("Unlock the device before generating."); return;
+        }
+        final String id = call.getString("requestId", "");
+        inference.start(call, token -> notifyListeners("token",
+                new JSObject().put("requestId", id).put("token", token)));
+    }
+    @PluginMethod public void cancel(PluginCall call) {
+        String id = call.getString("requestId", "");
+        if (id != null && !id.isEmpty()) inference.cancel(id);
+        call.resolve();
+    }
+    @PluginMethod public void unload(PluginCall call) {
+        // Each request owns and frees its model and context. Unload cancels any active request.
+        inference.cancel(null);
+        call.resolve();
+    }
     @PluginMethod public void voiceStatus(PluginCall call) {
         getActivity().runOnUiThread(() -> call.resolve(new JSObject().put("recognition", recognitionAvailable()).put("speech", offlineVoice() != null)
             .put("reason", "Offline recognition requires Android 12+ and an installed on-device recognizer. Speech requires a downloaded offline voice for the device language.")));
@@ -186,8 +208,12 @@ public class AtlasLocalAIPlugin extends Plugin {
         });
     }
     @PluginMethod public void stopVoice(PluginCall call) { getActivity().runOnUiThread(() -> { stopInternal(); call.resolve(); }); }
-    @Override protected void handleOnPause() { getActivity().runOnUiThread(this::stopInternal); }
+    @Override protected void handleOnPause() {
+        inference.cancel(null);
+        getActivity().runOnUiThread(this::stopInternal);
+    }
     @Override protected void handleOnDestroy() {
+        inference.close();
         getContext().unregisterReceiver(noisy);
         getActivity().runOnUiThread(() -> { stopInternal(); if (tts != null) { tts.shutdown(); tts = null; } });
     }
