@@ -116,3 +116,48 @@ Live provider verification was blocked by this environment's network proxy
 availability depends on that service, and typed suggestions are not guaranteed.
 No APK/mobile bundle was built. Repeat the browser check with
 `node tests/video/autocomplete-browser.mjs`.
+
+## Scroll loading and revised watch layout — 2026-11-27
+
+Search results now use the available screen width, with responsive one-to-five
+column layouts and larger thumbnails. The floating search field collapses after
+submission so it does not cover the feed. The bottom Search button toggles it
+open/closed; closing preserves the active results. Selecting a video opens a
+larger player with a related-result sidebar on desktop and a stacked list on
+mobile. Closing the player restores the previous result scroll position. Atlas's
+external “Open on YouTube” button and its outbound prompt were removed. Links and
+branding rendered inside the official YouTube iframe remain provider-controlled.
+
+The old first-page-only implementation is replaced with real provider continuation
+pages. The full upstream page is kept rather than truncated to 24 records.
+Continuation tokens and anonymous visitor context are returned to the current tab,
+then sent back in POST bodies. Each continuation is fetched in one upstream call
+without re-running the original search. No query, cursor or result cache/database
+was added. Endpoints remain fixed, cursor sizes are bounded and requests remain
+no-store. Reloading or replacing the search discards its in-memory state.
+
+An IntersectionObserver prefetches a page near the list end. A synchronous request
+lock, cursor identity and generation guards prevent duplicate fetches and late
+pages being appended to a replacement query. Results are deduplicated by ID.
+Errors preserve already loaded videos and expose Retry; repeated empty pages
+pause automatic fetching rather than creating an unbounded request loop. A
+manual load action also supports browsers without IntersectionObserver. Repeated
+provider cursors terminate pagination. Offscreen thumbnails remain lazy-loaded;
+existing result cards are memoized and retain their DOM/image nodes on append.
+
+SDK integration exposed a Search-header constructor incompatibility with
+append-only continuation responses. Those pages use the SDK's public generic
+Feed parser and command contents, preserving item order without changing the SDK.
+Both classic and modern video renderers retain their existing handling.
+
+Validation: 659 unit tests passed, plus TypeScript and scoped lint. The real SDK
+with controlled transport kept a 30-item first page, carried visitor context into
+a continuation, made exactly one request per page, and deduplicated overlapping
+results. Browser fixtures at 390/1280/1920px verified 20→40→50 unique videos from
+scrolling, one request per cursor, retry preserving all 40 loaded results,
+end detection, replacement-query cancellation, full-width layout, responsive
+sidebar, external button removal, Search toggling and scroll restoration.
+Existing search/autocomplete browser checks passed. Screenshots are in
+`work/qa-video-web/feed-*.png` and `watch-*.png`; their posters/provider pages are
+synthetic and iframe playback is blocked in the fixture. Live YouTube pagination
+and physical-device behavior were not verified here. No APK was built.
