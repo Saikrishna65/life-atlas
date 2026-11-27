@@ -182,3 +182,17 @@
 .video-watch-heading { justify-content: flex-end; }
 
 .video-pagination { overflow-anchor: none; }
+
+.video-discover-feed[hidden] { display: none; }
+.video-topic-note { color: var(--vw-muted); font-size: 14px; line-height: 1.6; max-width: 600px; }
+.video-topic-list { display: flex; flex-wrap: wrap; gap: 9px; margin: 24px 0 32px; }
+.video-topic-list button, .video-topic-reset { background: var(--vw-panel); border: 1px solid var(--vw-line); border-radius: 100px; padding: 11px 18px; min-height: 44px; font-size: 13px; }
+.video-topic-list button[aria-pressed=true] { background: var(--vw-fg); color: var(--vw-bg); }
+.video-topic-reset { font-size: 12px; }
+@media (max-width: 380px) { .video-bottom { gap: 2px; padding: 6px; } .video-bottom > button, .video-bottom > a { padding-left: 11px; padding-right: 11px; } }
+.video-web .video-topic-reset { font-size: 12px; white-space: nowrap; }
+.video-web .video-topic-list button { font-size: 13px; }
+@media (max-width: 380px) {
+  .video-bottom > button, .video-bottom > a { min-width: 40px; padding-left: 10px; padding-right: 10px; }
+  .video-bottom > button[aria-current=page] { padding-left: 12px; padding-right: 12px; }
+}

@@ -161,3 +161,38 @@ Existing search/autocomplete browser checks passed. Screenshots are in
 `work/qa-video-web/feed-*.png` and `watch-*.png`; their posters/provider pages are
 synthetic and iframe playback is blocked in the fixture. Live YouTube pagination
 and physical-device behavior were not verified here. No APK was built.
+
+## Discover: explicit topics, no viewing history (2026-11-27)
+
+The bottom navigation now includes Discover. Choose Travel, Science, Technology,
+Music, Nature, Design, Cooking or Gaming. One topic is active at a time. Videos
+are real provider search results for that topic, not history-based recommendations
+or a claim to reproduce YouTube's personalized home algorithm. Topic selection
+starts one initial request, followed by the existing paginated search protocol as
+visitors scroll. There is no fan-out across every topic and no polling.
+
+Only a validated, fixed topic ID is saved in `atlas-video-topic`; raw queries,
+results, selected videos and continuation tokens remain in memory. The existing
+appearance preference is unchanged. Forget my topic clears the preference and
+current Discover results. You also links to topic selection and explains the
+updated storage policy. No Discover provider request occurs before explicit
+selection, or while a saved topic's section has not been opened.
+
+Search and Discover own separate result/cursor state. Returning from playback
+restores the originating feed's scroll position. Inactive Discover stops observing
+its pagination sentinel; interrupted topic requests cannot replace the currently
+chosen topic's results. Reopening Discover reuses the tab's current results. A
+reload fetches fresh results only when Discover is opened. Request timeouts and
+retry are available; topic/feed state does not create an Atlas watch history.
+
+Validation: 660 unit tests, TypeScript and scoped ESLint passed. Search,
+autocomplete and pagination source-browser fixtures passed, including existing
+390/1280/1920px checks. New Discover browser checks cover 320/390/1280px, explicit
+opt-in, pagination, separate search/feed state, player return position, rapid topic
+replacement, preference restore/reset and failure/retry. Screenshots are in
+`work/qa-video-web/discover-*.png`; images and provider responses are synthetic
+fixtures, not live-provider or playback evidence. Direct access to the deployed
+Vercel site failed at the environment's outbound CONNECT proxy (403); the connected
+web tool also could not access that URL. Live deployment performance and external
+playback remain unverified. No APK, mobile bundle or local production build was
+created for this change.
