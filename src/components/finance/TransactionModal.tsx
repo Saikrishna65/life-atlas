@@ -1,4 +1,6 @@
 "use client";
+import SplitWith from "./shared/SplitWith";
+import type { TransactionSplit } from "@/lib/finance/shared/transactionSplit";
 import { tripDetailCategoryId } from "@/lib/finance/trips/policy";
 
 import FinanceSelect from "@/components/finance/FinanceSelect";
@@ -85,6 +87,7 @@ function TransactionForm({
   const [accountId, setAccountId] = useState(
     editingTransaction?.accountId || initialAccountId,
   );
+  const [sharedSplit, setSharedSplit] = useState<TransactionSplit | null>(editingTransaction?.sharedSplit || null);
   const [categoryId, setCategoryId] = useState<string>(
     editingTransaction ? tripDetailCategoryId(editingTransaction) || "" : "",
   );
@@ -145,6 +148,7 @@ function TransactionForm({
           editingTransaction.id,
           {
             expectedVersion: editingTransaction.version,
+            sharedSplit: direction === "outflow" && status === "posted" && !editingTransaction.transferGroupId && categories.find(c => c.id === categoryId)?.type !== "transfer" ? sharedSplit : null,
             paymentKind:
               isRefund && direction === "inflow"
                 ? "refund"
@@ -175,6 +179,7 @@ function TransactionForm({
       } else {
         await transactionService.recordTransaction({
           accountId,
+          sharedSplit: direction === "outflow" && status === "posted" && categories.find(c => c.id === categoryId)?.type !== "transfer" ? sharedSplit || undefined : undefined,
           paymentKind:
             isRefund && direction === "inflow" ? "refund" : undefined,
           tripAssignment:
@@ -237,6 +242,7 @@ function TransactionForm({
       maxWidthClassName="max-w-lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+
         {errorMessage && (
           <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
             {errorMessage}
@@ -374,6 +380,7 @@ function TransactionForm({
           </div>
         </div>
 
+        <SplitWith value={sharedSplit} onChange={setSharedSplit} amountPaise={(() => { try { return rupeesToPaise(amountStr); } catch { return 0; } })()} currency={accounts.find(a => a.id === accountId)?.currency || "INR"} eligible={direction === "outflow" && status === "posted" && !editingTransaction?.transferGroupId && categories.find(c => c.id === categoryId)?.type !== "transfer"} disabled={isSubmitting}/>
         {/* Savings Pocket Selector (for expense/outflow only) */}
         {direction === "outflow" &&
           !editingTransaction?.transferGroupId &&

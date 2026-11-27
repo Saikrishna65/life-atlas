@@ -949,7 +949,7 @@ class AtlasVoiceCoordinator(
         val routeRequest: Pair<String, String>? = when {
             lower.contains("open music") || lower.contains("music vault") -> "/secret/music" to "Music Vault"
             lower.contains("open trip") || lower.contains("trip vault") -> "/secret/vault" to "Trip Vault"
-            lower.contains("open finance") || lower.contains("finance vault") -> "/secret/finance" to "Finance Vault"
+            lower.contains("open finance") || lower.contains("finance vault") -> "/secret/finance" to "Atlas Finance"
             lower.contains("open life atlas") || lower.contains("open atlas") || lower.contains("open the app") || lower.contains("open app") ->
                 "/secret/atlas" to "Life Atlas"
             else -> null

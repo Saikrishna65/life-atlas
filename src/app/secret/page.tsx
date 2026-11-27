@@ -63,7 +63,7 @@ export default function SecretDashboard() {
 
       <Link href="/secret/apps" className="block rounded-2xl border border-muted bg-surface p-6 sm:p-7"><span className="text-xs uppercase tracking-wider text-accent">ATLAS APPS</span><h2 className="text-2xl font-display mt-2">Your apps, together ↗</h2><p className="text-sm text-muted-foreground mt-2">Open Atlas Video on the web, or install the companion on your Android phone.</p></Link>
       <Link href="/secret/gallery" className="block rounded-2xl border border-muted bg-surface p-6 sm:p-7 mb-5"><span className="text-xs uppercase tracking-wider text-accent">MY VISUAL ATLAS</span><h2 className="text-2xl font-display mt-2">Photo & video gallery ↗</h2><p className="text-sm text-muted-foreground mt-2">Browse my phone, check cloud copies, and gather originals into trips and places.</p></Link>
-      {/* Primary Feature Cards Grid: Trip Vault & Music Vault & Finance Vault & Creator Studio */}
+      {/* Primary Feature Cards Grid: Trip Vault & Music Vault & Atlas Finance & Creator Studio */}
       <section className="grid grid-cols-1 gap-6">
         {/* Card 1: Trip Vault (Offline Travel Command Center) */}
         <Link
@@ -106,7 +106,7 @@ export default function SecretDashboard() {
         {/* Card 2: Interactive Audiophile Music Vault Widget */}
         <MusicDashboardWidget />
 
-        {/* Card 3: Life Atlas Finance (Local-First Offline Financial Ledger) */}
+        {/* Card 3: Atlas Finance (Local-First Offline Financial Ledger) */}
         <Link
           href={pendingFinance ? "/secret/finance?review=1" : "/secret/finance"}
           className="group block relative rounded-2xl border border-emerald-500/20 bg-surface hover:bg-surface-hover/80 hover:border-emerald-400/40 p-6 sm:p-7 transition-all duration-300 shadow-soft overflow-hidden active:scale-[0.99] ring-1 ring-emerald-400/10"
@@ -127,7 +127,7 @@ export default function SecretDashboard() {
                   {pendingFinance ? `${pendingFinance} awaiting approval` : "Spending & savings"}
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-xs font-sans tracking-wider uppercase text-emerald-400 font-semibold group-hover:text-emerald-300 transition-colors pt-1">
-                  <span>Enter Finance</span>
+                  <span>Open Atlas Finance</span>
                   <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </span>
               </div>
@@ -135,7 +135,7 @@ export default function SecretDashboard() {
 
             <div className="space-y-1.5">
               <h2 className="font-display text-2xl sm:text-3xl text-foreground group-hover:text-emerald-400 transition-colors font-normal tracking-tight">
-                Life Atlas Finance {pendingFinance > 0 && <span aria-live="polite" aria-label={`${pendingFinance} transactions awaiting approval`} className="inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-full bg-emerald-500 text-white text-sm font-sans font-bold align-middle">{pendingFinance}</span>}
+                Atlas Finance {pendingFinance > 0 && <span aria-live="polite" aria-label={`${pendingFinance} transactions awaiting approval`} className="inline-flex items-center justify-center min-w-7 h-7 px-2 rounded-full bg-emerald-500 text-white text-sm font-sans font-bold align-middle">{pendingFinance}</span>}
               </h2>
               <p className="font-body text-muted-foreground text-xs sm:text-sm leading-relaxed max-w-lg">
                 Your spending, accounts, and savings in one place. Review bank messages and approve transactions before they affect your balance.

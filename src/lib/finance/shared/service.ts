@@ -90,6 +90,10 @@ export async function saveSharedGroup(
           );
         result.version = expectedVersion + 1;
         result.updatedAt = new Date().toISOString();
+        for (const record of current?.expenses || []) if (record.sourceTransactionId) {
+          ensure(JSON.stringify(record) === JSON.stringify(result.expenses.find(e => e.id === record.id)), "Edit this linked payment in Atlas Finance. Its split follows the original payment.");
+        }
+        for (const record of result.expenses) if (record.sourceTransactionId) ensure(current?.expenses.some(e => e.id === record.id && e.sourceTransactionId === record.sourceTransactionId), "Link bank payments from Atlas Finance.");
         validateGroup(result);
         store.put(result);
         tx.objectStore("audit_log").put({

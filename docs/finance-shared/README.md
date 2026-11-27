@@ -39,3 +39,7 @@ Commands and evidence for this implementation:
 - Unit tests cover deterministic rounding, maximum safe integer allocation, invalid shares, missing members, multiple payers, excluded payers, settlement checks, V4 migration, atomic audit receipts, stale writes, restore exclusion, blocked notification channels, encrypted backup round-trip and legacy backup completeness.
 
 Screenshots in [previews](./previews/) show desktop/mobile group and expense forms. These are synthetic browser screenshots, not physical-device validation. No APK, deployment, cloud upload, or push was performed.
+
+## Split an existing bank payment
+
+You can now choose **Split with** during bank-alert approval, manual expense entry/editing and category review. These linked splits follow their original payment and are updated atomically with it; edit them in Atlas Finance. Standalone group bills still do not write bank transactions. See the [linked-payment guide](../finance-split-review/README.md).

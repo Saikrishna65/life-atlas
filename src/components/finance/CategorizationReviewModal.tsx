@@ -1,20 +1,17 @@
 "use client";
+import SplitWith from "./shared/SplitWith";
+import type { TransactionSplit } from "@/lib/finance/shared/transactionSplit";
 import { FinancePanelHeader, useFinanceDialog } from "./FinanceDialog";
 
 import FinanceSelect from "@/components/finance/FinanceSelect";
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  X,
   Sparkles,
-  Check,
-  AlertCircle,
   Plus,
   Trash2,
-  Tag,
   ToggleLeft,
   ToggleRight,
-  Filter,
   CheckCircle2,
 } from "lucide-react";
 import {
@@ -49,13 +46,18 @@ export default function CategorizationReviewModal({
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  const [splits, setSplits] = useState<Record<string, TransactionSplit | null>>({});
+  const [chosenCategories, setChosenCategories] = useState<Record<string, string>>({});
+  const [rememberCategories, setRememberCategories] = useState<Record<string, boolean>>({});
+  const [busyPayment, setBusyPayment] = useState<string | null>(null);
+
   // New Rule Form State
   const [isAddingRule, setIsAddingRule] = useState(false);
   const [newRuleName, setNewRuleName] = useState("");
   const [newRulePattern, setNewRulePattern] = useState("");
   const [newRuleMatchType, setNewRuleMatchType] = useState<RuleMatchType>("contains");
   const [newRuleCategoryId, setNewRuleCategoryId] = useState<string>(categories[0]?.id || "");
-  const [newRuleDirection, setNewRuleDirection] = useState<"inflow" | "outflow" | "all">("all");
+  const [newRuleDirection] = useState<"inflow" | "outflow" | "all">("all");
 
   const categoryMap = React.useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
@@ -85,50 +87,25 @@ export default function CategorizationReviewModal({
   }, [categorizationService]);
 
   useEffect(() => {
-    if (isOpen) {
-      loadData();
-      setIsAddingRule(false);
-      setStatusMessage(null);
-    }
+    if (!isOpen) return;
+    const timer = setTimeout(() => { void loadData(); setIsAddingRule(false); setStatusMessage(null); }, 0);
+    return () => clearTimeout(timer);
   }, [isOpen, loadData]);
 
   useFinanceDialog(isOpen, onClose);
   if (!isOpen) return null;
 
-  const handleAcceptSuggestion = async (txn: Transaction, sugg: CategorizationResult) => {
+  const handleManualAssign = async (txn: Transaction, categoryId: string, remember: boolean) => {
+    if (!categoryId || busyPayment) return;
+    setBusyPayment(txn.id);
     try {
-      await categorizationService.learnUserCorrection(txn, sugg.categoryId);
-      // Re-query to update list
-      await loadData();
-      onTransactionsUpdated();
-      setStatusMessage(`Categorized "${txn.description}" as ${sugg.categoryName}`);
-      setTimeout(() => setStatusMessage(null), 3000);
-    } catch (err: unknown) {
-      alert((err as Error).message);
-    }
-  };
-
-  const handleManualAssign = async (txn: Transaction, categoryId: string, createRule: boolean) => {
-    if (!categoryId) return;
-    try {
-      if (createRule) {
-        await categorizationService.learnUserCorrection(txn, categoryId);
-      } else {
-        const uow = (categorizationService as any).uow;
-        const updated: Transaction = {
-          ...txn,
-          categoryId,
-          reviewRequired: false,
-          updatedAt: new Date().toISOString(),
-          version: txn.version + 1,
-        };
-        await uow.transactions.save(updated);
-      }
-      await loadData();
-      onTransactionsUpdated();
-    } catch (err: unknown) {
-      alert((err as Error).message);
-    }
+      const result = await categorizationService.reviewTransaction(txn, categoryId, splits[txn.id] === undefined ? txn.sharedSplit || null : splits[txn.id], remember);
+      setChosenCategories(previous => { const next = {...previous}; delete next[txn.id]; return next; });
+      setSplits(previous => { const next = {...previous}; delete next[txn.id]; return next; });
+      await loadData(); onTransactionsUpdated();
+      setStatusMessage(result.ruleSaved ? "Category and split saved." : "Payment saved. The category rule could not be remembered; you can add it later.");
+    } catch (error) { alert(error instanceof Error ? error.message : "Could not save this review."); }
+    finally { setBusyPayment(null); }
   };
 
   const handleToggleRule = async (ruleId: string, currentActive: boolean) => {
@@ -251,7 +228,8 @@ export default function CategorizationReviewModal({
                 {uncategorized.length > 0 && (
                   <button
                     onClick={handleBatchApplyRules}
-                    disabled={loading}
+                    disabled={loading || busyPayment !== null || (Object.keys(splits).length > 0 || Object.keys(chosenCategories).length > 0)}
+                    title={Object.keys(splits).length ? "Save your chosen splits individually first" : undefined}
                     className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
@@ -300,55 +278,15 @@ export default function CategorizationReviewModal({
                           </span>
                         </div>
 
-                        {/* Suggestion Card or Manual Selector */}
-                        <div className="pt-2 border-t border-border/50 flex flex-wrap items-center justify-between gap-2">
-                          {sugg ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-amber-400 flex items-center gap-1 font-medium bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20">
-                                <Sparkles className="w-3 h-3" />
-                                {sugg.categoryName} ({Math.round(sugg.confidence * 100)}% match)
-                              </span>
-                              <button
-                                onClick={() => handleAcceptSuggestion(txn, sugg)}
-                                className="px-2.5 py-1 text-xs rounded-md bg-amber-500 text-black font-semibold hover:bg-amber-400 flex items-center gap-1 cursor-pointer"
-                              >
-                                <Check className="w-3 h-3" />
-                                Accept
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <AlertCircle className="w-3.5 h-3.5" />
-                              No automatic rule matched
-                            </span>
-                          )}
-
-                          {/* Quick Category Picker */}
-                          <div className="flex items-center gap-1.5">
-                            <FinanceSelect
-                              defaultValue=""
-                              onChange={(e) => {
-                                const selectedCat = e.target.value;
-                                if (!selectedCat) return;
-                                const remember = confirm(`Remember this category for future transactions matching "${txn.merchant || txn.description}"?`);
-                                handleManualAssign(txn, selectedCat, remember);
-                              }}
-                              className="px-2 py-1 text-xs bg-background border border-border rounded-md text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-amber-500"
-                            >
-                              <option value="" disabled>
-                                Choose category...
-                              </option>
-                              {categories
-                                .filter((c) =>
-                                  txn.direction === "inflow" ? c.type === "income" : c.type === "expense"
-                                )
-                                .map((cat) => (
-                                  <option key={cat.id} value={cat.id}>
-                                    {cat.name}
-                                  </option>
-                                ))}
-                            </FinanceSelect>
-                          </div>
+                        <div className="pt-2 border-t border-border/50 space-y-3">
+                          {sugg && <p className="text-xs text-muted-foreground">Suggested: {sugg.categoryName}</p>}
+                          <label className="text-xs font-medium">Category<FinanceSelect aria-label={`Category for ${txn.description}`} disabled={busyPayment !== null} value={chosenCategories[txn.id] ?? sugg?.categoryId ?? txn.categoryId ?? ""} onChange={e => setChosenCategories(previous => ({...previous, [txn.id]:e.target.value}))}>
+                            <option value="">Choose category...</option>
+                            {categories.filter(c => txn.direction === "inflow" ? c.type === "income" : c.type === "expense").map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                          </FinanceSelect></label>
+                          <SplitWith value={splits[txn.id] === undefined ? txn.sharedSplit : splits[txn.id]} onChange={value => setSplits(previous => ({...previous, [txn.id]:value}))} amountPaise={txn.amountPaise} currency={txn.currency} eligible={txn.direction === "outflow" && !txn.transferGroupId && txn.paymentKind !== "transfer"} disabled={busyPayment !== null}/>
+                          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!rememberCategories[txn.id]} disabled={busyPayment !== null} onChange={e => setRememberCategories(previous => ({...previous, [txn.id]:e.target.checked}))}/>Remember this category for the merchant</label>
+                          <button type="button" className="af-primary" disabled={busyPayment !== null || !(chosenCategories[txn.id] ?? sugg?.categoryId ?? txn.categoryId)} onClick={() => handleManualAssign(txn, chosenCategories[txn.id] ?? sugg?.categoryId ?? txn.categoryId ?? "", !!rememberCategories[txn.id])}>{busyPayment === txn.id ? "Saving…" : "Save review"}</button>
                         </div>
                       </div>
                     );

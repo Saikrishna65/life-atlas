@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import MerchantImage from "./MerchantImage";
 import React, { useState } from "react";
@@ -96,6 +97,7 @@ export default function TransactionDetailModal({
         )}
 
         {transaction.tripAssignment?.tripId && transaction.tripAssignment.mode!=="excluded" && <div className="trip-notice"><strong>Trip · {transaction.tripAssignment.tripTitle}</strong><p>{transaction.tripAssignment.mode==='manual'?'Manually attached / advance booking':'Automatically assigned from payment time'}</p></div>}
+        {transaction.sharedSplit && <div className="trip-notice"><strong>Shared expense · {transaction.sharedSplit.memberIds.length} people</strong><p>This payment is linked to an equal split. <Link href="/secret/finance/shared">See group balances</Link>. Edit this payment to change or remove its split.</p></div>}
         {/* Top Summary Banner */}
         <div className="p-4 rounded-xl border border-muted bg-surface/70 space-y-2">
           <div className="flex items-center justify-between">

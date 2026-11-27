@@ -1,11 +1,12 @@
 "use client";
+import SplitWith from "./shared/SplitWith";
+import type { TransactionSplit } from "@/lib/finance/shared/transactionSplit";
 
 import MerchantImage from "./MerchantImage";
 import FinanceSelect from "@/components/finance/FinanceSelect";
 
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  X,
   Sparkles,
   Clipboard,
   CheckCircle2,
@@ -18,7 +19,6 @@ import {
   Ban,
   Info,
   MessageSquare,
-  Tag,
   ChevronDown,
   ChevronRight,
   SlidersHorizontal,
@@ -81,6 +81,8 @@ export default function KotakTrackingModal({
   const [reviewAccounts, setReviewAccounts] = useState<Record<string, string>>({});
   const [focusedEvent, setFocusedEvent] = useState<string | null>(null);
   const [busyReviewId, setBusyReviewId] = useState<string | null>(null);
+  const [reviewSplits, setReviewSplits] = useState<Record<string, TransactionSplit | null>>({});
+  const [parsedSplit, setParsedSplit] = useState<TransactionSplit | null>(null);
   const [reviewCategories, setReviewCategories] = useState<Record<string, string>>({});
 
   const loadReviewQueue = useCallback(() => {
@@ -96,8 +98,7 @@ export default function KotakTrackingModal({
       trackingService.drainPendingNotifications().then(() => {
         loadReviewQueue();
         if (trackingService.getReviewQueue().length) setActiveTab("REVIEW");
-      }).catch(console.warn);
-      loadReviewQueue();
+      }).catch(() => loadReviewQueue());
     }
   }, [isOpen, loadReviewQueue, trackingService]);
 
@@ -130,7 +131,9 @@ export default function KotakTrackingModal({
   };
 
   useEffect(() => {
-    if (isOpen) setFocusedEvent(new URLSearchParams(window.location.search).get("event"));
+    if (!isOpen) return;
+    const timer = setTimeout(() => setFocusedEvent(new URLSearchParams(window.location.search).get("event")), 0);
+    return () => clearTimeout(timer);
   }, [isOpen]);
   useEffect(() => {
     if (!isOpen || activeTab !== "REVIEW" || !focusedEvent) return;
@@ -233,6 +236,7 @@ export default function KotakTrackingModal({
   const handleClear = () => {
     setAlertText("");
     setParseResult(null);
+    setParsedSplit(null);
     setEditableMerchant("");
     setSelectedAccountId("");
     setSelectedCategoryId("");
@@ -257,22 +261,22 @@ export default function KotakTrackingModal({
         parsed: parseResult.parsed,
         accountId: selectedAccountId,
         categoryId: selectedCategoryId || undefined,
+        sharedSplit: parsedSplit || undefined,
         description: editableMerchant || parseResult.parsed.merchantOrBeneficiary,
       });
 
       onTransactionsUpdated();
+      handleClear();
       setFeedbackMessage({
         type: "success",
         text: `Transaction recorded into ledger: ${formatPaise(parseResult.parsed.amountPaise)} (${editableMerchant || parseResult.parsed.merchantOrBeneficiary})`,
       });
 
-      // Reset form
-      handleClear();
     } catch (err: unknown) {
       console.error("Recording error:", err);
       setFeedbackMessage({
         type: "error",
-        text: "Could not save this transaction. Check the details and try again.",
+        text: err instanceof Error ? err.message : "Could not save this transaction. Check the details and try again.",
       });
     } finally {
       setIsRecording(false);
@@ -313,7 +317,7 @@ export default function KotakTrackingModal({
     setBusyReviewId(itemId);
 
     try {
-      await trackingService.resolveReviewItem(itemId, accountId, categoryId);
+      await trackingService.resolveReviewItem(itemId, accountId, categoryId, reviewSplits[itemId] || undefined);
       loadReviewQueue();
       onTransactionsUpdated();
       setFeedbackMessage({
@@ -576,6 +580,7 @@ export default function KotakTrackingModal({
                         )}
                       </label>
                       <FinanceSelect
+                        aria-label="Payment account"
                         value={selectedAccountId}
                         onChange={(e) => setSelectedAccountId(e.target.value)}
                         className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
@@ -597,6 +602,7 @@ export default function KotakTrackingModal({
                         )}
                       </label>
                       <FinanceSelect
+                        aria-label="Payment category"
                         value={selectedCategoryId}
                         onChange={(e) => setSelectedCategoryId(e.target.value)}
                         className="w-full px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:border-emerald-600"
@@ -613,6 +619,7 @@ export default function KotakTrackingModal({
                     </div>
                   </div>
 
+              {parseResult?.success && parseResult.parsed && <SplitWith value={parsedSplit} onChange={setParsedSplit} amountPaise={parseResult.parsed.amountPaise} currency={accounts.find(a => a.id === selectedAccountId)?.currency || "INR"} eligible={parseResult.parsed.direction === "outflow" && parseResult.parsed.paymentKind !== "transfer" && parseResult.parsed.paymentKind !== "refund" && categories.find(c => c.id === selectedCategoryId)?.type !== "transfer"} disabled={isRecording}/>}
                   {/* Confirm Button */}
                   <div className="pt-2 flex items-center justify-end gap-2">
                     <button
@@ -782,6 +789,7 @@ export default function KotakTrackingModal({
                           </FinanceSelect></label>
                         </div>
 
+                      <SplitWith value={reviewSplits[item.id]} onChange={value => setReviewSplits(previous => ({...previous, [item.id]:value}))} amountPaise={txn.amountPaise} currency={accounts.find(a => a.id === (reviewAccounts[item.id] ?? item.candidateAccountIds[0]))?.currency || "INR"} eligible={itemIsOutflow && txn.paymentKind !== "transfer" && txn.paymentKind !== "refund" && categories.find(c => c.id === (reviewCategories[item.id] ?? item.suggestedCategoryId))?.type !== "transfer"} disabled={busyReviewId !== null}/>
                         <div className="inbox-actions">
                           <button
                             disabled={busyReviewId !== null || !(reviewAccounts[item.id] ?? item.candidateAccountIds[0]) || !(reviewCategories[item.id] ?? item.suggestedCategoryId)}

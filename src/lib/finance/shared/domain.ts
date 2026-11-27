@@ -9,6 +9,7 @@ export interface Share {
   amountPaise: number;
 }
 export interface SharedExpense {
+  sourceTransactionId?: string;
   id: string;
   title: string;
   amountPaise: number;
@@ -216,7 +217,9 @@ export function validateGroup(value: unknown): asserts value is SharedGroup {
     "This group has too many records.",
   );
   const records = new Set<string>();
+  const sourceIds = new Set<string>();
   for (const e of g.expenses) {
+    if (e.sourceTransactionId !== undefined) { text(e.sourceTransactionId, 100); ensure(!sourceIds.has(e.sourceTransactionId), "This payment is already split in this group."); sourceIds.add(e.sourceTransactionId); }
     text(e.id, 100);
     ensure(!records.has(e.id), "Duplicate expense.");
     records.add(e.id);

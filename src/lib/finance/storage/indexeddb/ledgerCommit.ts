@@ -1,3 +1,5 @@
+import { reconcileTransactionSplit } from "../../shared/transactionSplit";
+import type { SharedGroup } from "../../shared/domain";
 import type { LedgerChange } from "../interfaces";
 import type { FinanceAccount, Transaction } from "../../domain/models";
 import {
@@ -20,9 +22,24 @@ export function commitLedgerChange(
     if (row.after) validateTransaction(row.after);
   for (const row of change.pockets) validateSavingsGoal(row.after);
   change.outbox.forEach(validateSyncOperation);
+  const sharedIds = new Set(
+    change.transactions.flatMap((row) =>
+      [
+        row.before?.sharedSplit?.groupId,
+        row.after?.sharedSplit?.groupId,
+      ].filter((id): id is string => !!id),
+    ),
+  );
   return new Promise((resolve, reject) => {
     const tx = db.transaction(
-      ["transactions", "accounts", "savings_goals", "audit_log", "sync_outbox"],
+      [
+        "transactions",
+        "accounts",
+        "savings_goals",
+        "audit_log",
+        "sync_outbox",
+        ...(sharedIds.size ? ["shared_groups", "categories"] : []),
+      ],
       "readwrite",
     );
     let failure: unknown;
@@ -58,6 +75,29 @@ export function commitLedgerChange(
         "This payment or pocket changed while saving. Review it and try again.",
         "CONCURRENCY_CONFLICT",
       );
+    const sharedGroups = new Map<string, SharedGroup>();
+    const transferCategories = new Set<string>();
+    if (sharedIds.size) {
+      read(tx.objectStore("categories").getAll(), (rows) => {
+        for (const row of rows)
+          if (row.type === "transfer") transferCategories.add(row.id);
+      });
+      for (const id of sharedIds)
+        read(tx.objectStore("shared_groups").get(id), (group) => {
+          if (group) sharedGroups.set(id, group);
+          else if (
+            change.transactions.some(
+              (row) =>
+                row.after?.sharedSplit?.groupId === id &&
+                row.after.status === "posted" &&
+                row.after.direction === "outflow",
+            )
+          )
+            throw new Error(
+              "This shared group is no longer available. Choose another group or Just me.",
+            );
+        });
+    }
     for (const item of change.transactions) {
       const row = item.after || item.before!;
       read(tx.objectStore("transactions").get(row.id), (stored) => {
@@ -120,6 +160,51 @@ export function commitLedgerChange(
                 );
             }
           }
+        const linkedAt = new Date().toISOString();
+        for (const group of sharedGroups.values()) {
+          const previous = structuredClone(group);
+          let changed = false;
+          for (const row of change.transactions)
+            if (
+              row.before?.sharedSplit?.groupId === group.id ||
+              row.after?.sharedSplit?.groupId === group.id
+            )
+              changed =
+                reconcileTransactionSplit(
+                  group,
+                  row.before,
+                  row.after,
+                  transferCategories,
+                  linkedAt,
+                ) || changed;
+          if (changed) {
+            tx.objectStore("shared_groups").put(group);
+            tx.objectStore("audit_log").add({
+              id: crypto.randomUUID(),
+              entityType: "shared_group",
+              entityId: group.id,
+              action: "update",
+              performedAt: linkedAt,
+              changes: {
+                version: { oldVal: previous.version, newVal: group.version },
+                linkedExpenses: {
+                  oldVal: previous.expenses.filter((e) =>
+                    change.transactions.some(
+                      (t) =>
+                        (t.after || t.before)?.id === e.sourceTransactionId,
+                    ),
+                  ),
+                  newVal: group.expenses.filter((e) =>
+                    change.transactions.some(
+                      (t) =>
+                        (t.after || t.before)?.id === e.sourceTransactionId,
+                    ),
+                  ),
+                },
+              },
+            });
+          }
+        }
         for (const id of ids) {
           const existing = journals.get(id)!;
           const changed = new Set(
@@ -155,7 +240,24 @@ export function commitLedgerChange(
         fail(error);
       }
     }
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => {
+      try {
+        if (sharedIds.size && typeof window !== "undefined") {
+          window.dispatchEvent(new Event("finance-shared-updated"));
+          if (typeof BroadcastChannel !== "undefined") {
+            const channel = new BroadcastChannel("atlas-shared-expenses");
+            try {
+              channel.postMessage("ledger");
+            } finally {
+              channel.close();
+            }
+          }
+        }
+      } catch {
+        /* The ledger is already committed; notifications are optional. */
+      }
+      resolve();
+    };
     tx.onabort = () =>
       reject(
         failure ||

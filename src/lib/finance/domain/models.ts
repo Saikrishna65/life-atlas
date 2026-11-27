@@ -79,6 +79,7 @@ export type TransactionSource =
 export type PaymentKind = "purchase" | "salary" | "refund" | "transfer" | "automatic_bill";
 
 export interface Transaction {
+  sharedSplit?: import("../shared/transactionSplit").TransactionSplit;
   paymentKind?: PaymentKind;
   tripAssignment?: import("../trips/policy").TripAssignment;
   /** Explicit provenance for generated or user-marked automatic bills. */

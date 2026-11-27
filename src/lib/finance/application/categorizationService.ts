@@ -1,3 +1,5 @@
+import { TransactionService } from "./transactionService";
+import type { TransactionSplit } from "../shared/transactionSplit";
 /**
  * Life Atlas Finance: Smart Categorization Engine & Application Service
  * 
@@ -135,10 +137,16 @@ export class CategorizationService {
     return null;
   }
 
-  /**
-   * Learns from a user's manual correction or categorization.
-   * Creates a dedicated user rule with high priority (priority 5) so future matches take precedence.
-   */
+  /** Save the reviewed category and explicit shared choice through the atomic ledger boundary. */
+  async reviewTransaction(transaction: Transaction, categoryId: ID, sharedSplit: TransactionSplit | null, remember = false): Promise<{ ruleSaved: boolean }> {
+    const category = await this.uow.categories.getById(categoryId);
+    if (!category || (transaction.direction === "outflow" ? category.type !== "expense" : category.type !== "income")) throw new FinanceError("Choose a category for this payment type.", "VALIDATION_FAILED");
+    await new TransactionService(this.uow).correctTransaction(transaction.id, { expectedVersion: transaction.version, categoryId, sharedSplit, reviewRequired: false }, "User reviewed category and shared split");
+    if (remember) { try { await this.learnUserCorrection(transaction, categoryId); } catch { return { ruleSaved: false }; } }
+    return { ruleSaved: true };
+  }
+
+  /** Remember a merchant category only; sharing always requires a separate explicit choice. */
   async learnUserCorrection(
     transaction: Transaction,
     userAssignedCategoryId: ID,

@@ -402,13 +402,14 @@ export default function SharedExpenses() {
                           </ul>
                         </details>
                       )}
+                      {record.type === "expense" && record.sourceTransactionId && <small>From a bank payment · <Link href="/secret/finance">edit its amount or split in Atlas Finance</Link></small>}
                       {record.voidedAt && (
                         <small>Cancelled · kept in history</small>
                       )}
                     </div>
                     <div className="shared-record-end">
                       <b>{money(record.amountPaise, group.currency)}</b>
-                      {!record.voidedAt && (
+                      {!record.voidedAt && !(record.type === "expense" && record.sourceTransactionId) && (
                         <div>
                           {record.type === "expense" && (
                             <button

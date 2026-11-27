@@ -38,6 +38,7 @@ import {
 import { FinanceError } from "../domain/errors";
 
 export interface RecordTransactionDTO {
+  sharedSplit?: import("../shared/transactionSplit").TransactionSplit;
   paymentKind?: import("../domain/models").PaymentKind;
   tripAssignment?: TripAssignment;
   recurringRuleId?: string;
@@ -72,6 +73,8 @@ export interface RecordTransferDTO {
 }
 
 export interface CorrectTransactionDTO {
+  sharedSplit?: import("../shared/transactionSplit").TransactionSplit | null;
+  reviewRequired?: boolean;
   expectedVersion?: number;
   paymentKind?: import("../domain/models").PaymentKind;
   tripAssignment?: TripAssignment;
@@ -239,6 +242,7 @@ export class TransactionService {
       paymentKind: dto.paymentKind,
       tripAssignment: dto.tripAssignment,
       recurringRuleId: dto.recurringRuleId,
+      sharedSplit: dto.sharedSplit,
       originalTransactionId: dto.originalTransactionId,
       accountId: dto.accountId,
       description: dto.description.trim(),
@@ -868,6 +872,15 @@ export class TransactionService {
       };
     else delete changes.categoryId;
 
+    if (updates.sharedSplit !== undefined) {
+      const nextSplit = updates.sharedSplit || undefined;
+      if (JSON.stringify(previous.sharedSplit) !== JSON.stringify(nextSplit)) changes.sharedSplit = { oldVal: previous.sharedSplit, newVal: nextSplit };
+      existing.sharedSplit = nextSplit;
+    }
+    if (updates.reviewRequired !== undefined && updates.reviewRequired !== previous.reviewRequired) {
+      changes.reviewRequired = { oldVal: previous.reviewRequired, newVal: updates.reviewRequired };
+      existing.reviewRequired = updates.reviewRequired;
+    }
     const pocketChanged =
       (updates.pocketId !== undefined &&
         (updates.pocketId || undefined) !== previous.pocketId) ||

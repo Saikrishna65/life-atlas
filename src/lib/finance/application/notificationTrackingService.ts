@@ -1,3 +1,4 @@
+import type { TransactionSplit } from "../shared/transactionSplit";
 /**
  * Life Atlas Finance: Kotak Notification Tracking Application Service
  * 
@@ -221,6 +222,7 @@ export class NotificationTrackingService {
     accountId: string;
     categoryId?: string;
     description?: string;
+    sharedSplit?: TransactionSplit;
   }): Promise<Transaction> {
     return this.serialize(() => this.recordConfirmedTransaction(options));
   }
@@ -230,6 +232,7 @@ export class NotificationTrackingService {
     accountId: string;
     categoryId?: string;
     description?: string;
+    sharedSplit?: TransactionSplit;
   }): Promise<Transaction> {
     const { parsed, accountId, categoryId, description } = options;
     if (await this.checkExistingLedgerDuplicate(parsed)) throw new Error("This bank transaction is already recorded.");
@@ -237,6 +240,7 @@ export class NotificationTrackingService {
     const recorded = await this.transactionService.recordTransaction({
       accountId,
       paymentKind: parsed.paymentKind,
+      sharedSplit: options.sharedSplit,
       amountPaise: parsed.amountPaise,
       direction: parsed.direction,
       description: description?.trim() || parsed.merchantOrBeneficiary,
@@ -508,16 +512,22 @@ export class NotificationTrackingService {
   async resolveReviewItem(
     itemId: string,
     accountId: ID,
-    categoryId?: ID
+    categoryId?: ID,
+    sharedSplit?: TransactionSplit
   ): Promise<void> {
-    return this.serialize(() => this.recordReviewedItem(itemId, accountId, categoryId));
+    return this.serialize(() => this.recordReviewedItem(itemId, accountId, categoryId, sharedSplit));
   }
 
-  private async recordReviewedItem(itemId: string, accountId: ID, categoryId?: ID): Promise<void> {
+  private async recordReviewedItem(itemId: string, accountId: ID, categoryId?: ID, sharedSplit?: TransactionSplit): Promise<void> {
     const item = this.reviewQueue.find((i) => i.id === itemId);
     if (!item || item.status !== "pending") return;
 
     if (await this.checkExistingLedgerDuplicate(item.parsedTransaction)) {
+      if (sharedSplit) {
+        const reference = item.parsedTransaction.referenceNumber;
+        const existing = reference ? await this.uow.transactions.getByExternalId(`kotak_notif_${reference}`) : null;
+        if (!existing?.sharedSplit || JSON.stringify(existing.sharedSplit) !== JSON.stringify(sharedSplit)) throw new Error("This payment is already recorded. Open it in Atlas Finance to add or change its split; no duplicate payment was created.");
+      }
       item.status = "approved";
       await this.acknowledgeFingerprint(item);
       this.announceUpdate();
@@ -528,6 +538,7 @@ export class NotificationTrackingService {
     await this.transactionService.recordTransaction({
       accountId,
       paymentKind: item.parsedTransaction.paymentKind,
+      sharedSplit,
       amountPaise: item.parsedTransaction.amountPaise,
       direction: item.parsedTransaction.direction,
       description: item.parsedTransaction.merchantOrBeneficiary,

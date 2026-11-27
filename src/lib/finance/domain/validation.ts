@@ -1,3 +1,4 @@
+import { validateTransactionSplit } from "../shared/transactionSplit";
 /**
  * Life Atlas Finance: Runtime Schema Validation & Type Guards
  * 
@@ -130,6 +131,7 @@ export function validateTransaction(txn: unknown): Transaction {
   }
 
   const t = txn as Partial<Transaction>;
+  if (t.sharedSplit !== undefined) validateTransactionSplit(t.sharedSplit);
 
   if (!t.id || typeof t.id !== "string" || !t.id.trim()) {
     throw new FinanceError("Transaction ID must be a non-empty string", "VALIDATION_FAILED");

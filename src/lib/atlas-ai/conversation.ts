@@ -702,7 +702,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
     }
   }
 
-  // 17. Finance Vault (Summary, Category Breakdown, Expense Search, Budget Help)
+  // 17. Atlas Finance (Summary, Category Breakdown, Expense Search, Budget Help)
   if (/\b(finance|balance|money|bank|expense|spent|spending|categories|budget)\b/.test(lower)) {
     session.currentTopic = "finance";
     if (/\b(budget|budgets|limit)\b/.test(lower)) {
@@ -714,7 +714,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
       });
       if (bRes.ok && bRes.result) {
         if (!bRes.result.length) {
-          return finish("You haven't configured category budgets in Finance Vault yet—I can open Finance Vault if you'd like to set one.", false, "finance.budgetHelp");
+          return finish("You haven't configured category budgets in Atlas Finance yet—I can open Atlas Finance if you'd like to set one.", false, "finance.budgetHelp");
         }
         const top = bRes.result.slice(0, 3).map((b) => `${b.categoryName}: ${(b.limitPaise / 100).toFixed(0)} (${b.period})`).join(", ");
         return finish(`Your current budgets are ${top}. Want to focus on one category?`, false, "finance.budgetHelp");
@@ -730,7 +730,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
       if (catRes.ok && catRes.result) {
         const nonEmpty = catRes.result.filter((c) => c.count > 0 && c.type === "expense").sort((a, b) => b.totalPaise - a.totalPaise).slice(0, 3);
         if (!nonEmpty.length) {
-          return finish("No posted category expenses found in your Finance Vault yet.", false, "finance.explainCategories");
+          return finish("No posted category expenses found in your Atlas Finance yet.", false, "finance.explainCategories");
         }
         const line = nonEmpty.map((c) => `${c.name} (${(c.totalPaise / 100).toFixed(0)} across ${c.count})`).join(", ");
         return finish(`Your biggest expense categories are ${line}.`, false, "finance.explainCategories");
@@ -747,14 +747,14 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
     });
     if (sumRes.ok && sumRes.result) {
       const accounts = sumRes.result.accounts ?? [];
-      if (!accounts.length) return finish("You don't have any active accounts in Finance Vault yet.", false, "finance.summary");
+      if (!accounts.length) return finish("You don't have any active accounts in Atlas Finance yet.", false, "finance.summary");
       const line = accounts
         .slice(0, 3)
         .map((a) => `${a.name} (${a.currency} ${((a.balances?.availablePaise ?? 0) / 100).toFixed(0)})`)
         .join(", ");
       return finish(`You have ${accounts.length} active account${accounts.length > 1 ? "s" : ""}: ${line}.`, false, "finance.summary");
     }
-    return finish(sumRes.error ?? "Couldn't read Finance Vault right now.", false, "finance.failed");
+    return finish(sumRes.error ?? "Couldn't read Atlas Finance right now.", false, "finance.failed");
   }
 
   // 18. Trip Vault Queries, Day Follow-ups & Corrections
