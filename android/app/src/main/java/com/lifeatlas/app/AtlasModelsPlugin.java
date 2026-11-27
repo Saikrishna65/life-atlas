@@ -35,7 +35,7 @@ public class AtlasModelsPlugin extends Plugin {
             JSONObject m=all.getJSONObject(i);
             if (!m.getString("id").equals(id)) continue;
             if (!id.matches("[a-z0-9-]{1,80}") || !m.getString("revision").matches("[a-f0-9]{40}") || !m.getString("sha256").matches("[a-f0-9]{64}") || m.getString("sha256").matches("0+") || !m.getString("repository").matches("[\\w.-]+/[\\w.-]+") || !m.getString("filename").matches("[\\w.-]+\\.gguf") || m.getString("license").isEmpty() || !m.getString("licenseUrl").startsWith("https://")) throw new IOException("Invalid reviewed catalogue");
-            long size=m.getLong("bytes"); if(size<=0||size>1500000000L) throw new IOException("Unsupported model size");
+            long size=m.getLong("bytes"); if(!AtlasModelStoragePolicy.isSupportedSize(size)) throw new IOException("Unsupported model size");
             return m;
         }
         throw new IOException("No reviewed model is available. Downloads are disabled.");
@@ -62,7 +62,7 @@ public class AtlasModelsPlugin extends Plugin {
         if(!Boolean.TRUE.equals(call.getBoolean("consent")))throw new IOException("Explicit download consent required");
         JSONObject m=entry(call.getString("id",""));File dest=target(m);
         if(verified(m)){call.resolve();return;}
-        long size=m.getLong("bytes");if(directory().getUsableSpace()<size*2+268435456L)throw new IOException("Insufficient free storage");
+        long size=m.getLong("bytes");if(directory().getUsableSpace()<AtlasModelStoragePolicy.requiredFreeBytes(size))throw new IOException("Insufficient free storage");
         File part=File.createTempFile("download-",".part",directory());
         try {
             URL url=new URL("https://huggingface.co/"+m.getString("repository")+"/resolve/"+m.getString("revision")+"/"+m.getString("filename"));
