@@ -12,6 +12,7 @@ import {AtlasStore, type AtlasData, type Message} from '@/lib/atlas-ai/storage';
 import {ActionGateway, type ActionProposal, type Permission} from '@/lib/atlas-ai/gateway';
 import {createLocalAdapters} from '@/lib/atlas-ai/local-adapters';
 import {AtlasNative, generateLocal, requireNativeTrust, runtimeStatus, type RuntimeStatus} from '@/lib/atlas-ai/native';
+import {resolveNativeUtility} from '@/lib/atlas-ai/native-utilities';
 import {completeReminder, createReminder, deleteReminder, listReminders, type AtlasReminder} from '@/lib/atlas-ai/reminders';
 import {loadPersonalityConfig, savePersonalityConfig, type AtlasPersonalityConfig, type ResponseLengthPref} from '@/lib/atlas-ai/personality';
 import {deletePersistentMemory, loadPersistentMemories, resetPersistentMemories, savePersistentMemory, type PersistentMemoryItem} from '@/lib/atlas-ai/memory';
@@ -171,6 +172,14 @@ function AtlasContent() {
     const text = draft.trim(); if ((!regenerate && !text) || !active) return;
     const sessionId = active;
     if (!regenerate) {setDraft(''); await store.current.append(sessionId, {role: 'user', text}); refresh();}
+    // Deterministic utilities are available even when the model is unloaded.
+    const utility = !regenerate && unlocked.current ? resolveNativeUtility(text) : null;
+    if (utility) {
+      await store.current.append(sessionId, {role: 'assistant', text: utility.text, status: 'complete'});
+      refresh();
+      if (unlocked.current && readReplies && voice.speech) {playerRef.current.pause(); await AtlasNative.speak({text: utility.text}).catch(e => setError(errorText(e)));}
+      return;
+    }
     if (!runtime?.available) { setError(runtime?.reason ?? 'Local model unavailable. Your message was saved encrypted; no AI response was generated.'); return; }
     const abort = new AbortController(); controller.current = abort;
     const context = assembleLocalContext(store.current.snapshot(), sessionId, selectedMemories, regenerate);

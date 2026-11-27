@@ -1,4 +1,5 @@
 import { executeRegisteredAction } from "./action-registry";
+import { resolveNativeUtility } from "./native-utilities";
 import type { AtlasSection, LocalAdapter } from "./gateway";
 import {
   appendSessionTurn,
@@ -59,31 +60,6 @@ const END_SESSION_EXACT = new Set([
 function isExplicitEndCommand(lower: string): boolean {
   if (END_SESSION_EXACT.has(lower)) return true;
   return /^(stop|cancel|never mind|goodbye|bye|go to sleep)\b/.test(lower) && lower.split(/\s+/).length <= 4;
-}
-
-function tryOfflineMath(raw: string): string | null {
-  const lower = raw
-    .toLowerCase()
-    .replace(/\bplus\b/g, "+")
-    .replace(/\bminus\b/g, "-")
-    .replace(/\b(times|multiplied by)\b/g, "*")
-    .replace(/\bdivided by\b/g, "/");
-  const match = lower.match(/(-?\d+(?:\.\d+)?)\s*([+\-*/])\s*(-?\d+(?:\.\d+)?)/);
-  if (!match) return null;
-  const a = Number(match[1]);
-  const op = match[2];
-  const b = Number(match[3]);
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
-  let result = 0;
-  if (op === "+") result = a + b;
-  else if (op === "-") result = a - b;
-  else if (op === "*") result = a * b;
-  else {
-    if (b === 0) return "You can't divide by zero.";
-    result = a / b;
-  }
-  const formatted = Number.isInteger(result) ? String(result) : result.toFixed(2).replace(/\.?0+$/, "");
-  return `That's ${formatted}.`;
 }
 
 function parseDayOrdinal(lower: string): number | null {
@@ -341,11 +317,9 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
     return finish(`It's ${timeStr} on ${dateStr}.`, false, "utility.datetime");
   }
 
-  // 10. Arithmetic offline
-  const mathReply = tryOfflineMath(raw);
-  if (mathReply) {
-    return finish(mathReply, false, "utility.math");
-  }
+  // 10. Bounded local arithmetic and calendar utilities
+  const utility = resolveNativeUtility(raw);
+  if (utility) return finish(utility.text, false, utility.kind);
 
   // 11. Control status
   if (/\b(wake word|control room|cloud ai|status|latency)\b/.test(lower) && /\b(status|check|open|show)\b/.test(lower)) {
