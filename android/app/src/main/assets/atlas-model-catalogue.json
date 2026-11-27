@@ -1,1 +1,13 @@
-[]
+[
+  {
+    "id": "gemma-3-1b-it-q4-k-m",
+    "name": "Gemma 3 1B Instruct (Q4_K_M, baseline)",
+    "repository": "ggml-org/gemma-3-1b-it-GGUF",
+    "revision": "61333bac858461ec0c309b7baafdc408d7d2c381",
+    "filename": "gemma-3-1b-it-Q4_K_M.gguf",
+    "bytes": 806058240,
+    "sha256": "8ccc5cd1f1b3602548715ae25a66ed73fd5dc68a210412eea643eb20eb75a135",
+    "license": "Gemma",
+    "licenseUrl": "https://ai.google.dev/gemma/terms"
+  }
+]
