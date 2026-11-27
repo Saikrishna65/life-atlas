@@ -21,3 +21,14 @@ scheduling results, not physical-device latency or battery measurements.
 TypeScript and scoped lint passed. No APK or production build was performed.
 This is a focused first optimization pass, not a claim of completed whole-app
 optimization or device-verified gallery animation performance.
+
+## Shared polling follow-up
+
+Gallery analysis/transfer status, cloud transfer monitoring and Intelligence Lab
+now use a shared visible-page polling scheduler. It waits for each read to settle
+before scheduling another, suspends timers while hidden, refreshes on return and
+cleans up on unmount. Native uploads/inference themselves are not paused.
+Tests verify zero reads while initially hidden, no overlap during a slow read,
+resumption and disposal. This is reduced scheduling work, not measured device
+latency. A proposed Music widget timer change was deferred because that component
+has existing React lint errors requiring a separate review.

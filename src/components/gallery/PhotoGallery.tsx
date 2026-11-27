@@ -1,4 +1,5 @@
 "use client";
+import { visiblePoll } from "@/lib/performance/visible-poll";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGalleryActivity } from "@/lib/gallery/use-gallery-activity";
 import {
@@ -240,9 +241,8 @@ export default function PhotoGallery() {
     )
       return;
     let alive = true;
-    const timer = setInterval(() => {
-      if (document.hidden) return;
-      void R2.getGalleryIntelligence()
+    const stopPolling = visiblePoll(() => {
+      return R2.getGalleryIntelligence()
         .then((v) => {
           if (!alive) return;
           setIntelligence(v);
@@ -255,7 +255,7 @@ export default function PhotoGallery() {
     }, 4000);
     return () => {
       alive = false;
-      clearInterval(timer);
+      stopPolling();
     };
   }, [supported, analysisState]);
   const dragPick = useRef<{
@@ -370,15 +370,8 @@ export default function PhotoGallery() {
   }, [supported, reloadJobs]);
   useEffect(() => {
     if (!supported) return;
-    const timer = setInterval(() => {
-      if (
-        !document.hidden &&
-        (drawer ||
-          jobs.some((j) => !["complete", "cancelled"].includes(j.status)))
-      )
-        void reloadJobs();
-    }, 2500);
-    return () => clearInterval(timer);
+    if (!drawer && !jobs.some((j) => !["complete", "cancelled"].includes(j.status))) return;
+    return visiblePoll(async () => { await reloadJobs(); }, 2500);
   }, [supported, reloadJobs, drawer, jobs]);
   useEffect(() => {
     if (

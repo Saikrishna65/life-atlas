@@ -1,4 +1,5 @@
 "use client";
+import { visiblePoll } from "@/lib/performance/visible-poll";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -178,11 +179,7 @@ export default function IntelligenceLab() {
   }, [native, tab]);
   useEffect(() => {
     if (!native) return;
-    const poll = setInterval(() => {
-      if (document.visibilityState === "visible")
-        void refresh().catch(() => {});
-    }, 2000);
-    return () => clearInterval(poll);
+    return visiblePoll(refresh, 2000);
   }, [native, refresh]);
   useEffect(() => {
     historyRef.current?.scrollTo({

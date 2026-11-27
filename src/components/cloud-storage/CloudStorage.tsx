@@ -1,4 +1,5 @@
 "use client";
+import { visiblePoll } from "@/lib/performance/visible-poll";
 import {
   useCallback,
   useEffect,
@@ -388,9 +389,9 @@ export default function CloudStorage() {
     if (!native) return;
     void R2.setSensitiveScreen({ enabled: true });
     void refresh().catch((e) => setError(storageError(e)));
-    const interval = setInterval(() => {
-      if (document.visibilityState === "visible" && !actionLock.current)
-        void R2.getTransferProgress()
+    const stopPolling = visiblePoll(async () => {
+      if (!actionLock.current)
+        await R2.getTransferProgress()
           .then((result) => {
             if (mounted.current) setTransfers(sortTransfers(result.transfers));
           })
@@ -398,7 +399,7 @@ export default function CloudStorage() {
     }, 1800);
     return () => {
       mounted.current = false;
-      clearInterval(interval);
+      stopPolling();
       void R2.setSensitiveScreen({ enabled: false });
     };
   }, [native, refresh]);
