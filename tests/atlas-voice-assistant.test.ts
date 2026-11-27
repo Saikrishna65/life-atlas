@@ -419,42 +419,16 @@ test("Phase 3 Memory enforces turn caps, explicit approval, and rejects secrets;
   assert.match(seriousPrompt, /do NOT joke, tease/i);
 });
 
-test("Phase 3 Hybrid Router uses consented native Cloud AI path and returns null cleanly when disabled or failing", async () => {
+test("Legacy hybrid router cannot send an automatic cloud request even with global consent", async () => {
   const session = getOrCreateSessionMemory("s-router-1");
-  const blocked = await routeGenerativeReply({
-    userText: "Recommend a peaceful hill station",
-    session,
-    allowCloud: false,
-  });
-  assert.equal(blocked, null);
-
-  const mockedCloud = await routeGenerativeReply(
-    {
-      userText: "Recommend a peaceful hill station",
-      session,
-      allowCloud: true,
-      cloudProvider: "gemini",
-    },
-    {
-      runtimeStatusFn: async () => ({ available: false, reason: "none", engine: "none" }),
-      secureCloudFn: async () => ({ ok: true, provider: "gemini", replyText: "Try Shoja or Tirthan Valley for quiet pines." }),
-    }
-  );
-  assert.equal(mockedCloud?.source, "llm.cloud.gemini");
-  assert.match(mockedCloud?.text ?? "", /Tirthan Valley/);
-
-  const failingCloud = await routeGenerativeReply(
-    {
-      userText: "Recommend a peaceful hill station",
-      session,
-      allowCloud: true,
-    },
-    {
-      runtimeStatusFn: async () => ({ available: false, reason: "none", engine: "none" }),
-      secureCloudFn: async () => {
-        throw new Error("Network down");
-      },
-    }
-  );
-  assert.equal(failingCloud, null);
+  let calls = 0;
+  const deps = {
+    runtimeStatusFn: async () => ({available: false, reason: "none", engine: "none"}),
+    secureCloudFn: async () => { calls++; return {ok: true, provider: "gemini", replyText: "Unexpected cloud call"}; },
+  };
+  for (const allowCloud of [true, false]) {
+    const reply = await routeGenerativeReply({userText: "Recommend a peaceful hill station", session, allowCloud}, deps);
+    assert.equal(reply, null);
+  }
+  assert.equal(calls, 0);
 });

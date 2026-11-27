@@ -340,7 +340,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
     });
     if (statusRes.ok && statusRes.result) {
       return finish(
-        `Cloud AI consent is ${statusRes.result.cloudConsent ? `on (${statusRes.result.cloudProvider})` : "off, so everything stays strictly on-device"}.`,
+        "Automatic Cloud AI is disabled. Review each optional online request in the unlocked Atlas page.",
         false,
         "control.status"
       );
@@ -819,7 +819,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
     );
   }
 
-  // 19. Hybrid AI Routing (Local LLM if loaded, or consented Cloud AI)
+  // 19. Local model only; optional online questions require a separate approved request.
   const allowCloud = input.allowCloud ?? getWebCloudConsent();
   const providerReply = await routeGenerativeReply({
     userText: raw,
@@ -834,7 +834,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
 
   // 20. Honest, helpful offline fallback (never fabricates answers)
   return finish(
-    "I'm running offline right now with no local language model or active Cloud AI key configured, so I can't answer open-ended questions yet—but I can plan trips with you, open your vaults, control local music, do quick math, or save reminders.",
+    "I can’t generate an open-ended local reply until a model is available. I can still help with local commands and quick math. For an online question, review the exact request in the unlocked Atlas page.",
     false,
     "fallback.offline"
   );

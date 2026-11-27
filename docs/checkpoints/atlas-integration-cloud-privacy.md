@@ -1,0 +1,7 @@
+# Atlas integration: cloud privacy gate
+
+Baseline: 2d6d688 (integration branch). Existing provider settings and key storage are preserved, but the legacy browser/Android automatic generative transports are disabled. They cannot be enabled by an old global consent toggle. Native wake-word local commands remain in place.
+
+An optional foreground online question panel is mounted only in the unlocked Atlas content. It uses a separately typed question, a fixed system prompt and an explicit :free OpenRouter model. The exact JSON is previewed. Approval is single-use, expires after 60 seconds and is invalidated on edits, cancel or hiding/unmounting the page. No conversation history, vault context, selected memories, actions, files or personal identifiers are automatically included. The API key is transient React state; it is sent only as an authorization header and not stored. Use a dedicated key without paid balance/BYOK; free capacity, provider retention policy and zero-cost billing are not independently guaranteed. Zero prompt/completion price, no fallback and zero-data-retention routing are requested; unavailable endpoints fail without retry.
+
+This is a deliberately separate online panel, not automatic conversational cloud routing. Real transport/CORS, device behavior, full TypeScript build and Android build remain unverified. Do not deploy or merge until application regression tests and device checks pass. No production data, real keys or paid inference used in implementation.

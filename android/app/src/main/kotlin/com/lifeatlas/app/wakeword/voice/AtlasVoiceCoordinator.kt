@@ -21,11 +21,6 @@ import com.lifeatlas.app.R
 import com.lifeatlas.app.wakeword.AtlasWakeWordPlugin
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
-import java.net.HttpURLConnection
-import java.net.URL
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -81,113 +76,8 @@ class AtlasVoiceCoordinator(
             )
         }
 
-        fun callSecureCloudAiSync(
-            context: Context,
-            providerOverride: String? = null,
-            systemPromptOverride: String? = null,
-            turns: List<Pair<String, String>>
-        ): Pair<String, String?> {
-            val secureStore = AtlasVoiceSecureStore(context)
-            migrateLegacyPrefsKeyIfPresent(context, secureStore)
-            val (consent, storedProvider, apiKey) = secureStore.getCloudCredentialsInternal()
-            val provider = if (!providerOverride.isNullOrBlank()) providerOverride else storedProvider
-            if (!consent || apiKey.isBlank()) {
-                return provider to null
-            }
-            val system = systemPromptOverride?.takeIf { it.isNotBlank() }
-                ?: buildPersonalityPrompt(secureStore.getPersonality())
-            val answer = executeCloudHttp(turns, provider, apiKey, system)
-            return provider to answer
-        }
-
-        private fun migrateLegacyPrefsKeyIfPresent(context: Context, secureStore: AtlasVoiceSecureStore) {
-            val prefs = context.getSharedPreferences("atlas_voice_prefs", Context.MODE_PRIVATE)
-            if (prefs.contains("cloudApiKey") || prefs.contains("cloudConsent")) {
-                val legacyConsent = prefs.getBoolean("cloudConsent", false)
-                val legacyProvider = prefs.getString("cloudProvider", "gemini") ?: "gemini"
-                val legacyKey = prefs.getString("cloudApiKey", null)
-                val (_, existingProv, existingKey) = secureStore.getCloudCredentialsInternal()
-                if (existingKey.isBlank() && !legacyKey.isNullOrBlank()) {
-                    secureStore.saveCloudConfig(legacyConsent, legacyProvider, legacyKey)
-                } else if (existingProv.isBlank()) {
-                    secureStore.saveCloudConfig(legacyConsent, legacyProvider, null)
-                }
-                prefs.edit().remove("cloudApiKey").remove("cloudConsent").remove("cloudProvider").apply()
-            }
-        }
-
-        private fun executeCloudHttp(
-            turns: List<Pair<String, String>>,
-            provider: String,
-            apiKey: String,
-            system: String
-        ): String? {
-            return try {
-                if (provider == "openai") {
-                    val url = URL("https://api.openai.com/v1/chat/completions")
-                    val conn = (url.openConnection() as HttpURLConnection).apply {
-                        requestMethod = "POST"
-                        connectTimeout = 8000
-                        readTimeout = 10000
-                        doOutput = true
-                        setRequestProperty("Content-Type", "application/json")
-                        setRequestProperty("Authorization", "Bearer $apiKey")
-                    }
-                    val msgs = JSONArray().put(JSONObject().put("role", "system").put("content", system))
-                    for ((role, text) in turns) {
-                        msgs.put(JSONObject().put("role", role).put("content", text))
-                    }
-                    val body = JSONObject()
-                        .put("model", "gpt-4o-mini")
-                        .put("temperature", 0.7)
-                        .put("max_tokens", 180)
-                        .put("messages", msgs)
-                    OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
-                    if (conn.responseCode in 200..299) {
-                        val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
-                        JSONObject(text).optJSONArray("choices")?.optJSONObject(0)
-                            ?.optJSONObject("message")?.optString("content")?.trim()
-                    } else null
-                } else {
-                    val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
-                    val conn = (URL(endpoint).openConnection() as HttpURLConnection).apply {
-                        requestMethod = "POST"
-                        connectTimeout = 8000
-                        readTimeout = 10000
-                        doOutput = true
-                        setRequestProperty("Content-Type", "application/json")
-                        setRequestProperty("x-goog-api-key", apiKey)
-                    }
-                    val contents = JSONArray()
-                    for ((role, text) in turns) {
-                        val geminiRole = if (role == "assistant") "model" else "user"
-                        contents.put(
-                            JSONObject()
-                                .put("role", geminiRole)
-                                .put("parts", JSONArray().put(JSONObject().put("text", text)))
-                        )
-                    }
-                    val body = JSONObject()
-                        .put("system_instruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", system))))
-                        .put("contents", contents)
-                        .put("generationConfig", JSONObject().put("temperature", 0.7).put("maxOutputTokens", 180))
-                    OutputStreamWriter(conn.outputStream).use { it.write(body.toString()) }
-                    if (conn.responseCode in 200..299) {
-                        val text = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
-                        JSONObject(text).optJSONArray("candidates")
-                            ?.optJSONObject(0)
-                            ?.optJSONObject("content")
-                            ?.optJSONArray("parts")
-                            ?.optJSONObject(0)
-                            ?.optString("text")
-                            ?.trim()
-                    } else null
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Native Cloud AI call failed: ${e.message}")
-                null
-            }
-        }
+        // Legacy cloud transport is disabled. An unlocked, explicitly approved
+        // foreground request is required; no voice history is sent automatically.
     }
 
     enum class State {
@@ -673,39 +563,8 @@ class AtlasVoiceCoordinator(
             return
         }
 
-        // Check if user consented to Cloud AI and stored a Keystore-protected API key
-        migrateLegacyPrefsKeyIfPresent(context, secureStore)
-        val (cloudConsent, _, cloudApiKey) = secureStore.getCloudCredentialsInternal()
-
-        if (cloudConsent && cloudApiKey.isNotBlank()) {
-            val historySnapshot = nativeTurns.toList()
-            Thread({
-                val (_, cloudAnswer) = callSecureCloudAiSync(
-                    context = context,
-                    turns = historySnapshot
-                )
-                mainHandler.post {
-                    if (currentSessionId != sessionId || currentTurnId != turnId) return@post
-                    if (!cloudAnswer.isNullOrBlank()) {
-                        recordNativeTurn("assistant", cloudAnswer)
-                        pendingEndSession = false
-                        speakResponse(cloudAnswer)
-                    } else {
-                        pendingEndSession = false
-                        speakResponse("I heard \"$transcript\", and couldn't reach your Cloud AI provider right now.")
-                    }
-                }
-            }, "AtlasNativeCloudAI").start()
-            return
-        }
-
         pendingEndSession = false
-        val msg = if (isLocked) {
-            "I heard \"$transcript\". Unlock your phone to open Life Atlas or enable Cloud AI in Hey Atlas settings for general conversation."
-        } else {
-            "I heard \"$transcript\". Open Life Atlas or enable Cloud AI in Hey Atlas settings for general conversation; right now I can open vaults, control music, tell time, or save reminders."
-        }
-        speakResponse(msg)
+        speakResponse(if (isLocked) "Unlock your phone and open Atlas for more help." else "Open Atlas for an approved online question. Automatic cloud requests are disabled.")
     }
 
     private fun buildNativeFallbackReply(transcript: String, isLocked: Boolean): Pair<String, Boolean>? {

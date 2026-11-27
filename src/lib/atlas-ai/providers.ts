@@ -126,69 +126,7 @@ function buildSystemPrompt(session: SessionMemory, personality: AtlasPersonality
   return `${base}\n${contextBits.join(" ")}`;
 }
 
-async function queryWebCloudAi(options: {
-  provider: CloudAiProvider;
-  apiKey: string;
-  systemPrompt: string;
-  history: Array<{ role: "user" | "assistant"; text: string }>;
-  userText: string;
-}): Promise<string | null> {
-  if (!options.apiKey.trim()) return null;
-
-  if (options.provider === "openai") {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${options.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        temperature: 0.7,
-        max_tokens: 180,
-        messages: [
-          { role: "system", content: options.systemPrompt },
-          ...options.history.map((h) => ({ role: h.role, content: h.text })),
-          { role: "user", content: options.userText },
-        ],
-      }),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
-    };
-    return data.choices?.[0]?.message?.content?.trim() || null;
-  }
-
-  const contents = [
-    ...options.history.map((h) => ({
-      role: h.role === "user" ? "user" : "model",
-      parts: [{ text: h.text }],
-    })),
-    { role: "user", parts: [{ text: options.userText }] },
-  ];
-  const res = await fetch(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": options.apiKey,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: options.systemPrompt }] },
-        contents,
-        generationConfig: { maxOutputTokens: 180, temperature: 0.7 },
-      }),
-    }
-  );
-  if (!res.ok) return null;
-  const data = (await res.json()) as {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-  };
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
-}
-
+// Legacy automatic cloud transport removed. Explicit requests use cloud-approval.ts.
 export async function routeGenerativeReply(
   req: ProviderGenerationRequest,
   deps?: {
@@ -225,49 +163,11 @@ export async function routeGenerativeReply(
         return { source: "llm.local", text: generated.trim() };
       }
     } catch {
-      // Fall through cleanly to consented cloud or deterministic dialogue fallback
+      // Fall through to deterministic local dialogue. Never send an automatic cloud request.
     }
   }
 
-  // 2. Consented Cloud AI path (Android Keystore native proxy or volatile browser key)
-  const online = typeof navigator === "undefined" || navigator.onLine !== false;
-  if (!req.allowCloud || !online) return null;
-
-  if (isWakeWordNativeSupported() || deps?.secureCloudFn) {
-    try {
-      const fn = deps?.secureCloudFn ?? callSecureCloudAi;
-      const nativeResult = await fn({
-        provider: req.cloudProvider,
-        systemPrompt,
-        history,
-        userText: req.userText,
-      });
-      if (nativeResult.ok && nativeResult.replyText?.trim()) {
-        const usedProvider = nativeResult.provider === "openai" ? "llm.cloud.openai" : "llm.cloud.gemini";
-        return { source: usedProvider, text: nativeResult.replyText.trim() };
-      }
-    } catch {
-      // Try secondary / web fallback if key available, else fall back cleanly
-    }
-  }
-
-  const key = req.webSessionApiKey ?? volatileWebApiKey;
-  if (key) {
-    const primary: CloudAiProvider = req.cloudProvider ?? getWebCloudProvider();
-    const reply = await queryWebCloudAi({
-      provider: primary,
-      apiKey: key,
-      systemPrompt,
-      history,
-      userText: req.userText,
-    }).catch(() => null);
-    if (reply) {
-      return {
-        source: primary === "openai" ? "llm.cloud.openai" : "llm.cloud.gemini",
-        text: reply,
-      };
-    }
-  }
-
+  // Global preferences and injected providers are not per-request approval.
+  // Native and browser automatic cloud calls are intentionally disabled.
   return null;
 }

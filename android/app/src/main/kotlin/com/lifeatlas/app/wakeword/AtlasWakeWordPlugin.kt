@@ -582,38 +582,7 @@ class AtlasWakeWordPlugin : Plugin() {
 
     @PluginMethod
     fun callSecureCloudAi(call: PluginCall) {
-        val userText = call.getString("userText")?.trim().orEmpty()
-        if (userText.isEmpty()) {
-            call.reject("userText is required.")
-            return
-        }
-        val providerOverride = call.getString("provider")
-        val systemPromptOverride = call.getString("systemPrompt")
-        val historyArr = call.getArray("history")
-        val turns = mutableListOf<Pair<String, String>>()
-        if (historyArr != null) {
-            for (i in 0 until historyArr.length()) {
-                val item = historyArr.optJSONObject(i) ?: continue
-                val role = item.optString("role", "user")
-                val text = item.optString("text", "").trim()
-                if (text.isNotEmpty()) turns.add(role to text)
-            }
-        }
-        turns.add("user" to userText)
-
-        Thread({
-            val (usedProvider, reply) = AtlasVoiceCoordinator.callSecureCloudAiSync(
-                context = context,
-                providerOverride = providerOverride,
-                systemPromptOverride = systemPromptOverride,
-                turns = turns
-            )
-            val result = JSObject()
-                .put("ok", !reply.isNullOrBlank())
-                .put("provider", usedProvider)
-                .put("replyText", reply ?: "")
-            call.resolve(result)
-        }, "AtlasSecureCloudPlugin").start()
+        call.reject("Automatic cloud transport is disabled. Review each online request in the unlocked Atlas page.")
     }
 
     @PluginMethod
