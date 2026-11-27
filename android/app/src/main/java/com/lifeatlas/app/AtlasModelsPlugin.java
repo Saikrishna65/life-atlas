@@ -55,12 +55,15 @@ public class AtlasModelsPlugin extends Plugin {
     private interface Work {void run() throws Exception;}
     @PluginMethod public void list(PluginCall call){operation(call,()->{
         JSONArray all=catalogue();JSArray result=new JSArray();
-        for(int i=0;i<all.length();i++){JSONObject m=entry(all.getJSONObject(i).getString("id"));result.put(new JSObject().put("id",m.getString("id")).put("name",m.getString("name")).put("bytes",m.getLong("bytes")).put("installed",verified(m)));}
-        call.resolve(new JSObject().put("models",result).put("availableBytes",directory().getUsableSpace()).put("selected",getContext().getSharedPreferences("atlas-model-selection",0).getString("id","")));
+        for(int i=0;i<all.length();i++){JSONObject m=entry(all.getJSONObject(i).getString("id"));result.put(new JSObject().put("id",m.getString("id")).put("name",m.getString("name")).put("bytes",m.getLong("bytes")).put("installed",verified(m)).put("license",m.getString("license")).put("licenseUrl",m.getString("licenseUrl")).put("revision",m.getString("revision")));}
+        call.resolve(new JSObject().put("models",result).put("engineAvailable",AtlasLlamaNative.available()).put("availableBytes",directory().getUsableSpace()).put("selected",getContext().getSharedPreferences("atlas-model-selection",0).getString("id","")));
     });}
     @PluginMethod public void install(PluginCall call){operation(call,()->{
         if(!Boolean.TRUE.equals(call.getBoolean("consent")))throw new IOException("Explicit download consent required");
-        JSONObject m=entry(call.getString("id",""));File dest=target(m);
+        if(!AtlasLlamaNative.available())throw new IOException("This build does not include the offline inference engine");
+        JSONObject m=entry(call.getString("id",""));
+        if(!m.getString("license").equals(call.getString("acceptedLicense","")) || !m.getString("revision").equals(call.getString("acceptedRevision","")))throw new IOException("Review and accept the model license before downloading");
+        File dest=target(m);
         if(verified(m)){call.resolve();return;}
         long size=m.getLong("bytes");if(directory().getUsableSpace()<AtlasModelStoragePolicy.requiredFreeBytes(size))throw new IOException("Insufficient free storage");
         File part=File.createTempFile("download-",".part",directory());
