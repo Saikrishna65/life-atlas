@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { videoWebHref } from "@/lib/video/routes";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 import { appServiceUrl } from "@/lib/appNetwork";
 import {
@@ -246,7 +247,7 @@ export default function AtlasApps() {
                 Download Android APK <Download size={17} />
               </a>
             )}
-            <Link className="apps-web" href="/secret/video">
+            <Link className="apps-web" href={videoWebHref(native, process.env.NEXT_PUBLIC_OFFLINE_APP === "true")}>
               Open web player <ArrowUpRight size={17} />
             </Link>
             <button

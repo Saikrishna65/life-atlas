@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X, Search } from "lucide-react";
 import gsap from "gsap";
+import { isVideoWebPath } from "@/lib/video/routes";
 import PublicHeader from "@/components/world/PublicHeader";
 
 const navLinks = [
@@ -33,7 +34,7 @@ const isHeroRoute = (path: string | null) => {
 
 export default function Navigation() {
   const pathname=usePathname();
-  if(pathname==='/'||pathname?.startsWith('/secret'))return null;
+  if(isVideoWebPath(pathname)||pathname==='/'||pathname?.startsWith('/secret'))return null;
   if(!pathname?.startsWith('/admin'))return <PublicHeader/>;
   return <LegacyNavigation/>;
 }
@@ -159,7 +160,7 @@ function LegacyNavigation() {
     : "hover:text-black/60";
 
   // Hide the navigation entirely on secret private sections
-  if (pathname === "/" || pathname?.startsWith("/secret")) {
+  if (isVideoWebPath(pathname) || pathname === "/" || pathname?.startsWith("/secret")) {
     return null;
   }
 

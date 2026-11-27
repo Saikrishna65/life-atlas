@@ -38,7 +38,7 @@ function chooseTheme(value: string) {
   } catch {}
   window.dispatchEvent(new Event("atlas-video-theme"));
 }
-export default function AtlasVideoWeb() {
+export default function AtlasVideoWeb({ standalone = false }: { standalone?: boolean }) {
   const [query, setQuery] = useState(""),
     [videos, setVideos] = useState<VideoResult[]>([]),
     [selected, setSelected] = useState<VideoResult | null>(null);
@@ -106,9 +106,9 @@ export default function AtlasVideoWeb() {
     }
   }
   return (
-    <main className="video-web" data-theme={theme}>
+    <main className="video-web" data-standalone={standalone || undefined} data-theme={theme}>
       <header>
-        <Link href="/secret/apps" aria-label="Back to Atlas Apps">
+        <Link href={standalone ? "/" : "/secret/apps"} aria-label={standalone ? "Back to Atlas" : "Back to Atlas Apps"}>
           <ArrowLeft size={22} />
         </Link>
         <span>

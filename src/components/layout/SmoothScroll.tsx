@@ -3,6 +3,7 @@
 import { ReactLenis, useLenis } from "lenis/react";
 import { ReactNode, useEffect, useMemo } from "react";
 import {usePathname} from "next/navigation";
+import { isVideoWebPath } from "@/lib/video/routes";
 import {isPublicPath} from "@/lib/public-loading/readiness";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -25,12 +26,14 @@ function ScrollTriggerSync({publicRoute}:{publicRoute:boolean}) {
 }
 
 export default function SmoothScroll({ children }: { children: ReactNode }) {
-  const publicRoute=isPublicPath(usePathname());
+  const path = usePathname();
+  const publicRoute=isPublicPath(path);
   const options=useMemo(()=>({lerp:.1,smoothWheel:true,syncTouch:false,autoRaf:!publicRoute}),[publicRoute]);
   useEffect(() => {
     gsap.ticker.lagSmoothing(0);
   }, []);
 
+  if (isVideoWebPath(path)) return <>{children}</>;
   return (
     <ReactLenis
       root

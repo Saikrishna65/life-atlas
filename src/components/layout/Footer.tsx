@@ -1,6 +1,7 @@
 "use client";
 import {usePublicLoading} from "./PublicPageReady";
 import { usePathname } from "next/navigation";
+import { isVideoWebPath } from "@/lib/video/routes";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 const AdminFooter = dynamic(() => import("./AdminFooter"));
@@ -9,7 +10,7 @@ export default function Footer() {
   const publicLoading=usePublicLoading();
   if (pathname?.startsWith("/admin")) return <AdminFooter />;
   if (
-    pathname === "/" ||
+    isVideoWebPath(pathname) || pathname === "/" ||
     (pathname?.startsWith("/trips/") ?? false) ||
     pathname?.startsWith("/secret") ||
     pathname?.startsWith("/admin")

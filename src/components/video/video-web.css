@@ -285,3 +285,5 @@
 }
 
 .video-web h1,.video-web h2,.video-web h3{font-family:Arial,sans-serif}.video-thumbnail-placeholder{position:absolute;inset:0;display:grid;place-items:center;opacity:.2}.video-thumbnail img{position:relative;z-index:1}.video-thumbnail>span{z-index:2}
+
+.video-web[data-standalone] { min-height: 100svh; border-radius: 0; padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: calc(115px + env(safe-area-inset-bottom)); }

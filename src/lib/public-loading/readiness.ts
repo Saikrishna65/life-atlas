@@ -1,6 +1,7 @@
+import { isVideoWebPath } from "../video/routes";
 /** Only public routes participate. Native/private and admin screens are untouched. */
 export function isPublicPath(path: string | null): boolean {
-  return !!path && !/^\/(?:secret|admin|api|_next)(?:\/|$)/.test(path);
+  return !!path && !isVideoWebPath(path) && !/^\/(?:secret|admin|api|_next)(?:\/|$)/.test(path);
 }
 
 export function isPageNavigation(href:string,current:string): boolean {
