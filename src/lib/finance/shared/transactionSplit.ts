@@ -123,7 +123,6 @@ export function validateSharedLedgerLinks(
           expense.amountPaise === transaction.amountPaise &&
             expense.payerId === group.selfId &&
             expense.splitMode === "equal" &&
-            expense.date === localFinanceDateKey(transaction.occurredAt) &&
             group.currency === transaction.currency,
           "A linked shared expense does not match its original payment.",
         );
@@ -137,6 +136,11 @@ export function validateSharedLedgerLinks(
           "A linked payment has inconsistent split shares.",
         );
       }
+  for (const group of groups) for (const settlement of group.settlements) if (settlement.sourceTransactionId && !settlement.voidedAt) {
+    const t = byTransaction.get(settlement.sourceTransactionId);
+    ensure(t && t.sharedRepayment?.groupId === group.id && t.sharedRepayment.memberId === settlement.fromId && t.direction === "inflow" && t.status === "posted" && t.paymentKind === "reimbursement" && t.amountPaise === settlement.amountPaise && t.currency === group.currency && settlement.toId === group.selfId && (!t.sharedRepayment.settlementId || t.sharedRepayment.settlementId === settlement.id), "A linked repayment does not match its received bank payment.");
+  }
+  for (const t of transactions) if (t.sharedRepayment && t.status === "posted") ensure(byGroup.get(t.sharedRepayment.groupId)?.settlements.some(s => s.sourceTransactionId === t.id && !s.voidedAt), "A received repayment is missing its group settlement.");
   for (const transaction of transactions)
     if (transaction.sharedSplit && transaction.status === "posted") {
       const group = byGroup.get(transaction.sharedSplit.groupId);

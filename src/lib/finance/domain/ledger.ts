@@ -263,7 +263,7 @@ export function validateTransferLegs(
 export function realizedCashMovement(txn: Transaction, transferCategoryIds: Set<string> = new Set()): {income: Paise; expense: Paise} {
   if (txn.status !== "posted" || txn.transferGroupId || (txn.categoryId && transferCategoryIds.has(txn.categoryId))) return {income:0,expense:0};
   if (txn.direction === "outflow") return {income:0,expense:txn.amountPaise};
-  return txn.paymentKind === "refund" ? {income:0,expense:-txn.amountPaise} : {income:txn.amountPaise,expense:0};
+  return txn.paymentKind === "refund" || txn.paymentKind === "reimbursement" ? {income:0,expense:-txn.amountPaise} : {income:txn.amountPaise,expense:0};
 }
 
 export interface CashFlowSummary {

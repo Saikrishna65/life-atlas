@@ -68,7 +68,7 @@ export class ForecastService {
 
     const eligiblePastExpenses = pastTransactions.filter(
       (t) =>
-        t.currency === "INR" && (t.direction === "outflow" || t.paymentKind === "refund") && !transfers.has(t.categoryId||"") &&
+        t.currency === "INR" && (t.direction === "outflow" || (t.paymentKind === "refund" || t.paymentKind === "reimbursement")) && !transfers.has(t.categoryId||"") &&
         !t.transferGroupId &&
         t.categoryId !== "cat_transfer" &&
         t.status !== "reversed"

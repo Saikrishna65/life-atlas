@@ -1,3 +1,4 @@
+import type { RepaymentSelection } from "../shared/repayment";
 import type { TransactionSplit } from "../shared/transactionSplit";
 /**
  * Life Atlas Finance: Kotak Notification Tracking Application Service
@@ -223,6 +224,7 @@ export class NotificationTrackingService {
     categoryId?: string;
     description?: string;
     sharedSplit?: TransactionSplit;
+    sharedRepayment?: RepaymentSelection;
   }): Promise<Transaction> {
     return this.serialize(() => this.recordConfirmedTransaction(options));
   }
@@ -233,6 +235,7 @@ export class NotificationTrackingService {
     categoryId?: string;
     description?: string;
     sharedSplit?: TransactionSplit;
+    sharedRepayment?: RepaymentSelection;
   }): Promise<Transaction> {
     const { parsed, accountId, categoryId, description } = options;
     if (await this.checkExistingLedgerDuplicate(parsed)) throw new Error("This bank transaction is already recorded.");
@@ -240,7 +243,9 @@ export class NotificationTrackingService {
     const recorded = await this.transactionService.recordTransaction({
       accountId,
       paymentKind: parsed.paymentKind,
+      currency: "INR",
       sharedSplit: options.sharedSplit,
+      sharedRepayment: options.sharedRepayment,
       amountPaise: parsed.amountPaise,
       direction: parsed.direction,
       description: description?.trim() || parsed.merchantOrBeneficiary,
@@ -250,7 +255,7 @@ export class NotificationTrackingService {
       externalId: parsed.referenceNumber ? `kotak_notif_${parsed.referenceNumber}` : undefined,
       occurredAt: parsed.occurredAt,
       status: "posted",
-      reviewRequired: parsed.isAmbiguous,
+      reviewRequired: options.sharedRepayment ? false : parsed.isAmbiguous,
       notes: `[Kotak Smart Assistant] ${
         parsed.referenceNumber ? `Ref: ${parsed.referenceNumber}` : ""
       }`,
@@ -513,16 +518,21 @@ export class NotificationTrackingService {
     itemId: string,
     accountId: ID,
     categoryId?: ID,
-    sharedSplit?: TransactionSplit
+    sharedSplit?: TransactionSplit,
+    sharedRepayment?: RepaymentSelection
   ): Promise<void> {
-    return this.serialize(() => this.recordReviewedItem(itemId, accountId, categoryId, sharedSplit));
+    return this.serialize(() => this.recordReviewedItem(itemId, accountId, categoryId, sharedSplit, sharedRepayment));
   }
 
-  private async recordReviewedItem(itemId: string, accountId: ID, categoryId?: ID, sharedSplit?: TransactionSplit): Promise<void> {
+  private async recordReviewedItem(itemId: string, accountId: ID, categoryId?: ID, sharedSplit?: TransactionSplit, sharedRepayment?: RepaymentSelection): Promise<void> {
     const item = this.reviewQueue.find((i) => i.id === itemId);
     if (!item || item.status !== "pending") return;
 
     if (await this.checkExistingLedgerDuplicate(item.parsedTransaction)) {
+      if (sharedRepayment) {
+        const ref = item.parsedTransaction.referenceNumber; const existing = ref ? await this.uow.transactions.getByExternalId(`kotak_notif_${ref}`) : null;
+        if (!existing?.sharedRepayment || existing.sharedRepayment.groupId !== sharedRepayment.groupId || existing.sharedRepayment.memberId !== sharedRepayment.memberId) throw new Error("This incoming payment is already recorded. Edit it in Atlas Finance to match its repayment.");
+      }
       if (sharedSplit) {
         const reference = item.parsedTransaction.referenceNumber;
         const existing = reference ? await this.uow.transactions.getByExternalId(`kotak_notif_${reference}`) : null;
@@ -534,11 +544,13 @@ export class NotificationTrackingService {
       return;
     }
     const approvedCategory = categoryId || item.suggestedCategoryId;
-    if (!approvedCategory) throw new Error("Select a category before approval.");
+    if (!approvedCategory && !sharedRepayment) throw new Error("Select a category before approval.");
     await this.transactionService.recordTransaction({
       accountId,
       paymentKind: item.parsedTransaction.paymentKind,
+      currency: "INR",
       sharedSplit,
+      sharedRepayment,
       amountPaise: item.parsedTransaction.amountPaise,
       direction: item.parsedTransaction.direction,
       description: item.parsedTransaction.merchantOrBeneficiary,

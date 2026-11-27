@@ -1,19 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { listSharedGroups } from "@/lib/finance/shared/service";
+import { loadSharedOptions } from "@/lib/finance/shared/options";
 import { allocate, type SharedGroup } from "@/lib/finance/shared/domain";
 import type { TransactionSplit } from "@/lib/finance/shared/transactionSplit";
 import FinanceSelect from "../FinanceSelect";
 
-let loadingOptions: Promise<SharedGroup[]> | null = null;
-function splitOptions() {
-  if (!loadingOptions)
-    loadingOptions = listSharedGroups().finally(() => {
-      loadingOptions = null;
-    });
-  return loadingOptions;
-}
 export default function SplitWith({
   value,
   onChange,
@@ -34,7 +26,7 @@ export default function SplitWith({
     [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let active = true;
-    void splitOptions()
+    void loadSharedOptions()
       .then((rows) => {
         if (active) {
           setGroups(rows);

@@ -94,6 +94,8 @@ export async function saveSharedGroup(
           ensure(JSON.stringify(record) === JSON.stringify(result.expenses.find(e => e.id === record.id)), "Edit this linked payment in Atlas Finance. Its split follows the original payment.");
         }
         for (const record of result.expenses) if (record.sourceTransactionId) ensure(current?.expenses.some(e => e.id === record.id && e.sourceTransactionId === record.sourceTransactionId), "Link bank payments from Atlas Finance.");
+        for (const record of current?.settlements || []) if (record.sourceTransactionId) ensure(JSON.stringify(record) === JSON.stringify(result.settlements.find(s => s.id === record.id)), "Edit this linked repayment in Atlas Finance.");
+        for (const record of result.settlements) if (record.sourceTransactionId) ensure(current?.settlements.some(s => s.id === record.id && s.sourceTransactionId === record.sourceTransactionId), "Link received money from Atlas Finance.");
         validateGroup(result);
         store.put(result);
         tx.objectStore("audit_log").put({

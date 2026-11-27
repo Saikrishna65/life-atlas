@@ -76,9 +76,10 @@ export type TransactionSource =
   | "notification"
   | "receipt";
 
-export type PaymentKind = "purchase" | "salary" | "refund" | "transfer" | "automatic_bill";
+export type PaymentKind = "purchase" | "salary" | "refund" | "transfer" | "automatic_bill" | "reimbursement";
 
 export interface Transaction {
+  sharedRepayment?: import("../shared/repayment").LinkedRepayment;
   sharedSplit?: import("../shared/transactionSplit").TransactionSplit;
   paymentKind?: PaymentKind;
   tripAssignment?: import("../trips/policy").TripAssignment;

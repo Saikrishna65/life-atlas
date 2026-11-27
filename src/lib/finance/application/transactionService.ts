@@ -1,3 +1,4 @@
+import { applyRepaymentSelection, type RepaymentSelection } from "../shared/repayment";
 import { stageLedgerMutation } from "./ledgerMutation";
 import { isControlRestoreActive } from "../../control-room/maintenance";
 import { TripFinanceService, loadFinanceTrips } from "../trips/service";
@@ -38,6 +39,7 @@ import {
 import { FinanceError } from "../domain/errors";
 
 export interface RecordTransactionDTO {
+  sharedRepayment?: RepaymentSelection;
   sharedSplit?: import("../shared/transactionSplit").TransactionSplit;
   paymentKind?: import("../domain/models").PaymentKind;
   tripAssignment?: TripAssignment;
@@ -73,6 +75,7 @@ export interface RecordTransferDTO {
 }
 
 export interface CorrectTransactionDTO {
+  sharedRepayment?: RepaymentSelection | null;
   sharedSplit?: import("../shared/transactionSplit").TransactionSplit | null;
   reviewRequired?: boolean;
   expectedVersion?: number;
@@ -264,6 +267,7 @@ export class TransactionService {
       version: 1,
     };
 
+    applyRepaymentSelection(transaction, null, dto.sharedRepayment);
     if (dto.pocketId && dto.direction === "outflow") {
       const pocket = await this.uow.savingsGoals.getById(dto.pocketId);
       if (!pocket) {
@@ -715,6 +719,7 @@ export class TransactionService {
           "refund",
           "transfer",
           "automatic_bill",
+          "reimbursement",
         ].includes(updates.paymentKind)
       )
         throw new FinanceError(
@@ -881,6 +886,8 @@ export class TransactionService {
       changes.reviewRequired = { oldVal: previous.reviewRequired, newVal: updates.reviewRequired };
       existing.reviewRequired = updates.reviewRequired;
     }
+    applyRepaymentSelection(existing, previous, updates.sharedRepayment);
+    for (const field of ["sharedRepayment", "paymentKind", "categoryId"] as const) if (JSON.stringify(previous[field]) !== JSON.stringify(existing[field])) changes[field] = {oldVal:previous[field], newVal:existing[field]};
     const pocketChanged =
       (updates.pocketId !== undefined &&
         (updates.pocketId || undefined) !== previous.pocketId) ||

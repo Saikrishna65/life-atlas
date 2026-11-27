@@ -402,12 +402,11 @@ export default function SharedExpenses() {
                           </ul>
                         </details>
                       )}
-                      {record.type === "expense" &&
-                        record.sourceTransactionId && (
+                      {record.sourceTransactionId && (
                           <small>
-                            From a bank payment ·{" "}
+                            Linked bank payment ·{" "}
                             <Link href="/secret/finance">
-                              edit its amount or split in Atlas Finance
+                              edit its amount or match in Atlas Finance
                             </Link>
                           </small>
                         )}
@@ -418,10 +417,7 @@ export default function SharedExpenses() {
                     <div className="shared-record-end">
                       <b>{money(record.amountPaise, group.currency)}</b>
                       {!record.voidedAt &&
-                        !(
-                          record.type === "expense" &&
-                          record.sourceTransactionId
-                        ) && (
+                        !record.sourceTransactionId && (
                           <div>
                             {record.type === "expense" && (
                               <button

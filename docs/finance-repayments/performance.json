@@ -1,0 +1,15 @@
+{
+  "method": "Desktop Chromium, isolated offline web bundle, 390px viewport; JavaScript requests through readiness plus 1 second, uncompressed bytes. Empty Finance dashboard. Single-run times are not a validated speedup or phone benchmark.",
+  "before": {
+    "jsFiles": 63,
+    "jsBytes": 867257,
+    "readyMs": 874
+  },
+  "after": {
+    "jsFiles": 69,
+    "jsBytes": 752035,
+    "readyMs": 727
+  },
+  "initialJsReductionPercent": 13.3,
+  "reportFilterAdditionalJournalReads": 0
+}

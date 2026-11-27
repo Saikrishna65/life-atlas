@@ -22,6 +22,8 @@ export interface SharedExpense {
   voidedAt?: string;
 }
 export interface Settlement {
+  sourceTransactionId?: string;
+  originalManual?: {date:string;note:string};
   id: string;
   fromId: string;
   toId: string;
@@ -250,6 +252,8 @@ export function validateGroup(value: unknown): asserts value is SharedGroup {
     );
   }
   for (const s of g.settlements) {
+    if (s.sourceTransactionId !== undefined) { text(s.sourceTransactionId, 100); ensure(!sourceIds.has(s.sourceTransactionId), "This bank payment is already linked in this group."); sourceIds.add(s.sourceTransactionId); }
+    if (s.originalManual !== undefined) { calendarDate(s.originalManual.date); text(s.originalManual.note, 500, true); ensure(s.sourceTransactionId, "A manual-payment snapshot needs its bank link."); }
     text(s.id, 100);
     ensure(!records.has(s.id), "Duplicate payment.");
     records.add(s.id);

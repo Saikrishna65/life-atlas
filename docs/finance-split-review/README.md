@@ -29,7 +29,7 @@ Visible branding now says **Atlas Finance** on the private home card, assistant 
 
 ## Limits
 
-Bank-linked splits are currently equal splits. Exact/percentage bills are still supported for manually entered group expenses. Incoming roommate repayments and merchant refunds are **not automatically matched** to a split; settlement recording remains explicit. Group data is local and private, not sent to the public website or to another person's phone.
+Bank-linked splits are currently equal splits. Exact/percentage bills are still supported for manually entered group expenses. Incoming roommate repayments can now be explicitly linked during review; see the [repayment guide](../finance-repayments/README.md). Merchant refunds are not automatically matched to a shared bill. Group data is local and private, not sent to the public website or to another person's phone.
 
 ## Validation
 

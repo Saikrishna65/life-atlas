@@ -162,6 +162,7 @@ export default function MonthlyReview() {
           `Recorded spending: ${money(review.totals.spendingPaise, currency)}`,
           `Income: ${money(review.totals.incomePaise, currency)}`,
           `Refunds: ${money(review.totals.refundsPaise, currency)}`,
+          `Roommate repayments: ${money(review.totals.repaymentsPaise, currency)}`,
           change,
           `Recorded regular bills, net of linked refunds: ${money(review.regularPaidPaise, currency)}`,
           `Current monthly commitments (estimate): ${money(review.monthlyCommitmentPaise, currency)}`,
@@ -276,7 +277,7 @@ export default function MonthlyReview() {
                 {review.currentMonth ? " · so far" : ""}
               </span>
               <h2>{money(review.totals.spendingPaise, currency)}</h2>
-              <p>Recorded spending, after refunds</p>
+              <p>Recorded spending, after refunds and repayments</p>
               {review.comparison ? (
                 <div className="mr-change">
                   {review.comparison.deltaPaise > 0 ? (
@@ -309,6 +310,7 @@ export default function MonthlyReview() {
               </small>
             </div>
             <div className="mr-hero-stats">
+              {review.totals.repaymentsPaise > 0 && <div><span>Roommate repayments</span><strong>{money(review.totals.repaymentsPaise,currency)}</strong></div>}
               <div>
                 <span>Income</span>
                 <strong>{money(review.totals.incomePaise, currency)}</strong>
@@ -336,7 +338,7 @@ export default function MonthlyReview() {
               {review.excludedTransferCount === 1 ? "transfer" : "transfers"}{" "}
               excluded.{" "}
               {review.totals.spendingPaise < 0
-                ? "Refunds exceed purchases this month. "
+                ? "Refunds and repayments exceed purchases this month. "
                 : ""}
               Missing imports can affect this review. Currencies are kept
               separate.

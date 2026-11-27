@@ -1,4 +1,6 @@
 "use client";
+import RepaymentMatch from "./shared/RepaymentMatch";
+import type { RepaymentSelection } from "@/lib/finance/shared/repayment";
 import SplitWith from "./shared/SplitWith";
 import type { TransactionSplit } from "@/lib/finance/shared/transactionSplit";
 import { FinancePanelHeader, useFinanceDialog } from "./FinanceDialog";
@@ -46,6 +48,7 @@ export default function CategorizationReviewModal({
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
+  const [repayments, setRepayments] = useState<Record<string,RepaymentSelection|null>>({});
   const [splits, setSplits] = useState<Record<string, TransactionSplit | null>>({});
   const [chosenCategories, setChosenCategories] = useState<Record<string, string>>({});
   const [rememberCategories, setRememberCategories] = useState<Record<string, boolean>>({});
@@ -96,10 +99,11 @@ export default function CategorizationReviewModal({
   if (!isOpen) return null;
 
   const handleManualAssign = async (txn: Transaction, categoryId: string, remember: boolean) => {
-    if (!categoryId || busyPayment) return;
+    if ((!categoryId && !repayments[txn.id]) || busyPayment) return;
     setBusyPayment(txn.id);
     try {
-      const result = await categorizationService.reviewTransaction(txn, categoryId, splits[txn.id] === undefined ? txn.sharedSplit || null : splits[txn.id], remember);
+      const result = await categorizationService.reviewTransaction(txn, categoryId, splits[txn.id] === undefined ? txn.sharedSplit || null : splits[txn.id], remember, repayments[txn.id] === undefined ? txn.sharedRepayment : repayments[txn.id]);
+      setRepayments(previous => {const next={...previous};delete next[txn.id];return next;});
       setChosenCategories(previous => { const next = {...previous}; delete next[txn.id]; return next; });
       setSplits(previous => { const next = {...previous}; delete next[txn.id]; return next; });
       await loadData(); onTransactionsUpdated();
@@ -228,7 +232,7 @@ export default function CategorizationReviewModal({
                 {uncategorized.length > 0 && (
                   <button
                     onClick={handleBatchApplyRules}
-                    disabled={loading || busyPayment !== null || (Object.keys(splits).length > 0 || Object.keys(chosenCategories).length > 0)}
+                    disabled={loading || busyPayment !== null || (Object.keys(splits).length > 0 || Object.keys(chosenCategories).length > 0 || Object.keys(repayments).length > 0)}
                     title={Object.keys(splits).length ? "Save your chosen splits individually first" : undefined}
                     className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 border border-amber-500/30 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
@@ -280,13 +284,14 @@ export default function CategorizationReviewModal({
 
                         <div className="pt-2 border-t border-border/50 space-y-3">
                           {sugg && <p className="text-xs text-muted-foreground">Suggested: {sugg.categoryName}</p>}
-                          <label className="text-xs font-medium">Category<FinanceSelect aria-label={`Category for ${txn.description}`} disabled={busyPayment !== null} value={chosenCategories[txn.id] ?? sugg?.categoryId ?? txn.categoryId ?? ""} onChange={e => setChosenCategories(previous => ({...previous, [txn.id]:e.target.value}))}>
+                          <label className="text-xs font-medium" style={repayments[txn.id] ? {display:"none"} : undefined}>Category<FinanceSelect aria-label={`Category for ${txn.description}`} disabled={busyPayment !== null} value={chosenCategories[txn.id] ?? sugg?.categoryId ?? txn.categoryId ?? ""} onChange={e => setChosenCategories(previous => ({...previous, [txn.id]:e.target.value}))}>
                             <option value="">Choose category...</option>
                             {categories.filter(c => txn.direction === "inflow" ? c.type === "income" : c.type === "expense").map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </FinanceSelect></label>
                           <SplitWith value={splits[txn.id] === undefined ? txn.sharedSplit : splits[txn.id]} onChange={value => setSplits(previous => ({...previous, [txn.id]:value}))} amountPaise={txn.amountPaise} currency={txn.currency} eligible={txn.direction === "outflow" && !txn.transferGroupId && txn.paymentKind !== "transfer"} disabled={busyPayment !== null}/>
-                          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!rememberCategories[txn.id]} disabled={busyPayment !== null} onChange={e => setRememberCategories(previous => ({...previous, [txn.id]:e.target.checked}))}/>Remember this category for the merchant</label>
-                          <button type="button" className="af-primary" disabled={busyPayment !== null || !(chosenCategories[txn.id] ?? sugg?.categoryId ?? txn.categoryId)} onClick={() => handleManualAssign(txn, chosenCategories[txn.id] ?? sugg?.categoryId ?? txn.categoryId ?? "", !!rememberCategories[txn.id])}>{busyPayment === txn.id ? "Saving…" : "Save review"}</button>
+                          <RepaymentMatch value={repayments[txn.id]} onChange={value => setRepayments(prev => ({...prev,[txn.id]:value}))} amountPaise={txn.amountPaise} currency={txn.currency} eligible={txn.direction === "inflow" && !txn.transferGroupId && txn.paymentKind !== "refund"} disabled={busyPayment !== null} transactionId={txn.id}/>
+                          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={!!rememberCategories[txn.id]} disabled={busyPayment !== null || !!repayments[txn.id]} onChange={e => setRememberCategories(previous => ({...previous, [txn.id]:e.target.checked}))}/>Remember this category for the merchant</label>
+                          <button type="button" className="af-primary" disabled={busyPayment !== null || (!(chosenCategories[txn.id] ?? sugg?.categoryId ?? txn.categoryId) && !repayments[txn.id])} onClick={() => handleManualAssign(txn, chosenCategories[txn.id] ?? sugg?.categoryId ?? txn.categoryId ?? "", !!rememberCategories[txn.id])}>{busyPayment === txn.id ? "Saving…" : "Save review"}</button>
                         </div>
                       </div>
                     );

@@ -1,4 +1,6 @@
 "use client";
+import dynamic from "next/dynamic";
+import { FinanceReadCache } from "@/lib/finance/application/readCache";
 import { FinanceRefreshQueue } from "@/lib/finance/application/refreshQueue";
 import { loadDashboardSnapshot } from "@/lib/finance/application/dashboardSnapshot";
 import TripFinancePanel from "./trips/TripFinancePanel";
@@ -67,20 +69,21 @@ import {
   isIndexedDBAvailable,
 } from "@/lib/finance";
 
-import AccountModal from "@/components/finance/AccountModal";
-import TransactionModal from "@/components/finance/TransactionModal";
-import TransferModal from "@/components/finance/TransferModal";
-import TransactionDetailModal from "@/components/finance/TransactionDetailModal";
-import BudgetModal from "@/components/finance/BudgetModal";
-import SavingsGoalModal from "@/components/finance/SavingsGoalModal";
-import SavingsPocketModal, { PocketModalMode } from "@/components/finance/SavingsPocketModal";
-import PocketHistoryModal from "@/components/finance/PocketHistoryModal";
-import CategorizationReviewModal from "@/components/finance/CategorizationReviewModal";
-import RecurringPaymentsModal from "@/components/finance/RecurringPaymentsModal";
-import StatementImportModal from "@/components/finance/StatementImportModal";
-import BankIntegrationModal from "@/components/finance/BankIntegrationModal";
-import SyncSettingsModal from "@/components/finance/SyncSettingsModal";
-import KotakTrackingModal from "@/components/finance/KotakTrackingModal";
+import type { PocketModalMode } from "@/components/finance/SavingsPocketModal";
+const AccountModal = dynamic(() => import("@/components/finance/AccountModal"));
+const TransactionModal = dynamic(() => import("@/components/finance/TransactionModal"));
+const TransferModal = dynamic(() => import("@/components/finance/TransferModal"));
+const TransactionDetailModal = dynamic(() => import("@/components/finance/TransactionDetailModal"));
+const BudgetModal = dynamic(() => import("@/components/finance/BudgetModal"));
+const SavingsGoalModal = dynamic(() => import("@/components/finance/SavingsGoalModal"));
+const SavingsPocketModal = dynamic(() => import("@/components/finance/SavingsPocketModal"));
+const PocketHistoryModal = dynamic(() => import("@/components/finance/PocketHistoryModal"));
+const CategorizationReviewModal = dynamic(() => import("@/components/finance/CategorizationReviewModal"));
+const RecurringPaymentsModal = dynamic(() => import("@/components/finance/RecurringPaymentsModal"));
+const StatementImportModal = dynamic(() => import("@/components/finance/StatementImportModal"));
+const BankIntegrationModal = dynamic(() => import("@/components/finance/BankIntegrationModal"));
+const SyncSettingsModal = dynamic(() => import("@/components/finance/SyncSettingsModal"));
+const KotakTrackingModal = dynamic(() => import("@/components/finance/KotakTrackingModal"));
 import CashFlowChart from "@/components/finance/CashFlowChart";
 import CategorySpendingChart from "@/components/finance/CategorySpendingChart";
 
@@ -180,8 +183,11 @@ export default function FinanceDashboardPage() {
   const [txnSortOrder, setTxnSortOrder] = useState<"date_desc" | "date_asc" | "amount_desc" | "amount_asc">("date_desc");
 
   const pendingFinanceCount = realPendingCount;
+  const widgetSnapshot = React.useRef<Parameters<typeof syncFinanceWidget>[0] | null>(null);
+  useEffect(() => { if (widgetSnapshot.current) syncFinanceWidget({...widgetSnapshot.current,pendingCount:pendingFinanceCount}); }, [pendingFinanceCount]);
 
   // Instances
+  const snapshotCache = React.useRef(new FinanceReadCache<Awaited<ReturnType<typeof loadDashboardSnapshot>>>());
   const uow = useMemo(() => new IndexedDBUnitOfWork(), []);
   const accountService = useMemo(() => new AccountService(uow), [uow]);
   const transactionService = useMemo(() => new TransactionService(uow), [uow]);
@@ -258,7 +264,7 @@ export default function FinanceDashboardPage() {
         return;
       }
 
-      const snapshot = await loadDashboardSnapshot(uow);
+      const snapshot = await snapshotCache.current.get(() => loadDashboardSnapshot(uow));
       const read = snapshot.read;
       const reportBalances = new BalanceService(read);
       const reportBudgets = new BudgetService(read);
@@ -280,12 +286,13 @@ export default function FinanceDashboardPage() {
       const nw = await reportBalances.getNetWorth();
       if (isCurrent()) {
         setNetWorthPaise(nw.netWorthPaise);
-        syncFinanceWidget({
+        widgetSnapshot.current = {
           balance: formatPaise(nw.netWorthPaise),
           account: allAccounts.length === 1 ? allAccounts[0].name : "Total Net Worth",
           subtext: allAccounts.length === 1 ? "1 active account" : `${allAccounts.length} active accounts`,
           pendingCount: pendingFinanceCount,
-        });
+        };
+        syncFinanceWidget(widgetSnapshot.current);
       }
       if (isCurrent()) setTotalAssetsPaise(nw.totalAssetsPaise);
       if (isCurrent()) setTotalLiabilitiesPaise(nw.totalLiabilitiesPaise);
@@ -327,13 +334,6 @@ export default function FinanceDashboardPage() {
       if (isCurrent()) setPendingOutboxCount(snapshot.pendingOutboxCount);
 
       if (isCurrent()) {setSpendablePaise(snapshot.spendablePaise);setPendingIncomingPaise(snapshot.pendingIncomingPaise);setHasLoaded(true);setLoadError("");}
-      // Kotak Notification Tracking status
-      try {
-        const trackingStatus = await notificationTrackingService.getStatus();
-        if (isCurrent()) setKotakTrackingActive(trackingStatus.enabled && trackingStatus.permissionGranted);
-      } catch {
-        // Ignored
-      }
     } catch {
       if (isCurrent()) setLoadError("Could not refresh your finances. Your saved records are unchanged. Try again.");
     } finally {
@@ -341,10 +341,12 @@ export default function FinanceDashboardPage() {
     }
   };
   useEffect(() => { latestLoader.current = loadData; });
-  const refreshAll = useCallback(() => {
+  const refreshReports = useCallback(() => {
     const id=++refreshRequest.current;
     return refreshQueue.current.request(()=>latestLoader.current?.(id) || Promise.resolve());
   },[]);
+
+  const refreshAll = useCallback(() => { snapshotCache.current.invalidate(); return refreshReports(); }, [refreshReports]);
 
   useEffect(() => {
     const resume = () => {
@@ -366,15 +368,20 @@ export default function FinanceDashboardPage() {
 
   useEffect(() => {
     const refresh = () => { void refreshAll(); };
-    window.addEventListener("finance-notifications-updated", refresh);
+    const status = () => { void notificationTrackingService.getStatus().then(value => setKotakTrackingActive(value.enabled && value.permissionGranted)).catch(() => {}); };
+    const visible = () => { if (!document.hidden) { refresh(); status(); } };
+    window.addEventListener("finance-notifications-updated", status);
+    document.addEventListener("visibilitychange", visible);
+    window.addEventListener("focus", visible);
+    status();
     window.addEventListener("finance-ledger-updated", refresh);
     window.addEventListener("finance-trips-updated", refresh);
-    return () => {invalidateLoads();window.removeEventListener("finance-ledger-updated", refresh);window.removeEventListener("finance-notifications-updated", refresh);window.removeEventListener("finance-trips-updated", refresh);};
-  }, [refreshAll, invalidateLoads]);
+    return () => {invalidateLoads();window.removeEventListener("finance-ledger-updated", refresh);window.removeEventListener("finance-notifications-updated", status);document.removeEventListener("visibilitychange", visible);window.removeEventListener("focus", visible);window.removeEventListener("finance-trips-updated", refresh);};
+  }, [refreshAll, invalidateLoads, notificationTrackingService]);
 
   useEffect(() => {
-    refreshAll();
-  }, [refreshAll, startDate, endDate, pendingFinanceCount]);
+    refreshReports();
+  }, [refreshReports, startDate, endDate]);
 
   // Filtered transactions for the Transactions Tab
   const activitySignature=JSON.stringify([txnSearchQuery,txnAccountFilter,txnCategoryFilter,txnStatusFilter,txnDirectionFilter,txnSortOrder,categoryDrilldown]);
@@ -405,7 +412,7 @@ export default function FinanceDashboardPage() {
       result = result.filter((t) => t.status === txnStatusFilter);
     }
 
-    if (txnDirectionFilter !== "ALL") result=result.filter(t=>txnDirectionFilter==="inflow"?t.direction==="inflow"&&t.paymentKind!=="refund":t.direction==="outflow"||t.paymentKind==="refund");
+    if (txnDirectionFilter !== "ALL") result=result.filter(t=>txnDirectionFilter==="inflow"?t.direction==="inflow"&&t.paymentKind!=="refund"&&t.paymentKind!=="reimbursement":t.direction==="outflow"||t.paymentKind==="refund"||t.paymentKind==="reimbursement");
     // Sort
     result.sort((a, b) => {
       if (txnSortOrder === "date_desc") return Date.parse(b.occurredAt) - Date.parse(a.occurredAt);
@@ -533,7 +540,7 @@ export default function FinanceDashboardPage() {
             <section className="af-spendable" aria-label="Available money"><div><span>Available to spend</span><strong>{hasLoaded?formatPaise(spendablePaise):"—"}</strong><small>Posted bank, cash and savings balances minus pending payments and saved pocket allocations. Before upcoming bills.</small></div>{pendingIncomingPaise>0&&<p>{formatPaise(pendingIncomingPaise)} pending incoming · not included yet</p>}</section>
             <div className="glass-dashboard-grid">
               <div className="glass-main-column">
-                <div className="glass-flow"><button onClick={()=>{setTxnSearchQuery("");setTxnAccountFilter("ALL");setTxnCategoryFilter("ALL");setCategoryDrilldown({start:startDate,end:endDate,label:periodLabel});setTxnStatusFilter("posted");setTxnDirectionFilter("inflow");setActiveTab("TRANSACTIONS");}}><span><ArrowDownRight size={15}/> Income <ArrowUpRight size={15}/></span><strong><AnimatedMoney value={periodIncomePaise}/></strong><small>Excludes marked refunds</small></button><button onClick={()=>{setTxnSearchQuery("");setTxnAccountFilter("ALL");setTxnCategoryFilter("ALL");setCategoryDrilldown({start:startDate,end:endDate,label:periodLabel});setTxnStatusFilter("posted");setTxnDirectionFilter("outflow");setActiveTab("TRANSACTIONS");}}><span><ArrowUpRight size={15}/> Expenses <ArrowUpRight size={15}/></span><strong><AnimatedMoney value={periodExpensePaise}/></strong><small>Net of marked refunds</small></button></div>
+                <div className="glass-flow"><button onClick={()=>{setTxnSearchQuery("");setTxnAccountFilter("ALL");setTxnCategoryFilter("ALL");setCategoryDrilldown({start:startDate,end:endDate,label:periodLabel});setTxnStatusFilter("posted");setTxnDirectionFilter("inflow");setActiveTab("TRANSACTIONS");}}><span><ArrowDownRight size={15}/> Income <ArrowUpRight size={15}/></span><strong><AnimatedMoney value={periodIncomePaise}/></strong><small>Excludes refunds and repayments</small></button><button onClick={()=>{setTxnSearchQuery("");setTxnAccountFilter("ALL");setTxnCategoryFilter("ALL");setCategoryDrilldown({start:startDate,end:endDate,label:periodLabel});setTxnStatusFilter("posted");setTxnDirectionFilter("outflow");setActiveTab("TRANSACTIONS");}}><span><ArrowUpRight size={15}/> Expenses <ArrowUpRight size={15}/></span><strong><AnimatedMoney value={periodExpensePaise}/></strong><small>Net of refunds and repayments</small></button></div>
                 <p className="af-net-change">Net change {formatPaise(periodNetCashFlowPaise)} · {periodLabel}</p>
                 <button className="glass-insight" aria-label="Your approval inbox" onClick={()=>setIsKotakModalOpen(true)}><span><Sparkles size={15}/> Message insights <ArrowRightLeft size={15}/></span><strong>{pendingFinanceCount ? `${pendingFinanceCount} payments ready to review` : "Your inbox is up to date"}</strong><small>Confirm the categories. Stay in control.</small></button>
                 <section className="glass-wallet-preview"><div className="af-section-heading"><h3>Your wallet</h3><button className="af-text-button" onClick={()=>setActiveTab("ACCOUNTS")}>Open wallet <ChevronRight size={15}/></button></div>{accountView()}</section>
@@ -780,38 +787,38 @@ export default function FinanceDashboardPage() {
         <footer className="af-footer"><ShieldCheck size={12}/><span>On your device. In your hands.</span></footer>
       </div>
       {/* 5. Modals for User Flows */}
-      <AccountModal
+      {isAccountModalOpen && (<AccountModal
         isOpen={isAccountModalOpen}
         onClose={() => setIsAccountModalOpen(false)}
         onSuccess={refreshAll}
         accountService={accountService}
         editingAccount={editingAccount}
-      />
+      />)}
 
-      <TransactionModal
+      {isTransactionModalOpen && (<TransactionModal
         defaultDirection={entryDirection}
         isOpen={isTransactionModalOpen}
         onClose={() => setIsTransactionModalOpen(false)}
-        onSuccess={refreshAll}
+        onSuccess={refreshReports}
         transactionService={transactionService}
         accounts={accounts.filter((a) => a.status === "active")}
         categories={categories}
         pockets={savingsGoals}
         editingTransaction={editingTransaction}
-      />
+      />)}
 
-      <TransferModal
+      {isTransferModalOpen && (<TransferModal
         isOpen={isTransferModalOpen}
         onClose={() => setIsTransferModalOpen(false)}
-        onSuccess={refreshAll}
+        onSuccess={refreshReports}
         transactionService={transactionService}
         accounts={accounts.filter((a) => a.status === "active")}
-      />
+      />)}
 
-      <TransactionDetailModal
+      {!!selectedTxnForDetail && (<TransactionDetailModal
         isOpen={!!selectedTxnForDetail}
         onClose={() => setSelectedTxnForDetail(null)}
-        onSuccess={refreshAll}
+        onSuccess={refreshReports}
         onEdit={(txn) => {
           setSelectedTxnForDetail(null);
           setEditingTransaction(txn);
@@ -822,18 +829,18 @@ export default function FinanceDashboardPage() {
         categories={categories}
         pockets={savingsGoals}
         transactionService={transactionService}
-      />
+      />)}
 
-      <BudgetModal
+      {isBudgetModalOpen && (<BudgetModal
         isOpen={isBudgetModalOpen}
         onClose={() => setIsBudgetModalOpen(false)}
         onSuccess={refreshAll}
         budgetService={budgetService}
         categories={categories}
         editingCategoryId={editingBudgetId}
-      />
+      />)}
 
-      <SavingsPocketModal
+      {isPocketModalOpen && (<SavingsPocketModal
         isOpen={isPocketModalOpen}
         onClose={() => {
           setIsPocketModalOpen(false);
@@ -845,70 +852,70 @@ export default function FinanceDashboardPage() {
         allPockets={savingsGoals}
         editingPocket={editingPocket}
         mode={pocketModalMode}
-      />
+      />)}
 
-      <PocketHistoryModal
+      {!!historyPocket && (<PocketHistoryModal
         isOpen={!!historyPocket}
         onClose={() => setHistoryPocket(null)}
         pocket={historyPocket}
-      />
+      />)}
 
-      <SavingsGoalModal
+      {isSavingsGoalModalOpen && (<SavingsGoalModal
         isOpen={isSavingsGoalModalOpen}
         onClose={() => setIsSavingsGoalModalOpen(false)}
         onSuccess={refreshAll}
         savingsGoalService={savingsGoalService}
         editingGoal={editingGoal}
         mode={savingsGoalMode}
-      />
+      />)}
 
-      <CategorizationReviewModal
+      {isCategorizationModalOpen && (<CategorizationReviewModal
         isOpen={isCategorizationModalOpen}
         onClose={() => setIsCategorizationModalOpen(false)}
         categorizationService={categorizationService}
         categories={categories}
         onTransactionsUpdated={refreshAll}
-      />
+      />)}
 
-      <RecurringPaymentsModal
+      {isRecurringModalOpen && (<RecurringPaymentsModal
         isOpen={isRecurringModalOpen}
         onClose={() => setIsRecurringModalOpen(false)}
         recurringService={recurringService}
         accounts={accounts}
         categories={categories}
-      />
+      />)}
 
-      <StatementImportModal
+      {isImportModalOpen && (<StatementImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         accounts={accounts}
         importService={importService}
         onImportComplete={refreshAll}
-      />
+      />)}
 
-      <BankIntegrationModal
+      {isBankModalOpen && (<BankIntegrationModal
         isOpen={isBankModalOpen}
         onClose={() => setIsBankModalOpen(false)}
         onOpenImportModal={() => setIsImportModalOpen(true)}
-      />
+      />)}
 
 
-      <SyncSettingsModal
+      {isSyncModalOpen && (<SyncSettingsModal
         isOpen={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
         uow={uow}
         syncOutboxService={syncOutboxService}
-      />
+      />)}
 
-      <KotakTrackingModal
+      {isKotakModalOpen && (<KotakTrackingModal
         isOpen={isKotakModalOpen}
         onClose={() => setIsKotakModalOpen(false)}
         trackingService={notificationTrackingService}
         accounts={accounts}
         categories={categories}
-        onTransactionsUpdated={refreshAll}
+        onTransactionsUpdated={() => { void notificationTrackingService.getStatus().then(status => setKotakTrackingActive(status.enabled && status.permissionGranted)).catch(() => {}); }}
         onOpenStatementImport={() => setIsImportModalOpen(true)}
-      />
+      />)}
     </div>
   );
 }

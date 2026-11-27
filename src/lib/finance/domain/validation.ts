@@ -1,3 +1,4 @@
+import { validateRepayment, REPAYMENT_CATEGORY_ID } from "../shared/repayment";
 import { validateTransactionSplit } from "../shared/transactionSplit";
 /**
  * Life Atlas Finance: Runtime Schema Validation & Type Guards
@@ -131,6 +132,8 @@ export function validateTransaction(txn: unknown): Transaction {
 
   const t = txn as Partial<Transaction>;
   if (t.sharedSplit !== undefined) validateTransactionSplit(t.sharedSplit);
+  if (t.sharedRepayment !== undefined) { validateRepayment(t.sharedRepayment); if (t.sharedSplit || t.direction !== "inflow" || t.paymentKind !== "reimbursement" || t.categoryId !== REPAYMENT_CATEGORY_ID) throw new FinanceError("A repayment must be an incoming reimbursement, separate from an expense split.", "VALIDATION_FAILED"); }
+  if (t.paymentKind === "reimbursement" && !t.sharedRepayment) throw new FinanceError("Choose the repayment group and person.", "VALIDATION_FAILED");
 
   if (!t.id || typeof t.id !== "string" || !t.id.trim()) {
     throw new FinanceError("Transaction ID must be a non-empty string", "VALIDATION_FAILED");

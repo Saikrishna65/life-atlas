@@ -1,3 +1,4 @@
+import { reconcileRepayment, REPAYMENT_CATEGORY, REPAYMENT_CATEGORY_ID } from "../../shared/repayment";
 import { reconcileTransactionSplit } from "../../shared/transactionSplit";
 import type { SharedGroup } from "../../shared/domain";
 import type { LedgerChange } from "../interfaces";
@@ -27,6 +28,7 @@ export function commitLedgerChange(
       [
         row.before?.sharedSplit?.groupId,
         row.after?.sharedSplit?.groupId,
+        row.before?.sharedRepayment?.groupId, row.after?.sharedRepayment?.groupId,
       ].filter((id): id is string => !!id),
     ),
   );
@@ -77,10 +79,10 @@ export function commitLedgerChange(
       );
     const sharedGroups = new Map<string, SharedGroup>();
     const transferCategories = new Set<string>();
+    let hasRepaymentCategory = false;
     if (sharedIds.size) {
       read(tx.objectStore("categories").getAll(), (rows) => {
-        for (const row of rows)
-          if (row.type === "transfer") transferCategories.add(row.id);
+        for (const row of rows) { if (row.id === REPAYMENT_CATEGORY_ID) hasRepaymentCategory = true; if (row.type === "transfer") transferCategories.add(row.id); }
       });
       for (const id of sharedIds)
         read(tx.objectStore("shared_groups").get(id), (group) => {
@@ -88,9 +90,7 @@ export function commitLedgerChange(
           else if (
             change.transactions.some(
               (row) =>
-                row.after?.sharedSplit?.groupId === id &&
-                row.after.status === "posted" &&
-                row.after.direction === "outflow",
+                (row.after?.sharedSplit?.groupId === id || row.after?.sharedRepayment?.groupId === id) && row.after?.status === "posted",
             )
           )
             throw new Error(
@@ -177,7 +177,10 @@ export function commitLedgerChange(
                   transferCategories,
                   linkedAt,
                 ) || changed;
+          for (const row of change.transactions) if (row.before?.sharedRepayment?.groupId === group.id || row.after?.sharedRepayment?.groupId === group.id) changed = reconcileRepayment(group,row.before,row.after,transferCategories,linkedAt) || changed;
           if (changed) {
+            const affected = new Set(change.transactions.map(t => (t.after || t.before)!.id));
+            const settlementIds = new Set([...previous.settlements,...group.settlements].filter(s => s.sourceTransactionId && affected.has(s.sourceTransactionId)).map(s => s.id));
             tx.objectStore("shared_groups").put(group);
             tx.objectStore("audit_log").add({
               id: crypto.randomUUID(),
@@ -187,6 +190,7 @@ export function commitLedgerChange(
               performedAt: linkedAt,
               changes: {
                 version: { oldVal: previous.version, newVal: group.version },
+                linkedSettlements: {oldVal:previous.settlements.filter(s => settlementIds.has(s.id)),newVal:group.settlements.filter(s => settlementIds.has(s.id))},
                 linkedExpenses: {
                   oldVal: previous.expenses.filter((e) =>
                     change.transactions.some(
@@ -205,6 +209,7 @@ export function commitLedgerChange(
             });
           }
         }
+        if (!hasRepaymentCategory && change.transactions.some(t => t.after?.sharedRepayment && t.after.status === "posted")) tx.objectStore("categories").put(REPAYMENT_CATEGORY);
         for (const id of ids) {
           const existing = journals.get(id)!;
           const changed = new Set(

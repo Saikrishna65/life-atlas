@@ -1,4 +1,6 @@
 "use client";
+import RepaymentMatch from "./shared/RepaymentMatch";
+import type { RepaymentSelection } from "@/lib/finance/shared/repayment";
 import SplitWith from "./shared/SplitWith";
 import type { TransactionSplit } from "@/lib/finance/shared/transactionSplit";
 
@@ -81,6 +83,8 @@ export default function KotakTrackingModal({
   const [reviewAccounts, setReviewAccounts] = useState<Record<string, string>>({});
   const [focusedEvent, setFocusedEvent] = useState<string | null>(null);
   const [busyReviewId, setBusyReviewId] = useState<string | null>(null);
+  const [reviewRepayments, setReviewRepayments] = useState<Record<string,RepaymentSelection|null>>({});
+  const [parsedRepayment, setParsedRepayment] = useState<RepaymentSelection|null>(null);
   const [reviewSplits, setReviewSplits] = useState<Record<string, TransactionSplit | null>>({});
   const [parsedSplit, setParsedSplit] = useState<TransactionSplit | null>(null);
   const [reviewCategories, setReviewCategories] = useState<Record<string, string>>({});
@@ -152,6 +156,7 @@ export default function KotakTrackingModal({
 
   // Handle parsing the pasted text
   const handleParse = async (textToParse?: string) => {
+    setParsedRepayment(null); setParsedSplit(null);
     const raw = (textToParse ?? alertText).trim();
     if (!raw) {
       setFeedbackMessage({
@@ -237,6 +242,7 @@ export default function KotakTrackingModal({
     setAlertText("");
     setParseResult(null);
     setParsedSplit(null);
+    setParsedRepayment(null);
     setEditableMerchant("");
     setSelectedAccountId("");
     setSelectedCategoryId("");
@@ -262,6 +268,7 @@ export default function KotakTrackingModal({
         accountId: selectedAccountId,
         categoryId: selectedCategoryId || undefined,
         sharedSplit: parsedSplit || undefined,
+        sharedRepayment: parsedRepayment || undefined,
         description: editableMerchant || parseResult.parsed.merchantOrBeneficiary,
       });
 
@@ -313,11 +320,11 @@ export default function KotakTrackingModal({
       return;
     }
     const categoryId = reviewCategories[itemId] ?? item?.suggestedCategoryId;
-    if (!categoryId) { setFeedbackMessage({ type: "error", text: "Choose a category before approving." }); return; }
+    if (!categoryId && !reviewRepayments[itemId]) { setFeedbackMessage({ type: "error", text: "Choose a category before approving." }); return; }
     setBusyReviewId(itemId);
 
     try {
-      await trackingService.resolveReviewItem(itemId, accountId, categoryId, reviewSplits[itemId] || undefined);
+      await trackingService.resolveReviewItem(itemId, accountId, categoryId, reviewSplits[itemId] || undefined, reviewRepayments[itemId] || undefined);
       loadReviewQueue();
       onTransactionsUpdated();
       setFeedbackMessage({
@@ -601,7 +608,7 @@ export default function KotakTrackingModal({
                           <span className="text-[10px] text-emerald-700 font-mono font-semibold">Smart suggested</span>
                         )}
                       </label>
-                      <FinanceSelect
+                      {parsedRepayment ? <p>Shared repayments · not income</p> : <FinanceSelect
                         aria-label="Payment category"
                         value={selectedCategoryId}
                         onChange={(e) => setSelectedCategoryId(e.target.value)}
@@ -615,11 +622,12 @@ export default function KotakTrackingModal({
                               {cat.name}
                             </option>
                           ))}
-                      </FinanceSelect>
+                      </FinanceSelect>}
                     </div>
                   </div>
 
               {parseResult?.success && parseResult.parsed && <SplitWith value={parsedSplit} onChange={setParsedSplit} amountPaise={parseResult.parsed.amountPaise} currency={accounts.find(a => a.id === selectedAccountId)?.currency || "INR"} eligible={parseResult.parsed.direction === "outflow" && parseResult.parsed.paymentKind !== "transfer" && parseResult.parsed.paymentKind !== "refund" && categories.find(c => c.id === selectedCategoryId)?.type !== "transfer"} disabled={isRecording}/>}
+                  {parseResult?.success && parseResult.parsed && <RepaymentMatch value={parsedRepayment} onChange={setParsedRepayment} amountPaise={parseResult.parsed.amountPaise} currency={accounts.find(a => a.id === selectedAccountId)?.currency || "INR"} eligible={parseResult.parsed.direction === "inflow" && parseResult.parsed.paymentKind !== "refund" && parseResult.parsed.paymentKind !== "transfer"} disabled={isRecording}/>}
                   {/* Confirm Button */}
                   <div className="pt-2 flex items-center justify-end gap-2">
                     <button
@@ -771,7 +779,7 @@ export default function KotakTrackingModal({
                             ))}
                           </FinanceSelect></label>
 
-                          <label>Category<FinanceSelect
+                          <label style={reviewRepayments[item.id] ? {display:"none"} : undefined}>Category<FinanceSelect
                             disabled={busyReviewId !== null} aria-label="Transaction category" value={reviewCategories[item.id] ?? item.suggestedCategoryId ?? ""}
                             onChange={(e) =>
                               setReviewCategories((prev) => ({ ...prev, [item.id]: e.target.value }))
@@ -790,9 +798,10 @@ export default function KotakTrackingModal({
                         </div>
 
                       <SplitWith value={reviewSplits[item.id]} onChange={value => setReviewSplits(previous => ({...previous, [item.id]:value}))} amountPaise={txn.amountPaise} currency={accounts.find(a => a.id === (reviewAccounts[item.id] ?? item.candidateAccountIds[0]))?.currency || "INR"} eligible={itemIsOutflow && txn.paymentKind !== "transfer" && txn.paymentKind !== "refund" && categories.find(c => c.id === (reviewCategories[item.id] ?? item.suggestedCategoryId))?.type !== "transfer"} disabled={busyReviewId !== null}/>
+                        <RepaymentMatch value={reviewRepayments[item.id]} onChange={value => setReviewRepayments(prev => ({...prev,[item.id]:value}))} amountPaise={txn.amountPaise} currency={accounts.find(a => a.id === (reviewAccounts[item.id] ?? item.candidateAccountIds[0]))?.currency || "INR"} eligible={!itemIsOutflow && txn.paymentKind !== "refund" && txn.paymentKind !== "transfer"} disabled={busyReviewId !== null}/>
                         <div className="inbox-actions">
                           <button
-                            disabled={busyReviewId !== null || !(reviewAccounts[item.id] ?? item.candidateAccountIds[0]) || !(reviewCategories[item.id] ?? item.suggestedCategoryId)}
+                            disabled={busyReviewId !== null || !(reviewAccounts[item.id] ?? item.candidateAccountIds[0]) || (!(reviewCategories[item.id] ?? item.suggestedCategoryId) && !reviewRepayments[item.id])}
                             onClick={() => handleResolveReviewItem(item.id)}
                             className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                           >

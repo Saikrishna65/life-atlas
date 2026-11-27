@@ -1,4 +1,5 @@
 import { TransactionService } from "./transactionService";
+import type { RepaymentSelection } from "../shared/repayment";
 import type { TransactionSplit } from "../shared/transactionSplit";
 /**
  * Life Atlas Finance: Smart Categorization Engine & Application Service
@@ -138,11 +139,11 @@ export class CategorizationService {
   }
 
   /** Save the reviewed category and explicit shared choice through the atomic ledger boundary. */
-  async reviewTransaction(transaction: Transaction, categoryId: ID, sharedSplit: TransactionSplit | null, remember = false): Promise<{ ruleSaved: boolean }> {
+  async reviewTransaction(transaction: Transaction, categoryId: ID, sharedSplit: TransactionSplit | null, remember = false, sharedRepayment?: RepaymentSelection | null): Promise<{ ruleSaved: boolean }> {
     const category = await this.uow.categories.getById(categoryId);
-    if (!category || (transaction.direction === "outflow" ? category.type !== "expense" : category.type !== "income")) throw new FinanceError("Choose a category for this payment type.", "VALIDATION_FAILED");
-    await new TransactionService(this.uow).correctTransaction(transaction.id, { expectedVersion: transaction.version, categoryId, sharedSplit, reviewRequired: false }, "User reviewed category and shared split");
-    if (remember) { try { await this.learnUserCorrection(transaction, categoryId); } catch { return { ruleSaved: false }; } }
+    if (!sharedRepayment && (!category || (transaction.direction === "outflow" ? category.type !== "expense" : category.type !== "income"))) throw new FinanceError("Choose a category for this payment type.", "VALIDATION_FAILED");
+    await new TransactionService(this.uow).correctTransaction(transaction.id, { expectedVersion: transaction.version, categoryId, sharedSplit, sharedRepayment, reviewRequired: false }, "User reviewed category and shared split");
+    if (remember && !sharedRepayment) { try { await this.learnUserCorrection(transaction, categoryId); } catch { return { ruleSaved: false }; } }
     return { ruleSaved: true };
   }
 
@@ -272,7 +273,7 @@ export class CategorizationService {
       status: "posted",
     });
 
-    return all.filter((t) => !(t.tripAssignment?.tripId && t.tripAssignment.mode!=="excluded") && (!t.categoryId || t.reviewRequired));
+    return all.filter((t) => !t.sharedRepayment && !(t.tripAssignment?.tripId && t.tripAssignment.mode!=="excluded") && (!t.categoryId || t.reviewRequired));
   }
 
   /**

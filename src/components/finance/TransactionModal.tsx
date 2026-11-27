@@ -1,4 +1,6 @@
 "use client";
+import RepaymentMatch from "./shared/RepaymentMatch";
+import type { RepaymentSelection } from "@/lib/finance/shared/repayment";
 import SplitWith from "./shared/SplitWith";
 import type { TransactionSplit } from "@/lib/finance/shared/transactionSplit";
 import { tripDetailCategoryId } from "@/lib/finance/trips/policy";
@@ -87,6 +89,7 @@ function TransactionForm({
   const [accountId, setAccountId] = useState(
     editingTransaction?.accountId || initialAccountId,
   );
+  const [sharedRepayment, setSharedRepayment] = useState<RepaymentSelection | null>(editingTransaction?.sharedRepayment || null);
   const [sharedSplit, setSharedSplit] = useState<TransactionSplit | null>(editingTransaction?.sharedSplit || null);
   const [categoryId, setCategoryId] = useState<string>(
     editingTransaction ? tripDetailCategoryId(editingTransaction) || "" : "",
@@ -148,6 +151,7 @@ function TransactionForm({
           editingTransaction.id,
           {
             expectedVersion: editingTransaction.version,
+            sharedRepayment: direction === "inflow" && status === "posted" && !isRefund && !editingTransaction.transferGroupId ? sharedRepayment : null,
             sharedSplit: direction === "outflow" && status === "posted" && !editingTransaction.transferGroupId && categories.find(c => c.id === categoryId)?.type !== "transfer" ? sharedSplit : null,
             paymentKind:
               isRefund && direction === "inflow"
@@ -179,6 +183,7 @@ function TransactionForm({
       } else {
         await transactionService.recordTransaction({
           accountId,
+          sharedRepayment: direction === "inflow" && status === "posted" && !isRefund ? sharedRepayment || undefined : undefined,
           sharedSplit: direction === "outflow" && status === "posted" && categories.find(c => c.id === categoryId)?.type !== "transfer" ? sharedSplit || undefined : undefined,
           paymentKind:
             isRefund && direction === "inflow" ? "refund" : undefined,
@@ -359,7 +364,7 @@ function TransactionForm({
             <label className="text-xs font-sans font-medium text-muted-foreground">
               {tripDetail ? "Trip detail category" : "Category"}
             </label>
-            <FinanceSelect
+            {sharedRepayment && direction === "inflow" ? <p>Shared repayments · not income</p> : <FinanceSelect
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg bg-surface border border-muted text-xs text-foreground focus:outline-none focus:border-emerald-500"
@@ -370,7 +375,7 @@ function TransactionForm({
                   {c.name}
                 </option>
               ))}
-            </FinanceSelect>
+            </FinanceSelect>}
             {tripDetail && (
               <p>
                 Finance category: Travel &amp; Leisure. This detail is kept for
@@ -381,6 +386,7 @@ function TransactionForm({
         </div>
 
         <SplitWith value={sharedSplit} onChange={setSharedSplit} amountPaise={(() => { try { return rupeesToPaise(amountStr); } catch { return 0; } })()} currency={accounts.find(a => a.id === accountId)?.currency || "INR"} eligible={direction === "outflow" && status === "posted" && !editingTransaction?.transferGroupId && categories.find(c => c.id === categoryId)?.type !== "transfer"} disabled={isSubmitting}/>
+        <RepaymentMatch value={sharedRepayment} onChange={setSharedRepayment} amountPaise={(() => { try {return rupeesToPaise(amountStr);} catch {return 0;} })()} currency={accounts.find(a => a.id === accountId)?.currency || "INR"} eligible={direction === "inflow" && status === "posted" && !isRefund && !editingTransaction?.transferGroupId} disabled={isSubmitting} transactionId={editingTransaction?.id}/>
         {/* Savings Pocket Selector (for expense/outflow only) */}
         {direction === "outflow" &&
           !editingTransaction?.transferGroupId &&

@@ -19,6 +19,7 @@ export interface ReviewTotals {
   spendingPaise: number;
   incomePaise: number;
   refundsPaise: number;
+  repaymentsPaise: number;
   purchasesPaise: number;
   count: number;
 }
@@ -70,6 +71,7 @@ const blank = (): ReviewTotals => ({
   spendingPaise: 0,
   incomePaise: 0,
   refundsPaise: 0,
+  repaymentsPaise: 0,
   purchasesPaise: 0,
   count: 0,
 });
@@ -167,7 +169,8 @@ export function buildMonthlyReview(input: ReviewInput): MonthlyReview {
       totals.count++;
       totals.spendingPaise = addPaise(totals.spendingPaise, move.expense);
       totals.incomePaise = addPaise(totals.incomePaise, move.income);
-      if (move.expense < 0)
+      if (move.expense < 0 && t.sharedRepayment) totals.repaymentsPaise = addPaise(totals.repaymentsPaise,-move.expense);
+      else if (move.expense < 0)
         totals.refundsPaise = addPaise(totals.refundsPaise, -move.expense);
       if (move.expense > 0)
         totals.purchasesPaise = addPaise(totals.purchasesPaise, move.expense);
@@ -230,6 +233,7 @@ export function buildMonthlyReview(input: ReviewInput): MonthlyReview {
   >();
   let regularPaidPaise = 0;
   for (const t of rows) {
+    if (t.sharedRepayment) continue;
     const move = realizedCashMovement(t, transferIds);
     if (!move.expense) continue;
     const original = t.originalTransactionId
