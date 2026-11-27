@@ -240,3 +240,51 @@ fixtures are synthetic. Live YouTube playback, physical-device behavior and
 actual deployment startup latency were not verified. No APK, mobile bundle or
 local production build was created. Browsing with a persistent mini-player is
 still a separate follow-up; leaving the watch view currently disposes playback.
+
+## Persistent mini-player and channel browsing (2026-11-27)
+
+Leaving the watch view now shrinks the existing player into an in-page floating
+mini-player. Search, Discover, You and channel browsing keep the same mounted
+iframe and official API instance; they do not reconstruct or seek the video.
+Expand returns to the watch layout and Minimize returns to the page being browsed.
+Closing either player destroys its instance. Opening another video replaces the
+current video. The player stays above the bottom navigation/search controls and
+retains at least a 200px frame height at supported mobile widths. Native YouTube
+controls remain accessible. This is an in-page player, not a promise of system
+picture-in-picture, background playback or continued playback after a reload.
+
+Search results now retain validated UC channel IDs for both classic and modern
+video renderers. Creator names on result cards and the watch view open a channel
+page inside Atlas. Channel names are separate accessible buttons, never nested
+inside video buttons. Channels use real identity rather than an ambiguous name
+search. If a provider result has no usable channel ID, its name remains plain
+text; opening a pasted video URL alone does not invent channel information.
+
+The new POST `/api/video/channel` accepts only a bounded channel ID/cursor body,
+uses the existing anonymous lightweight youtubei.js configuration, follows the
+actual Videos tab and paginates through `/browse`. No player/config fetches or
+extra paid service is used to list channel videos. The channel header shows the
+provider title, optional allowlisted avatar and expandable description. Empty,
+loading, failure and retry states are explicit. Pagination reuses the request
+lock, deduplication and stale-response protections, with a channel-appropriate
+18-second client deadline. Reopening the current channel reuses in-memory results;
+switching channels aborts the replaced request. Channel lists restore their scroll
+position after playback. Currently the Videos tab is supported; separate Shorts,
+live-stream and playlist tabs and channel deep links are not implemented.
+
+Channel IDs, descriptions, video lists and cursors remain in React memory. No
+search, watch or channel history is added to browser storage. Reloading clears
+channel/player state. Existing explicit theme/topic/playback preferences remain.
+
+Validation: 668 unit tests passed, TypeScript and scoped ESLint passed. Real SDK
+fixtures verify following Home → Videos → continuation in three browse calls,
+visitor-context continuity, classic/modern channel identity, empty channels and
+invalid-request rejection. Browser fixtures at 320/390/1280px verify exact iframe
+and API-instance identity across navigation, expand/minimize/close, minimum frame
+size, channel retry, pagination with overlapping items, scroll return, replacement
+request isolation and absence of persisted history. Existing search, autocomplete,
+Discover, player recovery and feed pagination suites also passed, with coverage up
+to 1920px. Screenshots: `work/qa-video-web/channel-mini-*.png`. Provider responses,
+posters and playback in these fixtures are synthetic; live YouTube playback and
+physical-device testing remain unverified. No APK, mobile bundle or local
+production build was created.

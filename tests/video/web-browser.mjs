@@ -61,7 +61,7 @@ try{
   await page.getByRole('radio',{name:'Ink',exact:true}).check();
   await page.getByRole('radio',{name:'Paper',exact:true}).check();
   assert.deepEqual(await page.evaluate(()=>Object.keys(localStorage)),['atlas-video-web-theme']);
-  assert.equal(await page.locator('iframe').count(),0);
+  assert.equal(await page.getByRole('region',{name:'Mini player'}).count(),1,'Browsing settings keeps the active video in a mini-player');
   await page.getByRole('button',{name:'Search',exact:true}).click();
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   await mkdir('work/qa-video-web',{recursive:true});

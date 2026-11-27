@@ -1,4 +1,5 @@
 import { readContinuation, type SearchContinuation } from "./pagination";
+import { readChannelId } from "./channel";
 import type { VideoResult } from "./search";
 
 /** Search never deciphers media. Fetching player JS/config adds round trips without helping results. */
@@ -30,9 +31,13 @@ export async function searchVideos(query: string, signal: AbortSignal, fetcher: 
   for (const node of nodes.length ? nodes : results.videos) {
     let item: Omit<VideoResult, "thumbnail"> | undefined;
     if (node.is(YTNodes.Video)) {
-      item = { id: node.video_id, title: node.title.toString(), channel: node.author.name || "", duration: node.duration.text || "" };
+      item = { id: node.video_id, title: node.title.toString(), channel: node.author.name || "", ...(readChannelId(node.author.id) ? { channelId: node.author.id } : {}), duration: node.duration.text || "" };
     } else if (node.is(YTNodes.LockupView) && node.content_type === "VIDEO" && node.content_id) {
-      item = { id: node.content_id, title: node.metadata?.title?.toString() || "Video", channel: node.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts?.[0]?.text?.toString() || "", duration: node.duration.text || "" };
+      const author = node.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts?.[0]?.text;
+      const avatar = node.metadata?.image;
+      const avatarId = avatar?.is(YTNodes.DecoratedAvatarView) ? readChannelId(avatar.renderer_context.command_context?.on_tap?.payload.browseId) : null;
+      const channelId = avatarId || readChannelId(author?.endpoint?.payload.browseId) || readChannelId(author?.runs?.flatMap((run) => "endpoint" in run ? [run.endpoint?.payload.browseId] : []).find(readChannelId));
+      item = { ...(channelId ? { channelId } : {}), id: node.content_id, title: node.metadata?.title?.toString() || "Video", channel: node.metadata?.metadata?.metadata_rows?.[0]?.metadata_parts?.[0]?.text?.toString() || "", duration: node.duration.text || "" };
     }
     if (!item || !/^[A-Za-z0-9_-]{11}$/.test(item.id) || ids.has(item.id)) continue;
     ids.add(item.id);

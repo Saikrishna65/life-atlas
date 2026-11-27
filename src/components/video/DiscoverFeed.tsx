@@ -20,7 +20,7 @@ function saveTopic(value: string | null) {
   try { if (value) localStorage.setItem(TOPIC_STORAGE_KEY, value); else localStorage.removeItem(TOPIC_STORAGE_KEY); } catch {}
   window.dispatchEvent(new Event("atlas-video-topic"));
 }
-export default function DiscoverFeed({ active, onOpen }: { active: boolean; onOpen: (video: VideoResult, videos: VideoResult[]) => void }) {
+export default function DiscoverFeed({ active, onOpen, onChannel }: { active: boolean; onOpen: (video: VideoResult, videos: VideoResult[]) => void; onChannel?(id: string, name: string): void }) {
   const topicId = useSyncExternalStore(subscribeTopic, topicSnapshot, () => null);
   const topic = readTopic(topicId);
   const [videos, setVideos] = useState<VideoResult[]>([]);
@@ -83,7 +83,7 @@ export default function DiscoverFeed({ active, onOpen }: { active: boolean; onOp
     <div className="video-topic-list" role="group" aria-label="Choose a topic">{VIDEO_TOPICS.map((item) => <button key={item.id} aria-pressed={topic?.id === item.id} onClick={() => choose(item.id)}>{item.title}</button>)}</div>
     {busy && <p role="status" className="video-search-status">Finding {topic?.title.toLowerCase()} videos…</p>}
     {error && <div role="alert" className="video-error"><p>{error}</p><button onClick={() => void load()}>Try again</button></div>}
-    {!busy && videos.length > 0 && <VideoGrid videos={videos} onOpen={open}/>}
+    {!busy && videos.length > 0 && <VideoGrid videos={videos} onOpen={open} onChannel={onChannel}/>}
     {!busy && !error && topic && !videos.length && !pagination.cursor && <p>No videos arrived. Choose another topic or try again later.</p>}
     {!busy && !error && (videos.length > 0 || !!pagination.cursor) && <PaginationFooter hasMore={!!pagination.cursor} loading={pagination.loading} error={pagination.error} attachSentinel={pagination.attachSentinel} onLoad={pagination.loadMore}/>}
   </section>;

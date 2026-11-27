@@ -2,6 +2,7 @@ export interface VideoResult {
   id: string;
   title: string;
   channel: string;
+  channelId?: string;
   thumbnail: string;
   duration: string;
 }

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowLeft, ArrowUpRight, Play, Search, Settings2, X, LoaderCircle, Check, ShieldCheck, Compass, Maximize2, Minimize2 } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Play, Search, Settings2, X, LoaderCircle, Check, ShieldCheck, Compass, Maximize2, Minimize2, PictureInPicture2 } from "lucide-react";
 import { appServiceUrl } from "@/lib/appNetwork";
 import { type VideoResult } from "@/lib/video/search";
 import { directVideoId } from "@/lib/video/suggestions";
@@ -10,6 +10,7 @@ import { appendVideoPage, readVideoPage } from "@/lib/video/pagination";
 import { useVideoPagination } from "@/lib/video/use-pagination";
 import YouTubePlayer from "./YouTubePlayer";
 import { usePlaybackPreferences } from "@/lib/video/playback-preferences";
+import ChannelPage from "./ChannelPage";
 import DiscoverFeed from "./DiscoverFeed";
 import VideoGrid from "./VideoGrid";
 import PaginationFooter from "./PaginationFooter";
@@ -29,7 +30,7 @@ function chooseTheme(value: string) {
   try { localStorage.setItem("atlas-video-web-theme", value); } catch {}
   window.dispatchEvent(new Event("atlas-video-theme"));
 }
-type View = "search" | "player" | "you" | "discover";
+type View = "search" | "player" | "you" | "discover" | "channel";
 const suggestions = [
   { title: "Go somewhere", query: "cinematic travel films", caption: "A different point of view", number: "01" },
   { title: "Learn something", query: "architecture design documentary", caption: "Follow your curiosity", number: "02" },
@@ -41,7 +42,11 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
   const [searchOpen, setSearchOpen] = useState(true);
   const [query, setQuery] = useState("");
   const [videos, setVideos] = useState<VideoResult[]>([]);
-  const [playerOrigin, setPlayerOrigin] = useState<"search" | "discover">("search");
+  const [playerOrigin, setPlayerOrigin] = useState<"search" | "discover" | "channel">("search");
+  const [watchReturn, setWatchReturn] = useState<Exclude<View, "player">>("search");
+  const [channel, setChannel] = useState<{ id: string; name: string } | null>(null);
+  const [channelVideos, setChannelVideos] = useState<VideoResult[]>([]);
+  const channelReturn = useRef<View>("search");
   const [discoverVideos, setDiscoverVideos] = useState<VideoResult[]>([]);
   const [selected, setSelected] = useState<VideoResult | null>(null);
   const [view, setView] = useState<View>("search");
@@ -65,6 +70,7 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
   const resultsScroll = useRef(0), previousView = useRef<View>("search");
   const append = useCallback((page: VideoResult[]) => setVideos((current) => appendVideoPage(current, page)), []);
   const pagination = useVideoPagination(resultQuery, videos, !busy && (view === "search" || view === "player" && playerOrigin === "search"), view, append);
+  const pausePagination = pagination.pause;
   useEffect(() => () => { controller.current?.abort(); controller.current = null; }, []);
   useEffect(() => {
     if (!inputFocused) return;
@@ -111,7 +117,7 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
     const id = directVideoId(text);
     if (id) {
       setVideos([]); setResultQuery("");
-      setPlayerOrigin("search"); setSelected({ id, title: "YouTube video", channel: "", thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, duration: "" });
+      setWatchReturn("search"); setPlayerOrigin("search"); setSelected({ id, title: "YouTube video", channel: "", thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, duration: "" });
       setView("player"); input.current?.blur(); return;
     }
     if (text.length > 120) { setError("Use up to 120 characters for search."); return; }
@@ -139,12 +145,20 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
   }
   const openVideo = useCallback((video: VideoResult) => {
     if (view === "search") resultsScroll.current = window.scrollY;
-    cancel(); setPlayerOrigin("search"); setSelected(video); setView("player"); setSearchOpen(false); input.current?.blur();
+    cancel(); if (view !== "player") setWatchReturn(view); setPlayerOrigin("search"); setSelected(video); setView("player"); setSearchOpen(false); input.current?.blur();
   }, [cancel, view]);
   const openDiscoverVideo = useCallback((video: VideoResult, items: VideoResult[]) => {
-    setDiscoverVideos(items); setPlayerOrigin("discover"); setSelected(video); setView("player"); setSearchOpen(false);
+    setWatchReturn("discover"); setDiscoverVideos(items); setPlayerOrigin("discover"); setSelected(video); setView("player"); setSearchOpen(false);
   }, []);
-  const playerVideos = playerOrigin === "discover" ? discoverVideos : videos;
+  const openChannelVideo = useCallback((video: VideoResult, items: VideoResult[]) => {
+    setWatchReturn("channel"); setChannelVideos(items); setPlayerOrigin("channel"); setSelected(video); setView("player"); setSearchOpen(false);
+  }, []);
+  const openChannel = useCallback((id: string, name: string) => {
+    if (view === "search") resultsScroll.current = window.scrollY;
+    if (view !== "channel") channelReturn.current = view;
+    cancel(); pausePagination(); setChannel({ id, name }); setView("channel"); setSearchOpen(false); window.scrollTo(0, 0);
+  }, [view, cancel, pausePagination]);
+  const playerVideos = playerOrigin === "discover" ? discoverVideos : playerOrigin === "channel" ? channelVideos : videos;
   function toggleSearch() {
     if (view === "search" && searchOpen) {
       setSearchOpen(false); setInputFocused(false); setDismissed(true); dismissCompletions(); input.current?.blur();
@@ -161,7 +175,8 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
   return <main ref={root} className="video-web" data-theme={theme} data-view={view} data-search-open={searchOpen} data-standalone={standalone || undefined}>
     <header className="video-masthead"><div className="video-brand"><span className="video-brand-mark" aria-hidden="true"><Play size={15} fill="currentColor"/></span><span>atlas<span className="video-word">video</span></span></div><span className="video-private-label"><span/>No Atlas history</span></header>
     <div className="video-content" ref={content}>
-      <DiscoverFeed active={view === "discover"} onOpen={openDiscoverVideo}/>
+      <DiscoverFeed active={view === "discover"} onOpen={openDiscoverVideo} onChannel={openChannel}/>
+      {channel && <ChannelPage key={channel.id} id={channel.id} name={channel.name} active={view === "channel"} onBack={() => setView(channelReturn.current === "player" && !selected ? "search" : channelReturn.current)} onOpen={openChannelVideo}/>}
       {view === "search" && <>
         {!resultQuery && !busy && <section className="video-discover" aria-labelledby="video-welcome">
           <div className="video-discover-copy"><span className="video-eyebrow">A LITTLE CURIOSITY GOES A LONG WAY</span><h1 id="video-welcome">Something<br/>worth your time.</h1><p>A film. A fresh idea. A song you play twice.<br/>Start with whatever you’re curious about.</p><span className="video-discover-hint"><Search size={14}/> Search below, or paste a video link.</span></div>
@@ -171,16 +186,16 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
         {resultQuery && <div className="video-results-header"><div><span className="video-eyebrow">{busy ? "SEARCHING" : "VIDEOS"}</span><h1>{resultQuery}</h1></div>{!busy && !error && <span aria-live="polite">{videos.length} loaded</span>}</div>}
         {error && <div className="video-error" role="alert"><p>{error}</p><button onClick={() => void search()}>Try again <ArrowUpRight size={15}/></button></div>}
         {busy && <><p className="video-search-status" role="status"><LoaderCircle size={15}/>Finding videos…<button onClick={cancel}>Cancel search</button></p><div className="video-results video-skeletons" aria-hidden="true">{Array.from({ length: 6 }, (_, i) => <div key={i}><div/><span/><span/></div>)}</div></>}
-        {!busy && videos.length > 0 && <VideoGrid videos={videos} onOpen={openVideo}/>}
+        {!busy && videos.length > 0 && <VideoGrid videos={videos} onOpen={openVideo} onChannel={openChannel}/>}
         {!busy && (videos.length > 0 || !!pagination.cursor) && <PaginationFooter hasMore={!!pagination.cursor} loading={pagination.loading} error={pagination.error} attachSentinel={pagination.attachSentinel} onLoad={pagination.loadMore}/>}
         {!busy && resultQuery && !videos.length && !pagination.cursor && !error && <div className="video-empty-results"><Search size={26}/><h2>Nothing found.</h2><p>Try a different name or a few simpler words.</p></div>}
       </>}
-      {view === "player" && selected && <section className="video-watch" data-related={playback.related && playerVideos.length > 1} data-theater={theater} aria-label="Video player">
-        <div className="video-watch-main"><div className="video-watch-heading"><button className="video-watch-return" aria-label="Close video" onClick={() => { setSelected(null); setView(playerOrigin); }}><ArrowLeft size={18}/><span>Back to {playerOrigin === "discover" ? "Discover" : resultQuery ? "results" : "search"}</span></button><button className="video-watch-theater" aria-label={theater ? "Exit theater view" : "Theater view"} aria-pressed={theater} onClick={() => setTheater((current) => !current)}>{theater ? <Minimize2 size={18}/> : <Maximize2 size={18}/>}</button></div>
+      {selected && <section className="video-watch" data-related={playback.related && playerVideos.length > 1} data-theater={theater} data-mini={view !== "player"} aria-label={view === "player" ? "Video player" : "Mini player"}>
+        <div className="video-watch-main"><div className="video-watch-heading">{view === "player" ? <><button className="video-watch-return" aria-label="Close video" onClick={() => { setSelected(null); setView(watchReturn); }}><ArrowLeft size={18}/><span>Back to {watchReturn === "discover" ? "Discover" : watchReturn === "channel" ? "channel" : watchReturn === "you" ? "You" : resultQuery ? "results" : "search"}</span></button><div className="video-watch-actions"><button aria-label="Minimize video" onClick={() => { setView(watchReturn); setSearchOpen(false); }}><PictureInPicture2 size={18}/></button><button className="video-watch-theater" aria-label={theater ? "Exit theater view" : "Theater view"} aria-pressed={theater} onClick={() => setTheater((current) => !current)}>{theater ? <Minimize2 size={18}/> : <Maximize2 size={18}/>}</button></div></> : <><button className="video-mini-expand" aria-label="Expand mini player" onClick={() => { if (view === "search") resultsScroll.current = window.scrollY; setWatchReturn(view); setView("player"); setSearchOpen(false); }}><Maximize2 size={15}/><span>{selected.title}</span></button><button aria-label="Close mini player" onClick={() => setSelected(null)}><X size={17}/></button></>}</div>
           <YouTubePlayer key={selected.id} id={selected.id} title={selected.title} autoplay={playback.autoplay}/>
-          <div className="video-player-meta"><h1>{selected.title}</h1><p>{selected.channel || "Opened from your video link"}</p></div>
+          <div className="video-player-meta"><h1>{selected.title}</h1>{selected.channelId ? <button className="video-watch-channel" onClick={() => openChannel(selected.channelId!, selected.channel)}>{selected.channel || "View channel"}<ArrowUpRight size={14}/></button> : <p>{selected.channel || "Opened from your video link"}</p>}</div>
         </div>
-        {playback.related && playerVideos.length > 1 && <aside className="video-up-next" aria-label={playerOrigin === "discover" ? "More from this topic" : "More from this search"}><h2>More videos</h2>{playerVideos.filter((video) => video.id !== selected.id).map((video) => <button key={video.id} onClick={() => playerOrigin === "discover" ? setSelected(video) : openVideo(video)}>
+        {view === "player" && playback.related && playerVideos.length > 1 && <aside className="video-up-next" aria-label={playerOrigin === "discover" ? "More from this topic" : playerOrigin === "channel" ? "More from this channel" : "More from this search"}><h2>More videos</h2>{playerVideos.filter((video) => video.id !== selected.id).map((video) => <button key={video.id} onClick={() => playerOrigin !== "search" ? setSelected(video) : openVideo(video)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <div className="video-related-thumbnail"><span className="video-related-placeholder" aria-hidden="true"><Play size={20}/></span><img src={video.thumbnail} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.visibility = "hidden"; }}/>{video.duration && <small aria-hidden="true">{video.duration}</small>}</div><span><strong>{video.title}</strong><small>{video.channel}</small></span>
         </button>)}{playerOrigin === "search" && <PaginationFooter hasMore={!!pagination.cursor} loading={pagination.loading} error={pagination.error} attachSentinel={pagination.attachSentinel} onLoad={pagination.loadMore}/>}</aside>}
@@ -215,7 +230,7 @@ export default function AtlasVideoWeb({ standalone = false }: { standalone?: boo
         <span className="video-completion-sr" role="status">{popupOpen ? `${completionItems.length} search suggestions available.` : ""}</span>
       </div>}
 
-      <nav className="video-bottom" aria-label="Atlas Video navigation"><Link href={home} aria-label={standalone ? "Back to Atlas" : "Back to Atlas Apps"}><ArrowLeft size={19}/></Link><button aria-label="Discover" aria-current={view === "discover" ? "page" : undefined} onClick={() => { if (view === "search") resultsScroll.current = window.scrollY; cancel(); pagination.pause(); setSearchOpen(false); setView("discover"); }}><Compass size={19}/><span>Discover</span></button><button aria-label="Search" aria-current={view === "search" && searchOpen ? "page" : undefined} aria-pressed={view === "search" && searchOpen} aria-expanded={view === "search" && searchOpen} aria-controls={view === "search" && searchOpen ? `${completionId}-search` : undefined} onClick={toggleSearch}><Search size={19}/><span>Search</span></button><button aria-label="Player" disabled={!selected} aria-current={view === "player" ? "page" : undefined} onClick={() => { if (view === "search") resultsScroll.current = window.scrollY; cancel(); setSearchOpen(false); setView("player"); }}><Play size={19}/><span>Player</span></button><button aria-label="You" aria-current={view === "you" ? "page" : undefined} onClick={() => { if (view === "search") resultsScroll.current = window.scrollY; cancel(); pagination.pause(); setSearchOpen(false); setView("you"); }}><Settings2 size={19}/><span>You</span></button></nav>
+      <nav className="video-bottom" aria-label="Atlas Video navigation"><Link href={home} aria-label={standalone ? "Back to Atlas" : "Back to Atlas Apps"}><ArrowLeft size={19}/></Link><button aria-label="Discover" aria-current={view === "discover" ? "page" : undefined} onClick={() => { if (view === "search") resultsScroll.current = window.scrollY; cancel(); pagination.pause(); setSearchOpen(false); setView("discover"); }}><Compass size={19}/><span>Discover</span></button><button aria-label="Search" aria-current={view === "search" && searchOpen ? "page" : undefined} aria-pressed={view === "search" && searchOpen} aria-expanded={view === "search" && searchOpen} aria-controls={view === "search" && searchOpen ? `${completionId}-search` : undefined} onClick={toggleSearch}><Search size={19}/><span>Search</span></button><button aria-label="Player" disabled={!selected} aria-current={view === "player" ? "page" : undefined} onClick={() => { if (view === "search") resultsScroll.current = window.scrollY; if (view !== "player") setWatchReturn(view); cancel(); setSearchOpen(false); setView("player"); }}><Play size={19}/><span>Player</span></button><button aria-label="You" aria-current={view === "you" ? "page" : undefined} onClick={() => { if (view === "search") resultsScroll.current = window.scrollY; cancel(); pagination.pause(); setSearchOpen(false); setView("you"); }}><Settings2 size={19}/><span>You</span></button></nav>
     </div>
   </main>;
 }

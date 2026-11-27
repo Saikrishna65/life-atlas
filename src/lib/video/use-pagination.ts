@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { appServiceUrl } from "../appNetwork";
 import type { VideoResult } from "./search";
 import { readContinuation, readVideoPage, type SearchContinuation } from "./pagination";
-export function useVideoPagination(query: string, videos: VideoResult[], enabled: boolean, scope: string, onAppend: (page: VideoResult[]) => void) {
+export function useVideoPagination(query: string, videos: VideoResult[], enabled: boolean, scope: string, onAppend: (page: VideoResult[]) => void, source: "search" | "channel" = "search") {
   const [cursor, setCursor] = useState<SearchContinuation | null>(null);
   const [loading, setLoading] = useState(false), [error, setError] = useState("");
   const controller = useRef<AbortController | null>(null), generation = useRef(0), locked = useRef(false);
@@ -24,10 +24,10 @@ export function useVideoPagination(query: string, videos: VideoResult[], enabled
     controller.current = request; locked.current = true; lastToken.current = cursor.token;
     setLoading(true); setError(""); if (retry) emptyPages.current = 0;
     let timedOut = false;
-    const deadline = setTimeout(() => { timedOut = true; request.abort(); }, 12000);
+    const deadline = setTimeout(() => { timedOut = true; request.abort(); }, source === "channel" ? 18000 : 12000);
     try {
-      const response = await fetch(appServiceUrl("/api/video/search"), {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query, continuation: cursor }), signal: request.signal, cache: "no-store",
+      const response = await fetch(appServiceUrl(source === "channel" ? "/api/video/channel" : "/api/video/search"), {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...(source === "channel" ? { channelId: query } : { query }), continuation: cursor }), signal: request.signal, cache: "no-store",
       });
       const data = await response.json();
       if (!response.ok || !Array.isArray(data.videos)) throw Error("Page unavailable");
@@ -49,7 +49,7 @@ export function useVideoPagination(query: string, videos: VideoResult[], enabled
       clearTimeout(deadline);
       if (generation.current === revision && controller.current === request) { controller.current = null; locked.current = false; setLoading(false); }
     }
-  }, [cursor, enabled, error, onAppend, query, videos]);
+  }, [cursor, enabled, error, onAppend, query, source, videos]);
   useEffect(() => {
     suspended.current = !enabled;
     const target = sentinel.current;
