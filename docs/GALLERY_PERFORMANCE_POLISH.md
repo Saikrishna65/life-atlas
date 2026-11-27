@@ -32,3 +32,19 @@ Tests verify zero reads while initially hidden, no overlap during a slow read,
 resumption and disposal. This is reduced scheduling work, not measured device
 latency. A proposed Music widget timer change was deferred because that component
 has existing React lint errors requiring a separate review.
+
+## Music widgets follow-up
+
+The Music widget starts from the existing warm library cache, coalesces library
+change bursts and ignores completed reads after unmount. Mix creation uses a
+linear Fisher-Yates shuffle instead of a random sort comparator. A 10,000-track
+test verifies exactly 9,999 random draws, complete membership and unchanged
+library ordering. Sleep timers schedule the deadline instead of polling every
+five seconds. The offline-library button performs a real metadata refresh instead
+of a simulated verification delay; storage sizes are explicitly estimates.
+
+Validation: 673 unit tests, TypeScript and scoped lint passed. Source browser
+fixtures verified that 100 library events produce one extra read, the refresh
+button reads the library, the sleep timer pauses after its deadline and cancelling
+it prevents that pause. Native music services are mocked; Android background timer
+behavior, device battery use and startup latency remain unverified. No APK build.

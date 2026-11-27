@@ -1,27 +1,25 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Compass,
   Moon,
   Zap,
   Coffee,
   HardDriveDownload,
-  Timer,
   Sparkles,
   Play,
   Check,
   Radio,
   Clock,
-  Layers,
-  ChevronRight,
   ShieldCheck,
-  CloudCheck,
 } from "lucide-react";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
-import { getAllTracks } from "@/lib/music/storage";
+import { getAllTracks, peekMusicLibrary } from "@/lib/music/storage";
 import { MusicTrack } from "@/lib/music/types";
-import { hasLocalAudio, formatTime, useLibraryRefresh } from "@/components/music/ui";
+import { hasLocalAudio } from "@/components/music/ui";
+import { coalescedTask } from "@/lib/performance/coalesced-task";
+import { shuffledCopy } from "@/lib/music/shuffle";
 import { triggerHaptic } from "@/lib/deviceAuth";
 
 const VIBES = [
@@ -65,39 +63,41 @@ const VIBES = [
 
 export default function MusicWidgetsSection() {
   const { playTrack, isPlaying, togglePlayPause } = useMusicPlayer();
-  const [tracks, setTracks] = useState<MusicTrack[]>([]);
+  const [tracks, setTracks] = useState<MusicTrack[]>(() => peekMusicLibrary() || []);
   const [activeVibe, setActiveVibe] = useState<(typeof VIBES)[number]["id"]>("mountain");
   const [sleepMinutes, setSleepMinutes] = useState<number | null>(null);
   const [sleepEndsAt, setSleepEndsAt] = useState<number | null>(null);
   const [cacheBusy, setCacheBusy] = useState(false);
   const [cachedSuccess, setCachedSuccess] = useState(false);
 
-  const load = async () => {
-    try {
-      setTracks(await getAllTracks());
-    } catch {}
-  };
-
-  useEffect(() => {
-    load();
+  const mounted = useRef(false);
+  const load = useCallback(async () => {
+    const next = await getAllTracks();
+    if (mounted.current) setTracks(next);
   }, []);
-  useLibraryRefresh(load);
+  useEffect(() => {
+    mounted.current = true;
+    const task = coalescedTask(load);
+    task.schedule();
+    window.addEventListener("lifeatlas_tracks_updated", task.schedule);
+    return () => { mounted.current = false; task.dispose(); window.removeEventListener("lifeatlas_tracks_updated", task.schedule); };
+  }, [load]);
 
   // Sleep timer ticker
   useEffect(() => {
     if (!sleepEndsAt) return;
-    const interval = setInterval(() => {
+    const timer = setTimeout(() => {
       const remMs = sleepEndsAt - Date.now();
       if (remMs <= 0) {
         setSleepEndsAt(null);
         setSleepMinutes(null);
         if (isPlaying) togglePlayPause();
       }
-    }, 5000);
-    return () => clearInterval(interval);
+    }, Math.max(0, sleepEndsAt - Date.now()));
+    return () => clearTimeout(timer);
   }, [sleepEndsAt, isPlaying, togglePlayPause]);
 
-  const setTimerPreset = (mins: number) => {
+  const handleTimerPreset = (mins: number, now: number) => {
     triggerHaptic("tap");
     if (sleepMinutes === mins) {
       setSleepMinutes(null);
@@ -105,7 +105,7 @@ export default function MusicWidgetsSection() {
       return;
     }
     setSleepMinutes(mins);
-    setSleepEndsAt(Date.now() + mins * 60000);
+    setSleepEndsAt(now + mins * 60000);
   };
 
   const offlineTracks = useMemo(() => tracks.filter(hasLocalAudio), [tracks]);
@@ -117,7 +117,7 @@ export default function MusicWidgetsSection() {
   const handleLaunchVibe = (vibeId: string) => {
     if (!tracks.length) return;
     triggerHaptic("tap");
-    const shuffled = [...tracks].sort(() => Math.random() - 0.5);
+    const shuffled = shuffledCopy(tracks);
     const vibe = VIBES.find((v) => v.id === vibeId);
     playTrack(shuffled[0], shuffled, {
       type: "PLAYLIST",
@@ -128,11 +128,10 @@ export default function MusicWidgetsSection() {
   const handleCacheAll = async () => {
     triggerHaptic("tap");
     setCacheBusy(true);
-    // Simulate background verification of offline cache
-    await new Promise((r) => setTimeout(r, 600));
-    setCacheBusy(false);
-    setCachedSuccess(true);
-    setTimeout(() => setCachedSuccess(false), 3000);
+    setCachedSuccess(false);
+    try { await load(); if (mounted.current) setCachedSuccess(true); }
+    catch { /* Keep the last usable library on read failure. */ }
+    finally { if (mounted.current) setCacheBusy(false); }
   };
 
   const curVibe = VIBES.find((v) => v.id === activeVibe) || VIBES[0];
@@ -248,7 +247,7 @@ export default function MusicWidgetsSection() {
                 Offline Expedition Mode
               </h3>
               <p className="text-xs text-[var(--mv-text-muted)] leading-relaxed">
-                {offlineTracks.length} tracks cached on phone storage ({estimatedStorageMb} MB). Ready for airplanes and mountain trails with 0% cellular reception.
+                {offlineTracks.length} tracks cached on phone storage (estimated {estimatedStorageMb} MB). Ready for airplanes and mountain trails with 0% cellular reception.
               </p>
             </div>
 
@@ -265,8 +264,8 @@ export default function MusicWidgetsSection() {
                 />
               </div>
               <div className="flex justify-between text-[10px] font-mono text-[var(--mv-text-subtle)]">
-                <span>{estimatedStorageMb} MB On-Device</span>
-                <span>Neon Cloud Linked</span>
+                <span>Estimated {estimatedStorageMb} MB</span>
+                <span>Local library</span>
               </div>
             </div>
           </div>
@@ -281,12 +280,12 @@ export default function MusicWidgetsSection() {
             {cachedSuccess ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400">All Songs Securely Cached</span>
+                <span className="text-emerald-400">Library refreshed</span>
               </>
             ) : (
               <>
                 <HardDriveDownload className="w-3.5 h-3.5 text-[var(--mv-accent)]" />
-                <span>Verify Offline Storage</span>
+                <span>Refresh local library</span>
               </>
             )}
           </button>
@@ -310,7 +309,7 @@ export default function MusicWidgetsSection() {
                 </span>
                 {sleepMinutes && (
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/20 text-[10px] font-mono text-indigo-300">
-                    Fading in {sleepMinutes}m
+                    Timer set: {sleepMinutes}m
                   </span>
                 )}
               </div>
@@ -330,7 +329,7 @@ export default function MusicWidgetsSection() {
                   <button
                     key={m}
                     type="button"
-                    onClick={() => setTimerPreset(m)}
+                    onClick={() => handleTimerPreset(m, Date.now())}
                     className={`h-9 px-3.5 rounded-2xl text-xs font-mono font-semibold transition-all cursor-pointer active:scale-90 border ${
                       active
                         ? "bg-[var(--mv-accent)] text-[var(--mv-accent-fg)] border-[var(--mv-accent)] shadow-sm"
