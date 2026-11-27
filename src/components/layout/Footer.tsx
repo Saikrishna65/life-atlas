@@ -18,7 +18,7 @@ export default function Footer() {
   return (
     <footer className="public-footer" inert={publicLoading} aria-busy={publicLoading}>
       <div>
-        <strong>LIFE ATLAS</strong>
+        <strong>ATLAS</strong>
         <p>
           A world of places, moments, and possibilities.
           <br />My journeys, photographs and films.
@@ -26,7 +26,7 @@ export default function Footer() {
       </div>
       <div>
         <Link href="/about">About my atlas ↗</Link>
-        <span>© 2026 LIFE ATLAS / THE LIVING WORLD</span>
+        <span>© 2026 ATLAS / THE LIVING WORLD</span>
       </div>
     </footer>
   );

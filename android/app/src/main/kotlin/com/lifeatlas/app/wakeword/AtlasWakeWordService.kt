@@ -862,7 +862,7 @@ class AtlasWakeWordService : Service() {
     private fun acquireWakeLock() {
         if (wakeLock?.isHeld == true) return
         val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return
-        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LifeAtlas:HeyAtlasWakeWordPoC").apply {
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Atlas:HeyAtlasWakeWordPoC").apply {
             setReferenceCounted(false)
             acquire(4 * 60 * 60 * 1000L) // 4h max safety bound per experimental session
         }

@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Notification Tracking Domain Models & Types
+ * Atlas Finance: Notification Tracking Domain Models & Types
  * 
  * Defines contracts for Android native notification capture,
  * deterministic transaction parsing, and triple-source deduplication.

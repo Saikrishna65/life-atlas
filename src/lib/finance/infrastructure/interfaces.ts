@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Future Integration Contracts & Infrastructure Interfaces
+ * Atlas Finance: Future Integration Contracts & Infrastructure Interfaces
  * 
  * Defines clean boundary contracts for subsequent phases:
  * - Bank Transaction Aggregators (RBI Account Aggregator framework / Plaid / Setu)

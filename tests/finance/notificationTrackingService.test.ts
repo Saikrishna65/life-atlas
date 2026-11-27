@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Notification Tracking Service Automated Test Suite
+ * Atlas Finance: Notification Tracking Service Automated Test Suite
  * 
  * Verifies:
  * 1. Triple-Source Deduplication (Kotak App + SMS + Truecaller for the same transaction).
@@ -25,7 +25,7 @@ import {
   rupeesToPaise,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Kotak Notification Tracking Service", () => {
+describe("Atlas Finance: Kotak Notification Tracking Service", () => {
   let uow: IndexedDBUnitOfWork;
   let accountService: AccountService;
   let transactionService: TransactionService;

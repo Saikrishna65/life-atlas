@@ -14,8 +14,8 @@ export async function savePastTrip(fields:PastTripFields,id?:string):Promise<Tri
  if(fields.startDate&&!Number.isFinite(Date.parse(fields.startDate))||fields.endDate&&!Number.isFinite(Date.parse(fields.endDate)))throw Error('Choose valid travel dates, or leave them empty.');
  if(fields.startDate&&fields.endDate&&fields.endDate<fields.startDate)throw Error('Return date must be after departure.');
  const previous=id?await getTrip(id):null;
- if(id&&(!previous||previous.studioOrigin!=='past-trip'))throw Error('Edit an existing vault trip in Trip Vault so its linked plans stay consistent.');
- if(previous&&(previous.status==='ACTIVE'||previous.liveExpedition?.status==='ACTIVE'))throw Error('Edit an active journey in Trip Vault. Its existing recording was preserved.');
+ if(id&&(!previous||previous.studioOrigin!=='past-trip'))throw Error('Edit an existing vault trip in Atlas Trips so its linked plans stay consistent.');
+ if(previous&&(previous.status==='ACTIVE'||previous.liveExpedition?.status==='ACTIVE'))throw Error('Edit an active journey in Atlas Trips. Its existing recording was preserved.');
  if(fields.mapLocation&&(!Number.isFinite(fields.mapLocation.latitude)||!Number.isFinite(fields.mapLocation.longitude)||Math.abs(fields.mapLocation.latitude)>90||Math.abs(fields.mapLocation.longitude)>180))throw Error('Choose a valid map location.');
  const now=new Date().toISOString();
  const trip:TripRecord={...(previous??{id:crypto.randomUUID(),status:'ARCHIVED',travelStyle:'OTHER',budgetTotal:0,currency:'INR',createdAt:now}),studioOrigin:'past-trip',...(fields.mapLocation?{websiteLocation:fields.mapLocation}:{}),title,destination:fields.destination.trim(),startDate:fields.startDate,endDate:fields.endDate||undefined,updatedAt:now};

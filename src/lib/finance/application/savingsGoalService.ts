@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Savings Pockets & Goals Application Service
+ * Atlas Finance: Savings Pockets & Goals Application Service
  * 
  * Account-linked Savings Pockets allocate money already held in existing bank
  * or cash accounts. Pockets only earmark money within Atlas; they never claim

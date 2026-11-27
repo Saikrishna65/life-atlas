@@ -74,8 +74,8 @@ public class MainActivity extends BridgeActivity {
             webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
             MediaPlaybackPlugin.setActiveWebView(webView);
             String defaultUA = webView.getSettings().getUserAgentString();
-            if (defaultUA != null && !defaultUA.contains("LifeAtlasApp")) {
-                webView.getSettings().setUserAgentString(defaultUA + " LifeAtlasApp/1.0");
+            if (defaultUA != null && !defaultUA.contains("AtlasApp")) {
+                webView.getSettings().setUserAgentString(defaultUA + " AtlasApp/1.0");
             }
         }
 
@@ -158,7 +158,7 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-        // Check if intent was triggered by Finance Vault Home Screen Widget
+        // Check if intent was triggered by Atlas Finance Home Screen Widget
         if ("com.lifeatlas.app.ACTION_OPEN_FINANCE_VAULT".equals(action)
             || (intent.hasExtra("target_route") && "/secret/finance".equals(intent.getStringExtra("target_route")))) {
             pendingTargetRoute = "/secret/finance";
@@ -166,7 +166,7 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-        // Check if intent was triggered by Music Vault Home Screen Widget
+        // Check if intent was triggered by Atlas Music Home Screen Widget
         if ("com.lifeatlas.app.ACTION_OPEN_MUSIC_VAULT".equals(action)
             || (intent.hasExtra("target_route") && "/secret/music".equals(intent.getStringExtra("target_route")))) {
             pendingTargetRoute = "/secret/music";
@@ -183,7 +183,7 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-        // Check if intent was triggered by Trip Vault Home Screen Widget
+        // Check if intent was triggered by Atlas Trips Home Screen Widget
         if ("com.lifeatlas.app.ACTION_OPEN_TRIP_VAULT".equals(action)
             || (intent.hasExtra("target_route") && intent.getStringExtra("target_route") != null && intent.getStringExtra("target_route").startsWith("/secret/vault"))) {
             String route = intent.getStringExtra("target_route");

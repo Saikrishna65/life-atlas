@@ -14,7 +14,7 @@ import {
   Shuffle,
   HardDriveDownload,
 } from "lucide-react";
-import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
+import { useMusicPlayer, useMusicProgress } from "@/lib/music/MusicPlayerContext";
 import { getAllTracks, getMusicLibrarySummary } from "@/lib/music/storage";
 
 import {
@@ -32,7 +32,6 @@ export default function MusicDashboardWidget() {
   const {
     currentTrack,
     isPlaying,
-    currentTime,
     duration,
     togglePlayPause,
     nextTrack,
@@ -40,6 +39,7 @@ export default function MusicDashboardWidget() {
     playTrack,
     setIsNowPlayingOpen,
   } = useMusicPlayer();
+  const currentTime = useMusicProgress();
 
   const [summary, setSummary] = useState({
     total: 0,
@@ -173,7 +173,7 @@ export default function MusicDashboardWidget() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-display text-xl sm:text-2xl font-normal tracking-tight group-hover/title:text-cyan-400 transition-colors">
-                Music Vault
+                Atlas Music
               </h2>
               {isPlaying && (
                 <span className="flex h-2 w-2 relative">

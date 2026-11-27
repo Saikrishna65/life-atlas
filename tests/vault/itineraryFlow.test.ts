@@ -18,7 +18,7 @@ import {
   ActivityStatus,
 } from "../../src/lib/vault/types";
 
-describe("Trip Vault Phase 3: Itinerary & Day-by-Day Scheduling Flow", () => {
+describe("Atlas Trips Phase 3: Itinerary & Day-by-Day Scheduling Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

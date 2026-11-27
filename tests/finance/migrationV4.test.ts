@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Schema Migration V4 Automated Test Suite (Phase 4)
+ * Atlas Finance: Schema Migration V4 Automated Test Suite (Phase 4)
  * 
  * Validates progressive database upgrade to version 4, sync_conflicts store,
  * outbox nextRetryAt index, and zero data loss of pre-existing records.
@@ -17,7 +17,7 @@ import {
   rupeesToPaise,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Database Migration V4 & Conflict Preservation", () => {
+describe("Atlas Finance: Database Migration V4 & Conflict Preservation", () => {
   beforeEach(async () => {
     await deleteFinanceDB();
   });

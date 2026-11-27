@@ -93,9 +93,9 @@ export function syncNativeMediaPlayback(
   if (!adapter.isAndroidNative()) return;
 
   const nativePayload: NativePlaybackPayload = {
-    title: payload.title || "Atlas Music Vault",
-    artist: payload.artist || "Life Atlas",
-    album: payload.album || "Music Vault",
+    title: payload.title || "Atlas Music",
+    artist: payload.artist || "Atlas",
+    album: payload.album || "Atlas Music",
     artworkUrl: resolveArtworkUrl(payload.artworkUrl, adapter.origin),
     isPlaying: payload.isPlaying,
     positionMs: Math.max(0, Math.round(payload.positionMs || 0)),

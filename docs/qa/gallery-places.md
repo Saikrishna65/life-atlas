@@ -1,6 +1,6 @@
-# Places organizer — Atlas Next 1.6.1 (25)
+# Places organizer — Atlas 1.6.1 (25)
 
-Open **Private Atlas → Photo & video gallery → Places organizer**. Grant full
+Open **Atlas → Photo & video gallery → Places organizer**. Grant full
 photo/video access for all accessible local MediaStore items, or keep Android's
 selected-photo access. **Find places in my photos** requests original metadata
 access, then scans native GPS/capture metadata in batches. No live GPS tracking,

@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Connection Manager
+ * Atlas Finance: IndexedDB Connection Manager
  * 
  * Database: life_atlas_finance_db
  * Completely isolated from life_atlas_trip_vault_db and life_atlas_music_db.

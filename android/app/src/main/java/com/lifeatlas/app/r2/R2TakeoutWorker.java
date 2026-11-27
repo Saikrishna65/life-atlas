@@ -28,7 +28,7 @@ public final class R2TakeoutWorker extends Worker {
       setForegroundAsync(
               R2LibraryWorker.foreground(
                   getApplicationContext(),
-                  "Life Atlas · Takeout import",
+                  "Atlas · Takeout import",
                   "Importing original files without re-encoding"))
           .get();
       repo.store.edit(

@@ -23,7 +23,7 @@ const changed = () => {
 const visible = () => {
   if (!document.hidden) changed();
 };
-/** A single event subscription/read for any number of mounted Trip Vault consumers. */
+/** A single event subscription/read for any number of mounted Atlas Trips consumers. */
 export function subscribeTripList(listener: () => void) {
   if (expiry) {
     clearTimeout(expiry);

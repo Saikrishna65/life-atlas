@@ -1,5 +1,5 @@
 /**
- * Life Atlas: Android Trip Vault Native IndexedDB Storage Engine
+ * Atlas: Android Atlas Trips Native IndexedDB Storage Engine
  * Zero-dependency, offline-first local persistence supporting all 10 object stores.
  */
 

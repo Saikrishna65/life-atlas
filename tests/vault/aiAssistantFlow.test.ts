@@ -19,7 +19,7 @@ import {
   importPlanIntoVaultItinerary,
 } from "../../src/lib/vault/aiItinerary";
 
-describe("Trip Vault Phase 14: AI Itinerary & Document Parser Flow", () => {
+describe("Atlas Trips Phase 14: AI Itinerary & Document Parser Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

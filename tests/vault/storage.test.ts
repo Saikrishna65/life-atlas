@@ -1,5 +1,5 @@
 /**
- * Automated Test Suite for Life Atlas Trip Vault Storage Engine
+ * Automated Test Suite for Atlas Atlas Trips Storage Engine
  * Tests CRUD operations, relationships, upgrades, attachment persistence, and failure scenarios.
  */
 
@@ -60,7 +60,7 @@ import {
   ReminderRecord,
 } from "../../src/lib/vault/types";
 
-describe("Trip Vault Storage Engine", () => {
+describe("Atlas Trips Storage Engine", () => {
   beforeEach(async () => {
     // Reset database before each test
     await deleteVaultDB();

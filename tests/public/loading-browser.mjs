@@ -28,7 +28,7 @@ try{
    await route.continue();
   });
   const started=Date.now();await page.goto('http://localhost:3008/',{waitUntil:'domcontentloaded',timeout:90000});
-  await page.getByRole('status',{name:'Preparing Life Atlas'}).waitFor();
+  await page.getByRole('status',{name:'Preparing Atlas'}).waitFor();
   await page.waitForTimeout(width===1440?Math.max(0,19500-(Date.now()-started)):5000);
   assert.equal(held,true,'Below-fold photo was requested before scrolling');
   assert.equal(await page.locator('.public-page-loader').count(),1,'Loader never exits while a real asset is pending');

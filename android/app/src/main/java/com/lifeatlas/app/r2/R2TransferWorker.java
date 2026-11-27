@@ -84,7 +84,7 @@ public final class R2TransferWorker extends Worker {
     Notification notification =
         new NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_upload)
-            .setContentTitle("Life Atlas · Cloud storage")
+            .setContentTitle("Atlas · Cloud storage")
             .setContentText(text)
             .setOngoing(true)
             .setProgress(100, progress, progress < 0)
@@ -426,7 +426,7 @@ public final class R2TransferWorker extends Worker {
                   success
                       ? android.R.drawable.stat_sys_upload_done
                       : android.R.drawable.stat_notify_error)
-              .setContentTitle("Life Atlas cloud storage")
+              .setContentTitle("Atlas cloud storage")
               .setContentText(
                   success
                       ? "Original media transfer verified."

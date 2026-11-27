@@ -1,5 +1,5 @@
 /**
- * Life Atlas: YouTube Audio Extractor Automated Test Suite
+ * Atlas: YouTube Audio Extractor Automated Test Suite
  * Validates YouTube URL parsing, title cleaning, on-device 404 stream failover,
  * audio buffer generation, dual-persistence metadata creation, and playlist linking.
  */
@@ -209,7 +209,7 @@ describe("YouTube Audio Extractor & Playlist Integration", () => {
   });
 
   describe("4. Audio Extraction & Storage Persistence", () => {
-    test("extracts audio buffer and saves YouTube track into Music Vault", async () => {
+    test("extracts audio buffer and saves YouTube track into Atlas Music", async () => {
       const videoId = "test_vid_01";
       const audioResult = await extractAudioFromYouTube(videoId);
 

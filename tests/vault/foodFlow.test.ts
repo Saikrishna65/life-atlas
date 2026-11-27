@@ -15,7 +15,7 @@ import {
   FoodPlannerRecord,
 } from "../../src/lib/vault/types";
 
-describe("Trip Vault Phase 6: Culinary & Food Roadmaps Flow", () => {
+describe("Atlas Trips Phase 6: Culinary & Food Roadmaps Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

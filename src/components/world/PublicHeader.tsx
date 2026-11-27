@@ -29,7 +29,7 @@ export default function PublicHeader() {
           <div className="reference-nav-pill">
             {[["/trips", "The journeys"], ["/places", "The places"], ["/photography", "Frames & films"]].map(([href, label]) => <Link prefetch={publicLoading?false:null} key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}
           </div>
-          <Link prefetch={publicLoading?false:null} className="reference-nav-brand atlas-logo-brand" href="/" aria-label="Life Atlas home"><HeroLogo /></Link>
+          <Link prefetch={publicLoading?false:null} className="reference-nav-brand atlas-logo-brand" href="/" aria-label="Atlas home"><HeroLogo /></Link>
           <div className="reference-nav-pill">
             {[["/map", "The world"], ["/timeline", "My timeline"], ["/about", "The story"]].map(([href, label]) => <Link prefetch={publicLoading?false:null} key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}
           </div>

@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Sync Outbox Repository
+ * Atlas Finance: IndexedDB Sync Outbox Repository
  * 
  * Local-first offline change outbox with claimed leases, bounded retries,
  * stable idempotency, and recovery of abandoned in-progress operations.

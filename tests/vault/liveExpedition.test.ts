@@ -25,7 +25,7 @@ import {
 } from "../../src/lib/vault/storage";
 import { TripRecord, BreadcrumbPoint } from "../../src/lib/vault/types";
 
-describe("Trip Vault Phase 16: Live Expedition & Hybrid GPS Route Tracking Flow", () => {
+describe("Atlas Trips Phase 16: Live Expedition & Hybrid GPS Route Tracking Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

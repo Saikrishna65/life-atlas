@@ -1,17 +1,17 @@
 
-# Life Atlas: Android Trip Vault Architecture & Implementation Plan
+# Atlas: Android Atlas Trips Architecture & Implementation Plan
 
-> **Document Version:** 1.15.0  
-> **Status:** All 15 Phases Implemented, Audited & Verified (Trip Vault Feature Suite Complete)  
-> **Target Platform:** Life Atlas Android Application (Capacitor 6 + Next.js 16 App Router)  
-> **Scope:** Exclusive Android Trip Vault feature suite inside the authenticated Secret Section  
+> **Document Version:** 1.15.0
+> **Status:** All 15 Phases Implemented, Audited & Verified (Atlas Trips Feature Suite Complete)
+> **Target Platform:** Atlas Android Application (Capacitor 6 + Next.js 16 App Router)
+> **Scope:** Exclusive Android Atlas Trips feature suite inside the authenticated Secret Section
 
 ---
 
 ## 1. Discovered App Architecture & Inspection Findings
 
 ### 1.1 Dual-Target Hybrid Architecture
-The Life Atlas project utilizes a **unified full-stack repository** powering both the public website and the native Android application:
+The Atlas project utilizes a **unified full-stack repository** powering both the public website and the native Android application:
 - **Web Layer:** Next.js 16.3.6 (App Router, Turbopack, React 19.2.8, Tailwind CSS v4) hosted on Vercel at `https://life-atlas-eight-five.vercel.app`.
 - **Database & Cloud:** Neon PostgreSQL (`@prisma/client` v5.22.0) with Neon Object Storage (`files-sdk` via S3-compatible bucket).
 - **Android Native Shell:** Capacitor 6.2.2 (`@capacitor/android`, `@capacitor/core`, `@capacitor/app`, `@capacitor/status-bar`, `@aparajita/capacitor-biometric-auth` v8.0.2).
@@ -41,18 +41,18 @@ The Life Atlas project utilizes a **unified full-stack repository** powering bot
 - `src/lib/deviceAuth.ts`: Universal device biometric & PIN authentication service.
 - `src/components/auth/DeviceAuthModal.tsx`: Biometric scanner modal & PIN fallback.
 - `src/components/secret/SecretAppGuard.tsx`: Route protector for `/secret/*`.
-- `src/app/secret/page.tsx`: Private Atlas dashboard.
+- `src/app/secret/page.tsx`: Atlas dashboard.
 - `src/app/secret/studio/page.tsx`: Existing Creator Studio (preserved).
 - `src/app/admin/Studio.tsx`: Web journal creation tool (preserved).
 - `prisma/schema.prisma`: Neon PostgreSQL database schema.
 
-#### New Trip Vault Files to be Created Under `/secret/vault`
-- `src/lib/vault/types.ts`: Comprehensive TypeScript types for the Trip Vault data model.
+#### New Atlas Trips Files to be Created Under `/secret/vault`
+- `src/lib/vault/types.ts`: Comprehensive TypeScript types for the Atlas Trips data model.
 - `src/lib/vault/storage.ts`: Local-first IndexedDB offline persistence engine & document store.
 - `src/lib/vault/sync.ts`: Optional cloud sync layer with Prisma / Neon database.
 - `src/lib/vault/notifications.ts`: Native Android local notification scheduler.
 - `src/lib/vault/export.ts`: Trip export, backup, and public journal publisher.
-- `src/app/secret/vault/page.tsx`: Trip Vault Dashboard (active trips, upcoming journeys, archives).
+- `src/app/secret/vault/page.tsx`: Atlas Trips Dashboard (active trips, upcoming journeys, archives).
 - `src/app/secret/vault/new/page.tsx`: Comprehensive Trip Creator & Configurator.
 - `src/app/secret/vault/[tripId]/page.tsx`: Master Trip Command Center.
 - `src/app/secret/vault/[tripId]/itinerary/page.tsx`: Day-by-day & hourly timeline itinerary.
@@ -75,8 +75,8 @@ graph TD
   Door["Secret Door Double-Tap"] --> Bio["Biometric Fingerprint Gate"]
   Bio --> SecretHome["/secret Dashboard"]
   SecretHome --> Studio["Creator Studio (/secret/studio)"]
-  SecretHome --> Vault["Trip Vault (/secret/vault)"]
-  
+  SecretHome --> Vault["Atlas Trips (/secret/vault)"]
+
   Vault --> T1["1. Trip Dashboard & Life-Cycle"]
   Vault --> T2["2. Multi-Destination Itinerary"]
   Vault --> T3["3. Transport & Hotel Bookings"]
@@ -182,7 +182,7 @@ graph TD
 - Trip completion milestone celebration: Transition trip to `COMPLETED`.
 - Trip summary dossier: Total distance traveled, total expenses vs budget, photos captured, places checked off.
 - Photo memory wall with geotags and captions.
-- "Publish to Life Atlas Journal" export action: Formats selected photos and narrative into the public Life Atlas journal.
+- "Publish to Atlas Journal" export action: Formats selected photos and narrative into the public Atlas journal.
 
 ---
 
@@ -203,7 +203,7 @@ graph TD
 ### 4.1 Storage Architecture
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                   Life Atlas Android Client (WebView)                  │
+│                   Atlas Android Client (WebView)                  │
 ├────────────────────────────────────────────────────────────────────────┤
 │  React 19 State / Context (useTripVaultStore)                          │
 ├───────────────────────────────────┬────────────────────────────────────┤
@@ -240,7 +240,7 @@ graph TD
 
 ```mermaid
 gantt
-  title Life Atlas Android Trip Vault Implementation Roadmap
+  title Atlas Android Atlas Trips Implementation Roadmap
   dateFormat  YYYY-MM-DD
   section Foundation & Storage
   Phase 1: Foundation, Data Models & Offline Storage    :p1, 2026-10-22, 2d
@@ -272,7 +272,7 @@ gantt
 ### Phase 2: Trip Dashboard & Creation UI (`/secret/vault`)
 - Create `/secret/vault/page.tsx` displaying Active Trip Hero, Upcoming Expeditions, and Past Archives.
 - Create `/secret/vault/new/page.tsx` with persistent multi-step trip creation (Dates, Travel Style, Destination, Budget).
-- Add Trip Vault Gateway Card to `src/app/secret/page.tsx` alongside existing Creator Studio.
+- Add Atlas Trips Gateway Card to `src/app/secret/page.tsx` alongside existing Creator Studio.
 
 ### Phase 3: Multi-Destination Route & Day-by-Day Itinerary
 - Create `/secret/vault/[tripId]/itinerary/page.tsx`.
@@ -356,11 +356,11 @@ gantt
 
 ## 6. Comprehensive Project Requirements Checklist
 
-> **Legend:**  
-> **Legend:**  
-> - `Status`: `Not Started` | `In Progress` | `Implemented` | `Verified`  
-> - `Platform`: `ANDROID_VAULT` (Executed inside Android secret section)  
-> - `Type`: `CORE` (Offline/Local) | `NATIVE` (Capacitor Plugin) | `EXTERNAL` (API/Cloud)  
+> **Legend:**
+> **Legend:**
+> - `Status`: `Not Started` | `In Progress` | `Implemented` | `Verified`
+> - `Platform`: `ANDROID_VAULT` (Executed inside Android secret section)
+> - `Type`: `CORE` (Offline/Local) | `NATIVE` (Capacitor Plugin) | `EXTERNAL` (API/Cloud)
 
 ### 6.1 Foundation & Local Persistence (FND)
 | ID | Requirement Title | Description | Dependencies | Platform | Type | Status | Verification Criteria |
@@ -368,12 +368,12 @@ gantt
 | `REQ-FND-01` | Vault TypeScript Schema | Define strict interfaces for Trips, Itineraries, Bookings, Rentals, Expenses, Documents, Packing, and Safety. | None | `ANDROID_VAULT` | `CORE` | `Verified` | `src/lib/vault/types.ts` defined with strict types; TypeScript compiles with zero errors; covers all 15 pillars. |
 | `REQ-FND-02` | IndexedDB Offline Engine | Implement `vault/storage.ts` using raw IndexedDB for full CRUD operations across all stores. | `REQ-FND-01` | `ANDROID_VAULT` | `CORE` | `Verified` | Data persists across page reloads in browser and Android WebView with zero network; 8 automated tests passing in `tests/vault/storage.test.ts`. |
 | `REQ-FND-03` | Reactive Vault Store Hook | Build `useTripVaultStore` providing cached reactive state and instant UI updates. | `REQ-FND-02` | `ANDROID_VAULT` | `CORE` | `Verified` | Mutations immediately update UI without manual page refresh; verified in `src/lib/vault/useTripVaultStore.ts` and `tests/vault/tripVaultFlow.test.ts`. |
-| `REQ-FND-04` | Secret Dashboard Integration | Add "Trip Vault" access card to `/secret/page.tsx` alongside existing Creator Studio. | Existing Secret Section | `ANDROID_VAULT` | `CORE` | `Verified` | Visible inside `/secret`; preserved existing Creator Studio and biometric gate. |
+| `REQ-FND-04` | Secret Dashboard Integration | Add "Atlas Trips" access card to `/secret/page.tsx` alongside existing Creator Studio. | Existing Secret Section | `ANDROID_VAULT` | `CORE` | `Verified` | Visible inside `/secret`; preserved existing Creator Studio and biometric gate. |
 
 ### 6.2 Trip Management & Lifecycle (TRP)
 | ID | Requirement Title | Description | Dependencies | Platform | Type | Status | Verification Criteria |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `REQ-TRP-01` | Trip Vault Dashboard View | Render `/secret/vault/page.tsx` showing active trips, upcoming expeditions, and archived journeys. | `REQ-FND-03` | `ANDROID_VAULT` | `CORE` | `Verified` | Displays trip cards with dates, destination badges, status filters, and active expedition hero. |
+| `REQ-TRP-01` | Atlas Trips Dashboard View | Render `/secret/vault/page.tsx` showing active trips, upcoming expeditions, and archived journeys. | `REQ-FND-03` | `ANDROID_VAULT` | `CORE` | `Verified` | Displays trip cards with dates, destination badges, status filters, and active expedition hero. |
 | `REQ-TRP-02` | Trip Creation Form | Multi-step form at `/secret/vault/new/page.tsx` for title, dates, destinations, style, and budget. | `REQ-TRP-01` | `ANDROID_VAULT` | `CORE` | `Verified` | Submitting persists to IndexedDB, supports multi-stop waypoints, and navigates to command center. |
 | `REQ-TRP-03` | Trip Edit & Delete | Allow updating trip parameters and safe deletion with confirmation modal. | `REQ-TRP-02` | `ANDROID_VAULT` | `CORE` | `Verified` | Updates persist immediately; deletion cleans up cascaded child records; verified in unit tests. |
 | `REQ-TRP-04` | Trip Lifecycle Transition | Change trip status between `PLANNING`, `ACTIVE`, `COMPLETED`, and `ARCHIVED`. | `REQ-TRP-01` | `ANDROID_VAULT` | `CORE` | `Verified` | Status changes persist immediately in IndexedDB; active countdown and command center badges render dynamically. |
@@ -454,7 +454,7 @@ gantt
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | `REQ-MEM-01` | Completed Trip Dossier | Summary screen upon completing trip with distance, costs, and memories. | `REQ-TRP-04` | `ANDROID_VAULT` | `CORE` | `Verified` | Summary celebration dossier with milestone completion toggle, days on road, total distance km aggregated from rental odometers and route segments, budget variance, and multi-pillar completion bars in `src/app/secret/vault/[tripId]/memories/page.tsx`; verified in unit tests. |
 | `REQ-MEM-02` | Photo Reflection Wall | Gallery of trip memories with captions, dates, and locations. | `REQ-MEM-01` | `ANDROID_VAULT` | `CORE` | `Verified` | Masonry reflection wall with client-side image attachment, star ratings, highlight badge filter, and fullscreen zoom lightbox; verified in unit tests and production build. |
-| `REQ-MEM-03` | Export to Public Journal | Convert selected vault memories into public Life Atlas journal entries. | `REQ-MEM-02` | `ANDROID_VAULT` | `EXTERNAL` | `Verified` | 1-tap export API in `src/app/api/vault/export/route.ts` converting vault memories into public Prisma Postgres `Trip`, `Memory`, `TimelineEvent`, and `Photo` records with zero changes to public website code; verified in unit tests and production build. |
+| `REQ-MEM-03` | Export to Public Journal | Convert selected vault memories into public Atlas journal entries. | `REQ-MEM-02` | `ANDROID_VAULT` | `EXTERNAL` | `Verified` | 1-tap export API in `src/app/api/vault/export/route.ts` converting vault memories into public Prisma Postgres `Trip`, `Memory`, `TimelineEvent`, and `Photo` records with zero changes to public website code; verified in unit tests and production build. |
 
 ### 6.14 Optional AI Itinerary & Document Parser (AIX)
 | ID | Requirement Title | Description | Dependencies | Platform | Type | Status | Verification Criteria |
@@ -477,7 +477,7 @@ gantt
 ### 7.1 Shared Website Files Regression Risk
 - **Risk:** Modifications to shared components could break public website routes or desktop styling.
 - **Mitigation:**
-  - Strict encapsulation: All Trip Vault pages and UI components reside exclusively under `src/app/secret/vault/` and `src/components/vault/`.
+  - Strict encapsulation: All Atlas Trips pages and UI components reside exclusively under `src/app/secret/vault/` and `src/components/vault/`.
   - Zero modification to public routes (`/`, `/explore`, `/trips`, `/places`, `/cinema`, `/food`, `/photography`, `/map`, `/timeline`, `/about`, `/admin`).
   - Automated Next.js static build validation (`npm run build`) runs after every phase to guarantee zero build breakage.
 
@@ -486,7 +486,7 @@ gantt
 - **Mitigation:**
   - `src/components/secret/SecretAppGuard.tsx` wraps the entire `/secret` tree in `src/app/secret/layout.tsx`.
   - If `isSecretAccessGranted()` is false, direct visits immediately present the Vault Protected Lock Screen requiring device biometric verification (`@aparajita/capacitor-biometric-auth`) or Guardian PIN.
-  - Adding a manual "Lock Vault" button in the Trip Vault header to purge session tokens immediately upon exit.
+  - Adding a manual "Lock Vault" button in the Atlas Trips header to purge session tokens immediately upon exit.
 
 ### 7.3 Local Persistence & Storage Quota on Android WebView
 - **Risk:** Large document attachments (PDFs, high-resolution photos) exceeding standard browser local storage limits.
@@ -499,7 +499,7 @@ gantt
 - **Risk:** Features crashing or displaying blank screens when traveling with no cellular connectivity.
 - **Mitigation:**
   - Local-first architecture: All read and write operations execute synchronously against the local IndexedDB database.
-  - No network request is in the critical rendering path of any Trip Vault view.
+  - No network request is in the critical rendering path of any Atlas Trips view.
   - AI features and cloud backup are clearly designated as optional enhancements that degrade gracefully with offline status indicators.
 
 ### 7.5 Android Back-Button & Fullscreen Immersion Compatibility
@@ -531,7 +531,7 @@ gantt
 1. Double-tap the Secret Door on the 3D Hero screen.
 2. Confirm that the native fingerprint prompt or Device Security Modal appears.
 3. Authenticate with fingerprint or Guardian PIN (`1984`).
-4. Confirm navigation to `/secret` and access to Trip Vault.
+4. Confirm navigation to `/secret` and access to Atlas Trips.
 5. Tap "Lock Vault" and confirm that accessing `/secret/vault` immediately locks and presents the biometric gate.
 
 ---

@@ -86,7 +86,7 @@ public class TripAppWidgetProvider extends AppWidgetProvider {
         editor.apply();
 
         String activeTripId = prefs.getString(KEY_TRIP_ID, "trip-active-gps-test");
-        String activeTitle = prefs.getString(KEY_TITLE, "Atlas Trip Vault");
+        String activeTitle = prefs.getString(KEY_TITLE, "Atlas Atlas Trips");
         String activeStatus = prefs.getString(KEY_STATUS, "ACTIVE");
         String activeStatusLabel = prefs.getString(KEY_STATUS_LABEL, "ON THE ROAD");
         String activeSubtitle = prefs.getString(KEY_SUBTITLE, "");
@@ -170,14 +170,14 @@ public class TripAppWidgetProvider extends AppWidgetProvider {
         }
 
         // 2. Populate text details
-        views.setTextViewText(R.id.widget_trip_title, title != null ? title : "Atlas Trip Vault");
+        views.setTextViewText(R.id.widget_trip_title, title != null ? title : "Atlas Atlas Trips");
         views.setTextViewText(R.id.widget_trip_badge, statusLabel != null ? statusLabel : "READY");
         views.setTextViewText(R.id.widget_trip_subtitle, subtitle != null ? subtitle : "");
         views.setTextViewText(R.id.widget_trip_metric1_label, metric1Label != null ? metric1Label : "DISTANCE");
         views.setTextViewText(R.id.widget_trip_metric1_val, metric1Value != null ? metric1Value : "--");
         views.setTextViewText(R.id.widget_trip_metric2_label, metric2Label != null ? metric2Label : "ALTITUDE");
         views.setTextViewText(R.id.widget_trip_metric2_val, metric2Value != null ? metric2Value : "--");
-        views.setTextViewText(R.id.widget_trip_note, (note != null && !note.isEmpty()) ? note : "Life Atlas Expedition");
+        views.setTextViewText(R.id.widget_trip_note, (note != null && !note.isEmpty()) ? note : "Atlas Expedition");
 
         // 3. Status Tag & Action Button Styling
         if ("ACTIVE".equalsIgnoreCase(status) || "ON THE ROAD".equalsIgnoreCase(statusLabel)) {
@@ -187,7 +187,7 @@ public class TripAppWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(R.id.widget_trip_tag, "🧭 UPCOMING TREK");
             views.setTextViewText(R.id.widget_trip_btn_action, "View Trip →");
         } else {
-            views.setTextViewText(R.id.widget_trip_tag, "🧭 ATLAS TRIP VAULT");
+            views.setTextViewText(R.id.widget_trip_tag, "🧭 ATLAS ATLAS TRIPS");
             views.setTextViewText(R.id.widget_trip_btn_action, "Explore →");
         }
 
@@ -207,7 +207,7 @@ public class TripAppWidgetProvider extends AppWidgetProvider {
         views.setOnClickPendingIntent(R.id.widget_trip_bg_image, openTargetPending);
         views.setOnClickPendingIntent(R.id.widget_trip_btn_action, openTargetPending);
 
-        // 5. Tap 'Open Vault' button -> Open Main Trip Vault List (/secret/vault)
+        // 5. Tap 'Open Vault' button -> Open Main Atlas Trips List (/secret/vault)
         Intent openVaultIntent = new Intent(context, MainActivity.class);
         openVaultIntent.setAction(ACTION_OPEN_TRIP_VAULT);
         openVaultIntent.putExtra("target_route", "/secret/vault");

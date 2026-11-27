@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Statement Import Application Service
+ * Atlas Finance: Statement Import Application Service
  * 
  * Orchestrates offline bank statement preview, deduplication analysis,
  * automatic category matching, and safe atomic ingestion.

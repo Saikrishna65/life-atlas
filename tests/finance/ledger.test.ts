@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Ledger Invariants & Double-Entry Accounting Test Suite
+ * Atlas Finance: Ledger Invariants & Double-Entry Accounting Test Suite
  * 
  * Validates double-entry postings, transfer rules, cash flow calculation (transfer exclusion),
  * net worth invariants, and credit card liability mechanics.
@@ -18,7 +18,7 @@ import {
 import { FinanceAccount, Transaction } from "@/lib/finance/domain/models";
 import { LedgerInvariantError } from "@/lib/finance/domain/errors";
 
-describe("Life Atlas Finance: Ledger Rules & Accounting Invariants", () => {
+describe("Atlas Finance: Ledger Rules & Accounting Invariants", () => {
   const baseAccount: FinanceAccount = {
     id: "acc_checking",
     name: "HDFC Checking",

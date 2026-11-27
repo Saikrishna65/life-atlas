@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Domain Models (Phase 1)
+ * Atlas Finance: Domain Models (Phase 1)
  * 
  * Strict TypeScript domain models for an Android-first, local-first personal finance system.
  * Independent of React components, UI frameworks, and storage implementations.

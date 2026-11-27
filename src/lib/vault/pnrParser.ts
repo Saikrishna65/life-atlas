@@ -1,5 +1,5 @@
 /**
- * Life Atlas: Intelligent PNR & Booking Confirmation Parser
+ * Atlas: Intelligent PNR & Booking Confirmation Parser
  * 100% Offline-First Regex & Natural Language Extraction Engine.
  * Supports IRCTC Train SMS/Email, Flight Confirmations (IndiGo, Air India, SpiceJet),
  * and Bus/Stay vouchers.

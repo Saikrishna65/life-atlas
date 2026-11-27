@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Categorization Rule Repository
+ * Atlas Finance: IndexedDB Categorization Rule Repository
  */
 
 import { ICategorizationRuleRepository } from "../interfaces";

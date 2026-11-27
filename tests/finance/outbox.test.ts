@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Sync Outbox & Lease Processor Test Suite (Phase 4)
+ * Atlas Finance: Sync Outbox & Lease Processor Test Suite (Phase 4)
  * 
  * Tests outbox queuing, idempotency, lease claiming, exponential backoff,
  * stale claim reclamation, permanent failure classification, and retry management.
@@ -16,7 +16,7 @@ import {
   SyncOperation,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Sync Outbox Lifecycle & Processing", () => {
+describe("Atlas Finance: Sync Outbox Lifecycle & Processing", () => {
   let uow: IndexedDBUnitOfWork;
   let testAdapter: TestableCloudSyncAdapter;
   let outboxService: SyncOutboxService;

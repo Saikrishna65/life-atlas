@@ -1,6 +1,6 @@
 import { realizedCashMovement } from "../domain/ledger";
 /**
- * Life Atlas Finance: Budget Application Service
+ * Atlas Finance: Budget Application Service
  * 
  * Manages category budgets, allocation tracking, and spending progress calculations.
  * Invariants:

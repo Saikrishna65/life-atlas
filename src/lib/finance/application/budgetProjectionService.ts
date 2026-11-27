@@ -1,6 +1,6 @@
 import { realizedCashMovement } from "../domain/ledger";
 /**
- * Life Atlas Finance: Budget-Aware Forecasting & Scenario Service
+ * Atlas Finance: Budget-Aware Forecasting & Scenario Service
  * 
  * Estimates end-of-period category spending and budget utilization.
  * Evaluates what-if scenario planning without mutating actual financial records.

@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Smart Categorization Engine Automated Test Suite (Phase 3)
+ * Atlas Finance: Smart Categorization Engine Automated Test Suite (Phase 3)
  * 
  * Validates deterministic local classification, merchant normalization,
  * rule priority resolution, accounting direction compatibility, and user correction learning.
@@ -17,7 +17,7 @@ import {
   FinanceError,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Smart Categorization Engine", () => {
+describe("Atlas Finance: Smart Categorization Engine", () => {
   let uow: IndexedDBUnitOfWork;
   let service: CategorizationService;
 

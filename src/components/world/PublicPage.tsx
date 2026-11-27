@@ -20,7 +20,7 @@ export default function PublicPage({
       <PublicPageReady />
       <header className="public-page-title">
         <Link prefetch={publicLoading?false:null} href="/" className="world-eyebrow">
-          Life Atlas / The Living World
+          Atlas / The Living World
         </Link>
         <h1>{title}</h1>
         <p>{kicker}</p>

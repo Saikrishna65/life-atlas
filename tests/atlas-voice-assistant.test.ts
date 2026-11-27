@@ -158,7 +158,7 @@ test("processVoiceTurn navigates safely and ends session when asked to open a va
   let target = "";
   const reply = await processVoiceTurn({
     sessionId: "s-nav-1",
-    transcript: "Open Music Vault",
+    transcript: "Open Atlas Music",
     isLocked: false,
     player: noopPlayer,
     navigate: (href) => {

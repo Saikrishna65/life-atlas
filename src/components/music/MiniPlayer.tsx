@@ -3,7 +3,7 @@
 import React from "react";
 import { usePathname } from "next/navigation";
 import { Play, Pause, SkipForward } from "lucide-react";
-import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
+import { useMusicPlayer, useMusicProgress } from "@/lib/music/MusicPlayerContext";
 import { Artwork } from "@/components/music/ui";
 import { useMusicTheme } from "@/lib/music/theme";
 
@@ -15,11 +15,12 @@ import { useMusicTheme } from "@/lib/music/theme";
 export default function MiniPlayer({ embedded = false }: { embedded?: boolean }) {
   const pathname = usePathname() || "";
   useMusicTheme();
-  const { currentTrack, isPlaying, currentTime, duration, togglePlayPause, nextTrack, setIsNowPlayingOpen } =
+  const { currentTrack, isPlaying, duration, togglePlayPause, nextTrack, setIsNowPlayingOpen } =
     useMusicPlayer();
 
   const inFinance = pathname.startsWith("/secret/finance");
   const inMusic = pathname.startsWith("/secret/music");
+  const currentTime = useMusicProgress(inMusic === embedded && !!currentTrack);
   if (inMusic !== embedded) return null;
   if (!currentTrack) return null;
 

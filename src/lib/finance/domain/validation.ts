@@ -1,7 +1,7 @@
 import { validateRepayment, REPAYMENT_CATEGORY_ID } from "../shared/repayment";
 import { validateTransactionSplit } from "../shared/transactionSplit";
 /**
- * Life Atlas Finance: Runtime Schema Validation & Type Guards
+ * Atlas Finance: Runtime Schema Validation & Type Guards
  * 
  * Enforces business rules and invariant constraints at domain and persistence boundaries
  * without external heavy libraries, preserving zero runtime bloat.

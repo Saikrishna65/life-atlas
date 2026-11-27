@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Audit Repository
+ * Atlas Finance: IndexedDB Audit Repository
  */
 
 import { IAuditRepository } from "../interfaces";

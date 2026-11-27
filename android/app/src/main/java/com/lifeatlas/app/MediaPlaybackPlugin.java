@@ -95,9 +95,9 @@ public class MediaPlaybackPlugin extends Plugin {
         // Immediately mark session active so AtlasWebView keeps HTMLAudioElement awake on background/lock
         MediaPlaybackService.setSessionActive(true);
 
-        String title = call.getString("title", "Atlas Music Vault");
-        String artist = call.getString("artist", "Life Atlas");
-        String album = call.getString("album", "Music Vault");
+        String title = call.getString("title", "Atlas Music");
+        String artist = call.getString("artist", "Atlas");
+        String album = call.getString("album", "Atlas Music");
         String artworkUrl = call.getString("artworkUrl", "");
         boolean isPlaying = Boolean.TRUE.equals(call.getBoolean("isPlaying", false));
         long positionMs = getLongSafe(call, "positionMs", 0L);

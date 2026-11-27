@@ -16,7 +16,7 @@ import {
   TripRecord,
 } from "../../src/lib/vault/types";
 
-describe("Trip Vault Phase 9: Budget Planning, Expenses & Deposit Tracker Flow", () => {
+describe("Atlas Trips Phase 9: Budget Planning, Expenses & Deposit Tracker Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

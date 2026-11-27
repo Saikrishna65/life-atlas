@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Local-First IndexedDB Persistence & Integration Test Suite
+ * Atlas Finance: Local-First IndexedDB Persistence & Integration Test Suite
  * 
  * Tests isolated IndexedDB engine, schema migrations, account/transaction services,
  * reversals, corrections, audit logs, and the offline sync outbox.
@@ -17,7 +17,7 @@ import {
   FinanceError,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Persistence & Application Integration", () => {
+describe("Atlas Finance: Persistence & Application Integration", () => {
   let uow: IndexedDBUnitOfWork;
   let accountService: AccountService;
   let transactionService: TransactionService;

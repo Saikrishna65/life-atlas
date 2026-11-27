@@ -402,7 +402,7 @@ export const EXPERIMENT_SCENARIOS: WakeWordScenarioDefinition[] = [
     expectedHonestOutcome:
       "Expected to continue listening while Foreground Service remains active; OEM battery limits may still affect extended sessions.",
     steps: [
-      "Start listening, then press Home or switch to another app (without swiping Life Atlas away).",
+      "Start listening, then press Home or switch to another app (without swiping Atlas away).",
       "Speak the active wake phrase 3 times and note whether vibration/chime/notification triggers.",
     ],
   },
@@ -464,7 +464,7 @@ export const EXPERIMENT_SCENARIOS: WakeWordScenarioDefinition[] = [
     expectedHonestOutcome:
       "Expected NOT to auto-start silently: Android 14–16 prohibits background microphone FGS start on BOOT_COMPLETED, and START_NOT_STICKY stops on explicit task swipe.",
     steps: [
-      "Swipe Life Atlas from Recents (or reboot phone).",
+      "Swipe Atlas from Recents (or reboot phone).",
       "Confirm no silent background restart happens and user re-enables manually.",
     ],
   },

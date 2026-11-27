@@ -31,7 +31,7 @@ export default function TripRentalsPage() {
           Rentals Module Decommissioned
         </h2>
         <p className="font-body text-xs text-muted-foreground leading-relaxed">
-          Vehicle rental tracking has been removed from the Trip Vault. Managing all tickets, trains, stays, and transport is now consolidated under Bookings & Document Vault.
+          Vehicle rental tracking has been removed from the Atlas Trips. Managing all tickets, trains, stays, and transport is now consolidated under Bookings & Document Vault.
         </p>
       </div>
 

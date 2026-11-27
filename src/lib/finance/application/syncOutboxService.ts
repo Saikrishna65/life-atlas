@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Sync Outbox Application Service & Processor
+ * Atlas Finance: Sync Outbox Application Service & Processor
  * 
  * Drives reliable, idempotent outbox processing, bounded backoff retries,
  * stale lease reclamation, and conflict staging.

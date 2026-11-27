@@ -232,7 +232,7 @@ has been copied.
 
 ## Prior section implementation notes (hero superseded above)
 
-# Life Atlas public travel edition
+# Atlas public travel edition
 
 The homepage flows from the original door image sequence into the globe,
 The Art of Going, expeditions, frames & films, the optional public catalog,
@@ -243,7 +243,7 @@ music section is mounted in the public journey.
 
 Reference: https://deltacafes.com/en (Bürocratik). Its editorial scale, condensed
 typography, photographic storytelling and warm tonal contrasts informed this
-Life Atlas adaptation. No source code, proprietary fonts, branding, film or
+Atlas adaptation. No source code, proprietary fonts, branding, film or
 photography from the reference is included. Oswald is an open-source alternative.
 Direct browser access to the reference was blocked in the development environment;
 its textual structure and published design capture were available through search.

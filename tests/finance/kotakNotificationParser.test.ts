@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Kotak Notification & SMS Parser Test Suite
+ * Atlas Finance: Kotak Notification & SMS Parser Test Suite
  * 
  * Verifies deterministic extraction of transaction amount, direction,
  * merchant, reference number, account mask, and strict rejection of OTPs,

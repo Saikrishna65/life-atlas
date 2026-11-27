@@ -135,7 +135,7 @@ export function Modal({
     >
       <div className="world-modal-inner">
         <header className="world-modal-header">
-          <span className="world-eyebrow">Life Atlas / In focus</span>
+          <span className="world-eyebrow">Atlas / In focus</span>
           <button
             onClick={onClose}
             className="world-icon"

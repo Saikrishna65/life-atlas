@@ -1,4 +1,4 @@
-// Source-only React fixture. Native inbox and Trip Vault I/O are test doubles.
+// Source-only React fixture. Native inbox and Atlas Trips I/O are test doubles.
 import {build} from 'esbuild';import {createServer} from 'node:http';import {createRequire} from 'node:module';import assert from 'node:assert/strict';
 const {chromium}=createRequire(import.meta.url)('playwright');
 const mocks={storage:`export const isIndexedDBAvailable=()=>true;export const getAllTrips=async()=>{window.reads++;if(window.hold)await new Promise(resolve=>window.releaseRead=resolve);return window.trips;};export const getTrip=async()=>null;export const saveTrip=async value=>value;export const deleteTripCascade=async()=>true;`,widget:`export const syncActiveTripToWidget=async(id,trips)=>{if(!trips)throw Error('Duplicate vault read');window.widgets++;};`,capacitor:`export const Capacitor={isPluginAvailable:()=>true};export const registerPlugin=()=>({getPendingNotifications:async()=>{window.inbox++;return {notifications:[]};},addListener:async(name,callback)=>{window.inboxChanged=callback;return {remove:async()=>{window.inboxRemoved=true;}};}});`};

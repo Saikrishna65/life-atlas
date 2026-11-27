@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       user = await db.user.create({
         data: {
           email: "author@lifeatlas.com",
-          name: "Life Atlas Voyager",
+          name: "Atlas Voyager",
         },
       });
     }
@@ -346,7 +346,7 @@ export async function POST(request: Request) {
       placesCount: placesExportCount,
       memoryCount: memoryExportCount,
       photoCount: photoExportCount,
-      message: `Expedition successfully published to Life Atlas Public Journal!`,
+      message: `Expedition successfully published to Atlas Public Journal!`,
     });
   } catch (err: unknown) {
     if(err instanceof TripCoverError)return NextResponse.json({error:err.message},{status:400});

@@ -215,7 +215,7 @@ export default function PlaylistDetailPage() {
         {menu === "trip" && (
           <div>
             <h3 className="font-display text-xl text-[var(--mv-text)] px-1 mb-2">Link to a trip</h3>
-            {trips.length === 0 && <p className="text-sm text-[var(--mv-text-muted)] p-3">No trips found in Trip Vault.</p>}
+            {trips.length === 0 && <p className="text-sm text-[var(--mv-text-muted)] p-3">No trips found in Atlas Trips.</p>}
             {trips.map((tr) => (
               <button
                 key={tr.id}

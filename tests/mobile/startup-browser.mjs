@@ -65,7 +65,7 @@ try {
   });
   await page.goto(origin + "/secret");
   await page
-    .getByRole("heading", { name: "Private Atlas", exact: true })
+    .getByRole("heading", { name: "Atlas", exact: true })
     .waitFor();
   const first = await page.evaluate(() => ({
     ms: performance.now(),

@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Recurring Transaction & Subscription Detection Service
+ * Atlas Finance: Recurring Transaction & Subscription Detection Service
  * 
  * Analyzes local transaction history deterministically to discover recurring obligations,
  * subscriptions, EMIs, salary credits, and utility bills.

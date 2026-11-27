@@ -103,9 +103,9 @@ const messages: Record<string, string> = {
   ANDROID_TRANSFER_STOPPED:
     "Android stopped this transfer. Its saved parts and original remain available; resume approved uploads to continue.",
   BACKGROUND_UPLOAD_RESTRICTED:
-    "Android prevented the upload service from starting. Reopen Atlas Next, allow background battery usage for it, and resume approved uploads.",
+    "Android prevented the upload service from starting. Reopen Atlas, allow background battery usage for it, and resume approved uploads.",
   STORAGE_PERMISSION_DENIED:
-    "Android denied access to the source file or upload service. Open Atlas Next and check its permissions; your original and saved selections remain unchanged.",
+    "Android denied access to the source file or upload service. Open Atlas and check its permissions; your original and saved selections remain unchanged.",
   ORIGINAL_MEDIA_ACCESS_REQUIRED:
     "Allow access to original photo metadata to upload or verify exact original files. This does not enable live GPS access. You can still browse your photos without it.",
   GALLERY_PERMISSION_REQUIRED:
@@ -117,7 +117,7 @@ const messages: Record<string, string> = {
   ANDROID_VERSION_UNSUPPORTED:
     "Cloud storage needs Android 8 or later. Your local vaults remain available.",
   BUNDLED_APP_REQUIRED:
-    "Open the installed, offline Life Atlas Android app to configure storage.",
+    "Open the installed, offline Atlas Android app to configure storage.",
   AUTHENTICATION_CANCELLED:
     "Device verification was cancelled. Nothing was changed.",
   PUBLICATION_SESSION_REQUIRED:
@@ -166,7 +166,7 @@ const messages: Record<string, string> = {
   REMOTE_TEMPORARY_FAILURE:
     "R2 is temporarily unavailable. Transfers use bounded exponential retries.",
   R2_SIGNING_FAILED:
-    "Android could not sign the R2 S3 request. Update Life Atlas and test again. (R2_SIGNING_FAILED)",
+    "Android could not sign the R2 S3 request. Update Atlas and test again. (R2_SIGNING_FAILED)",
   R2_REQUEST_REJECTED:
     "R2 rejected the S3 request. Check the account endpoint and bucket configuration. (R2_REQUEST_REJECTED)",
   R2_REQUEST_FAILED:

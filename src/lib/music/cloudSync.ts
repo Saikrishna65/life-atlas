@@ -2,7 +2,7 @@ import {savePlaylistChange} from "../control-room/music-queue";
 import { musicSyncPaused } from "../control-room/store";
 import { isControlRestoreActive } from "../control-room/maintenance";
 /**
- * Life Atlas Music Vault - Online Cloud Synchronization Service
+ * Atlas Music - Online Cloud Synchronization Service
  * Manages dual persistence between local IndexedDB and Neon Postgres / Object Storage.
  */
 

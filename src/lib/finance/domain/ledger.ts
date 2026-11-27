@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Ledger Invariants & Double-Entry Accounting Engine
+ * Atlas Finance: Ledger Invariants & Double-Entry Accounting Engine
  * 
  * Implements deterministic financial rules:
  * 1. Transfers between user accounts do NOT count as income or expense.

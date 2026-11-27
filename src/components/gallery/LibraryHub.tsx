@@ -259,7 +259,7 @@ export default function LibraryHub() {
       </nav>
       {!supported ? (
         <p>
-          Open Atlas Next on Android to manage your phone library and direct R2
+          Open Atlas on Android to manage your phone library and direct R2
           backups.
         </p>
       ) : (

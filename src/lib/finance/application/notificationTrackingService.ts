@@ -1,9 +1,9 @@
 import type { RepaymentSelection } from "../shared/repayment";
 import type { TransactionSplit } from "../shared/transactionSplit";
 /**
- * Life Atlas Finance: Kotak Notification Tracking Application Service
+ * Atlas Finance: Kotak Notification Tracking Application Service
  * 
- * Bridges native Android notification listener with Life Atlas Finance ledger:
+ * Bridges native Android notification listener with Atlas Finance ledger:
  * - Drains durable native pending queue when app starts or resumes.
  * - Handles triple-source deduplication across Kotak App, SMS, and Truecaller.
  * - Matches transactions to active Kotak accounts.

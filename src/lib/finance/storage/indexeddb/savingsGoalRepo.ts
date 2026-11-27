@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Savings Goal Repository
+ * Atlas Finance: IndexedDB Savings Goal Repository
  */
 
 import { ISavingsGoalRepository } from "../interfaces";

@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Schema Migration V3 Automated Test Suite (Phase 3)
+ * Atlas Finance: Schema Migration V3 Automated Test Suite (Phase 3)
  * 
  * Validates database migration to version 3, object store initialization,
  * system rule seeding, and zero data loss of pre-existing records.
@@ -19,7 +19,7 @@ import {
   migrateToV3,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Database Migration V3 & Data Preservation", () => {
+describe("Atlas Finance: Database Migration V3 & Data Preservation", () => {
   beforeEach(async () => {
     await deleteFinanceDB();
   });

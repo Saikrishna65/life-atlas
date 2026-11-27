@@ -213,7 +213,7 @@ export const ATLAS_ACTION_REGISTRY: Record<
   "trips.list": spec(
     "trips.list",
     "trips",
-    "List upcoming and saved trips in Trip Vault",
+    "List upcoming and saved trips in Atlas Trips",
   ),
   "trips.search": spec(
     "trips.search",
@@ -317,7 +317,7 @@ export const ATLAS_ACTION_REGISTRY: Record<
   navigate: spec(
     "navigate",
     "navigation",
-    "Navigate to a Life Atlas workspace section",
+    "Navigate to a Atlas workspace section",
   ),
 };
 

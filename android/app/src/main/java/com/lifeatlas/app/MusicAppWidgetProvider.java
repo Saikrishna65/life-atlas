@@ -100,7 +100,7 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String title = prefs.getString(KEY_TITLE, "Music Sanctuary");
-        String artist = prefs.getString(KEY_ARTIST, "Life Atlas Audio Vault");
+        String artist = prefs.getString(KEY_ARTIST, "Atlas Audio Vault");
         boolean isPlaying = prefs.getBoolean(KEY_IS_PLAYING, false);
         String themeId = prefs.getString(KEY_THEME, "gold");
 
@@ -129,7 +129,7 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
             MediaPlaybackPlugin.dispatchMediaAction("toggle", -1L);
 
             String title = prefs.getString(KEY_TITLE, "Music Sanctuary");
-            String artist = prefs.getString(KEY_ARTIST, "Life Atlas Audio Vault");
+            String artist = prefs.getString(KEY_ARTIST, "Atlas Audio Vault");
             String themeId = prefs.getString(KEY_THEME, "gold");
             updateAllWidgets(context, title, artist, lastArtwork, updated);
 
@@ -186,7 +186,7 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
         editor.apply();
 
         String activeTitle = prefs.getString(KEY_TITLE, "Music Sanctuary");
-        String activeArtist = prefs.getString(KEY_ARTIST, "Life Atlas Audio Vault");
+        String activeArtist = prefs.getString(KEY_ARTIST, "Atlas Audio Vault");
         boolean activePlaying = prefs.getBoolean(KEY_IS_PLAYING, false);
         String themeId = prefs.getString(KEY_THEME, "gold");
 
@@ -259,7 +259,7 @@ public class MusicAppWidgetProvider extends AppWidgetProvider {
             views.setImageViewBitmap(R.id.widget_btn_play, playBmp);
         }
 
-        // Tap widget background or artwork -> open Music Vault directly
+        // Tap widget background or artwork -> open Atlas Music directly
         Intent openAppIntent = new Intent(context, MainActivity.class);
         openAppIntent.setAction("com.lifeatlas.app.ACTION_OPEN_MUSIC_VAULT");
         openAppIntent.putExtra("target_route", "/secret/music");

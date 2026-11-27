@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Schema Migrations & System Seeders
+ * Atlas Finance: IndexedDB Schema Migrations & System Seeders
  * 
  * Version 1 schema definition with idempotent upgrade triggers.
  */

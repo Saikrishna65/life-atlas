@@ -2,7 +2,7 @@
 
 Workflow: `.github/workflows/android-preview.yml` — **Android preview APK (manual)**.
 
-The existing Gradle preview variant is `com.lifeatlas.app.next`, labeled **Atlas Next**. Production is `com.lifeatlas.app`. This workflow runs only `:app:assemblePreview`, checks the resulting APK package identity, and uploads it only after signature verification. It does not retrieve signing secrets, run live cloud tests, publish releases, or build production APKs. Existing workflows are unchanged; do not use their production/signing paths for this preview process.
+The existing Gradle preview variant is `com.lifeatlas.app.next`, labeled **Atlas**. Production is `com.lifeatlas.app`. This workflow runs only `:app:assemblePreview`, checks the resulting APK package identity, and uploads it only after signature verification. It does not retrieve signing secrets, run live cloud tests, publish releases, or build production APKs. Existing workflows are unchanged; do not use their production/signing paths for this preview process.
 
 ## Run entirely from GitHub
 
@@ -10,7 +10,7 @@ The existing Gradle preview variant is `com.lifeatlas.app.next`, labeled **Atlas
 2. Open the repository on GitHub → **Actions** → **Android preview APK (manual)** → **Run workflow**.
 3. Select the branch containing the desired app code. Leave `native_integration` unchecked; it is hard-disabled regardless of its input until a reviewed source change enables it.
 4. Wait for the `preview` job. Open the run summary and download `atlas-preview-apk-<run-id>-<attempt>` and, when needed, `atlas-preview-diagnostics-<run-id>-<attempt>`.
-5. Extract the artifact ZIP on the phone or transfer its `atlas-next-preview.apk` to the phone. Allow installation from your chosen browser/file manager, and install **Atlas Next**. Verify the package is `com.lifeatlas.app.next`. Production remains a separate installed app with separate storage.
+5. Extract the artifact ZIP on the phone or transfer its `atlas-next-preview.apk` to the phone. Allow installation from your chosen browser/file manager, and install **Atlas**. Verify the package is `com.lifeatlas.app.next`. Production remains a separate installed app with separate storage.
 
 The runner uses ephemeral debug signing. A later preview run may have a different certificate and may not update an existing preview installation. Do not uninstall a preview containing valuable data to resolve this: export its encrypted data first, or establish an explicitly managed preview-only signing key in a separate change. Production keys are never used or exported.
 

@@ -2,7 +2,7 @@ import { TransactionService } from "./transactionService";
 import type { RepaymentSelection } from "../shared/repayment";
 import type { TransactionSplit } from "../shared/transactionSplit";
 /**
- * Life Atlas Finance: Smart Categorization Engine & Application Service
+ * Atlas Finance: Smart Categorization Engine & Application Service
  * 
  * Local, deterministic, explainable categorization without external network calls or opaque black-boxes.
  * Enforces accounting invariants: rejects income categories for outflows and expense categories for inflows.

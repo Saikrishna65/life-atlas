@@ -4,7 +4,7 @@ import React, { Suspense, useState, useCallback, useEffect, useMemo } from "reac
 import { useSearchParams, useRouter } from "next/navigation";
 import { Search, Play, Shuffle, X, ChevronLeft } from "lucide-react";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
-import { getAllTracks } from "@/lib/music/storage";
+import { getAllTracks, peekMusicLibrary } from "@/lib/music/storage";
 import { MusicTrack } from "@/lib/music/types";
 import {
   Artwork,
@@ -40,8 +40,8 @@ function LibraryContent() {
     : "songs") as View;
   const filter = (FILTERS.some((f) => f.key === params.get("filter")) ? params.get("filter") : "all") as Filter;
 
-  const [tracks, setTracks] = useState<MusicTrack[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [tracks, setTracks] = useState<MusicTrack[]>(() => peekMusicLibrary() || []);
+  const [loaded, setLoaded] = useState(() => peekMusicLibrary() !== undefined);
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState<{ kind: "album" | "artist"; name: string } | null>(null);
   const [sheetTrack, setSheetTrack] = useState<MusicTrack | null>(null);
@@ -49,12 +49,16 @@ function LibraryContent() {
   const load = useCallback(async () => {
     try {
       setTracks(await getAllTracks());
+    } catch {
+      // Keep the last local view if storage is temporarily unavailable.
     } finally {
       setLoaded(true);
     }
   }, []);
   useEffect(() => {
-    load();
+    let active = true;
+    queueMicrotask(() => { if (active) void load(); });
+    return () => { active = false; };
   }, [load]);
   useLibraryRefresh(load);
 

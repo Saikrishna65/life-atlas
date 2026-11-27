@@ -2,7 +2,7 @@
 
 ## Installed-app checks
 
-Install `atlas-next.apk` over the existing Atlas Next installation. Do not uninstall
+Install `atlas-next.apk` over the existing Atlas installation. Do not uninstall
 or clear app data. Package: `com.lifeatlas.app.next`; version code 34.
 
 1. Open Gallery → Search → Smart Search. Type a query, then submit it. Typing

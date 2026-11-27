@@ -15,7 +15,7 @@ import {
   VehicleRentalRecord,
 } from "../../src/lib/vault/types";
 
-describe("Trip Vault Phase 7: Bike & Scooter Rental Logistics Flow", () => {
+describe("Atlas Trips Phase 7: Bike & Scooter Rental Logistics Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

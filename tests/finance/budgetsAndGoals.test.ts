@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Budgets & Savings Goals Automated Test Suite (Phase 2)
+ * Atlas Finance: Budgets & Savings Goals Automated Test Suite (Phase 2)
  * 
  * Validates category budget calculations, limit thresholds, zero-division safety,
  * transfer exclusions from budgets, savings goals progress, and manual tracking integrity.
@@ -18,7 +18,7 @@ import {
   FinanceError,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Budgets & Savings Goals Engine", () => {
+describe("Atlas Finance: Budgets & Savings Goals Engine", () => {
   let uow: IndexedDBUnitOfWork;
   let accountService: AccountService;
   let transactionService: TransactionService;

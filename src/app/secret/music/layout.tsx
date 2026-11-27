@@ -19,8 +19,6 @@ import { Sheet, notifyLibraryChanged } from "@/components/music/ui";
 import MiniPlayer from "@/components/music/MiniPlayer";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
 import { audioFileAccept, decoderNotice } from "@/lib/music/formats";
-import { importAudioFiles } from "@/lib/music/importLocal";
-import { syncCloudToLocalStorage } from "@/lib/music/cloudSync";
 import {
   openFilePicker,
   markPickerGotFile,
@@ -33,7 +31,7 @@ const TABS = [
   { href: "/secret/music/library", label: "Library", icon: Library },
   { href: "__add__", label: "Add", icon: Plus },
   { href: "/secret/music/playlists", label: "Playlists", icon: ListMusic },
-  { href: "/secret/music/settings", label: "Vault", icon: SlidersHorizontal },
+  { href: "/secret/music/settings", label: "Settings", icon: SlidersHorizontal },
 ];
 
 export default function MusicLayout({
@@ -77,6 +75,7 @@ export default function MusicLayout({
     if (list.length === 0) return;
     setBusy(`Importing ${list.length} song${list.length > 1 ? "s" : ""}…`);
     try {
+      const { importAudioFiles } = await import("@/lib/music/importLocal");
       const r = await importAudioFiles(list, (done, total, name) =>
         setBusy(
           name ? `Importing ${done + 1}/${total} · ${name}` : "Finishing…",
@@ -115,7 +114,7 @@ export default function MusicLayout({
     setAddOpen(false);
     setBusy("Syncing with cloud…");
     try {
-      const r = await syncCloudToLocalStorage();
+      const r = await (await import("@/lib/music/cloudSync")).syncCloudToLocalStorage();
       notifyLibraryChanged();
       showToast(
         `Cloud sync done · ${r.total} song${r.total === 1 ? "" : "s"} in cloud`,

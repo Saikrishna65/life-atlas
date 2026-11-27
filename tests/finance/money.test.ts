@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Money & Integer Arithmetic Automated Test Suite
+ * Atlas Finance: Money & Integer Arithmetic Automated Test Suite
  * 
  * Validates deterministic integer paise calculations, input parsing,
  * formatting (Indian Lakhs/Crores vs standard), boundary safety, and error handling.
@@ -25,7 +25,7 @@ import {
 } from "@/lib/finance/domain/money";
 import { MoneyCalculationError } from "@/lib/finance/domain/errors";
 
-describe("Life Atlas Finance: Money & Arithmetic Engine", () => {
+describe("Atlas Finance: Money & Arithmetic Engine", () => {
   describe("1. Paise Parsing & Precision (REQ-MON-01)", () => {
     test("accurately parses whole rupee strings to paise", () => {
       assert.strictEqual(rupeesToPaise("100"), 10000);

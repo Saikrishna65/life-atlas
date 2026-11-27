@@ -26,7 +26,7 @@ import {
   cancelAndRemoveReminder,
 } from "../../src/lib/vault/notifications";
 
-describe("Trip Vault Phase 12: Android Local Notifications & Reminders Flow", () => {
+describe("Atlas Trips Phase 12: Android Local Notifications & Reminders Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

@@ -520,7 +520,7 @@ export default function FinanceDashboardPage() {
     <div className="atlas-finance af-shell" data-finance-theme={theme} aria-busy={isLoading}>
       <div className="af-workspace">
         <header className="glass-masthead">
-          <Link href="/secret" className="glass-back" aria-label="Return to Life Atlas"><ArrowLeft size={20}/></Link>
+          <Link href="/secret" className="glass-back" aria-label="Return to Atlas"><ArrowLeft size={20}/></Link>
           <div><h1>Atlas Finance</h1></div>
           <FinanceThemePicker value={theme} onChange={setTheme}/>
           <button className="glass-bell" aria-label={`${pendingFinanceCount} transactions awaiting approval`} onClick={()=>setIsKotakModalOpen(true)}><BellRing size={18}/>{pendingFinanceCount>0 && <b>{pendingFinanceCount}</b>}</button>

@@ -1,4 +1,4 @@
-# Life Atlas — Hey Atlas Wake-Word Feasibility Experiment
+# Atlas — Hey Atlas Wake-Word Feasibility Experiment
 
 > **Scope:** Controlled, reversible proof of concept on branch `experiment/hey-atlas-wakeword`.
 > **Target Device:** Motorola Edge 50 Fusion · Android 16 · Private sideloaded APK (no root, no Shizuku, no privileged system permissions, no accessibility-service workarounds).
@@ -62,7 +62,7 @@ To produce a real `hey_atlas.onnx` classifier compatible with this Android servi
   - Monitors Android `AudioManager.AudioRecordingCallback` for mic silencing / competition (calls, Recorder, Assistant) and `Telephony`/communication audio mode.
   - Emits only minimal local feedback on trigger: short haptic pulse, synthesized C5–E5 tone via `AudioTrack` (suppressed during calls/silenced state), local notification, event to Control Room UI if open, and optional `AtlasExperimentVoiceInteractionService.showSession()` when default assistant role is held and enabled by the user.
 - `AtlasExperimentVoiceInteractionService` / `SessionService` / `Session` / `RecognitionService`
-  - Isolated, optional experiment for `RoleManager.ROLE_ASSISTANT` & overlay testing on unlock / lock screen. Does **not** access Life Atlas vaults or cloud LLMs.
+  - Isolated, optional experiment for `RoleManager.ROLE_ASSISTANT` & overlay testing on unlock / lock screen. Does **not** access Atlas vaults or cloud LLMs.
 
 ---
 

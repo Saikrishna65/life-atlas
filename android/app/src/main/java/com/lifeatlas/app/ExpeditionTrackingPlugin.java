@@ -80,7 +80,7 @@ public class ExpeditionTrackingPlugin extends Plugin {
     public void updateTripWidget(PluginCall call) {
         try {
             String tripId = call.getString("tripId", "");
-            String title = call.getString("title", "Atlas Trip Vault");
+            String title = call.getString("title", "Atlas Atlas Trips");
             String status = call.getString("status", "ACTIVE");
             String statusLabel = call.getString("statusLabel", "ON THE ROAD");
             String subtitle = call.getString("subtitle", "");
@@ -107,7 +107,7 @@ public class ExpeditionTrackingPlugin extends Plugin {
             );
             call.resolve(new JSObject().put("success", true));
         } catch (Exception e) {
-            call.reject("Could not update Trip Vault widget: " + e.getMessage(), e);
+            call.reject("Could not update Atlas Trips widget: " + e.getMessage(), e);
         }
     }
 }

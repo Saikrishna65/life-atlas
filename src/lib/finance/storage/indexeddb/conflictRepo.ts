@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Sync Conflict Repository
+ * Atlas Finance: IndexedDB Sync Conflict Repository
  */
 
 import { ISyncConflictRepository } from "../interfaces";

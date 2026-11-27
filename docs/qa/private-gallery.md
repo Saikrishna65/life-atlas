@@ -2,7 +2,7 @@
 
 ## Open and use
 
-Update the existing Atlas Next app, then open **Private Atlas → Photo & video
+Update the existing Atlas app, then open **Atlas → Photo & video
 gallery**. Grant full Android photo/video access to browse all accessible local
 MediaStore media, or grant selected-photo access. The UI reports full, limited
 or denied access; Permissions opens the app's Android settings. Nothing is
@@ -50,7 +50,7 @@ reused. No original file is resized, re-encoded, moved or deleted by Gallery.
 - Phone browsing remains independent of cloud credentials, connectivity and a
   working R2 Keystore. Assignment/favorites/cache metadata use a separate local
   IndexedDB database; credentials and private plaintext hashes stay native.
-- Lazy Gallery route in the bundled app; entry points on Private Atlas and Creator
+- Lazy Gallery route in the bundled app; entry points on Atlas and Creator
   Studio. Public hero, globe and public layouts are unchanged.
 
 ## Validation

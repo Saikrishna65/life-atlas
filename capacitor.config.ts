@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Atlas',
   webDir: 'mobile-dist',
   loggingBehavior: 'none',
-  appendUserAgent: 'LifeAtlasApp/1.0',
+  appendUserAgent: 'AtlasApp/1.0',
   android: {
     webContentsDebuggingEnabled: false,
     allowMixedContent: false,

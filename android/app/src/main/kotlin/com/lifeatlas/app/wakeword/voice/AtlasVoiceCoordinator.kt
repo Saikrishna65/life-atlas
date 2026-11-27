@@ -70,12 +70,12 @@ class AtlasVoiceCoordinator(
                 "detailed" -> "Give warm, helpful detail (2-4 spoken sentences)."
                 else -> "Keep replies natural and concise (1-3 spoken sentences)."
             }
-            return "You are Atlas, a warm, soft-spoken female personal companion inside Life Atlas. Casual friendly English; humor=$humor/10, playfulness=$playfulness/10, warmth=$sweetness/10, directness=$directness/10, playful teasing=$teasing/10. $lengthGuide Admit uncertainty honestly, never invent user data, and never joke during serious/safety situations."
+            return "You are Atlas, a warm, soft-spoken female personal companion inside Atlas. Casual friendly English; humor=$humor/10, playfulness=$playfulness/10, warmth=$sweetness/10, directness=$directness/10, playful teasing=$teasing/10. $lengthGuide Admit uncertainty honestly, never invent user data, and never joke during serious/safety situations."
         }
 
         fun buildPersonalityPrompt(personalityJson: JSONObject?): String {
             if (personalityJson == null) {
-                return "You are Atlas, a warm, friendly, playful female voice companion inside Life Atlas. Speak naturally in 1 to 3 concise conversational English sentences."
+                return "You are Atlas, a warm, friendly, playful female voice companion inside Atlas. Speak naturally in 1 to 3 concise conversational English sentences."
             }
             return buildPersonalityPrompt(
                 humor = personalityJson.optInt("humor", 6),
@@ -875,9 +875,9 @@ class AtlasVoiceCoordinator(
 
         pendingEndSession = false
         val msg = if (isLocked) {
-            "I heard \"$transcript\". Unlock your phone to open Life Atlas or enable Cloud AI in Hey Atlas settings for general conversation."
+            "I heard \"$transcript\". Unlock your phone to open Atlas or enable Cloud AI in Hey Atlas settings for general conversation."
         } else {
-            "I heard \"$transcript\". Open Life Atlas or enable Cloud AI in Hey Atlas settings for general conversation; right now I can open vaults, control music, tell time, or save reminders."
+            "I heard \"$transcript\". Open Atlas or enable Cloud AI in Hey Atlas settings for general conversation; right now I can open vaults, control music, tell time, or save reminders."
         }
         speakResponse(msg)
     }
@@ -891,7 +891,7 @@ class AtlasVoiceCoordinator(
                     lower.contains("itinerary") || lower.contains("password")
                 )
         ) {
-            return "Your phone is locked, so I can't access private Life Atlas vault data right now. Unlock your device and ask again." to true
+            return "Your phone is locked, so I can't access private Atlas vault data right now. Unlock your device and ask again." to true
         }
 
         // Social & basic queries
@@ -902,7 +902,7 @@ class AtlasVoiceCoordinator(
             return "I'm doing great, thanks for asking! How can I help?" to false
         }
         if (lower.contains("who are you") || lower.contains("your name")) {
-            return "I'm Atlas, your voice assistant for Life Atlas." to false
+            return "I'm Atlas, your voice assistant for Atlas." to false
         }
         if (lower.contains("time")) {
             val now = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
@@ -945,13 +945,13 @@ class AtlasVoiceCoordinator(
             }
         }
 
-        // Opening Life Atlas routes when unlocked
+        // Opening Atlas routes when unlocked
         val routeRequest: Pair<String, String>? = when {
-            lower.contains("open music") || lower.contains("music vault") -> "/secret/music" to "Music Vault"
-            lower.contains("open trip") || lower.contains("trip vault") -> "/secret/vault" to "Trip Vault"
+            lower.contains("open music") || lower.contains("Atlas Music") -> "/secret/music" to "Atlas Music"
+            lower.contains("open trip") || lower.contains("trip vault") -> "/secret/vault" to "Atlas Trips"
             lower.contains("open finance") || lower.contains("finance vault") -> "/secret/finance" to "Atlas Finance"
             lower.contains("open life atlas") || lower.contains("open atlas") || lower.contains("open the app") || lower.contains("open app") ->
-                "/secret/atlas" to "Life Atlas"
+                "/secret/atlas" to "Atlas"
             else -> null
         }
         if (routeRequest != null) {

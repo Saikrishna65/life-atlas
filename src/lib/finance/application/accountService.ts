@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Account Application Service
+ * Atlas Finance: Account Application Service
  * 
  * Manages account lifecycle, opening balance setup, archiving, and balance recalculation.
  */

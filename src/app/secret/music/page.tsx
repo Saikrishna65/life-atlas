@@ -17,7 +17,7 @@ import {
   Palette,
 } from "lucide-react";
 import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
-import { getAllTracks } from "@/lib/music/storage";
+import { getAllTracks, peekMusicLibrary } from "@/lib/music/storage";
 import { MusicTrack } from "@/lib/music/types";
 import {
   Artwork,
@@ -50,21 +50,25 @@ export default function MusicHomePage() {
   const router = useRouter();
   const { playTrack, currentTrack, isPlaying, togglePlayPause, setIsNowPlayingOpen } = useMusicPlayer();
   const { theme, setTheme, currentOption } = useMusicTheme();
-  const [tracks, setTracks] = useState<MusicTrack[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [tracks, setTracks] = useState<MusicTrack[]>(() => peekMusicLibrary() || []);
+  const [loaded, setLoaded] = useState(() => peekMusicLibrary() !== undefined);
   const [sheetTrack, setSheetTrack] = useState<MusicTrack | null>(null);
   const [session] = useState(getSonicSessionLabel);
 
   const load = useCallback(async () => {
     try {
       setTracks(await getAllTracks());
+    } catch {
+      // Keep the last local view if storage is temporarily unavailable.
     } finally {
       setLoaded(true);
     }
   }, []);
 
   useEffect(() => {
-    load();
+    let active = true;
+    queueMicrotask(() => { if (active) void load(); });
+    return () => { active = false; };
   }, [load]);
   useLibraryRefresh(load);
 
@@ -136,7 +140,7 @@ export default function MusicHomePage() {
 
   return (
     <div className="space-y-7 animate-fade-in">
-      {/* Top utility row: effortless return to Private Atlas + 1-tap theme pill + live playback status */}
+      {/* Top utility row: effortless return to Atlas + 1-tap theme pill + live playback status */}
       <div className="flex items-center justify-between pt-0.5 gap-2">
         <Link
           href="/secret"

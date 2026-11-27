@@ -8,8 +8,10 @@ import React, {
   useEffect,
   useRef,
   useCallback,
+  useSyncExternalStore,
   ReactNode,
 } from "react";
+import { createPlaybackClock } from "./playback-clock";
 import { MusicTrack, PlaybackState, RepeatMode } from "./types";
 import {
   getTrack,
@@ -23,7 +25,7 @@ import {
   subscribeNativeMediaActions,
 } from "./nativeMediaBridge";
 
-interface MusicPlayerContextValue extends PlaybackState {
+interface MusicPlayerContextValue extends Omit<PlaybackState, "currentTime"> {
   isNowPlayingOpen: boolean;
   setIsNowPlayingOpen: (open: boolean) => void;
   playTrack: (
@@ -54,11 +56,14 @@ interface MusicPlayerContextValue extends PlaybackState {
 
 const MusicPlayerContext = createContext<MusicPlayerContextValue | null>(null);
 
+const MusicProgressContext = createContext<ReturnType<typeof createPlaybackClock> | null>(null);
+
 export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<MusicTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [clock] = useState(createPlaybackClock);
+  const setCurrentTime = clock.set;
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
@@ -85,6 +90,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   const isPlayingRef = useRef<boolean>(false);
   const activeBlobUrlRef = useRef<string | null>(null);
   const hasIncrementedPlayCountRef = useRef(false);
+  const playRequestRef = useRef(0);
   const lastNativePositionSyncRef = useRef<number>(0);
 
   useEffect(() => {
@@ -146,7 +152,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       syncNativeMediaPlayback({
         title: track.title,
         artist: track.artist,
-        album: track.album || "Atlas Music Vault",
+        album: track.album || "Atlas Music",
         artworkUrl: track.artworkUrl,
         isPlaying: playing,
         positionMs: posSec * 1000,
@@ -161,6 +167,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const playRequests = playRequestRef;
     const audio = new Audio();
     audio.preload = "auto";
     audioRef.current = audio;
@@ -184,6 +191,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         Date.now() - lastNativePositionSyncRef.current > 5000
       ) {
         pushNativeState({ playing: true, posSec: audio.currentTime });
+        try {
+          if (Number.isFinite(audio.duration) && audio.duration > 0)
+            navigator.mediaSession?.setPositionState({ duration: audio.duration, playbackRate: audio.playbackRate, position: Math.min(audio.currentTime, audio.duration) });
+        } catch { /* Unsupported browser session. */ }
       }
     };
 
@@ -255,6 +266,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     audio.addEventListener("error", handleError);
 
     return () => {
+      playRequests.current++;
       audio.pause();
       stopNativeMediaPlayback();
       audio.removeEventListener("timeupdate", handleTimeUpdate);
@@ -265,7 +277,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       audio.removeEventListener("playing", handlePlaying);
       audio.removeEventListener("error", handleError);
     };
-  }, [pushNativeState]);
+  }, [pushNativeState, setCurrentTime]);
 
   const downloadTrack = useCallback(
     async (track: MusicTrack): Promise<void> => {
@@ -315,6 +327,8 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       const audio = audioRef.current;
       if (!audio) return;
 
+      const request = ++playRequestRef.current;
+      audio.pause();
       setError(null);
       hasIncrementedPlayCountRef.current = false;
       currentTrackRef.current = track;
@@ -360,6 +374,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       } else {
         try {
           const stored = await getTrack(track.id);
+          if (request !== playRequestRef.current) return;
           if (stored?.audioBlob && stored.audioBlob.size > 2500) {
             audioSrc = URL.createObjectURL(stored.audioBlob);
             activeBlobUrlRef.current = audioSrc;
@@ -369,6 +384,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         }
       }
 
+      if (request !== playRequestRef.current) return;
       if (!audioSrc && track.id.startsWith("trk_yt_")) {
         audioSrc = `/api/music/stream/${track.id}`;
         downloadTrack(track).catch(() => {});
@@ -399,6 +415,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         audio.playbackRate = playbackRateRef.current;
         audio.volume = volumeRef.current;
         await audio.play();
+        if (request !== playRequestRef.current) return;
         isPlayingRef.current = true;
         setIsPlaying(true);
         pushNativeState({
@@ -411,6 +428,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
               : track.duration) || 0,
         });
       } catch (err: unknown) {
+        if (request !== playRequestRef.current) return;
         const message =
           err instanceof Error ? err.message : "Playback blocked or failed";
         console.warn("Audio play error:", message);
@@ -420,7 +438,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         setError("Playback paused or interrupted. Tap to resume.");
       }
     },
-    [downloadTrack, pushNativeState],
+    [downloadTrack, pushNativeState, setCurrentTime],
   );
 
   // Next Track Logic (reads live refs so lock-screen & background auto-advance never use stale closures)
@@ -487,9 +505,10 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     if (track) {
       playTrack(track, q, ctx);
     }
-  }, [playTrack, pushNativeState]);
+  }, [playTrack, pushNativeState, setCurrentTime]);
 
   const stop = useCallback(() => {
+    playRequestRef.current++;
     const audio = audioRef.current;
     if (audio) {
       audio.pause();
@@ -499,7 +518,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
     setIsPlaying(false);
     setCurrentTime(0);
     stopNativeMediaPlayback();
-  }, []);
+  }, [setCurrentTime]);
 
   // Audio onEnded event handler
   useEffect(() => {
@@ -565,7 +584,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
           break;
       }
     });
-  }, [nextTrack, previousTrack, pushNativeState]);
+  }, [nextTrack, previousTrack, pushNativeState, setCurrentTime]);
 
   // Update Web MediaSession API (for desktop / Chrome browsers)
   useEffect(() => {
@@ -591,7 +610,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentTrack.title,
         artist: currentTrack.artist,
-        album: currentTrack.album || "Life Atlas Music Vault",
+        album: currentTrack.album || "Atlas Music",
         artwork,
       });
 
@@ -601,13 +620,13 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
         navigator.mediaSession.setPositionState({
           duration,
           playbackRate,
-          position: Math.min(currentTime, duration),
+          position: Math.min(audioRef.current?.currentTime || 0, duration),
         });
       }
     } catch {
       // Ignore media session errors on unsupported browsers
     }
-  }, [currentTrack, isPlaying, duration, currentTime, playbackRate]);
+  }, [currentTrack, isPlaying, duration, playbackRate]);
 
   // Setup Web MediaSession action handlers
   useEffect(() => {
@@ -668,7 +687,7 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
       navigator.mediaSession.setActionHandler("seekbackward", null);
       navigator.mediaSession.setActionHandler("seekforward", null);
     };
-  }, [nextTrack, previousTrack, pushNativeState]);
+  }, [nextTrack, previousTrack, pushNativeState, setCurrentTime]);
 
   const togglePlayPause = () => {
     const audio = audioRef.current;
@@ -832,48 +851,49 @@ export function MusicPlayerProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <MusicPlayerContext.Provider
-      value={{
-        currentTrack,
-        isPlaying,
-        isBuffering,
-        currentTime,
-        duration,
-        volume,
-        isMuted,
-        playbackRate,
-        repeatMode,
-        isShuffle,
-        queue,
-        queueIndex,
-        error,
-        sourceContext,
-        isNowPlayingOpen,
-        setIsNowPlayingOpen,
-        playTrack,
-        togglePlayPause,
-        pause,
-        resume,
-        stop,
-        nextTrack,
-        previousTrack,
-        seek,
-        setVolume,
-        setPlaybackRate,
-        toggleShuffle,
-        cycleRepeatMode,
-        addToQueue,
-        playNext,
-        removeFromQueue,
-        reorderQueue,
-        clearQueue,
-        toggleFavorite,
-        downloadTrack,
-        deleteDownloadedCopy,
-      }}
-    >
-      {children}
-    </MusicPlayerContext.Provider>
+    <MusicProgressContext.Provider value={clock}>
+      <MusicPlayerContext.Provider
+        value={{
+          currentTrack,
+          isPlaying,
+          isBuffering,
+          duration,
+          volume,
+          isMuted,
+          playbackRate,
+          repeatMode,
+          isShuffle,
+          queue,
+          queueIndex,
+          error,
+          sourceContext,
+          isNowPlayingOpen,
+          setIsNowPlayingOpen,
+          playTrack,
+          togglePlayPause,
+          pause,
+          resume,
+          stop,
+          nextTrack,
+          previousTrack,
+          seek,
+          setVolume,
+          setPlaybackRate,
+          toggleShuffle,
+          cycleRepeatMode,
+          addToQueue,
+          playNext,
+          removeFromQueue,
+          reorderQueue,
+          clearQueue,
+          toggleFavorite,
+          downloadTrack,
+          deleteDownloadedCopy,
+        }}
+      >
+        {children}
+      </MusicPlayerContext.Provider>
+    </MusicProgressContext.Provider>
   );
 }
 
@@ -883,4 +903,12 @@ export function useMusicPlayer() {
     throw new Error("useMusicPlayer must be used within a MusicPlayerProvider");
   }
   return ctx;
+}
+
+const noProgressSubscription = () => () => {};
+
+export function useMusicProgress(active = true) {
+  const clock = useContext(MusicProgressContext);
+  if (!clock) throw new Error("useMusicProgress must be used within a MusicPlayerProvider");
+  return useSyncExternalStore(active ? clock.subscribe : noProgressSubscription, clock.getSnapshot, clock.getServerSnapshot);
 }

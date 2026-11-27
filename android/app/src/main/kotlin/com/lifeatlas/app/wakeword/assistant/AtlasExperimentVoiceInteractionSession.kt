@@ -17,7 +17,7 @@ import com.lifeatlas.app.wakeword.AtlasWakeWordService
 
 /**
  * Minimal assistant overlay session for testing assistant gesture & lock-screen behavior.
- * Intentionally isolated from Life Atlas private vaults and cloud LLMs.
+ * Intentionally isolated from Atlas private vaults and cloud LLMs.
  */
 class AtlasExperimentVoiceInteractionSession(context: Context) : VoiceInteractionSession(context) {
 
@@ -45,7 +45,7 @@ class AtlasExperimentVoiceInteractionSession(context: Context) : VoiceInteractio
         }
 
         val eyebrow = TextView(context).apply {
-            text = "LIFE ATLAS · ASSISTANT SESSION EXPERIMENT"
+            text = "ATLAS · ASSISTANT SESSION EXPERIMENT"
             setTextColor(Color.parseColor("#F59E0B"))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
         }

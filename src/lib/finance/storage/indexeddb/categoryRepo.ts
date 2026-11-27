@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Category Repository
+ * Atlas Finance: IndexedDB Category Repository
  */
 
 import { IFinanceCategoryRepository } from "../interfaces";

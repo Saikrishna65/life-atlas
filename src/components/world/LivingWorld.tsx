@@ -157,7 +157,7 @@ export default function LivingWorld({ places=[], scrapbookMedia = [], trips, peo
         <Deferred id="beyond" title="The Beyond" component={Beyond} />
       </WorldMotion>
       <noscript>
-        The interactive chapters require JavaScript. Life Atlas is my
+        The interactive chapters require JavaScript. Atlas is my
         public collection of travel, places, and memories.
       </noscript>
     </div>

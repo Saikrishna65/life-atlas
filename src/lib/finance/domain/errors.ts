@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Domain and Storage Error Hierarchy
+ * Atlas Finance: Domain and Storage Error Hierarchy
  */
 
 export type FinanceErrorCode =

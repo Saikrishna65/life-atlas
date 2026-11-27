@@ -9,7 +9,7 @@ export const recoveryPage = String.raw`<!doctype html>
 <section id="history" hidden><h2>Preserved cloud snapshots</h2><p>These snapshots and their files remain in your cloud vault. Making a snapshot active changes only the cloud selection. Use Restore in Atlas only after saving any newer device data.</p><div id="copies"></div></section>
 <script>
 (()=>{
- const $=id=>document.getElementById(id),names={trips:'Trip Vault',music:'Music',finance:'Finance',studio:'Studio',preferences:'App preferences'};
+ const $=id=>document.getElementById(id),names={trips:'Atlas Trips',music:'Music',finance:'Finance',studio:'Studio',preferences:'App preferences'};
  let identity,version,busy=false,checked=false;
  const hash=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value)))).map(n=>n.toString(16).padStart(2,'0')).join('');
  const buttons=()=>{document.querySelectorAll('button').forEach(b=>b.disabled=busy);$('preserve').disabled=busy||!checked||!$('confirm').checked;};

@@ -11,7 +11,7 @@ import {
   formatPaise,
 } from "../../src/lib/finance";
 
-describe("Life Atlas Finance: Account-Linked Savings Pockets", () => {
+describe("Atlas Finance: Account-Linked Savings Pockets", () => {
   let uow: IndexedDBUnitOfWork;
   let accountService: AccountService;
   let transactionService: TransactionService;

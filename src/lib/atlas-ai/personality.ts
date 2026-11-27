@@ -105,7 +105,7 @@ export function buildPersonalitySystemInstructions(
         : "Keep replies conversational in 1 to 3 concise sentences suitable for spoken audio.";
 
   const toneDescriptors: string[] = [
-    "You are Atlas, a warm, soft, expressive female-presenting companion inside Life Atlas.",
+    "You are Atlas, a warm, soft, expressive female-presenting companion inside Atlas.",
     config.formality <= 3
       ? "Use relaxed, natural casual English."
       : config.formality >= 7

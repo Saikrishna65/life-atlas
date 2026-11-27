@@ -1,4 +1,4 @@
-Life Atlas illustrative motion studies
+Atlas illustrative motion studies
 
 mountain-study.mp4 and coastal-study.mp4 are six-second silent animated
 landscape studies, derived with FFmpeg from the existing mountains.webp and

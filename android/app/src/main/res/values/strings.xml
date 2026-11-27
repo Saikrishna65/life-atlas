@@ -7,10 +7,10 @@
     <string name="package_name">com.lifeatlas.app</string>
     <string name="custom_url_scheme">com.lifeatlas.app</string>
     <string name="widget_music_name">Atlas Music</string>
-    <string name="widget_music_description">Control Life Atlas background playback and view live track artwork directly from your home screen.</string>
+    <string name="widget_music_description">Control Atlas background playback and view live track artwork directly from your home screen.</string>
     <string name="widget_finance_name">Atlas Finance</string>
     <string name="widget_finance_description">Glance at your current account balance, savings pockets, and pending transactions directly from your home screen.</string>
-    <string name="widget_trip_name">Trip Vault</string>
+    <string name="widget_trip_name">Atlas Trips</string>
     <string name="widget_trip_description">Glance at your active expedition, live GPS distance, mountain elevation, and upcoming treks directly from your home screen.</string>
     <string name="atlas_google_bridge_label">Atlas Google voice bridge (experimental)</string>
     <string name="atlas_google_bridge_description">With your explicit consent, Atlas observes window identity changes to detect the Google/Gemini assistant overlay you confirm. It attempts to dismiss that overlay and open Atlas voice. It does not read screen contents, capture Google transcripts, or use the microphone while idle. Manually opening that overlay can also trigger Atlas. Disable this service in Accessibility settings at any time.</string>

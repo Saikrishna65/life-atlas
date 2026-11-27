@@ -35,7 +35,7 @@ export function JourneyFrame({
           </div>
           <div className="journey-cover-shade" />
           <Link href="/trips" className="journey-return">
-            LIFE ATLAS / ALL JOURNEYS ↗
+            ATLAS / ALL JOURNEYS ↗
           </Link>
           <div className="journey-cover-title" data-world-reveal>
             <p className="world-eyebrow">{label}</p>
@@ -50,7 +50,7 @@ export function JourneyFrame({
             </a>
           </div>
           <span className="journey-cover-index">
-            A FIELD JOURNAL / LIFE ATLAS
+            A FIELD JOURNAL / ATLAS
           </span>
         </header>
         <main id="journey-content" className="journey-body">

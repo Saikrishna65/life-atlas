@@ -33,7 +33,7 @@ export function syncTripWidget(data: TripWidgetData): void {
 }
 
 /**
- * Derives the optimal home screen widget data from local Trip Vault records
+ * Derives the optimal home screen widget data from local Atlas Trips records
  * and broadcasts it to the native Android home screen widget.
  */
 export async function syncActiveTripToWidget(preferredTripId?: string, suppliedTrips?: TripRecord[]): Promise<TripWidgetData | null> {
@@ -44,7 +44,7 @@ export async function syncActiveTripToWidget(preferredTripId?: string, suppliedT
     if (!allTrips || allTrips.length === 0) {
       const idleData: TripWidgetData = {
         tripId: "",
-        title: "Atlas Trip Vault",
+        title: "Atlas Atlas Trips",
         status: "IDLE",
         statusLabel: "NO TRIPS",
         subtitle: "Private Offline Expeditions",
@@ -52,7 +52,7 @@ export async function syncActiveTripToWidget(preferredTripId?: string, suppliedT
         metric1Value: "0",
         metric2Label: "VAULT",
         metric2Value: "Ready",
-        note: "Plan your next journey in Trip Vault",
+        note: "Plan your next journey in Atlas Trips",
         targetRoute: "/secret/vault",
       };
       syncTripWidget(idleData);

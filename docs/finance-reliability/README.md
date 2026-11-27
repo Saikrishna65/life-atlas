@@ -1,4 +1,4 @@
-# Finance Vault reliability and daily-use improvements
+# Atlas Finance reliability and daily-use improvements
 
 26 November 2026. Source-only changes on `feature/atlas-local-intelligence`, following `144d380`. Core implementation commit: `36223e2`. No APK build, main merge, push, deployment, cloud operation or modification of personal finance data was performed.
 

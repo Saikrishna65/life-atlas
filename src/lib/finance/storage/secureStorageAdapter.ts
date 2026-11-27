@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Secure Storage Architecture & Native Android Key Management
+ * Atlas Finance: Secure Storage Architecture & Native Android Key Management
  * 
  * ============================================================================
  * SECURITY AUDIT & HONEST DISCLOSURE OF LOCAL STORAGE BOUNDARIES

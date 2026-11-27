@@ -1,4 +1,4 @@
-# Life Atlas — Hey Atlas Wake-Word & Voice Assistant Handoff Context
+# Atlas — Hey Atlas Wake-Word & Voice Assistant Handoff Context
 
 > **Last Updated:** 2026-11-17
 > **Git Branch:** `experiment/hey-atlas-wakeword` (Head commit prior to this update: `94772ac`)

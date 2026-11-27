@@ -20,15 +20,15 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://life-atlas-eight-five.vercel.app'),
   title: {
-    template: "%s | Life Atlas",
-    default: "Life Atlas",
+    template: "%s | Atlas",
+    default: "Atlas",
   },
   description: "A place for the moments I want to remember.",
   openGraph: {
-    title: "Life Atlas",
+    title: "Atlas",
     description: "A place for the moments I want to remember.",
     url: "https://life-atlas-eight-five.vercel.app",
-    siteName: "Life Atlas",
+    siteName: "Atlas",
     images: [
       {
         url: "/og-image.jpg",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Life Atlas",
+    title: "Atlas",
     description: "A place for the moments I want to remember.",
     images: ["/og-image.jpg"],
   },

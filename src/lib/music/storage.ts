@@ -1,6 +1,7 @@
+import { createLibraryCache } from "./library-cache";
 import {saveMusicChange} from "../control-room/music-queue";
 /**
- * Life Atlas: Music Vault IndexedDB Storage Engine (Phase 16)
+ * Atlas: Atlas Music IndexedDB Storage Engine (Phase 16)
  * Dedicated database: life_atlas_music_db
  * Completely isolated from life_atlas_trip_vault_db to guarantee zero data interference.
  */
@@ -11,11 +12,22 @@ import { SAMPLE_DEFAULT_TRACK_TITLES } from "./samples";
 export const MUSIC_DB_NAME = "life_atlas_music_db";
 export const MUSIC_DB_VERSION = 1;
 
+const libraryCache = createLibraryCache();
+export const peekMusicLibrary = libraryCache.peek;
+export const invalidateMusicLibrary = libraryCache.invalidate;
+if (typeof window !== "undefined") {
+  window.addEventListener("lifeatlas_tracks_updated", invalidateMusicLibrary);
+  // Release cached media references while the app is backgrounded.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) invalidateMusicLibrary();
+  });
+}
+
 let cachedDB: IDBDatabase | null = null;
 let dbOpenPromise: Promise<IDBDatabase> | null = null;
 
 /**
- * Opens or retrieves the cached Music Vault IndexedDB instance
+ * Opens or retrieves the cached Atlas Music IndexedDB instance
  */
 export async function getMusicDB(): Promise<IDBDatabase> {
   if (cachedDB) return cachedDB;
@@ -84,6 +96,7 @@ export async function getMusicDB(): Promise<IDBDatabase> {
 }
 
 export function closeMusicDB() {
+  invalidateMusicLibrary();
   if (cachedDB) {
     cachedDB.close();
     cachedDB = null;
@@ -149,7 +162,7 @@ export async function purgeDefaultSampleTracks(): Promise<number> {
         }
       };
 
-      tx.oncomplete = () => resolve(1);
+      tx.oncomplete = () => { invalidateMusicLibrary(); resolve(1); };
       tx.onerror = () => resolve(0);
     });
   } catch {
@@ -166,10 +179,11 @@ export async function saveTrack(track: MusicTrack): Promise<MusicTrack> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction("tracks", "readwrite");
     const store = tx.objectStore("tracks");
-    const req = store.put(track);
+    store.put(track);
 
-    req.onsuccess = () => resolve(track);
-    req.onerror = () => reject(req.error);
+    tx.oncomplete = () => { invalidateMusicLibrary(); resolve(track); };
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("Saving the song was interrupted"));
   });
 }
 
@@ -185,7 +199,11 @@ export async function getTrack(id: string): Promise<MusicTrack | null> {
   });
 }
 
-export async function getAllTracks(): Promise<MusicTrack[]> {
+export function getAllTracks(): Promise<MusicTrack[]> {
+  return libraryCache.read(readAllTracks);
+}
+
+async function readAllTracks(): Promise<MusicTrack[]> {
   // Reads preserve all local tracks, including imported or edited sample records.
 
   const db = await getMusicDB();
@@ -250,8 +268,9 @@ export async function deleteTrack(id: string, deleteOnline: boolean = true): Pro
       }
     };
 
-    tx.oncomplete = () => resolve();
+    tx.oncomplete = () => { invalidateMusicLibrary(); resolve(); };
     tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error("Deleting the song was interrupted"));
   });
 
   if (deleteOnline && typeof window !== "undefined") {
@@ -446,7 +465,7 @@ export async function getSmartPlaylistTracks(type: SmartPlaylistType): Promise<M
 }
 
 // =============================================================================
-// TRIP VAULT EXPEDITION LINKING
+// ATLAS TRIPS EXPEDITION LINKING
 // =============================================================================
 
 export async function getPlaylistsForTrip(tripId: string): Promise<MusicPlaylist[]> {
@@ -560,7 +579,7 @@ export async function exportLibraryJSON(): Promise<string> {
   const playlists = await getAllPlaylists();
 
   // Export tracks metadata without heavy audioBlobs for clean portable JSON backup
-  const portableTracks = tracks.map(({ audioBlob, ...meta }) => meta);
+  const portableTracks = tracks.map((track) => { const meta = { ...track }; delete meta.audioBlob; return meta; });
 
   return JSON.stringify(
     {

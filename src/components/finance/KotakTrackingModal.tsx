@@ -707,7 +707,7 @@ export default function KotakTrackingModal({
                     <li>Log into Kotak Mahindra Net Banking (or Kotak 811 App).</li>
                     <li>Navigate to <strong>Accounts → Statements & Reports</strong>.</li>
                     <li>Select your date range and choose <strong>Download as CSV</strong>.</li>
-                    <li>Click the button below to import the CSV file securely into Life Atlas.</li>
+                    <li>Click the button below to import the CSV file securely into Atlas.</li>
                   </ol>
                 </div>
 

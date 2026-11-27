@@ -176,7 +176,7 @@ export async function triggerTestNotification(secondsAhead: number = 5): Promise
 
   return scheduleNativeNotification({
     id: testId,
-    title: "⚡ Life Atlas Vault: Test Alarm",
+    title: "⚡ Atlas: Test Alarm",
     body: `System alarm test executed successfully at ${targetDate.toLocaleTimeString()}. Local notifications are fully operational!`,
     scheduleAt: targetDate,
     extra: { test: "true" },

@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Money Calculation & Integer Arithmetic Engine
+ * Atlas Finance: Money Calculation & Integer Arithmetic Engine
  * 
  * Strict, deterministic integer arithmetic in paise (1 INR = 100 paise).
  * Zero floating-point rounding errors. Uses strict boundary checks against Number.MAX_SAFE_INTEGER.

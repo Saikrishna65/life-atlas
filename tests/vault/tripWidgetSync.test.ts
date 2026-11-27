@@ -14,7 +14,7 @@ import {
 } from "../../src/lib/vault/storage";
 import { TripRecord, LiveExpeditionSession } from "../../src/lib/vault/types";
 
-describe("Trip Vault Android Home Screen Widget Sync", () => {
+describe("Atlas Trips Android Home Screen Widget Sync", () => {
   before(async () => {
     await deleteVaultDB();
   });
@@ -28,7 +28,7 @@ describe("Trip Vault Android Home Screen Widget Sync", () => {
     assert.ok(data);
     assert.equal(data.status, "IDLE");
     assert.equal(data.statusLabel, "NO TRIPS");
-    assert.equal(data.title, "Atlas Trip Vault");
+    assert.equal(data.title, "Atlas Atlas Trips");
     assert.equal(data.targetRoute, "/secret/vault");
   });
 

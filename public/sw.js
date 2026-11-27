@@ -1,4 +1,4 @@
-// Life Atlas Progressive Offline Service Worker
+// Atlas Progressive Offline Service Worker
 const CACHE_NAME = 'life-atlas-offline-v1';
 
 const STATIC_ASSETS = [

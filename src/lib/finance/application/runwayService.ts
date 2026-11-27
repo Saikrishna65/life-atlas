@@ -1,7 +1,7 @@
 import { readPostedAccounts } from "./balanceService";
 import { computeCashFlow } from "../domain/ledger";
 /**
- * Life Atlas Finance: Financial Runway & Affordability Service
+ * Atlas Finance: Financial Runway & Affordability Service
  * 
  * Computes how long liquid assets will last at the observed burn rate.
  * 

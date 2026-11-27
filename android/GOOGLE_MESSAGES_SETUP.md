@@ -27,7 +27,7 @@ The native pre-persistence filter has a plain Java test in `app/src/test/java/co
 
 Full Android verification requires Android SDK 34, the configured Gradle toolchain, and a physical device/emulator with Google Messages. Build with `./gradlew :app:assembleDebug` from this directory. Test permission denial/revocation, reopen after capture, notification updates, duplicate alerts, and stop/start capture on the device. An automated JVM filter test does not validate Android's listener lifecycle.
 
-The updated app can post an Atlas notification for each captured bank alert. Grant Android notification permission in addition to notification-listener access. Tapping the notification opens the approval inbox. The Finance card in Private Atlas displays the unique pending-transaction count. No approval is performed by the notification itself.
+The updated app can post an Atlas notification for each captured bank alert. Grant Android notification permission in addition to notification-listener access. Tapping the notification opens the approval inbox. The Finance card in Atlas displays the unique pending-transaction count. No approval is performed by the notification itself.
 
 ## Updating an installed APK
 

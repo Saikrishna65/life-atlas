@@ -1,4 +1,4 @@
-Life Atlas hero — temporary stock-film previews
+Atlas hero — temporary stock-film previews
 These are illustrative stock films, not recordings of the named trips.
 License: https://www.pexels.com/license/
 1. Aerial View of Lush Green Forest and Mountains — Armando H2

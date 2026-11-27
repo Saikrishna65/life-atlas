@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Recurring Payment Detection Automated Test Suite (Phase 3)
+ * Atlas Finance: Recurring Payment Detection Automated Test Suite (Phase 3)
  * 
  * Validates deterministic local recurring pattern detection, interval variance tolerance,
  * transfer exclusions, reversed transaction exclusions, next due date estimation, and rule lifecycles.
@@ -18,7 +18,7 @@ import {
   Transaction,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Recurring Payments & Subscription Engine", () => {
+describe("Atlas Finance: Recurring Payments & Subscription Engine", () => {
   let uow: IndexedDBUnitOfWork;
   let recurringService: RecurringService;
   let transactionService: TransactionService;

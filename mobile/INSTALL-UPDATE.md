@@ -195,7 +195,7 @@ Historical release notes below.
 Atlas 2.2.2 — Gallery interaction and extraction update
 
 Install through Atlas → Control Room → Access → App updates, or install atlas.apk
-over the existing Atlas/Atlas Next. Package identity stays com.lifeatlas.app.next;
+over the existing Atlas/Atlas. Package identity stays com.lifeatlas.app.next;
 version code 38. Do not uninstall or clear app data.
 
 Long-press a local photo for text/stickers; More offers extraction and Teach Atlas.
@@ -215,7 +215,7 @@ Historical release notes below.
 
 Atlas 2.1.0 — one integrated app
 
-Download atlas.apk. It updates the existing Atlas Next package
+Download atlas.apk. It updates the existing Atlas package
 (com.lifeatlas.app.next) under the visible name Atlas, preserving its data and
 signing identity. Version code: 35. Do not uninstall or clear app storage.
 Atlas Gallery is a second icon for the same installed app, opening Photos directly.
@@ -241,8 +241,8 @@ Historical release instructions follow; use the instructions above for 2.1.0.
 Atlas 2.0.5 — isolated Smart Search and advanced gallery tools
 
 1. Keep your existing app installed. Do not clear its storage.
-2. If the installed app is Atlas Vault, download atlas-offline-online.apk.
-   If it is Atlas Next, download atlas-next.apk.
+2. If the installed app is Atlas, download atlas-offline-online.apk.
+   If it is Atlas, download atlas-next.apk.
 3. Open the matching APK and choose Update. This build uses version code 34.
 4. Read signing-compatibility.json. An update build must match the published
    1.4.4 stable certificate. A fresh-install build instead verifies the APK against the
@@ -253,7 +253,7 @@ Atlas 2.0.5 — isolated Smart Search and advanced gallery tools
    debug builds can have a different certificate. Do not uninstall to bypass it.
    An in-place update requires the original signing key. Report the installed app
    name, version and where its APK came from.
-6. Atlas Next uses com.lifeatlas.app.next; Atlas Vault uses com.lifeatlas.app.
+6. Atlas uses com.lifeatlas.app.next; Atlas uses com.lifeatlas.app.
    They have separate databases. Installing Next beside Vault does not import
    Vault data. Neither app needs to be removed to keep the other.
 
@@ -269,7 +269,7 @@ it cannot initialize or rotate it. No signing key is included in release files.
 
 R2 connection fix: requests now use the AWS S3 signer with payload hashes, without
 AWS chunked encoding. Native transport errors have safe, actionable diagnostics.
-Update the existing Atlas Next app; saved R2 credentials remain in native storage.
+Update the existing Atlas app; saved R2 credentials remain in native storage.
 No user bucket was accessed by the build or test suite. Retest your connection
 inside the app after installing the update.
 
@@ -288,7 +288,7 @@ publishing API. The native library combines existing catalog entries with this
 device's securely saved publication index. Standalone legacy catalog publishing
 still uses conditional updates and can report a catalog conflict.
 
-Install over the existing Atlas Next app without uninstalling or clearing storage.
+Install over the existing Atlas app without uninstalling or clearing storage.
 Open the existing Creator Studio trip and tap Publish again. Named-place selections
 and transfer IDs survive this update; verified completed uploads are reused. The
 build does not access your bucket or upload any personal photos.
@@ -316,7 +316,7 @@ changes, deletion, private storage and unrelated files still require authenticat
 The in-memory public grant ends only when this workflow finishes/stops, is replaced,
 the process ends or credentials change; it cannot authorize arbitrary bucket access.
 
-Install over the existing Atlas Next without uninstalling or clearing storage.
+Install over the existing Atlas without uninstalling or clearing storage.
 Your existing named-place selections, transfers, original media and route data are
 preserved. No personal cloud uploads or physical-device tests run in the build.
 
@@ -351,7 +351,7 @@ never deleted by duplicate detection. Existing historical duplicates are not
 automatically removed. After resetting app storage or changing devices, upload
 history must still be present to identify earlier random-key objects.
 
-Private Gallery: open Photo & video gallery on the Private Atlas home screen.
+Private Gallery: open Photo & video gallery on the Atlas home screen.
 Tap Choose photo access and grant full photo/video access to browse all accessible
 MediaStore images and videos, or use Android selected-photo access. Change this
 at any time under Permissions. No files upload merely because they are visible.
@@ -448,7 +448,7 @@ Atlas Photos 2.0.4
 ------------------
 A second Atlas Photos launcher icon opens Gallery inside the same installed app.
 It shares existing photos, permissions, vaults, local database and protected shell.
-It is not another package. Your Atlas Next icon and data stay in place.
+It is not another package. Your Atlas icon and data stay in place.
 
 Photos open directly from originals; neighbouring photos keep the same original
 image elements while swiping, so returning does not restart a thumbnail-to-original

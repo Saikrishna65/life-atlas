@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Shared building blocks for the Atlas Music Vault multi-palette theme system.
+ * Shared building blocks for the Atlas Music multi-palette theme system.
  */
 import React, { useEffect, useState, useCallback } from "react";
 import { Capacitor, PluginListenerHandle } from "@capacitor/core";
@@ -31,12 +31,15 @@ import {
   deleteTrack,
   saveTrack,
 } from "@/lib/music/storage";
-import {
-  deleteTrackFromCloud,
-  downloadTrackToLocalStorage,
-  uploadTrackToCloud,
-} from "@/lib/music/cloudSync";
 import { triggerHaptic } from "@/lib/deviceAuth";
+
+// Cloud dependencies are only needed when a cloud action is chosen.
+const deleteTrackFromCloud: typeof import("@/lib/music/cloudSync").deleteTrackFromCloud =
+  (...args) => import("@/lib/music/cloudSync").then((cloud) => cloud.deleteTrackFromCloud(...args));
+const downloadTrackToLocalStorage: typeof import("@/lib/music/cloudSync").downloadTrackToLocalStorage =
+  (...args) => import("@/lib/music/cloudSync").then((cloud) => cloud.downloadTrackToLocalStorage(...args));
+const uploadTrackToCloud: typeof import("@/lib/music/cloudSync").uploadTrackToCloud =
+  (...args) => import("@/lib/music/cloudSync").then((cloud) => cloud.uploadTrackToCloud(...args));
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -326,71 +329,32 @@ export function Sheet({
   );
 }
 
-function SheetAction({
-  icon: Icon,
-  label,
-  hint,
-  onClick,
-  danger,
-  active,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  hint?: string;
-  onClick: () => void;
-  danger?: boolean;
-  active?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-4 px-3 py-3.5 rounded-2xl text-left active:bg-[var(--mv-card-hover)] cursor-pointer ${
-        danger ? "text-rose-500" : "text-[var(--mv-text)]"
-      }`}
-    >
-      <Icon
-        className={`w-5 h-5 shrink-0 ${
-          active ? "text-[var(--mv-accent)] fill-[var(--mv-accent)]" : ""
-        }`}
-      />
-      <span className="flex-1 min-w-0">
-        <span className="block text-[15px] font-medium">{label}</span>
-        {hint && <span className="block text-xs text-[var(--mv-text-subtle)] mt-0.5">{hint}</span>}
-      </span>
-    </button>
-  );
-}
-
 /* ------------------------------------------------------- track action sheet */
 
 type ConfirmKind = "cloud" | "phone" | "everywhere" | null;
 
-export function TrackActionSheet({
-  track,
-  onClose,
-  onChanged,
-}: {
+type TrackActionSheetProps = {
   track: MusicTrack | null;
   onClose: () => void;
   onChanged: () => void;
-}) {
+};
+export function TrackActionSheet(props: TrackActionSheetProps) {
+  return <TrackActionSheetContent key={props.track?.id || "closed"} {...props} />;
+}
+function TrackActionSheetContent({ track, onClose, onChanged }: TrackActionSheetProps) {
   const { playNext, addToQueue, toggleFavorite } = useMusicPlayer();
   const [view, setView] = useState<"menu" | "playlists">("menu");
   const [playlists, setPlaylists] = useState<MusicPlaylist[]>([]);
   const [confirm, setConfirm] = useState<ConfirmKind>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(track?.isFavorite || false);
 
   useEffect(() => {
-    if (track) {
-      setView("menu");
-      setConfirm(null);
-      setMessage(null);
-      setBusy(false);
-      setLiked(track.isFavorite);
-      getAllPlaylists().then(setPlaylists).catch(() => {});
-    }
+    if (!track) return;
+    let active = true;
+    getAllPlaylists().then((rows) => { if (active) setPlaylists(rows); }).catch(() => {});
+    return () => { active = false; };
   }, [track]);
 
   const finish = useCallback(

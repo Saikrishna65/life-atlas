@@ -8,7 +8,7 @@ import com.getcapacitor.CapacitorWebView;
 /**
  * Custom CapacitorWebView that prevents Chromium from suspending HTML5 <audio>
  * playback when the Activity window moves to the background or the device screen
- * is locked while an active Music Vault session is running.
+ * is locked while an active Atlas Music session is running.
  */
 public class AtlasWebView extends CapacitorWebView {
 

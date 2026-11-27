@@ -17,7 +17,7 @@ import {
   BookingRecord,
 } from "../../src/lib/vault/types";
 
-describe("Trip Vault Phase 4: Bookings, Transport & Accommodation Flow", () => {
+describe("Atlas Trips Phase 4: Bookings, Transport & Accommodation Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

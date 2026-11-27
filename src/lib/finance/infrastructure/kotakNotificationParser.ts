@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Kotak 811 Notification Parser
+ * Atlas Finance: Kotak 811 Notification Parser
  * 
  * Deterministic parser for transaction notifications received from:
  * - Kotak 811 & Mobile Banking App (com.msf.kbank.mobile)

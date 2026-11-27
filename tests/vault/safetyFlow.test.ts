@@ -24,7 +24,7 @@ import {
 } from "../../src/lib/vault/types";
 import { NATIONAL_EMERGENCY_HOTLINES } from "../../src/lib/vault/useSafetyHub";
 
-describe("Trip Vault Phase 11: Emergency, Medical & Plan B Contingencies Flow", () => {
+describe("Atlas Trips Phase 11: Emergency, Medical & Plan B Contingencies Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

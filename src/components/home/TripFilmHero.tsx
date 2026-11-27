@@ -109,7 +109,7 @@ export default function TripFilmHero({ trips, galleryPhotos }: { trips: HeroTrip
     }, root);
     return () => context.revert();
   }, [active, reduced, publicLoading]);
-  if (!current) return <section ref={root} className={`${heroTypography.variable} trip-film-hero`} data-hero aria-label="Life Atlas"><PublicPageReady /><div className="trip-film-main"><p className="trip-film-eyebrow">Life Atlas</p><h1>My world.<br />In the making.</h1><p>My journeys will appear here when I publish them.</p><Link className="trip-film-cta" href="/trips"><span>Explore my journal</span><ArrowRight size={17}/></Link></div></section>;
+  if (!current) return <section ref={root} className={`${heroTypography.variable} trip-film-hero`} data-hero aria-label="Atlas"><PublicPageReady /><div className="trip-film-main"><p className="trip-film-eyebrow">Atlas</p><h1>My world.<br />In the making.</h1><p>My journeys will appear here when I publish them.</p><Link className="trip-film-cta" href="/trips"><span>Explore my journal</span><ArrowRight size={17}/></Link></div></section>;
   return (
     <section
       ref={root}

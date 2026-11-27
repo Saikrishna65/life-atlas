@@ -1,6 +1,6 @@
 /**
- * Life Atlas: Android Trip Vault Data Models
- * Strict, reusable TypeScript schemas for all 15 Trip Vault pillars.
+ * Atlas: Android Atlas Trips Data Models
+ * Strict, reusable TypeScript schemas for all 15 Atlas Trips pillars.
  */
 
 export type ID = string;

@@ -174,7 +174,7 @@ export default function SecretDoorHotspot({ progressRef }: SecretDoorHotspotProp
       ref={hotspotRef}
       role="button"
       tabIndex={-1}
-      aria-label="Private Atlas Entrance - Double Click or Tap to Authenticate"
+      aria-label="Atlas Entrance - Double Click or Tap to Authenticate"
       onPointerDown={registerDoorTap}
       onDoubleClick={handleDoubleClick}
       style={{

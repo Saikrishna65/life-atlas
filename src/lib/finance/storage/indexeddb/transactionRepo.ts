@@ -1,6 +1,6 @@
 import { selectTransactions } from "../../domain/transactionQuery";
 /**
- * Life Atlas Finance: IndexedDB Transaction Repository
+ * Atlas Finance: IndexedDB Transaction Repository
  * 
  * High-performance transaction queries with compound filtering, date range indexing,
  * full text description search, and batch persistence.

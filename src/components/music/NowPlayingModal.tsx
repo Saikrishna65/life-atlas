@@ -20,7 +20,7 @@ import {
   Moon,
   Gauge,
 } from "lucide-react";
-import { useMusicPlayer } from "@/lib/music/MusicPlayerContext";
+import { useMusicPlayer, useMusicProgress } from "@/lib/music/MusicPlayerContext";
 import {
   Artwork,
   Equalizer,
@@ -41,7 +41,6 @@ export default function NowPlayingModal() {
     currentTrack,
     isPlaying,
     isBuffering,
-    currentTime,
     duration,
     playbackRate,
     repeatMode,
@@ -64,6 +63,7 @@ export default function NowPlayingModal() {
     playTrack,
     removeFromQueue,
   } = useMusicPlayer();
+  const currentTime = useMusicProgress(isNowPlayingOpen);
 
   const [showQueue, setShowQueue] = useState(false);
   const [sleepEndsAt, setSleepEndsAt] = useState<number | null>(null);
@@ -79,7 +79,7 @@ export default function NowPlayingModal() {
   useEffect(() => {
     if (!isNowPlayingOpen) return;
 
-    // Push modal state to history so Android back gesture or browser back stays inside Music Vault
+    // Push modal state to history so Android back gesture or browser back stays inside Atlas Music
     const modalState = { musicModal: "now-playing" };
     window.history.pushState(modalState, "");
 
@@ -143,10 +143,7 @@ export default function NowPlayingModal() {
   };
 
   useEffect(() => {
-    if (!sleepEndsAt) {
-      setSleepLabel(null);
-      return;
-    }
+    if (!sleepEndsAt) return;
     const tick = () => {
       const remMs = sleepEndsAt - Date.now();
       if (remMs <= 0) {
@@ -157,7 +154,6 @@ export default function NowPlayingModal() {
         setSleepLabel(`${Math.ceil(remMs / 60000)}m`);
       }
     };
-    tick();
     const id = window.setInterval(tick, 10000);
     return () => window.clearInterval(id);
   }, [sleepEndsAt, isPlaying, togglePlayPause]);
@@ -179,11 +175,13 @@ export default function NowPlayingModal() {
   const cycleSleepTimer = () => {
     triggerHaptic("tap");
     if (!sleepEndsAt) {
+      setSleepLabel("15m");
       setSleepEndsAt(Date.now() + 15 * 60000);
       return;
     }
     const remMin = Math.round((sleepEndsAt - Date.now()) / 60000);
     const next = SLEEP_OPTIONS.find((m) => m > remMin + 2) ?? 0;
+    setSleepLabel(next > 0 ? `${next}m` : null);
     setSleepEndsAt(next > 0 ? Date.now() + next * 60000 : null);
   };
 
@@ -238,7 +236,7 @@ export default function NowPlayingModal() {
         <button
           onClick={handleMinimize}
           className="w-11 h-11 rounded-full sonic-glass flex items-center justify-center active:scale-90 transition-transform cursor-pointer"
-          aria-label="Back to Music Vault"
+          aria-label="Back to Atlas Music"
         >
           <ChevronDown className="w-6 h-6 text-[var(--mv-text)]" />
         </button>
@@ -419,7 +417,7 @@ export default function NowPlayingModal() {
               min={0}
               max={total || 100}
               step={0.1}
-              value={Math.min(currentTime, total || 100)}
+              value={Math.min(total || 100)}
               onChange={(e) => seek(parseFloat(e.target.value))}
               aria-label="Seek"
               className="w-full h-1.5 rounded-full appearance-none cursor-pointer"

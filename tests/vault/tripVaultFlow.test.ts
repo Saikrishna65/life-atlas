@@ -10,7 +10,7 @@ import {
 } from "../../src/lib/vault/storage";
 import { TripRecord, DestinationStop } from "../../src/lib/vault/types";
 
-describe("Trip Vault Phase 2: Trip Lifecycle & Management Flow", () => {
+describe("Atlas Trips Phase 2: Trip Lifecycle & Management Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

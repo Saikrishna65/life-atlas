@@ -1,6 +1,6 @@
 # Bundled website fonts
 
-These are the same open-source families used by Life Atlas, now stored locally
+These are the same open-source families used by Atlas, now stored locally
 so Next.js builds do not need Google Fonts network access. No runtime font service,
 API credential or environment variable is required. `next/font/local` emits the
 usual hashed, cacheable static assets and preserves the existing CSS variables.

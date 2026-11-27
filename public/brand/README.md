@@ -1,4 +1,4 @@
-# Life Atlas logo assets
+# Atlas logo assets
 
 - `life-atlas-white.png`: archived white raster derivative.
 - `life-atlas-black.png`: archived black raster derivative.

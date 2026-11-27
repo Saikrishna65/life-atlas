@@ -119,6 +119,6 @@ export function useTripVault() {
 }
 
 /**
- * REQ-FND-03 alias for reactive Trip Vault hook
+ * REQ-FND-03 alias for reactive Atlas Trips hook
  */
 export const useTripVaultStore = useTripVault;

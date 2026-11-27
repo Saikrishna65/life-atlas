@@ -1,5 +1,5 @@
 /**
- * Life Atlas: AI Itinerary Architect & Curated Expedition Generator
+ * Atlas: AI Itinerary Architect & Curated Expedition Generator
  * Powers Phase 14 REQ-AIX-01.
  * Supports online Neon AI Gateway model generation with graceful, rich offline fallback.
  */

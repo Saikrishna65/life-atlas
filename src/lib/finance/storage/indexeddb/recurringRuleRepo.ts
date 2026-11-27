@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Recurring Rule Repository
+ * Atlas Finance: IndexedDB Recurring Rule Repository
  */
 
 import { IRecurringRuleRepository } from "../interfaces";

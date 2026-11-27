@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Storage & Repository Interfaces
+ * Atlas Finance: Storage & Repository Interfaces
  *
  * Defines persistence contracts so domain and application services remain strictly decoupled
  * from IndexedDB, native SQLite, or cloud backends.

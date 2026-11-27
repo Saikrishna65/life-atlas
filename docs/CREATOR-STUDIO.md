@@ -1,13 +1,13 @@
 # Creator Studio — public website editing
 
-Open **Private Atlas → Creator Studio**.
+Open **Atlas → Creator Studio**.
 
 **Past trips** creates an archived local trip using just its title. Destination,
 departure and return dates are optional; unknown dates are never invented. Save,
 then use the shared **Publish / update website** panel to select photos/videos,
 write optional public copy and opt into an itinerary or route only when available.
 Existing vault trips can be selected for publication without copying their private
-notes. Their full details still use Trip Vault's existing editor. Studio-owned
+notes. Their full details still use Atlas Trips's existing editor. Studio-owned
 past trips can be edited here; active recordings are protected from these edits.
 
 **Homepage** controls these independent collections:

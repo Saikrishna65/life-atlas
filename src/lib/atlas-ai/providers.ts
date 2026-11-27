@@ -141,7 +141,7 @@ function buildSystemPrompt(
       ? `Active trip: ${session.activeTripTitle}${session.lastTripDay ? ` (Day ${session.lastTripDay})` : ""}.`
       : "",
     session.sessionSummary ? `Session summary: ${session.sessionSummary}.` : "",
-    "Never invent Life Atlas vault data (trips, balances, expenses, or music). Keep replies natural and concise (1-3 spoken sentences).",
+    "Never invent Atlas vault data (trips, balances, expenses, or music). Keep replies natural and concise (1-3 spoken sentences).",
   ].filter(Boolean);
   return `${base}\n${contextBits.join(" ")}`;
 }

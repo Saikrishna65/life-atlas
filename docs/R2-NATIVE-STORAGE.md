@@ -2,7 +2,7 @@
 
 ## Audit and scope
 
-Life Atlas uses Next 16 / React 19, a bundled offline Capacitor 6 Android app,
+Atlas uses Next 16 / React 19, a bundled offline Capacitor 6 Android app,
 IndexedDB vaults, native device authentication, SAF export, and existing backend
 cloud sync. This integration is a separate native storage path. It does not
 replace existing databases, ordinary backups, music sync, authentication, or the

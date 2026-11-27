@@ -18,7 +18,7 @@ const labels: Record<AuthenticationScope, [string, string]> = {
   ],
   privateSections: [
     "Private sections",
-    "Protect Trip Vault, Music, Finance and Atlas AI.",
+    "Protect Atlas Trips, Music, Finance and Atlas AI.",
   ],
   cloudCredentials: [
     "Cloud credentials",

@@ -1,5 +1,5 @@
 /**
- * Imports audio files picked from the device into the Music Vault.
+ * Imports audio files picked from the device into the Atlas Music.
  * Persist file-backed Blobs in IndexedDB without a second whole-file JavaScript copy.
  */
 import { audioMime } from "./formats";

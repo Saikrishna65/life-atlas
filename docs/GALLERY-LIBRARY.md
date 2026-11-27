@@ -1,6 +1,6 @@
 # Atlas photo library — 2.0.0
 
-Open **Private Atlas → Photo & video gallery → Backup**. Choose the relevant tool from the backup workspace.
+Open **Atlas → Photo & video gallery → Backup**. Choose the relevant tool from the backup workspace.
 The native route is `/secret/gallery/library`. These tools do not change the
 public website's hero, globe, trip journal, or publishing approval workflow.
 

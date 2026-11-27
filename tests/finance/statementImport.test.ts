@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Offline Bank Statement Parser & Import Engine Automated Test Suite (Phase 3)
+ * Atlas Finance: Offline Bank Statement Parser & Import Engine Automated Test Suite (Phase 3)
  * 
  * Validates CSV, OFX, and QIF parsing, Indian bank format compatibility, date parsing,
  * paise precision, deduplication against existing DB transactions, intra-batch deduplication,
@@ -21,7 +21,7 @@ import {
   FinanceAccount,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Bank Statement Import & Deduplication Engine", () => {
+describe("Atlas Finance: Bank Statement Import & Deduplication Engine", () => {
   let uow: IndexedDBUnitOfWork;
   let transactionService: TransactionService;
   let accountService: AccountService;

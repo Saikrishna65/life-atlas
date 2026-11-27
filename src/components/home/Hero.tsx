@@ -304,7 +304,7 @@ export default function Hero({ onReady }: HeroProps) {
       style={{
         height: prefersReducedMotion ? "100dvh" : "340vh",
       }}
-      aria-label="Life Atlas Hero"
+      aria-label="Atlas Hero"
     >
       {/* Pinned Sticky Viewport */}
       <div className="sticky top-0 h-[100dvh] w-full overflow-hidden flex flex-col justify-between">

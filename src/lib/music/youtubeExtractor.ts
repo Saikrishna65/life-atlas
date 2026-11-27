@@ -1,5 +1,5 @@
 /**
- * Life Atlas: YouTube Audio Extractor Engine
+ * Atlas: YouTube Audio Extractor Engine
  * Extracts video ID, metadata, duration, and high-fidelity audio streams from YouTube videos.
  */
 

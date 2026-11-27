@@ -22,15 +22,15 @@ export async function generateMetadata({
   const place = await getPlaceBySlug(slug).catch(()=>null);
 
   if (!place) {
-    return { title: "Place Not Found | Life Atlas" };
+    return { title: "Place Not Found | Atlas" };
   }
 
   return {
-    title: `${place.name} | Life Atlas`,
+    title: `${place.name} | Atlas`,
     description:
       place.description || `Memories from ${place.name}, ${place.country}`,
     openGraph: {
-      title: `${place.name} | Life Atlas`,
+      title: `${place.name} | Atlas`,
       description:
         place.description || `Memories from ${place.name}, ${place.country}`,
       images: place.coverImage ? [place.coverImage] : undefined,

@@ -1,4 +1,4 @@
-# Life Atlas — Hey Atlas Phase 3 Handoff Context
+# Atlas — Hey Atlas Phase 3 Handoff Context
 
 > **Last Updated:** 2026-11-18
 > **Git Branch:** `experiment/hey-atlas-phase3` (branched from `experiment/hey-atlas-wakeword` @ `6bd6561`)
@@ -42,8 +42,8 @@
 - `src/lib/atlas-ai/conversation.ts` & `src/lib/atlas-ai/voice-assistant.ts`: Multi-turn slot-filling (weekend trip planning, budget updates/corrections, reminders), ambiguity clarification, ordinal/pronoun resolution (`"the first one"`, `"Show the second day"` -> `"Actually, the third day"`, `"Add a reminder for that"`), session summary, and explicit end commands.
 
 ### C. Typed Action Registry, Multi-Step Planner & Sample Test Seeder
-- `src/lib/atlas-ai/gateway.ts`, `src/lib/atlas-ai/local-adapters.ts`, `src/lib/atlas-ai/action-registry.ts`: Typed Action Registry covering Music Vault, Trip Vault, Finance Vault, Reminders, Control Room, and Navigation with permissions, lock-screen flags, confirmation gates, bounded audit log, and undo hooks.
-- `src/lib/atlas-ai/planner.ts` & `src/lib/atlas-ai/reminders.ts`: Multi-step `TaskPlan` executor (`executeOpenTripAndPackReminderWorkflow` resolving `"the night before"` against `trip.startDate`, syncing to Trip Vault `saveReminder` + `scheduleNativeNotification`, verifying, and rolling back on failure).
+- `src/lib/atlas-ai/gateway.ts`, `src/lib/atlas-ai/local-adapters.ts`, `src/lib/atlas-ai/action-registry.ts`: Typed Action Registry covering Atlas Music, Atlas Trips, Atlas Finance, Reminders, Control Room, and Navigation with permissions, lock-screen flags, confirmation gates, bounded audit log, and undo hooks.
+- `src/lib/atlas-ai/planner.ts` & `src/lib/atlas-ai/reminders.ts`: Multi-step `TaskPlan` executor (`executeOpenTripAndPackReminderWorkflow` resolving `"the night before"` against `trip.startDate`, syncing to Atlas Trips `saveReminder` + `scheduleNativeNotification`, verifying, and rolling back on failure).
 - `src/lib/atlas-ai/demo-seed.ts`: `seedAtlasDemoData()` / `clearAtlasDemoData()` creating reversible `demo-*` Trips, Music WAV tracks/playlist, Finance Wallet + transactions, and Reminders.
 
 ### D. Frontend UI

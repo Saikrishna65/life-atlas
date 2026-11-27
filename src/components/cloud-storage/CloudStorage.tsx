@@ -516,7 +516,7 @@ export default function CloudStorage() {
         <p className="r2-eyebrow">ANDROID / NATIVE CLOUD STORAGE</p>
         <h2>Your cloud. Your device.</h2>
         <p>
-          Configure Cloudflare R2 in the installed Life Atlas Android app, under
+          Configure Cloudflare R2 in the installed Atlas Android app, under
           Control Room → Cloud Storage. Credentials are accepted only by the
           bundled native app.
         </p>

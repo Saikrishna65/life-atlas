@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 /**
  * Next.js 16 Proxy: Guards and isolates the native Android app.
- * Ensures the Android app ONLY accesses the Private Atlas (/secret/vault),
+ * Ensures the Android app ONLY accesses the Atlas (/secret/vault),
  * and never executes queries or loads pages for the public website.
  */
 export function proxy(request: NextRequest) {
@@ -12,12 +12,13 @@ export function proxy(request: NextRequest) {
 
   // Detect requests coming from the Android native app
   const isNativeApp =
-    userAgent.includes('LifeAtlasApp') ||
+    userAgent.includes('AtlasApp') ||
+    userAgent.includes('LifeAtlasApp') || // Compatibility with already installed versions.
     request.headers.get('x-capacitor-platform') === 'android';
 
   if (isNativeApp) {
     // If the Android app attempts to load any public atlas route,
-    // immediately redirect to the Private Atlas Vault.
+    // immediately redirect to the Atlas.
     if (
       !pathname.startsWith('/secret') &&
       !pathname.startsWith('/api') &&

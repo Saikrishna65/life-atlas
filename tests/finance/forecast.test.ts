@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Predictive Cash-Flow Forecasting Test Suite (Phase 4)
+ * Atlas Finance: Predictive Cash-Flow Forecasting Test Suite (Phase 4)
  * 
  * Verifies deterministic cash-flow projections, horizon boundaries,
  * confirmed recurring rule integration, what-if scenario modulations,
@@ -19,7 +19,7 @@ import {
   rupeesToPaise,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Predictive Forecasting Engine", () => {
+describe("Atlas Finance: Predictive Forecasting Engine", () => {
   let uow: IndexedDBUnitOfWork;
   let forecastService: ForecastService;
   let accountService: AccountService;

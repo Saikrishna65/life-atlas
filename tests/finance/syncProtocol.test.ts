@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Cloud Sync Protocol & Conflict Engine Test Suite (Phase 4)
+ * Atlas Finance: Cloud Sync Protocol & Conflict Engine Test Suite (Phase 4)
  * 
  * Verifies versioned sync protocol (v1), incremental cursor advancement,
  * remote conflict staging, transfer group invariant protection, and honest offline handling.
@@ -19,7 +19,7 @@ import {
   rupeesToPaise,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Sync Protocol & Conflict Handling", () => {
+describe("Atlas Finance: Sync Protocol & Conflict Handling", () => {
   let uow: IndexedDBUnitOfWork;
   let testAdapter: TestableCloudSyncAdapter;
   let syncService: SyncOutboxService;

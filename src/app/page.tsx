@@ -10,7 +10,7 @@ import LivingWorld from "@/components/world/LivingWorld";
 import { getScrapbookMedia } from "@/lib/queries/scrapbook";
 import { getTripArchive } from "@/lib/queries/trip-archive";
 export const metadata: Metadata = {
-  title: "Life Atlas — The Living World",
+  title: "Atlas — The Living World",
   description:
     "A cinematic journey through places, moments, and possibility. Reality meets imagination in the Living World.",
 };

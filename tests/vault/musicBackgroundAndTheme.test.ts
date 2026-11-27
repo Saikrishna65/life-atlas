@@ -1,5 +1,5 @@
 /**
- * Life Atlas: Music Vault Background Media Bridge & Multi-Palette Theme Test Suite
+ * Atlas: Atlas Music Background Media Bridge & Multi-Palette Theme Test Suite
  * Validates 4-palette theme persistence/DOM attribute sync and native Android
  * foreground MediaPlayback bridge payload normalization & dual-channel action deduplication.
  */
@@ -23,7 +23,7 @@ import {
   NativePlaybackPayload,
 } from "@/lib/music/nativeMediaBridge";
 
-describe("Music Vault Multi-Palette Theme System & Native Media Bridge", () => {
+describe("Atlas Music Multi-Palette Theme System & Native Media Bridge", () => {
   describe("1. Multi-Palette Color Theme System", () => {
     test("defines all four palettes (Champagne Gold, Deep Emerald, Arctic Cyan, Alabaster Glass)", () => {
       const ids = MUSIC_THEMES.map((t) => t.id);
@@ -160,9 +160,9 @@ describe("Music Vault Multi-Palette Theme System & Native Media Bridge", () => {
       );
       assert.equal(updates.length, 1);
       assert.deepEqual(updates[0], {
-        title: "Atlas Music Vault",
-        artist: "Life Atlas",
-        album: "Music Vault",
+        title: "Atlas Music",
+        artist: "Atlas",
+        album: "Atlas Music",
         artworkUrl: "https://life-atlas-eight-five.vercel.app/cover.jpg",
         isPlaying: true,
         positionMs: 0,

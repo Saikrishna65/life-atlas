@@ -112,7 +112,7 @@
 
         <service
             android:name=".wakeword.assistant.AtlasExperimentVoiceInteractionService"
-            android:label="Life Atlas (Experimental)"
+            android:label="Atlas (Experimental)"
             android:permission="android.permission.BIND_VOICE_INTERACTION"
             android:exported="true">
             <meta-data
@@ -130,7 +130,7 @@
 
         <service
             android:name=".wakeword.assistant.AtlasExperimentRecognitionService"
-            android:label="Life Atlas (Experimental Speech)"
+            android:label="Atlas (Experimental Speech)"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.speech.RecognitionService" />
@@ -142,7 +142,7 @@
             android:name=".wakeword.OvernightSnapshotReceiver"
             android:exported="false" />
 
-        <!-- Music Vault Android Home Screen Widget Provider -->
+        <!-- Atlas Music Android Home Screen Widget Provider -->
         <receiver
             android:name=".MusicAppWidgetProvider"
             android:label="@string/widget_music_name"
@@ -158,7 +158,7 @@
                 android:resource="@xml/widget_music_info" />
         </receiver>
 
-        <!-- Finance Vault Android Home Screen Widget Provider -->
+        <!-- Atlas Finance Android Home Screen Widget Provider -->
         <receiver
             android:name=".FinanceAppWidgetProvider"
             android:label="@string/widget_finance_name"
@@ -172,7 +172,7 @@
                 android:resource="@xml/widget_finance_info" />
         </receiver>
 
-        <!-- Trip Vault Android Home Screen Widget Provider -->
+        <!-- Atlas Trips Android Home Screen Widget Provider -->
         <receiver
             android:name=".TripAppWidgetProvider"
             android:label="@string/widget_trip_name"

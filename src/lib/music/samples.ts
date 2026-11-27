@@ -1,5 +1,5 @@
 /**
- * Life Atlas Music Vault - Samples Registry
+ * Atlas Music - Samples Registry
  * Curated default nature/adventure samples removed completely per user request.
  */
 

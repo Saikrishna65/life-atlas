@@ -19,7 +19,7 @@ import {
   RouteSegment,
 } from "../../src/lib/vault/types";
 
-describe("Trip Vault Phase 8: Maps, Routes & Offline Waypoints Flow", () => {
+describe("Atlas Trips Phase 8: Maps, Routes & Offline Waypoints Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

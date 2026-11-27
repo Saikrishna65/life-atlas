@@ -101,7 +101,7 @@ export default function WorldNavigation({showPeople=true,showRibbon=true}:{showP
             <Link prefetch={publicLoading?false:null} href="/places">The places</Link>
             <Link prefetch={publicLoading?false:null} href="/photography">Frames &amp; films</Link>
           </div>
-          <button className="reference-nav-brand" aria-label="Life Atlas home" onClick={() => navigate("top")}>
+          <button className="reference-nav-brand" aria-label="Atlas home" onClick={() => navigate("top")}>
             <HeroLogo />
           </button>
           <div className="reference-nav-pill">

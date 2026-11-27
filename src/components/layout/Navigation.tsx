@@ -175,9 +175,9 @@ function LegacyNavigation() {
         <Link
           href="/"
           className={`font-sans text-sm font-bold tracking-[0.2em] uppercase z-50 flex items-center gap-2 transition-all duration-200 select-none ${linkHoverClass}`}
-          aria-label="Life Atlas"
+          aria-label="Atlas"
         >
-          LIFE ATLAS
+          ATLAS
         </Link>
 
         <div className="hidden md:flex items-center gap-8 z-50">

@@ -10,7 +10,7 @@ import {
 import type { TripAssignment } from "../trips/policy";
 import type { TripRecord } from "../../vault/types";
 /**
- * Life Atlas Finance: Transaction Application Service
+ * Atlas Finance: Transaction Application Service
  *
  * Handles transaction ingestion, internal transfers, corrections with audit trails,
  * reversals without silent deletion, duplicate prevention, and balance synchronization.

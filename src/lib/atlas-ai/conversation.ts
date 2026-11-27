@@ -288,7 +288,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
       }
     }
     return finish(
-      "That action modifies saved Life Atlas vault records. Please review and confirm this change inside the Life Atlas app first.",
+      "That action modifies saved Atlas vault records. Please review and confirm this change inside the Atlas app first.",
       false,
       "action.confirmation_required",
       { requiresConfirmation: true, confirmationDescription: raw }
@@ -326,7 +326,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
   // 8. Conversational greetings / small talk
   if (/^(hi|hey|hello|heya|yo|good morning|good afternoon|good evening|how are you|what's up|whats up|who are you)\b/.test(lower)) {
     const reply = /\bwho are you\b/.test(lower)
-      ? "I'm Atlas, your local-first companion inside Life Atlas. I can plan trips with you, manage reminders, control local music, and summarize your vaults privately."
+      ? "I'm Atlas, your local-first companion inside Atlas. I can plan trips with you, manage reminders, control local music, and summarize your vaults privately."
       : lower.includes("how are you")
         ? personality.humor >= 50
           ? "Running smoothly and caffeinated on local silicon! What are we tackling today?"
@@ -447,7 +447,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
         const settingLabel = draft.regionType ?? (draft.vibe === "peaceful" ? "a peaceful homestay or quiet hill/lake spot" : "a relaxing spot");
         const vibePrefix = wasCorrection ? `Updated that budget to ${budget.toLocaleString()}! ` : "";
         return finish(
-          `${vibePrefix}With around ${budget.toLocaleString()} for ${draft.timeframe ?? "the weekend"}, staying local with ${settingLabel}, shared transit, and a cozy stay makes total sense. Want me to save a reminder or check your saved trips in Trip Vault?`,
+          `${vibePrefix}With around ${budget.toLocaleString()} for ${draft.timeframe ?? "the weekend"}, staying local with ${settingLabel}, shared transit, and a cozy stay makes total sense. Want me to save a reminder or check your saved trips in Atlas Trips?`,
           false,
           "conversation.trip_planning"
         );
@@ -585,7 +585,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
     return finish(res.error ?? "Couldn't save that reminder.", false, "reminder.failed");
   }
 
-  // 16. Music Vault Controls & Search
+  // 16. Atlas Music Controls & Search
   if (/\b(pause|stop playing|stop music|pause music|pause it)\b/.test(lower)) {
     const res = await executeRegisteredAction({
       sessionId: session.sessionId,
@@ -694,8 +694,8 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
         searchRes.result.length
           ? `Found "${searchRes.result[0].title}", but it isn't downloaded offline yet.`
           : query
-            ? `I couldn't find "${query}" in your local Music Vault.`
-            : "Your local Music Vault has no downloaded tracks yet.",
+            ? `I couldn't find "${query}" in your local Atlas Music.`
+            : "Your local Atlas Music has no downloaded tracks yet.",
         false,
         "music.search"
       );
@@ -757,7 +757,7 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
     return finish(sumRes.error ?? "Couldn't read Atlas Finance right now.", false, "finance.failed");
   }
 
-  // 18. Trip Vault Queries, Day Follow-ups & Corrections
+  // 18. Atlas Trips Queries, Day Follow-ups & Corrections
   const dayNum = parseDayOrdinal(lower);
   const isTripContextFollowup =
     (Boolean(session.activeTripId) && (dayNum !== null || /\b(actually|instead|day|itinerary|next day)\b/.test(lower))) ||
@@ -776,11 +776,11 @@ export async function runConversationTurn(input: ConversationTurnInput): Promise
         isLocked: input.isLocked,
       });
       if (!listRes.ok) {
-        return finish(listRes.error ?? "Couldn't check Trip Vault right now.", false, "trips.failed");
+        return finish(listRes.error ?? "Couldn't check Atlas Trips right now.", false, "trips.failed");
       }
       const trips = listRes.result ?? [];
       if (!trips.length) {
-        return finish("You don't have any saved trips in Trip Vault yet.", false, "trips.list");
+        return finish("You don't have any saved trips in Atlas Trips yet.", false, "trips.list");
       }
       if (/\b(list|all my trips|what trips|show my trips)\b/.test(lower)) {
         const names = trips.slice(0, 4).map((t) => t.title).join(", ");

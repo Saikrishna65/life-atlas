@@ -23,7 +23,7 @@ export default function GlobalYouTubeShareHandler() {
       setTimeout(() => {
         setIsModalOpen(true);
       }, 10);
-      // Navigate to Music Vault if not already on /secret/music
+      // Navigate to Atlas Music if not already on /secret/music
       if (pathname && !pathname.startsWith("/secret/music")) {
         router.push("/secret/music");
       }

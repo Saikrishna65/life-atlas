@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Module Public API
+ * Atlas Finance: Module Public API
  */
 
 // Domain models & types

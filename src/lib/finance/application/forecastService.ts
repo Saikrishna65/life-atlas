@@ -1,7 +1,7 @@
 import { readPostedAccounts } from "./balanceService";
 import { realizedCashMovement } from "../domain/ledger";
 /**
- * Life Atlas Finance: Predictive Cash-Flow Forecasting Engine
+ * Atlas Finance: Predictive Cash-Flow Forecasting Engine
  * 
  * Deterministic offline projections built on real persisted transaction history,
  * confirmed recurring obligations, and current liquid assets.

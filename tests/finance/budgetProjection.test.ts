@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Budget Projections & Month-End Forecasting Test Suite (Phase 4)
+ * Atlas Finance: Budget Projections & Month-End Forecasting Test Suite (Phase 4)
  * 
  * Verifies end-of-period category spending projections, elapsed time calculations,
  * and over-budget risk level classifications.
@@ -19,7 +19,7 @@ import {
   rupeesToPaise,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Budget-Aware End-of-Month Projections", () => {
+describe("Atlas Finance: Budget-Aware End-of-Month Projections", () => {
   let uow: IndexedDBUnitOfWork;
   let projectionService: BudgetProjectionService;
   let accountService: AccountService;

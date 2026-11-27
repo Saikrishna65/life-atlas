@@ -294,7 +294,7 @@ export default function MusicVaultSettingsPage() {
           <div>
             <p className="font-semibold text-lg text-[var(--mv-text)]">Clear the phone library?</p>
             <p className="text-sm text-[var(--mv-text-muted)] mt-1">
-              Songs saved only on this phone will be lost. Trip Vault and Finance are not touched.
+              Songs saved only on this phone will be lost. Atlas Trips and Finance are not touched.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">

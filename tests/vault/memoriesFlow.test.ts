@@ -24,7 +24,7 @@ import {
   RouteSegment,
 } from "../../src/lib/vault/types";
 
-describe("Trip Vault Phase 13: Completed Trip Archives & Photo Memories Flow", () => {
+describe("Atlas Trips Phase 13: Completed Trip Archives & Photo Memories Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

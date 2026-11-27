@@ -18,7 +18,7 @@ import {
 } from "../../src/lib/vault/types";
 import { PACKING_PRESETS } from "../../src/lib/vault/usePackingList";
 
-describe("Trip Vault Phase 10: Packing Lists & Equipment Checklists Flow", () => {
+describe("Atlas Trips Phase 10: Packing Lists & Equipment Checklists Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

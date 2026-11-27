@@ -176,7 +176,7 @@ public class ExpeditionTrackingService extends Service implements LocationListen
         broadcast.setPackage(getPackageName());
         sendBroadcast(broadcast);
 
-        // Also update Trip Vault Home Screen Widget in real time
+        // Also update Atlas Trips Home Screen Widget in real time
         try {
             double km = totalDistanceMeters / 1000.0;
             String distanceStr = String.format(Locale.US, "%.1f km", km);
@@ -208,7 +208,7 @@ public class ExpeditionTrackingService extends Service implements LocationListen
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setContentTitle(currentLegTitle + " • " + distanceStr)
-                .setContentText("Life Atlas Expedition active • Satellite GPS recording")
+                .setContentText("Atlas Expedition active • Satellite GPS recording")
                 .setContentIntent(pi)
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)

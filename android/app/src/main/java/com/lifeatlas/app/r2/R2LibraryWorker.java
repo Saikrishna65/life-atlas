@@ -74,7 +74,7 @@ public final class R2LibraryWorker extends Worker {
       setForegroundAsync(
               foreground(
                   getApplicationContext(),
-                  "Life Atlas · Library",
+                  "Atlas · Library",
                   action.equals("restore")
                       ? "Restoring encrypted media index"
                       : "Synchronizing recovery records"))

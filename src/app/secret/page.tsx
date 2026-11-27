@@ -40,7 +40,7 @@ export default function SecretDashboard() {
           </button>
         ) : (
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[11px] font-mono tracking-wider text-amber-400 font-semibold uppercase">
-            <span>Private Atlas</span>
+            <span>Atlas</span>
           </div>
         )}
 
@@ -54,7 +54,7 @@ export default function SecretDashboard() {
       {/* Editorial Header */}
       <header className="space-y-3">
         <h1 className="font-display text-4xl sm:text-5xl text-foreground font-normal tracking-tight">
-          Private Atlas
+          Atlas
         </h1>
         <p className="font-body text-muted-foreground text-sm sm:text-base leading-relaxed">
           Your personal sanctuary for documenting expeditions, cataloguing visual memories, managing private music, and tracking personal wealth.
@@ -63,9 +63,9 @@ export default function SecretDashboard() {
 
       <Link href="/secret/apps" className="block rounded-2xl border border-muted bg-surface p-6 sm:p-7"><span className="text-xs uppercase tracking-wider text-accent">ATLAS APPS</span><h2 className="text-2xl font-display mt-2">Your apps, together ↗</h2><p className="text-sm text-muted-foreground mt-2">Open Atlas Video on the web, or install the companion on your Android phone.</p></Link>
       <Link href="/secret/gallery" className="block rounded-2xl border border-muted bg-surface p-6 sm:p-7 mb-5"><span className="text-xs uppercase tracking-wider text-accent">MY VISUAL ATLAS</span><h2 className="text-2xl font-display mt-2">Photo & video gallery ↗</h2><p className="text-sm text-muted-foreground mt-2">Browse my phone, check cloud copies, and gather originals into trips and places.</p></Link>
-      {/* Primary Feature Cards Grid: Trip Vault & Music Vault & Atlas Finance & Creator Studio */}
+      {/* Primary Feature Cards Grid: Atlas Trips & Atlas Music & Atlas Finance & Creator Studio */}
       <section className="grid grid-cols-1 gap-6">
-        {/* Card 1: Trip Vault (Offline Travel Command Center) */}
+        {/* Card 1: Atlas Trips (Offline Travel Command Center) */}
         <Link
           href="/secret/vault"
           className="group block relative rounded-2xl border border-amber-500/20 bg-surface hover:bg-surface-hover/80 hover:border-amber-400/40 p-6 sm:p-7 transition-all duration-300 shadow-soft overflow-hidden active:scale-[0.99] ring-1 ring-amber-400/10"
@@ -94,7 +94,7 @@ export default function SecretDashboard() {
 
             <div className="space-y-1.5">
               <h2 className="font-display text-2xl sm:text-3xl text-foreground group-hover:text-amber-500 transition-colors font-normal tracking-tight">
-                Trip Vault
+                Atlas Trips
               </h2>
               <p className="font-body text-muted-foreground text-xs sm:text-sm leading-relaxed max-w-lg">
                 Your offline travel command center for live itineraries, transport tickets, PNRs, stay vouchers, bike rentals, gear checklists, and expense tracking.
@@ -103,7 +103,7 @@ export default function SecretDashboard() {
           </div>
         </Link>
 
-        {/* Card 2: Interactive Audiophile Music Vault Widget */}
+        {/* Card 2: Interactive Audiophile Atlas Music Widget */}
         <MusicDashboardWidget />
 
         {/* Card 3: Atlas Finance (Local-First Offline Financial Ledger) */}

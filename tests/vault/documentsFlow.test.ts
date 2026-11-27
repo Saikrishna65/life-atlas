@@ -19,7 +19,7 @@ import {
   DocumentAttachmentRecord,
 } from "../../src/lib/vault/types";
 
-describe("Trip Vault Phase 5: Offline Documents & PDF Ticket Vault Flow", () => {
+describe("Atlas Trips Phase 5: Offline Documents & PDF Ticket Vault Flow", () => {
   before(async () => {
     await deleteVaultDB();
   });

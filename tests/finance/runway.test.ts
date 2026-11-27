@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Financial Runway & Affordability Test Suite (Phase 4)
+ * Atlas Finance: Financial Runway & Affordability Test Suite (Phase 4)
  * 
  * Tests spendable liquid assets rules, burn rate computations,
  * surplus cash flow handling, stress test scenarios, and low-balance alerts.
@@ -18,7 +18,7 @@ import {
   rupeesToPaise,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Runway & Affordability Service", () => {
+describe("Atlas Finance: Runway & Affordability Service", () => {
   let uow: IndexedDBUnitOfWork;
   let runwayService: RunwayService;
   let accountService: AccountService;

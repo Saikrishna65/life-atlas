@@ -78,7 +78,7 @@ function RouteReadiness({path}:{path:string}){
     return ()=>clearTimeout(timer);
   },[phase]);
   if(phase==='ready')return null;
-  return <div className="public-page-loader" data-lenis-prevent data-state={phase} role="status" aria-live="polite" aria-label="Preparing Life Atlas">
+  return <div className="public-page-loader" data-lenis-prevent data-state={phase} role="status" aria-live="polite" aria-label="Preparing Atlas">
     <div className="public-loader-mark"><HeroLogo/></div>
     <p>Opening my atlas.</p>
     <div className="public-loader-track" aria-hidden="true"><span/></div>

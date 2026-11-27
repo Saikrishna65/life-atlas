@@ -1,4 +1,4 @@
-/* Life Atlas - Trip Vault Light Modern Theme */
+/* Atlas - Atlas Trips Light Modern Theme */
 .atlas-private-shell:has(.trip-voyage) {
   background: #f8fafc;
   color: #0f172a;
@@ -100,7 +100,7 @@
   color: var(--tv-sub);
 }
 
-/* Compact header matching Music and Finance Vaults */
+/* Compact header matching Music and Atlas Finances */
 .tv-appbar {
   display: flex;
   align-items: center;
@@ -1746,7 +1746,7 @@
   padding-bottom: 180px;
 }
 
-/* Trip Vault Memories Multi-Photo & Place Tagging */
+/* Atlas Trips Memories Multi-Photo & Place Tagging */
 .tv-memory-photos-badge {
   position: absolute;
   top: 10px;
@@ -1937,7 +1937,7 @@
   font-weight: 600;
 }
 
-/* Trip Vault Publish to Website Card */
+/* Atlas Trips Publish to Website Card */
 .tv-publish-card {
   margin: 18px 0;
   padding: 18px 20px;
@@ -2034,7 +2034,7 @@
 
 .tv-website-file-preview { width:90px; height:90px; object-fit:cover; border-radius:10px; display:block; margin-bottom:8px; }
 
-/* Creator Studio mounts the publisher outside the Trip Vault theme boundary. */
+/* Creator Studio mounts the publisher outside the Atlas Trips theme boundary. */
 .tv-website-publisher { --tv-cyan:#285547; --tv-text:#20392e; --tv-sub:#53665b; --tv-panel:#f5f7f3; --tv-line:#d6dfd8; }
 .tv-website-publisher .tv-primary { background:#285547; color:#fff !important; opacity:1; }
 .tv-website-publisher .tv-primary:disabled { background:#52665d; color:#fff !important; cursor:not-allowed; }

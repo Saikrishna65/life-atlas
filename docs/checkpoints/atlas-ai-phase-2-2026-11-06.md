@@ -24,7 +24,7 @@ Conversation encryption currently uses a user-entered passphrase on both browser
 
 ## Verification
 
-- **68 focused tests passed**, zero final failures, across 12 test files: Atlas storage/gateway/adapters/native contract/sandbox; security foundation; backup recovery/Control Room; cloud roundtrip; Music Vault; Finance persistence; Trip storage.
+- **68 focused tests passed**, zero final failures, across 12 test files: Atlas storage/gateway/adapters/native contract/sandbox; security foundation; backup recovery/Control Room; cloud roundtrip; Atlas Music; Finance persistence; Trip storage.
 - Storage tests cover reopen, ciphertext-only exports, wrong passphrase, tampering, merge preservation, pagination/search, concurrent serialization, interrupted transaction rollback and stale-window denial.
 - Gateway/adapters tests cover permissions, trust denial, revocation during awaits, immutable action binding, expiry/replay/session denial, local Music controls, confirmed expense creation/categorization, balance preservation, Trip edits and stale-edit denial.
 - **Mobile Chromium smoke passed**, all requests fulfilled from local build assets or denied: encrypted setup, chat/memory persistence, restart unlock, search, memory deletion, orb collapse, mobile overflow and no page errors.

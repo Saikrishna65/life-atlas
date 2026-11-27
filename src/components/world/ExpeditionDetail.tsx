@@ -18,7 +18,7 @@ export default function ExpeditionDetail({
   const [packed, setPacked] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
   const download = () => {
-    const text = `LIFE ATLAS — SAMPLE ITINERARY\n${e.name}\n${e.route.join(" → ")}\n${e.overview}\n\n${e.itinerary.map((d) => `DAY ${d.day} · ${d.title}\n${d.description}`).join("\n\n")}\n\nEXAMPLE COST: ${formatMoney(e.cost.total)}\nPrices, conditions and transport require independent confirmation.\n\nPACKING\n${e.packing.join("\n")}`;
+    const text = `ATLAS — SAMPLE ITINERARY\n${e.name}\n${e.route.join(" → ")}\n${e.overview}\n\n${e.itinerary.map((d) => `DAY ${d.day} · ${d.title}\n${d.description}`).join("\n\n")}\n\nEXAMPLE COST: ${formatMoney(e.cost.total)}\nPrices, conditions and transport require independent confirmation.\n\nPACKING\n${e.packing.join("\n")}`;
     const url = URL.createObjectURL(
       new Blob([text], { type: "text/plain;charset=utf-8" }),
     );

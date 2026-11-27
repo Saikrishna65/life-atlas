@@ -1,5 +1,5 @@
 /**
- * Life Atlas Music Vault - Data Types & Interfaces (Phase 16)
+ * Atlas Music - Data Types & Interfaces (Phase 16)
  */
 
 export type AudioSourceType = 'IMPORTED' | 'STREAM' | 'DOWNLOADED';
@@ -43,7 +43,7 @@ export interface MusicPlaylist {
   trackIds: string[];
   isSmart?: boolean;
   smartType?: SmartPlaylistType;
-  tripId?: string; // Associated Trip Vault Trip ID
+  tripId?: string; // Associated Atlas Trips Trip ID
   createdAt: number;
   updatedAt: number;
 }

@@ -4,7 +4,7 @@ import {rupeesToPaise} from '../finance/domain/money';
 import type {ExpenseRecord,TripRecord} from './types';
 import {getAllTrips} from './storage';
 export const savedExpenseId=(expense:ExpenseRecord)=>`atlas-trip-expense:${expense.tripId}:${expense.id}`;
-/** Explicitly reviewed transfer; originals stay in Trip Vault for recovery. */
+/** Explicitly reviewed transfer; originals stay in Atlas Trips for recovery. */
 export async function linkSavedTripExpense(uow:IUnitOfWork,trip:TripRecord,expense:ExpenseRecord,accountId:string){
  if(expense.tripId!==trip.id)throw Error('This expense belongs to another trip.');
  if(expense.isDeposit)throw Error('Manage saved deposits and refunds in the previous records view.');

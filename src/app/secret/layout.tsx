@@ -13,9 +13,9 @@ import NowPlayingOverlay from "@/components/music/NowPlayingOverlay";
 import GlobalYouTubeShareHandler from "@/components/secret/GlobalYouTubeShareHandler";
 
 export const metadata: Metadata = {
-  title: "Private Atlas | Life Atlas",
+  title: "Atlas | Atlas",
   description:
-    "Private expedition journal, music vault, and creator chronicle.",
+    "Private expedition journal, Atlas Music, and creator chronicle.",
   robots: {
     index: false,
     follow: false,

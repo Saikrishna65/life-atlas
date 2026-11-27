@@ -58,7 +58,7 @@ export async function seedAtlasDemoData(): Promise<{
 }> {
   const nowIso = new Date().toISOString();
 
-  // 1. Seed Trip Vault (2 upcoming trips + itinerary days)
+  // 1. Seed Atlas Trips (2 upcoming trips + itinerary days)
   const kasolStart = isoDateOffset(5);
   const kasolEnd = isoDateOffset(8);
   const kasolTrip: TripRecord = {
@@ -157,7 +157,7 @@ export async function seedAtlasDemoData(): Promise<{
     updatedAt: nowIso,
   });
 
-  // 2. Seed Music Vault (2 offline playable WAV tracks + Chill playlist)
+  // 2. Seed Atlas Music (2 offline playable WAV tracks + Chill playlist)
   const track1: MusicTrack = {
     id: "demo-track-breeze",
     title: "Mountain Breeze",
@@ -203,7 +203,7 @@ export async function seedAtlasDemoData(): Promise<{
   };
   await savePlaylist(playlist, false);
 
-  // 3. Seed Finance Vault (1 active account, default categories, 2 expenses)
+  // 3. Seed Atlas Finance (1 active account, default categories, 2 expenses)
   let financeSeeded = false;
   try {
     const { IndexedDBUnitOfWork } = await import("../finance/storage/indexeddb/unitOfWork");

@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Offline Bank Statement Parser Engine
+ * Atlas Finance: Offline Bank Statement Parser Engine
  * 
  * High-precision, zero-network parsers for CSV, OFX, and QIF formats.
  * Auto-detects major Indian bank statement layouts (HDFC, SBI, ICICI, Axis, Kotak, standard CSV).

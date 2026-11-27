@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Dashboard Reporting & Migration Automated Test Suite (Phase 2)
+ * Atlas Finance: Dashboard Reporting & Migration Automated Test Suite (Phase 2)
  * 
  * Tests empty database state, period boundary computations, category spending breakdowns,
  * cash-flow timelines, and V1 to V2 schema migration data preservation.
@@ -17,7 +17,7 @@ import {
   BalanceService,
 } from "@/lib/finance";
 
-describe("Life Atlas Finance: Dashboard Reporting & Analytics Engine", () => {
+describe("Atlas Finance: Dashboard Reporting & Analytics Engine", () => {
   let uow: IndexedDBUnitOfWork;
   let accountService: AccountService;
   let transactionService: TransactionService;

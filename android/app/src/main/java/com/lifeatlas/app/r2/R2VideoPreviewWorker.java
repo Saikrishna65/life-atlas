@@ -49,7 +49,7 @@ public final class R2VideoPreviewWorker extends Worker {
       setForegroundAsync(
               R2LibraryWorker.foreground(
                   getApplicationContext(),
-                  "Life Atlas · Video preview",
+                  "Atlas · Video preview",
                   "Creating a separate short preview; original stays unchanged"))
           .get();
       String id = getInputData().getString("id"), source = getInputData().getString("source");

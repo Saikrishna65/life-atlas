@@ -67,5 +67,5 @@ try{
  assert.deepEqual(await page.evaluate(()=>fixture.batches[1].transferIds),['job-second']);assert.equal(await page.evaluate(()=>Object.keys(fixture.jobs).length),2);
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.deepEqual(errors,[]);
  await page.screenshot({path:'work/qa-publishing-1411/published-mobile.png',fullPage:true});
- console.log('PASS visible primary text outside Trip Vault; one native batch grant per attempt; 100% verification; saved notice; live place counts; resume reuses transfer; all files queued before progress polling; app restart recovery reuses native jobs; no foreground or time gate; final website update once; mobile overflow; no browser exceptions (mocked native bridge).');
+ console.log('PASS visible primary text outside Atlas Trips; one native batch grant per attempt; 100% verification; saved notice; live place counts; resume reuses transfer; all files queued before progress polling; app restart recovery reuses native jobs; no foreground or time gate; final website update once; mobile overflow; no browser exceptions (mocked native bridge).');
 }finally{if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}

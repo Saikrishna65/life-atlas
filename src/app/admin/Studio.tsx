@@ -57,7 +57,7 @@ export default function Studio({ variant = "default" }: StudioProps) {
   }
 
   // -------------------------------------------------------------
-  // EDITORIAL TRAVEL JOURNAL VARIANT (Mobile-first, Life Atlas Light Theme)
+  // EDITORIAL TRAVEL JOURNAL VARIANT (Mobile-first, Atlas Light Theme)
   // -------------------------------------------------------------
   if (isJournal) {
     const inputClasses = "w-full bg-surface border border-muted text-foreground placeholder:text-muted-foreground/60 rounded-xl px-3.5 py-3 text-sm focus:border-accent focus:bg-background focus:ring-1 focus:ring-accent/20 outline-none transition-all duration-200 [color-scheme:light]";

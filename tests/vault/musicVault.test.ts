@@ -1,5 +1,5 @@
 /**
- * Life Atlas: Music Vault Automated Test Suite (Phase 16)
+ * Atlas: Atlas Music Automated Test Suite (Phase 16)
  * Validates metadata parsing, storage engine, playlists, smart collections,
  * queue operations, offline downloads, trip linking, and database isolation.
  */
@@ -47,7 +47,7 @@ import {
 } from "@/lib/vault/storage";
 import { TripRecord } from "@/lib/vault/types";
 
-describe("Phase 16: Life Atlas Music Vault Engine", () => {
+describe("Phase 16: Atlas Music Engine", () => {
   beforeEach(async () => {
     await deleteMusicDB();
   });
@@ -332,9 +332,9 @@ describe("Phase 16: Life Atlas Music Vault Engine", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 5. TRIP VAULT SOUNDTRACK LINKING (REQ-MUS-08)
+  // 5. ATLAS TRIPS SOUNDTRACK LINKING (REQ-MUS-08)
   // ---------------------------------------------------------------------------
-  describe("5. Trip Vault Expedition Association (REQ-MUS-08)", () => {
+  describe("5. Atlas Trips Expedition Association (REQ-MUS-08)", () => {
     test("links playlist to trip and verifies decoupled persistence", async () => {
       const pl: MusicPlaylist = {
         id: "pl_trip_linked",
@@ -444,9 +444,9 @@ describe("Phase 16: Life Atlas Music Vault Engine", () => {
   // ---------------------------------------------------------------------------
   // 7. DATABASE ISOLATION & ZERO REGRESSION (REQ-MUS-10)
   // ---------------------------------------------------------------------------
-  describe("7. Database Isolation & Zero Trip Vault Regression (REQ-MUS-10)", () => {
+  describe("7. Database Isolation & Zero Atlas Trips Regression (REQ-MUS-10)", () => {
     test("music operations never interfere with or overwrite trip vault database", async () => {
-      // 1. Save an expedition in Trip Vault
+      // 1. Save an expedition in Atlas Trips
       const mockTrip: TripRecord = {
         id: "trip_isolation_test",
         title: "Zanskar Solo Ride",
@@ -462,7 +462,7 @@ describe("Phase 16: Life Atlas Music Vault Engine", () => {
       };
       await saveTrip(mockTrip);
 
-      // 2. Perform intense Music Vault operations
+      // 2. Perform intense Atlas Music operations
       await saveTrack({
         id: "trk_iso_1",
         title: "Heavy Mountain Sound",
@@ -486,7 +486,7 @@ describe("Phase 16: Life Atlas Music Vault Engine", () => {
         updatedAt: Date.now(),
       });
 
-      // 3. Verify Trip Vault record is 100% intact
+      // 3. Verify Atlas Trips record is 100% intact
       const tripCheck = await getTrip("trip_isolation_test");
       assert.ok(tripCheck);
       assert.equal(tripCheck.title, "Zanskar Solo Ride");

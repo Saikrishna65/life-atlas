@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Atlas Vault • Offline Archive</title>
+  <title>Atlas • Offline Archive</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -356,7 +356,7 @@
   <section id="viewLock">
     <div class="lock-card">
       <div class="lock-badge">
-        <span>🛡️ Atlas Vault Protected</span>
+        <span>🛡️ Atlas Protected</span>
       </div>
 
       <div class="lock-icon-aura">
@@ -373,7 +373,7 @@
         </svg>
       </div>
 
-      <h1 class="lock-title">Atlas Vault</h1>
+      <h1 class="lock-title">Atlas</h1>
       <p class="lock-desc" id="lockDesc">
         Scan your fingerprint to access your offline trip plans, bookings & documents.
       </p>
@@ -472,7 +472,7 @@
           const authMethod = bioPlugin.internalAuthenticate || bioPlugin.authenticate;
           if (typeof authMethod === 'function') {
             return await authMethod.call(bioPlugin, {
-              androidTitle: 'Atlas Vault',
+              androidTitle: 'Atlas',
               androidSubtitle: 'Touch fingerprint sensor',
               reason: 'Scan fingerprint to access Private Vault',
               cancelTitle: 'Cancel',
@@ -484,7 +484,7 @@
 
         if (typeof window.Capacitor.nativePromise === 'function') {
           return await window.Capacitor.nativePromise('BiometricAuthNative', 'internalAuthenticate', {
-            androidTitle: 'Atlas Vault',
+            androidTitle: 'Atlas',
             androidSubtitle: 'Touch fingerprint sensor',
             reason: 'Scan fingerprint to access Private Vault',
             cancelTitle: 'Cancel',

@@ -1,6 +1,6 @@
 import { commitLedgerChange } from "./ledgerCommit";
 /**
- * Life Atlas Finance: IndexedDB Unit of Work
+ * Atlas Finance: IndexedDB Unit of Work
  *
  * Provides coordinated repository access and atomic transaction boundary execution.
  */

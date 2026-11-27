@@ -1164,7 +1164,7 @@ export default function PhotoGallery() {
               <Link
                 href="/secret"
                 className="gw-back"
-                aria-label="Back to Private Atlas"
+                aria-label="Back to Atlas"
               >
                 <ArrowLeft size={20} />
               </Link>

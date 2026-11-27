@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Versioned Cloud Sync Protocol & Adapters
+ * Atlas Finance: Versioned Cloud Sync Protocol & Adapters
  * 
  * Defines the contract, payloads, and boundary for local-first synchronization.
  * Includes UnconfiguredCloudSyncAdapter (honest offline state) and TestableCloudSyncAdapter.
@@ -73,7 +73,7 @@ export class UnconfiguredCloudSyncAdapter implements ICloudSyncAdapter {
 
   async push(_request: SyncPushRequest): Promise<SyncPushResult> {
     throw new FinanceError(
-      "Cloud synchronization is unconfigured. Life Atlas is running in 100% offline mode. Your financial data is preserved on this device.",
+      "Cloud synchronization is unconfigured. Atlas is running in 100% offline mode. Your financial data is preserved on this device.",
       "STORAGE_UNAVAILABLE"
     );
   }

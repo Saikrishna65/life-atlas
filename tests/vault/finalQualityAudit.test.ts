@@ -103,7 +103,7 @@ if (typeof globalScope.localStorage === "undefined") {
   globalScope.localStorage = createStorageMock() as unknown as Storage;
 }
 
-describe("Trip Vault Phase 15: Security, Website Isolation & Android Build Quality Audit", () => {
+describe("Atlas Trips Phase 15: Security, Website Isolation & Android Build Quality Audit", () => {
   before(async () => {
     await deleteVaultDB();
   });

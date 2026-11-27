@@ -2,7 +2,7 @@
 
 ## In the app
 
-Open Trip Vault → a trip → **Publish / update website**. The same panel is available
+Open Atlas Trips → a trip → **Publish / update website**. The same panel is available
 in Memories. The title is prefilled. Select saved photos, pick original photos/videos
 through Android's document picker, or choose already-public R2 media. A public
 introduction and a batch place name are optional. No per-photo title, caption,

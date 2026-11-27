@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: Balance & Reporting Application Service
+ * Atlas Finance: Balance & Reporting Application Service
  *
  * Computes deterministic account balances, net worth, cash flow reports,
  * category spending breakdowns, and cash flow trend timelines.

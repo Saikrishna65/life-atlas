@@ -10,7 +10,7 @@ const types={'.js':'text/javascript','.css':'text/css','.html':'text/html','.jso
  const context=await browser.newContext({viewport:{width:390,height:844},reducedMotion:'reduce'});const page=await context.newPage();const errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());
- await page.goto(origin+'/secret');await page.getByRole('heading',{name:'Trip Vault',exact:true}).waitFor();
+ await page.goto(origin+'/secret');await page.getByRole('heading',{name:'Atlas Trips',exact:true}).waitFor();
  await page.goto(origin+'/secret/vault');await page.getByRole('heading',{name:/Less planning/}).waitFor();await page.waitForFunction(async()=>{const r=indexedDB.open('life_atlas_trip_vault_db');return await new Promise(resolve=>{r.onsuccess=()=>{const ready=r.result.objectStoreNames.contains('trips');r.result.close();resolve(ready)};r.onerror=()=>resolve(false)})});
  // Initialize native-independent schemas using the real screens, then add local route fixtures.
  await page.goto(origin+'/secret/finance');await page.locator('.atlas-finance[aria-busy="false"]').waitFor();

@@ -40,7 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Foreground MediaPlaybackService that keeps Music Vault audio alive when the app
+ * Foreground MediaPlaybackService that keeps Atlas Music audio alive when the app
  * is minimized, in Recent Apps, or when the device screen is locked, and publishes
  * a fixed Lock-Screen & Notification-Shade MediaSession controller.
  */
@@ -87,9 +87,9 @@ public class MediaPlaybackService extends Service {
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
 
-    private String currentTitle = "Atlas Music Vault";
-    private String currentArtist = "Life Atlas";
-    private String currentAlbum = "Music Vault";
+    private String currentTitle = "Atlas Music";
+    private String currentArtist = "Atlas";
+    private String currentAlbum = "Atlas Music";
     private String currentArtworkUrl = "";
     private Bitmap currentArtworkBitmap = null;
     private Bitmap fallbackArtworkBitmap = null;
@@ -124,10 +124,10 @@ public class MediaPlaybackService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && notificationManager != null) {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
-                "Music Vault Playback",
+                "Atlas Music Playback",
                 NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("Ongoing playback controls and lock-screen player for Atlas Music Vault");
+            channel.setDescription("Ongoing playback controls and lock-screen player for Atlas Music");
             channel.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
             channel.setShowBadge(false);
             channel.enableVibration(false);
@@ -137,7 +137,7 @@ public class MediaPlaybackService extends Service {
     }
 
     private void initMediaSession() {
-        mediaSession = new MediaSession(this, "LifeAtlasMusicSession");
+        mediaSession = new MediaSession(this, "AtlasMusicSession");
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             @SuppressWarnings("deprecation")
             int flags = MediaSession.FLAG_HANDLES_MEDIA_BUTTONS | MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS;
@@ -192,7 +192,7 @@ public class MediaPlaybackService extends Service {
         try {
             PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (pm != null) {
-                wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "LifeAtlas::MediaPlaybackWakeLock");
+                wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Atlas::MediaPlaybackWakeLock");
                 wakeLock.setReferenceCounted(false);
             }
         } catch (Exception ignored) {
@@ -204,7 +204,7 @@ public class MediaPlaybackService extends Service {
                 int mode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
                     ? WifiManager.WIFI_MODE_FULL_LOW_LATENCY
                     : WifiManager.WIFI_MODE_FULL_HIGH_PERF;
-                wifiLock = wm.createWifiLock(mode, "LifeAtlas::MediaPlaybackWifiLock");
+                wifiLock = wm.createWifiLock(mode, "Atlas::MediaPlaybackWifiLock");
                 wifiLock.setReferenceCounted(false);
             }
         } catch (Exception ignored) {
@@ -560,7 +560,7 @@ public class MediaPlaybackService extends Service {
                 conn.setConnectTimeout(6000);
                 conn.setReadTimeout(8000);
                 conn.setInstanceFollowRedirects(true);
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) LifeAtlasApp/1.0");
+                conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AtlasApp/1.0");
                 int code = conn.getResponseCode();
                 if (code < 200 || code >= 300) {
                     conn.disconnect();

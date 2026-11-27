@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Budget Repository
+ * Atlas Finance: IndexedDB Budget Repository
  */
 
 import { IBudgetRepository } from "../interfaces";

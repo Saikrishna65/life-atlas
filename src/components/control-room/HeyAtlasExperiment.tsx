@@ -259,7 +259,7 @@ export default function HeyAtlasExperiment() {
             <p className="oc-eyebrow">ISOLATED HARDWARE &amp; OS FEASIBILITY EXPERIMENT</p>
             <h1>Hey Atlas Wake-Word</h1>
             <p>
-              Offline ONNX Runtime + openWakeWord pipeline isolated from Life Atlas vaults and cloud LLMs. Designed to test
+              Offline ONNX Runtime + openWakeWord pipeline isolated from Atlas vaults and cloud LLMs. Designed to test
               realistic Android 16 behavior on Motorola Edge 50 Fusion without privileged permissions or accessibility hacks.
             </p>
           </div>
@@ -1283,7 +1283,7 @@ export default function HeyAtlasExperiment() {
         </section>
 
         <footer className="oc-footer">
-          <span>Life Atlas Private Lab · Zero raw audio saved or uploaded</span>
+          <span>Atlas Private Lab · Zero raw audio saved or uploaded</span>
           <span>Offline ONNX Runtime PoC</span>
         </footer>
       </main>

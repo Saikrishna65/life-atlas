@@ -1,5 +1,5 @@
 /**
- * Life Atlas Finance: IndexedDB Account Repository
+ * Atlas Finance: IndexedDB Account Repository
  */
 
 import { IFinanceAccountRepository } from "../interfaces";

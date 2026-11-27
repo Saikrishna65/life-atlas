@@ -199,7 +199,7 @@ export async function executeOpenTripAndPackReminderWorkflow(options: {
   if (options.isLocked) {
     return {
       status: "blocked_locked",
-      replyText: "Your phone is locked right now. Unlock it first before I open Trip Vault and attach a trip reminder.",
+      replyText: "Your phone is locked right now. Unlock it first before I open Atlas Trips and attach a trip reminder.",
       completedStepIds: [],
       rolledBackStepIds: [],
       actionExecuted: "privacy.locked_guard",
@@ -217,7 +217,7 @@ export async function executeOpenTripAndPackReminderWorkflow(options: {
   if (!listOutcome.ok) {
     return {
       status: "failed",
-      replyText: listOutcome.error ?? "Couldn't read your Trip Vault right now.",
+      replyText: listOutcome.error ?? "Couldn't read your Atlas Trips right now.",
       completedStepIds: [],
       rolledBackStepIds: [],
       actionExecuted: "trips.list",
@@ -229,7 +229,7 @@ export async function executeOpenTripAndPackReminderWorkflow(options: {
   if (trips.length === 0) {
     return {
       status: "failed",
-      replyText: "I checked Trip Vault, and you don't have any trips saved yet—want me to help plan a new one?",
+      replyText: "I checked Atlas Trips, and you don't have any trips saved yet—want me to help plan a new one?",
       completedStepIds: [],
       rolledBackStepIds: [],
       actionExecuted: "trips.list",
