@@ -1,10 +1,12 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
+    <string name="atlas_finance_launcher_label">Atlas Finance</string>
+    <string name="atlas_music_launcher_label">Atlas Music</string>
     <string name="app_name">Atlas</string>
     <string name="title_activity_main">Atlas</string>
     <string name="package_name">com.lifeatlas.app</string>
     <string name="custom_url_scheme">com.lifeatlas.app</string>
-    <string name="widget_music_name">Music Vault</string>
+    <string name="widget_music_name">Atlas Music</string>
     <string name="widget_music_description">Control Life Atlas background playback and view live track artwork directly from your home screen.</string>
     <string name="widget_finance_name">Atlas Finance</string>
     <string name="widget_finance_description">Glance at your current account balance, savings pockets, and pending transactions directly from your home screen.</string>

@@ -233,3 +233,12 @@
     gap: 12px;
   }
 }
+
+.apps-built-in { margin: 0 0 38px; }
+.apps-built-in > h2 { font-size: 24px; letter-spacing: -.035em; font-weight: 500; }
+.apps-built-in p { font-size: 14px; line-height: 1.6; opacity: .72; }
+.apps-module-list { border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); margin-top: 24px; }
+.apps-module-list article { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.apps-module-list h3 { margin: 0; font-size: 18px; font-weight: 500; }
+.apps-module-list p { margin: 6px 0 0; }
+@media (max-width: 640px) { .apps-module-list article { align-items: flex-start; flex-direction: column; } }

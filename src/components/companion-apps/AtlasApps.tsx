@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { appServiceUrl } from "@/lib/appNetwork";
 import {
   useCallback,
@@ -25,6 +26,14 @@ import {
   type CompanionStatus,
 } from "@/lib/companion-apps/catalogue";
 import "./atlas-apps.css";
+const shortcuts = registerPlugin<{
+  pinModuleShortcut(options: { module: string }): Promise<{ supported: boolean; requested: boolean }>;
+}>("AtlasPermissions");
+const builtInApps = [
+  { id: "finance", title: "Atlas Finance", description: "Your spending, shared expenses and monthly review." },
+  { id: "music", title: "Atlas Music", description: "Your library, playlists and listening." },
+  { id: "gallery", title: "Atlas Gallery", description: "Your photos, videos and familiar faces." },
+] as const;
 const size = (bytes: number) => `${(bytes / 1048576).toFixed(1)} MB`;
 export default function AtlasApps() {
   const native = useSyncExternalStore(
@@ -32,6 +41,20 @@ export default function AtlasApps() {
     supportsCompanionApps,
     () => false,
   );
+  const [shortcutNotice, setShortcutNotice] = useState("");
+  const [pinning, setPinning] = useState("");
+  async function pin(module: string) {
+    setPinning(module);
+    setShortcutNotice("");
+    try {
+      const result = await shortcuts.pinModuleShortcut({ module });
+      setShortcutNotice(result.requested
+        ? "Confirm the shortcut on your home screen."
+        : "Open your app drawer and drag the Atlas app icon to your home screen.");
+    } catch {
+      setShortcutNotice("This Atlas version cannot add the shortcut yet. You can still open it here.");
+    } finally { setPinning(""); }
+  }
   const [busy, setBusy] = useState(false),
     [checked, setChecked] = useState(false);
   const [status, setStatus] = useState<CompanionStatus>(),
@@ -139,6 +162,26 @@ export default function AtlasApps() {
           phone, or open them on the web.
         </p>
       </header>
+      <section className="apps-built-in" aria-labelledby="built-in-title">
+        <h2 id="built-in-title">One Atlas. Straight to what you need.</h2>
+        <p>Open directly, with the same saved data and settings. No extra installation.</p>
+        <div className="apps-module-list">
+          {builtInApps.map((app) => (
+            <article key={app.id}>
+              <div><h3>{app.title}</h3><p>{app.description}</p></div>
+              <div className="companion-actions">
+                <Link href={`/secret/${app.id}`}>Open <ArrowUpRight size={16} /></Link>
+                {native && Capacitor.isPluginAvailable("AtlasPermissions") && (
+                  <button className="apps-secondary" disabled={!!pinning} onClick={() => void pin(app.id)}>
+                    {pinning === app.id ? "Adding…" : "Add to home screen"}
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+        <p role="status" className="apps-note">{shortcutNotice}</p>
+      </section>
       <article className="companion-feature" aria-labelledby="video-app-title">
         <div className="companion-art" aria-hidden="true">
           <span className="companion-play">

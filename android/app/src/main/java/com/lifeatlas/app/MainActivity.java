@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.webkit.WebView;
+import android.webkit.JavascriptInterface;
+import org.json.JSONObject;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -30,6 +32,24 @@ public class MainActivity extends BridgeActivity {
             }
         }
     };
+
+    /** Installed before Capacitor loads its first document, so bootstrap selects the module directly. */
+    public static final class ModuleLaunch {
+        private final String route;
+        ModuleLaunch(String route) { this.route = route; }
+        @JavascriptInterface public String getInitialRoute() { return route; }
+    }
+
+    @Override
+    protected void load() {
+        String route = null;
+        Intent launch = getIntent();
+        if (launch != null && Intent.ACTION_MAIN.equals(launch.getAction()) && launch.getComponent() != null)
+            route = LaunchRoutes.launcherRoute(launch.getComponent().getClassName());
+        WebView webView = findViewById(com.getcapacitor.android.R.id.webview);
+        if (webView != null) webView.addJavascriptInterface(new ModuleLaunch(route), "AtlasModuleLaunch");
+        super.load();
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -154,10 +174,11 @@ public class MainActivity extends BridgeActivity {
             return;
         }
 
-        // A second launcher opens Photos inside this same package and protected app shell.
-        if (Intent.ACTION_MAIN.equals(action) && intent.getComponent() != null
-            && "com.lifeatlas.app.GalleryLauncher".equals(intent.getComponent().getClassName())) {
-            pendingTargetRoute = "/secret/gallery";
+        // All module icons reuse the existing singleTask activity and its running player.
+        String moduleRoute = Intent.ACTION_MAIN.equals(action) && intent.getComponent() != null
+            ? LaunchRoutes.launcherRoute(intent.getComponent().getClassName()) : null;
+        if (moduleRoute != null) {
+            pendingTargetRoute = moduleRoute;
             dispatchPendingRoute();
             return;
         }
@@ -224,13 +245,10 @@ public class MainActivity extends BridgeActivity {
     private void dispatchPendingRoute() {
         if (pendingTargetRoute != null && pageLoaded && getBridge() != null && getBridge().getWebView() != null) {
             try {
-                final String route = pendingTargetRoute;
-                String script =
-                    "try {" +
-                    "  if (window.location.pathname !== '" + route + "') {" +
-                    "    window.location.href = '" + route + "';" +
-                    "  }" +
-                    "} catch (e) { console.error('Route dispatch error', e); }";
+                final String route = LaunchRoutes.safePrivateRoute(pendingTargetRoute);
+                if (route == null) { pendingTargetRoute = null; return; }
+                String script = "window.__atlasPendingRoute=" + JSONObject.quote(route) + ";" +
+                    "window.dispatchEvent(new CustomEvent('atlas:open-route',{detail:window.__atlasPendingRoute}));";
                 getBridge().getWebView().evaluateJavascript(script, null);
                 pendingTargetRoute = null;
             } catch (Exception ignored) {

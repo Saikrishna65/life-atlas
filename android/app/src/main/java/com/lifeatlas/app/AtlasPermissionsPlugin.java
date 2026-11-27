@@ -33,6 +33,23 @@ import com.getcapacitor.annotation.PermissionCallback;
 public class AtlasPermissionsPlugin extends Plugin {
   @PluginMethod
   public void pinGalleryShortcut(PluginCall call) {
+    pinShortcut(call, "gallery");
+  }
+
+  @PluginMethod
+  public void pinModuleShortcut(PluginCall call) {
+    pinShortcut(call, call.getString("module", ""));
+  }
+
+  private void pinShortcut(PluginCall call, String module) {
+    String component, label;
+    int icon;
+    switch (module) {
+      case "finance": component = "FinanceLauncher"; label = "Atlas Finance"; icon = R.drawable.ic_atlas_finance; break;
+      case "music": component = "MusicLauncher"; label = "Atlas Music"; icon = R.drawable.ic_atlas_music; break;
+      case "gallery": component = "GalleryLauncher"; label = "Atlas Gallery"; icon = R.drawable.ic_atlas_photos; break;
+      default: call.reject("Unknown Atlas app"); return;
+    }
     if (Build.VERSION.SDK_INT < 26) {
       call.resolve(new JSObject().put("supported", false).put("requested", false));
       return;
@@ -46,15 +63,15 @@ public class AtlasPermissionsPlugin extends Plugin {
           new Intent(Intent.ACTION_MAIN)
               .setComponent(
                   new android.content.ComponentName(
-                      getContext(), "com.lifeatlas.app.GalleryLauncher"))
+                      getContext(), "com.lifeatlas.app." + component))
               .addCategory(Intent.CATEGORY_LAUNCHER);
       android.content.pm.ShortcutInfo shortcut =
-          new android.content.pm.ShortcutInfo.Builder(getContext(), "atlas-gallery")
-              .setShortLabel("Atlas Gallery")
-              .setLongLabel("Atlas Gallery")
+          new android.content.pm.ShortcutInfo.Builder(getContext(), "atlas-" + module)
+              .setShortLabel(label)
+              .setLongLabel(label)
               .setIcon(
                   android.graphics.drawable.Icon.createWithResource(
-                      getContext(), R.drawable.ic_atlas_photos))
+                      getContext(), icon))
               .setIntent(intent)
               .build();
       requested = manager.requestPinShortcut(shortcut, null);
