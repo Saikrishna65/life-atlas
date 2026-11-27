@@ -15,7 +15,7 @@ import {
 import PerformanceDetails from "@/components/performance/PerformanceDetails";
 import { useGalleryBack } from "@/lib/gallery/navigation";
 const launcher = registerPlugin<{
-  pinGalleryShortcut(): Promise<{ supported: boolean; requested: boolean }>;
+  pinGalleryShortcut(): Promise<{ supported: boolean; requested: boolean; updated?: boolean }>;
 }>("AtlasPermissions");
 export default function GalleryManagePanel({
   onClose,
@@ -111,7 +111,9 @@ export default function GalleryManagePanel({
                 .pinGalleryShortcut()
                 .then((result) =>
                   setShortcutNotice(
-                    result.requested
+                    result.updated
+                      ? "Your home-screen icon was updated."
+                      : result.requested
                       ? "Confirm Add in your launcher’s prompt."
                       : "Open your app drawer, then long-press Atlas Gallery and drag it to the home screen.",
                   ),

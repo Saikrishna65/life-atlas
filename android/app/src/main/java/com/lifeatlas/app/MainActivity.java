@@ -46,6 +46,8 @@ public class MainActivity extends BridgeActivity {
         Intent launch = getIntent();
         if (launch != null && Intent.ACTION_MAIN.equals(launch.getAction()) && launch.getComponent() != null)
             route = LaunchRoutes.launcherRoute(launch.getComponent().getClassName());
+        if (launch != null && "com.lifeatlas.app.OPEN_MODULE".equals(launch.getAction()))
+            route = AtlasIconPolicy.route(launch.getStringExtra("atlas_module"));
         WebView webView = findViewById(com.getcapacitor.android.R.id.webview);
         if (webView != null) webView.addJavascriptInterface(new ModuleLaunch(route), "AtlasModuleLaunch");
         super.load();
@@ -58,6 +60,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(AtlasLocalAIPlugin.class);
         registerPlugin(AtlasUpdatesPlugin.class);
         registerPlugin(AtlasAppsPlugin.class);
+        registerPlugin(AtlasIconsPlugin.class);
         registerPlugin(MediaPlaybackPlugin.class);
         registerPlugin(AtlasFileExportPlugin.class);
         registerPlugin(com.lifeatlas.app.r2.R2StoragePlugin.class);
@@ -149,6 +152,11 @@ public class MainActivity extends BridgeActivity {
         if (intent == null) return;
         String action = intent.getAction();
         String type = intent.getType();
+        if ("com.lifeatlas.app.OPEN_MODULE".equals(action)) {
+            String route = AtlasIconPolicy.route(intent.getStringExtra("atlas_module"));
+            if (route != null) { pendingTargetRoute = route; dispatchPendingRoute(); }
+            return;
+        }
 
         if ("com.lifeatlas.app.ACTION_REVIEW_FINANCE".equals(action)) {
             String eventId = intent.getStringExtra("finance_event_id");

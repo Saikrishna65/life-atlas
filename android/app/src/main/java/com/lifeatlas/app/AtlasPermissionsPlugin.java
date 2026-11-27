@@ -42,41 +42,10 @@ public class AtlasPermissionsPlugin extends Plugin {
   }
 
   private void pinShortcut(PluginCall call, String module) {
-    String component, label;
-    int icon;
-    switch (module) {
-      case "finance": component = "FinanceLauncher"; label = "Atlas Finance"; icon = R.drawable.ic_atlas_finance; break;
-      case "music": component = "MusicLauncher"; label = "Atlas Music"; icon = R.drawable.ic_atlas_music; break;
-      case "gallery": component = "GalleryLauncher"; label = "Atlas Gallery"; icon = R.drawable.ic_atlas_photos; break;
-      default: call.reject("Unknown Atlas app"); return;
-    }
-    if (Build.VERSION.SDK_INT < 26) {
-      call.resolve(new JSObject().put("supported", false).put("requested", false));
-      return;
-    }
-    android.content.pm.ShortcutManager manager =
-        getContext().getSystemService(android.content.pm.ShortcutManager.class);
-    boolean supported = manager != null && manager.isRequestPinShortcutSupported();
-    boolean requested = false;
-    if (supported) {
-      Intent intent =
-          new Intent(Intent.ACTION_MAIN)
-              .setComponent(
-                  new android.content.ComponentName(
-                      getContext(), "com.lifeatlas.app." + component))
-              .addCategory(Intent.CATEGORY_LAUNCHER);
-      android.content.pm.ShortcutInfo shortcut =
-          new android.content.pm.ShortcutInfo.Builder(getContext(), "atlas-" + module)
-              .setShortLabel(label)
-              .setLongLabel(label)
-              .setIcon(
-                  android.graphics.drawable.Icon.createWithResource(
-                      getContext(), icon))
-              .setIntent(intent)
-              .build();
-      requested = manager.requestPinShortcut(shortcut, null);
-    }
-    call.resolve(new JSObject().put("supported", supported).put("requested", requested));
+    execute(() -> {
+      try { call.resolve(new AtlasIconStore(getContext()).pin(module)); }
+      catch (Exception error) { call.reject("The home-screen shortcut could not be added. Open Atlas and try again."); }
+    });
   }
 
   private String audioAlias() {

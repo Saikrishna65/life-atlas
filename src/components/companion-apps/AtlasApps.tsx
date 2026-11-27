@@ -27,7 +27,7 @@ import {
 } from "@/lib/companion-apps/catalogue";
 import "./atlas-apps.css";
 const shortcuts = registerPlugin<{
-  pinModuleShortcut(options: { module: string }): Promise<{ supported: boolean; requested: boolean }>;
+  pinModuleShortcut(options: { module: string }): Promise<{ supported: boolean; requested: boolean; updated?: boolean }>;
 }>("AtlasPermissions");
 const builtInApps = [
   { id: "finance", title: "Atlas Finance", description: "Your spending, shared expenses and monthly review." },
@@ -48,7 +48,9 @@ export default function AtlasApps() {
     setShortcutNotice("");
     try {
       const result = await shortcuts.pinModuleShortcut({ module });
-      setShortcutNotice(result.requested
+      setShortcutNotice(result.updated
+                      ? "Your home-screen icon was updated."
+                      : result.requested
         ? "Confirm the shortcut on your home screen."
         : "Open your app drawer and drag the Atlas app icon to your home screen.");
     } catch {
@@ -163,6 +165,7 @@ export default function AtlasApps() {
         </p>
       </header>
       <section className="apps-built-in" aria-labelledby="built-in-title">
+        <Link className="apps-back" href="/secret/control-room?tab=icons">Customize home-screen icons <ArrowUpRight size={16}/></Link>
         <h2 id="built-in-title">One Atlas. Straight to what you need.</h2>
         <p>Open directly, with the same saved data and settings. No extra installation.</p>
         <div className="apps-module-list">
