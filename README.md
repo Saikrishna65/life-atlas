@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Atlas
 
-## Getting Started
+A personal, local-first Android ecosystem and public travel website: Atlas Gallery, Music, Finance, Trips, Creator Studio, AI, and the Atlas Video browser experience.
 
-First, run the development server:
+**New developer or AI account? Start with the [complete project handover](docs/handover/START-HERE.md).** It explains the architecture, user decisions, source locations, backup systems, unfinished work and validation boundaries without requiring the previous conversation.
 
-```bash
+- [Project guide](docs/handover/PROJECT-GUIDE.md)
+- [Source routes, native modules and documentation index](docs/handover/REPOSITORY-MAP.md)
+- [Current account backup/recovery implementation and setup](docs/atlas-account-recovery.md)
+
+## Development
+
+```sh
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3001`. Server-backed features need their configured services; private Android functionality also requires native plugins. The public Next website and the offline Capacitor bundle are different runtimes.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+npm test
+npx tsc --noEmit
+npx eslint <changed-files>
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**APK/app-bundle builds are currently paused by the owner.** Do not run mobile builds or trigger APK workflows until requested. See the handover for build commands when the pause is lifted.
 
-## Learn More
+## Repository boundaries
 
-To learn more about Next.js, take a look at the following resources:
+This repository contains the main Atlas app and website. The separate NewPipe-based **Atlas Video Android fork is not included**; its source must be transferred separately. The browser Video page is available in this repository at `/video`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Preserve existing local data, native encryption keys, signing identity and backups. Do not commit credentials, recovery material, personal media or model weights. Current account recovery is a web app-data foundation, not complete native one-click recovery.
