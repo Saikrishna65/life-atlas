@@ -48,3 +48,21 @@ fixtures verified that 100 library events produce one extra read, the refresh
 button reads the library, the sleep timer pauses after its deadline and cancelling
 it prevents that pause. Native music services are mocked; Android background timer
 behavior, device battery use and startup latency remain unverified. No APK build.
+
+## Optional cloud startup engine — 2026-11-28
+
+ControlRoomBridge no longer statically imports cloud-vault/client. Its engine is
+loaded only when the saved link has ready=true and automatic=true. Enabling the
+link during an existing app session loads/starts it; disabling or disconnecting
+stops its scheduler. Duplicate notifications share one pending import. Late
+imports cannot start after teardown, and subsequent events can retry failed
+imports. Settings writes after bridge teardown are ignored.
+
+An esbuild source-only comparison (write:false, ESM splitting, React/Next external,
+no minification) against commit 007eca9 measured the bridge's transitive static
+chunk graph at 53,691 bytes before and 6,062 bytes after (about 89% less). Entry
+chunks alone were 41,537 and 1,991 bytes. The engine moves to a deferred chunk;
+these are not Next production sizes, total-app savings or device startup timings.
+No APK or production build was created. Lifecycle unit tests cover disabled
+startup, 100 duplicate enable events, disable/re-enable, late completion and
+failed-load retry. TypeScript and scoped lint passed.
