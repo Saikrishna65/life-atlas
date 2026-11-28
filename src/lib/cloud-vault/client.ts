@@ -9,7 +9,7 @@ export {newRecoveryCode};
 export const DEFAULT_VAULT_CODE='ATLAS-01ae92e5-fcefe509-4972b00b-e4f70daa-8c3be522-0b138301-87899df5-6282fb6b';
 const LEGACY_VAULT_CODES=['ATLAS-e9b4c021-88f24a1b-93de198c-7f5b3a20-41dc89e2-5701bcf3-692a4e8d-17f03ca5'];
 export interface LocalCopy {section:CloudSection;version:number;stores:StoreSnapshot[];preferences?:Record<string,string>;}
-export interface CloudLink {code:string;automatic:boolean;ready:boolean;copies:Partial<Record<CloudSection,{sourceHash:string;revision:string;rows:Record<string,string>}>>;}
+export interface CloudLink {accountManaged?:boolean;code:string;automatic:boolean;ready:boolean;copies:Partial<Record<CloudSection,{sourceHash:string;revision:string;rows:Record<string,string>}>>;}
 export interface SectionComparison {section:CloudSection;records:number;bytes:number;pending:number;sourceHash:string;rows:Record<string,string>;cloud?:SectionCopy;}
 const LINK_KEY='atlas_cloud_connection_v1';
 export function getCloudLink():CloudLink|null{try{const raw=localStorage.getItem(LINK_KEY);if(!raw)return null;return JSON.parse(raw) as CloudLink;}catch{return null;}}
@@ -22,7 +22,7 @@ export const cloudProgress={busy:false,message:'',error:'',lastSaved:''};
 function progress(message:string,error=''){cloudProgress.message=message;cloudProgress.error=error;window.dispatchEvent(new Event('atlas-cloud-progress'));}
 let serial:Promise<unknown>=Promise.resolve();
 function exclusive<T>(fn:()=>Promise<T>):Promise<T>{const next=serial.catch(()=>{}).then(async()=>{cloudProgress.busy=true;progress('Connecting to your cloud vault…');try{return await fn();}catch(error){progress('',error instanceof Error?error.message:'Cloud connection failed.');throw error;}finally{cloudProgress.busy=false;window.dispatchEvent(new Event('atlas-cloud-progress'));}});serial=next;return next;}
-async function api(code:string,body:Record<string,unknown>){if(typeof navigator!=='undefined'&&navigator.onLine===false)throw new Error('You are offline. Your changes remain on this device.');requirePrivateCode(code);const identity=await vaultIdentity(code);const response=await fetch('/api/cloud-vault',{method:'POST',headers:{'Content-Type':'application/json','X-Atlas-Cloud':'1','X-Atlas-Vault-Token':identity.token},body:JSON.stringify({...body,vaultId:identity.id})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Cloud operation failed.');return data as {account:CloudAccount;signed?:any;exists?:boolean;url?:string};}
+async function api(code:string,body:Record<string,unknown>){if(typeof navigator!=='undefined'&&navigator.onLine===false)throw new Error('You are offline. Your changes remain on this device.');requirePrivateCode(code);const identity=await vaultIdentity(code);const accountManaged=getCloudLink()?.accountManaged&&getCloudLink()?.code===code;const response=await fetch(accountManaged?'/api/account/vault':'/api/cloud-vault',{method:'POST',headers:{'Content-Type':'application/json','X-Atlas-Cloud':'1',...(accountManaged?{'X-Atlas-Account':'1'}:{'X-Atlas-Vault-Token':identity.token})},body:JSON.stringify({...body,vaultId:identity.id})});const data=await response.json();if(!response.ok)throw new Error(data.error||'Cloud operation failed.');return data as {account:CloudAccount;signed?:any;exists?:boolean;url?:string};}
 export async function createCloudLink(code:string){await api(code,{action:'create'});saveLink({code,automatic:true,ready:true,copies:{}},true);return code;}
 export async function connectCloudLink(code:string){const {account}=await api(code,{action:'status'});saveLink({code,automatic:true,ready:false,copies:{}},true);return account;}
 export async function ensureCloudLink(explicitCode?:string):Promise<CloudLink>{
@@ -68,3 +68,16 @@ export async function restoreSections(sections:CloudSection[]=Array.from(CLOUD_S
  return account;
  });}
 export function beginAutomaticCloudSync(){let timer:ReturnType<typeof setTimeout>|undefined,active=true;const schedule=()=>{if(timer){clearTimeout(timer);timer=undefined;}const link=getCloudLink();if(!active||!link?.ready||!link.automatic||navigator.onLine===false||isControlRestoreActive())return;if(timer)clearTimeout(timer);timer=setTimeout(()=>{const latest=getCloudLink();if(active&&!cloudProgress.busy&&latest?.ready&&latest.automatic&&navigator.onLine!==false&&!isControlRestoreActive())void uploadSections().catch(()=>{});},3000);};const events=['life_atlas_vault_change','lifeatlas_tracks_updated','finance-ledger-updated','atlas-studio-change','atlas-control-settings','online','atlas-cloud-link'];for(const event of events)window.addEventListener(event,schedule);const tick=setInterval(schedule,60000);schedule();return()=>{active=false;if(timer)clearTimeout(timer);clearInterval(tick);for(const event of events)window.removeEventListener(event,schedule);};}
+
+/** Explicit account enrollment; never silently replace a legacy recovery link. */
+export async function connectAccountBackup() {
+ const existing=getCloudLink();
+ if(existing&&!existing.accountManaged)throw new Error('An older backup is connected. Keep it connected until migration is available.');
+ const response=await fetch('/api/account/connect',{method:'POST',headers:{'X-Atlas-Account':'1'}});
+ if(!response.ok)throw new Error('Could not connect your account backup. Sign in and try again.');
+ const data=await response.json() as {code:string;account:CloudAccount};
+ await vaultIdentity(data.code);
+ if(existing&&existing.code!==data.code)throw new Error('Another account is connected on this device. Disconnect it before switching accounts.');
+ if(!existing)saveLink({code:data.code,accountManaged:true,automatic:false,ready:Object.keys(data.account.sections).length===0,copies:{}},true);
+ return data.account;
+}
